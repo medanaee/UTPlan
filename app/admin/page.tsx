@@ -28,6 +28,8 @@ import {
   PanelRightClose,
   PanelRightOpen,
   CalendarDays,
+  Camera,
+  Upload,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -128,6 +130,7 @@ export default function AdminDashboardPage() {
   const [prereqModalOpen, setPrereqModalOpen] = useState(false);
   const [selectedCourseForPrereq, setSelectedCourseForPrereq] = useState<Course | null>(null);
   const [profModalOpen, setProfModalOpen] = useState(false);
+  const [uploadingProfImage, setUploadingProfImage] = useState(false);
   const [vcatModalOpen, setVcatModalOpen] = useState(false);
   const [rcatModalOpen, setRcatModalOpen] = useState(false);
 
@@ -154,6 +157,7 @@ export default function AdminDashboardPage() {
     name: "",
     title: "استاد",
     email: "",
+    avatarUrl: "",
     facultyId: "",
   });
   const [vcatForm, setVcatForm] = useState({ name: "", color: "#3b82f6", sortOrder: 1 });
@@ -435,6 +439,34 @@ export default function AdminDashboardPage() {
     if (updatedCourse.success) setSelectedCourseForPrereq(updatedCourse.data);
   };
 
+  // Upload Professor Photo (Cloudflare Images / R2)
+  const handleUploadProfImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingProfImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      }).then((r) => r.json());
+
+      if (res.success && res.url) {
+        setProfForm((prev) => ({ ...prev, avatarUrl: res.url }));
+      } else {
+        alert(res.message || "خطا در آپلود تصویر");
+      }
+    } catch (err) {
+      console.error("Upload error:", err);
+      alert("خطا در برقراری ارتباط با سرور آپلود");
+    } finally {
+      setUploadingProfImage(false);
+    }
+  };
+
   // Create Professor
   const handleCreateProf = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -448,7 +480,7 @@ export default function AdminDashboardPage() {
     }).then((r) => r.json());
     if (res.success) {
       setProfModalOpen(false);
-      setProfForm({ name: "", title: "استاد", email: "", facultyId: selectedFacultyId });
+      setProfForm({ name: "", title: "استاد تمام", email: "", avatarUrl: "", facultyId: selectedFacultyId });
       await loadAllData();
     }
   };
@@ -488,12 +520,12 @@ export default function AdminDashboardPage() {
     },
     {
       id: "offerings" as const,
-      label: "ارائه‌های درسی (گروه‌ها)",
+      label: "ارائه‌های درسی (درس + استاد)",
       icon: Sparkles,
     },
     {
       id: "events" as const,
-      label: "زمان‌بندی و برنامه هفتگی",
+      label: "رویدادها و برنامه‌ریزی کلاسی",
       icon: CalendarDays,
     },
     {
@@ -1274,8 +1306,12 @@ export default function AdminDashboardPage() {
                       className="flex items-center justify-between rounded-xl border border-border/80 bg-card p-3.5 shadow-2xs"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs">
-                          {p.name.charAt(0)}
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs overflow-hidden border border-border/80 shadow-2xs">
+                          {p.avatarUrl ? (
+                            <img src={p.avatarUrl} alt={p.name} className="h-full w-full object-cover" />
+                          ) : (
+                            <span>{p.name.charAt(0)}</span>
+                          )}
                         </div>
                         <div>
                           <p className="text-xs font-bold">{p.name}</p>
@@ -1748,13 +1784,70 @@ export default function AdminDashboardPage() {
 
       {/* 8. Add Professor Modal */}
       <Dialog open={profModalOpen} onOpenChange={setProfModalOpen}>
-        <DialogContent className="sm:max-w-sm" dir="rtl">
+        <DialogContent className="sm:max-w-md" dir="rtl">
           <DialogHeader>
-            <DialogTitle className="text-sm font-bold">افزودن استاد جدید</DialogTitle>
+            <DialogTitle className="text-sm font-bold flex items-center gap-2">
+              <Plus className="h-4 w-4 text-primary" />
+              افزودن استاد جدید
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              مشخصات استاد و تصویر پرسنلی (بارگذاری خودکار در سرویس Cloudflare) را وارد کنید.
+            </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleCreateProf} className="space-y-3 pt-2">
+          <form onSubmit={handleCreateProf} className="space-y-3.5 pt-2">
+            {/* Photo Upload Area */}
+            <div className="flex items-center gap-3.5 p-3 rounded-xl border border-border/70 bg-muted/15">
+              <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-border/80 bg-background overflow-hidden shadow-2xs">
+                {profForm.avatarUrl ? (
+                  <img
+                    src={profForm.avatarUrl}
+                    alt="پیش‌نمایش تصویر"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <Camera className="h-6 w-6 text-muted-foreground/60" />
+                )}
+                {uploadingProfImage && (
+                  <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
+                    <RefreshCw className="h-4 w-4 animate-spin text-primary" />
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-1.5 flex-1">
+                <Label className="text-xs font-semibold">تصویر پرسنلی (Cloudflare):</Label>
+                <div className="flex items-center gap-2">
+                  <label className="cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleUploadProfImage}
+                      className="hidden"
+                      disabled={uploadingProfImage}
+                    />
+                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/20 transition-colors shadow-2xs">
+                      <Upload className="h-3 w-3" />
+                      {uploadingProfImage ? "در حال آپلود..." : "انتخاب و آپلود عکس"}
+                    </span>
+                  </label>
+                  {profForm.avatarUrl && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setProfForm({ ...profForm, avatarUrl: "" })}
+                      className="h-7 text-xs text-muted-foreground hover:text-destructive px-2"
+                    >
+                      حذف عکس
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Name */}
             <div className="space-y-1">
-              <Label className="text-xs">نام استاد</Label>
+              <Label className="text-xs">نام و نام خانوادگی استاد</Label>
               <Input
                 required
                 placeholder="مثلاً دکتر محمدی"
@@ -1763,45 +1856,53 @@ export default function AdminDashboardPage() {
                 className="h-8 text-xs"
               />
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs">مرتبه علمی</Label>
-              <Select
-                items={[
-                  { value: "استاد تمام", label: "استاد تمام" },
-                  { value: "دانشیار", label: "دانشیار" },
-                  { value: "استادیار", label: "استادیار" },
-                  { value: "مربی", label: "مربی" },
-                ]}
-                value={profForm.title}
-                onValueChange={(val) => val && setProfForm({ ...profForm, title: val })}
-              >
-                <SelectTrigger size="sm" className="w-full text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value="استاد تمام">استاد تمام</SelectItem>
-                    <SelectItem value="دانشیار">دانشیار</SelectItem>
-                    <SelectItem value="استادیار">استادیار</SelectItem>
-                    <SelectItem value="مربی">مربی</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+
+            {/* Title & Email (2 columns) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">مرتبه علمی</Label>
+                <Select
+                  items={[
+                    { value: "استاد تمام", label: "استاد تمام" },
+                    { value: "دانشیار", label: "دانشیار" },
+                    { value: "استادیار", label: "استادیار" },
+                    { value: "مربی", label: "مربی" },
+                  ]}
+                  value={profForm.title}
+                  onValueChange={(val) => val && setProfForm({ ...profForm, title: val })}
+                >
+                  <SelectTrigger size="sm" className="w-full text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="استاد تمام">استاد تمام</SelectItem>
+                      <SelectItem value="دانشیار">دانشیار</SelectItem>
+                      <SelectItem value="استادیار">استادیار</SelectItem>
+                      <SelectItem value="مربی">مربی</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs">ایمیل دانشگاهی (اختیاری)</Label>
+                <Input
+                  type="email"
+                  placeholder="name@ut.ac.ir"
+                  value={profForm.email}
+                  onChange={(e) => setProfForm({ ...profForm, email: e.target.value })}
+                  className="h-8 text-xs font-mono"
+                  dir="ltr"
+                />
+              </div>
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs">ایمیل دانشگاهی (اختیاری)</Label>
-              <Input
-                type="email"
-                placeholder="name@ut.ac.ir"
-                value={profForm.email}
-                onChange={(e) => setProfForm({ ...profForm, email: e.target.value })}
-                className="h-8 text-xs font-mono"
-                dir="ltr"
-              />
-            </div>
-            <Button type="submit" size="sm" className="w-full h-8 text-xs">
-              ثبت استاد
-            </Button>
+
+            <DialogFooter className="pt-2">
+              <Button type="submit" size="sm" disabled={uploadingProfImage} className="w-full h-8 text-xs font-semibold">
+                ثبت و ذخیره استاد
+              </Button>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

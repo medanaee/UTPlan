@@ -34,6 +34,8 @@ export async function POST(request: NextRequest) {
     const {
       offeringId,
       term,
+      groupCode,
+      capacity,
       location,
       examDate,
       examStartTime,
@@ -52,6 +54,8 @@ export async function POST(request: NextRequest) {
     const newEvent = await createEvent({
       offeringId,
       term: term || "1403-1",
+      groupCode: groupCode || "01",
+      capacity: capacity ? Number(capacity) : 40,
       location: location || "",
       examDate: examDate || "",
       examStartTime: examStartTime || "",
@@ -89,7 +93,10 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const {
       id,
+      offeringId,
       term,
+      groupCode,
+      capacity,
       location,
       examDate,
       examStartTime,
@@ -105,7 +112,10 @@ export async function PUT(request: NextRequest) {
     }
 
     const updated = await updateEvent(id, {
+      offeringId,
       term,
+      groupCode,
+      capacity: capacity !== undefined ? Number(capacity) : undefined,
       location,
       examDate,
       examStartTime,

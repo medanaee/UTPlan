@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOfferings, createOffering, updateOffering, deleteOffering } from "@/lib/db";
+import { getOfferings, createOffering, deleteOffering } from "@/lib/db";
 import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
@@ -7,9 +7,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const courseId = searchParams.get("courseId") || undefined;
     const professorId = searchParams.get("professorId") || undefined;
-    const term = searchParams.get("term") || undefined;
 
-    const data = await getOfferings({ courseId, professorId, term });
+    const data = await getOfferings({ courseId, professorId });
     return NextResponse.json({ success: true, data });
   } catch (error) {
     console.error("GET offerings error:", error);
@@ -32,7 +31,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { courseId, professorId, groupCode, capacity, term } = body;
+    const { courseId, professorId } = body;
 
     if (!courseId || !professorId) {
       return NextResponse.json(
@@ -44,70 +43,17 @@ export async function POST(request: NextRequest) {
     const newOffering = await createOffering({
       courseId,
       professorId,
-      groupCode: groupCode || "01",
-      capacity: capacity ? Number(capacity) : 40,
-      term: term || "1403-1",
     });
 
     return NextResponse.json({
       success: true,
-      message: "ارائه درس با موفقیت تعریف شد.",
+      message: "اتصال ارائه درس با موفقیت تعریف شد.",
       data: newOffering,
     });
   } catch (error) {
     console.error("POST offering error:", error);
     return NextResponse.json(
       { success: false, message: "خطا در تعریف ارائه درس" },
-      { status: 500 }
-    );
-  }
-}
-
-export async function PUT(request: NextRequest) {
-  try {
-    const token = getAuthTokenFromRequest(request);
-    const session = token ? await verifySessionToken(token) : null;
-    if (!session || (session.role !== "admin" && session.role !== "super_admin")) {
-      return NextResponse.json(
-        { success: false, message: "عدم دسترسی کافی" },
-        { status: 403 }
-      );
-    }
-
-    const body = await request.json();
-    const { id, courseId, professorId, groupCode, capacity, term } = body;
-
-    if (!id) {
-      return NextResponse.json(
-        { success: false, message: "شناسه ارائه الزامی است." },
-        { status: 400 }
-      );
-    }
-
-    const updated = await updateOffering(id, {
-      courseId,
-      professorId,
-      groupCode,
-      capacity: capacity !== undefined ? Number(capacity) : undefined,
-      term,
-    });
-
-    if (!updated) {
-      return NextResponse.json(
-        { success: false, message: "ارائه مورد نظر یافت نشد." },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: "ارائه درس با موفقیت به‌روزرسانی شد.",
-      data: updated,
-    });
-  } catch (error) {
-    console.error("PUT offering error:", error);
-    return NextResponse.json(
-      { success: false, message: "خطا در ویرایش ارائه درس" },
       { status: 500 }
     );
   }

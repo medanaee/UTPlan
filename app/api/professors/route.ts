@@ -1,4 +1,4 @@
-import { getProfessors, createProfessor, deleteProfessor } from "@/lib/db";
+import { getProfessors, createProfessor, updateProfessor, deleteProfessor } from "@/lib/db";
 
 export async function GET(request: Request) {
   try {
@@ -33,6 +33,34 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Create professor error:", error);
     return Response.json({ success: false, message: "خطا در ایجاد استاد" }, { status: 500 });
+  }
+}
+
+export async function PUT(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, facultyId, name, title, email, avatarUrl } = body;
+
+    if (!id) {
+      return Response.json({ success: false, message: "شناسه استاد الزامی است." }, { status: 400 });
+    }
+
+    const updated = await updateProfessor(id, {
+      facultyId,
+      name,
+      title,
+      email,
+      avatarUrl,
+    });
+
+    if (!updated) {
+      return Response.json({ success: false, message: "استاد مورد نظر یافت نشد." }, { status: 404 });
+    }
+
+    return Response.json({ success: true, data: updated });
+  } catch (error) {
+    console.error("Update professor error:", error);
+    return Response.json({ success: false, message: "خطا در به‌روزرسانی استاد" }, { status: 500 });
   }
 }
 

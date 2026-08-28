@@ -125,9 +125,6 @@ export interface CourseOffering {
   id: string;
   courseId: string;
   professorId: string;
-  groupCode?: string; // e.g. "01", "02"
-  capacity?: number; // e.g. 40
-  term?: string; // e.g. "1403-1"
   createdAt: string;
   deletedAt?: string | null;
   // Joined
@@ -136,12 +133,15 @@ export interface CourseOffering {
   courseUnits?: number;
   professorName?: string;
   professorTitle?: string;
+  professorAvatarUrl?: string;
 }
 
 export interface CourseEvent {
   id: string;
   offeringId: string;
   term: string; // e.g. "1403-1"
+  groupCode?: string; // e.g. "01", "02"
+  capacity?: number; // e.g. 40
   location?: string; // e.g. "دانشکده فنی - کلاس ۱۰۲"
   examDate?: string; // e.g. "1403/10/22"
   examStartTime?: string; // "08:30"
@@ -153,8 +153,9 @@ export interface CourseEvent {
   // Joined
   courseName?: string;
   courseCode?: string;
+  courseUnits?: number;
   professorName?: string;
-  groupCode?: string;
+  professorTitle?: string;
   // Slots
   slots?: CourseEventSlot[];
 }

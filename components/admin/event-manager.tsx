@@ -37,8 +37,7 @@ import {
   Trash2,
   BookOpen,
   CalendarDays,
-  FileText,
-  AlertCircle,
+  Search,
 } from "lucide-react";
 
 interface EventManagerProps {
@@ -53,15 +52,41 @@ const DAYS_OF_WEEK = [
   { value: 4, label: "چهارشنبه" },
 ];
 
+const SEMESTER_TYPES = [
+  { value: "fall", label: "پاییز (نیمسال اول)", code: "1" },
+  { value: "spring", label: "بهار (نیمسال دوم)", code: "2" },
+  { value: "summer", label: "تابستان", code: "3" },
+];
+
+export function formatSemesterLabel(termStr: string): string {
+  if (!termStr) return "تعیین‌نشده";
+  const parts = termStr.split("-");
+  if (parts.length === 2) {
+    const year = parts[0];
+    const sem = parts[1];
+    if (sem === "1" || sem === "fall") return `پاییز ${year}`;
+    if (sem === "2" || sem === "spring") return `بهار ${year}`;
+    if (sem === "3" || sem === "summer") return `تابستان ${year}`;
+    return `${sem} ${year}`;
+  }
+  return termStr;
+}
+
 export function EventManager({ offerings: initialOfferings }: EventManagerProps) {
   const [offerings, setOfferings] = useState<CourseOffering[]>(initialOfferings || []);
   const [events, setEvents] = useState<CourseEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [selectedTerm, setSelectedTerm] = useState("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form state
   const [selectedOfferingId, setSelectedOfferingId] = useState("");
+  const [academicYear, setAcademicYear] = useState("1403");
+  const [semesterType, setSemesterType] = useState<"fall" | "spring" | "summer">("fall");
+  const [groupCode, setGroupCode] = useState("01");
+  const [capacity, setCapacity] = useState(40);
   const [location, setLocation] = useState("دانشکده فنی - کلاس ۱۰۲");
   const [examDate, setExamDate] = useState("1403/10/22");
   const [examStartTime, setExamStartTime] = useState("08:30");
@@ -121,13 +146,15 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
 
     setIsSubmitting(true);
     try {
-      const selectedOff = offerings.find((o) => o.id === selectedOfferingId);
+      const termCode = `${academicYear}-${semesterType === "fall" ? "1" : semesterType === "spring" ? "2" : "3"}`;
       const res = await fetch("/api/events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           offeringId: selectedOfferingId,
-          term: selectedOff?.term || "1403-1",
+          term: termCode,
+          groupCode,
+          capacity: Number(capacity),
           location,
           examDate,
           examStartTime,
@@ -150,7 +177,7 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
   };
 
   const handleDeleteEvent = async (id: string) => {
-    if (!confirm("آیا از حذف این زمان‌بندی کلاسی مطمئن هستید؟")) return;
+    if (!confirm("آیا از حذف این رویداد کلاسی مطمئن هستید؟")) return;
 
     try {
       const res = await fetch(`/api/events?id=${id}`, { method: "DELETE" }).then((r) =>
@@ -164,14 +191,44 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
     }
   };
 
+  const terms = Array.from(new Set(events.map((e) => e.term).filter(Boolean)));
+  const termOptions = [
+    { value: "all", label: "تمام نیمسال‌ها" },
+    ...terms.map((t) => ({ value: t, label: formatSemesterLabel(t) })),
+  ];
+
+  const filteredEvents = events.filter((evt) => {
+    const matchesSearch =
+      (evt.courseName || "").toLowerCase().includes(search.toLowerCase()) ||
+      (evt.courseCode || "").toLowerCase().includes(search.toLowerCase()) ||
+      (evt.professorName || "").toLowerCase().includes(search.toLowerCase()) ||
+      (evt.location || "").toLowerCase().includes(search.toLowerCase()) ||
+      (evt.groupCode || "").includes(search);
+
+    const matchesTerm = selectedTerm === "all" || evt.term === selectedTerm;
+    return matchesSearch && matchesTerm;
+  });
+
   const offeringOptions = offerings.map((o) => ({
     value: o.id,
-    label: `${o.courseName} (${o.professorName} - گروه ${o.groupCode || "01"})`,
+    label: `${o.courseName} (${o.professorName})`,
   }));
 
   const dayOptions = DAYS_OF_WEEK.map((d) => ({
     value: String(d.value),
     label: d.label,
+  }));
+
+  const yearOptions = [
+    { value: "1404", label: "۱۴۰۴" },
+    { value: "1403", label: "۱۴۰۳" },
+    { value: "1402", label: "۱۴۰۲" },
+    { value: "1401", label: "۱۴۰۱" },
+  ];
+
+  const semesterTypeOptions = SEMESTER_TYPES.map((s) => ({
+    value: s.value,
+    label: s.label,
   }));
 
   return (
@@ -181,194 +238,193 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
           <div>
             <CardTitle className="text-base flex items-center gap-2">
               <CalendarDays className="h-4 w-4 text-primary" />
-              <span>زمان‌بندی کلاس‌ها و امتحانات (Events & Timetable)</span>
+              <span>رویدادها و برنامه‌ریزی کلاسی ترم (Course Events)</span>
             </CardTitle>
             <CardDescription className="text-xs">
-              تعریف روزها و ساعات تشکیل جلسات درسی در طول هفته همراه با تاریخ و ساعت امتحانات
+              مدیریت و تعریف گروه‌های کلاسی ترم، ساعات تشکیل جلسات، محل برگزاری و زمان آزمون‌ها
             </CardDescription>
           </div>
           <Button
             size="sm"
             onClick={() => {
               setSelectedOfferingId(offerings[0]?.id || "");
+              setAcademicYear("1403");
+              setSemesterType("fall");
+              setGroupCode("01");
+              setCapacity(40);
+              setLocation("دانشکده فنی - کلاس ۱۰۲");
               setIsModalOpen(true);
             }}
             disabled={offerings.length === 0}
             className="h-8 gap-1.5 text-xs shadow-xs"
           >
             <Plus className="h-3.5 w-3.5" />
-            ثبت زمان‌بندی جدید
+            تعریف رویداد کلاسی جدید
           </Button>
         </CardHeader>
 
-        <CardContent className="p-4 space-y-5">
-          {/* Weekly Calendar Visualizer */}
-          <div className="space-y-2">
-            <h3 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-              <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-              <span>نمای هفتگی کلاس‌های زمان‌بندی‌شده (شنبه تا چهارشنبه):</span>
-            </h3>
+        <CardContent className="p-4 space-y-4">
+          {/* Filters Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative">
+                <Input
+                  placeholder="جستجوی درس، استاد، کلاس یا گروه..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="h-8 w-64 text-xs pr-8"
+                />
+                <Search className="pointer-events-none absolute right-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+              </div>
 
-            <div className="grid grid-cols-5 gap-2 text-xs">
-              {DAYS_OF_WEEK.map((day) => {
-                // Find all slots on this day
-                const daySlots = events.flatMap((evt) =>
-                  (evt.slots || [])
-                    .filter((s) => s.dayOfWeek === day.value)
-                    .map((slot) => ({ ...slot, event: evt }))
-                );
-
-                return (
-                  <div
-                    key={day.value}
-                    className="rounded-xl border border-border/60 bg-muted/15 p-2.5 space-y-2 min-h-[140px]"
-                  >
-                    <div className="text-center font-bold text-foreground pb-1.5 border-b border-border/40">
-                      {day.label}
-                    </div>
-
-                    <div className="space-y-1.5">
-                      {daySlots.map((item) => (
-                        <div
-                          key={item.id}
-                          className="rounded-lg border border-primary/20 bg-primary/5 p-2 text-[11px] space-y-1 shadow-2xs"
-                        >
-                          <p className="font-bold text-primary truncate">
-                            {item.event.courseName}
-                          </p>
-                          <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
-                            <span>
-                              {item.startTime} - {item.endTime}
-                            </span>
-                            <Badge variant="secondary" className="text-[9px] px-1 h-3.5">
-                              گروه {item.event.groupCode || "01"}
-                            </Badge>
-                          </div>
-                          {item.event.location && (
-                            <p className="text-[9px] text-muted-foreground/80 truncate">
-                              📍 {item.event.location}
-                            </p>
-                          )}
-                        </div>
+              {terms.length > 0 && (
+                <Select
+                  items={termOptions}
+                  value={selectedTerm}
+                  onValueChange={(val) => val && setSelectedTerm(val)}
+                >
+                  <SelectTrigger size="sm" className="h-8 min-w-[150px] text-xs">
+                    <SelectValue placeholder="فیلتر نیمسال..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {termOptions.map((t) => (
+                        <SelectItem key={t.value} value={t.value}>
+                          {t.label}
+                        </SelectItem>
                       ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
 
-                      {daySlots.length === 0 && (
-                        <p className="text-[10px] text-muted-foreground text-center py-4 opacity-50">
-                          کلاسی نیست
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="text-xs text-muted-foreground">
+              تعداد کل رویدادها: <span className="font-bold text-foreground font-mono">{filteredEvents.length}</span>
             </div>
           </div>
 
           {/* Events List Table */}
-          <div className="space-y-2 pt-3 border-t">
-            <h3 className="text-xs font-bold text-foreground">
-              لیست کامل زمان‌بندی‌ها ({events.length} مورد):
-            </h3>
+          <div className="overflow-x-auto rounded-xl border border-border/70">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b bg-muted/40 text-muted-foreground font-semibold">
+                  <th className="py-2.5 px-3 text-right">نام درس و استاد</th>
+                  <th className="py-2.5 px-3 text-center">نیمسال تحصیلی</th>
+                  <th className="py-2.5 px-3 text-center">کد گروه</th>
+                  <th className="py-2.5 px-3 text-center">ظرفیت</th>
+                  <th className="py-2.5 px-3 text-right">جلسات هفتگی کلاس</th>
+                  <th className="py-2.5 px-3 text-right">محل تشکیل</th>
+                  <th className="py-2.5 px-3 text-right">آزمون پایان‌ترم</th>
+                  <th className="py-2.5 px-3 text-center">عملیات</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40">
+                {filteredEvents.map((evt) => (
+                  <tr key={evt.id} className="hover:bg-muted/20 transition-colors">
+                    {/* Course & Prof */}
+                    <td className="py-2.5 px-3">
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-500/10 text-sky-600 font-bold text-xs shrink-0">
+                          <BookOpen className="h-3.5 w-3.5" />
+                        </div>
+                        <div>
+                          <div className="font-bold text-foreground">{evt.courseName}</div>
+                          <div className="text-[10px] text-muted-foreground">
+                            {evt.professorName} ({evt.professorTitle || "استاد"})
+                          </div>
+                        </div>
+                      </div>
+                    </td>
 
-            <div className="overflow-x-auto rounded-xl border border-border/70">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b bg-muted/40 text-muted-foreground font-semibold">
-                    <th className="py-2.5 px-3 text-right">درس و استاد</th>
-                    <th className="py-2.5 px-3 text-right">جلسات هفتگی</th>
-                    <th className="py-2.5 px-3 text-right">محل تشکیل</th>
-                    <th className="py-2.5 px-3 text-right">آزمون پایان‌ترم</th>
-                    <th className="py-2.5 px-3 text-center">عملیات</th>
+                    {/* Semester */}
+                    <td className="py-2.5 px-3 text-center">
+                      <Badge variant="outline" className="text-[11px] px-2 py-0.5 font-medium">
+                        {formatSemesterLabel(evt.term)}
+                      </Badge>
+                    </td>
+
+                    {/* Group */}
+                    <td className="py-2.5 px-3 text-center font-mono">
+                      <Badge variant="secondary" className="text-[10px] px-1.5">
+                        گروه {evt.groupCode || "01"}
+                      </Badge>
+                    </td>
+
+                    {/* Capacity */}
+                    <td className="py-2.5 px-3 text-center font-mono text-muted-foreground">
+                      {evt.capacity || 40} نفر
+                    </td>
+
+                    {/* Slots */}
+                    <td className="py-2.5 px-3">
+                      <div className="flex flex-wrap gap-1">
+                        {(evt.slots || []).map((slot) => {
+                          const dayName =
+                            DAYS_OF_WEEK.find((d) => d.value === slot.dayOfWeek)?.label || "";
+                          return (
+                            <Badge
+                              key={slot.id}
+                              variant="secondary"
+                              className="text-[10px] font-mono gap-1"
+                            >
+                              <span>{dayName}</span>
+                              <span>
+                                {slot.startTime}-{slot.endTime}
+                              </span>
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    </td>
+
+                    {/* Location */}
+                    <td className="py-2.5 px-3">
+                      <div className="flex items-center gap-1 text-muted-foreground text-[11px]">
+                        <MapPin className="h-3 w-3 shrink-0 text-muted-foreground/70" />
+                        <span>{evt.location || "تعیین‌نشده"}</span>
+                      </div>
+                    </td>
+
+                    {/* Exam */}
+                    <td className="py-2.5 px-3 font-mono text-[11px]">
+                      {evt.examDate ? (
+                        <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                          <Calendar className="h-3 w-3 shrink-0" />
+                          <span>
+                            {evt.examDate} ({evt.examStartTime || ""}-{evt.examEndTime || ""})
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground/60 text-[10px]">بدون امتحان</span>
+                      )}
+                    </td>
+
+                    {/* Actions */}
+                    <td className="py-2.5 px-3 text-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteEvent(evt.id)}
+                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-border/40">
-                  {events.map((evt) => (
-                    <tr key={evt.id} className="hover:bg-muted/20 transition-colors">
-                      {/* Course & Prof */}
-                      <td className="py-2.5 px-3">
-                        <div className="flex items-center gap-2">
-                          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-500/10 text-sky-600 font-bold text-xs shrink-0">
-                            <BookOpen className="h-3.5 w-3.5" />
-                          </div>
-                          <div>
-                            <div className="font-bold text-foreground">{evt.courseName}</div>
-                            <div className="text-[10px] text-muted-foreground">
-                              {evt.professorName} (گروه {evt.groupCode || "01"})
-                            </div>
-                          </div>
-                        </div>
-                      </td>
+                ))}
 
-                      {/* Slots */}
-                      <td className="py-2.5 px-3">
-                        <div className="flex flex-wrap gap-1">
-                          {(evt.slots || []).map((slot) => {
-                            const dayName =
-                              DAYS_OF_WEEK.find((d) => d.value === slot.dayOfWeek)?.label || "";
-                            return (
-                              <Badge
-                                key={slot.id}
-                                variant="secondary"
-                                className="text-[10px] font-mono gap-1"
-                              >
-                                <span>{dayName}</span>
-                                <span>
-                                  {slot.startTime}-{slot.endTime}
-                                </span>
-                              </Badge>
-                            );
-                          })}
-                        </div>
-                      </td>
-
-                      {/* Location */}
-                      <td className="py-2.5 px-3">
-                        <div className="flex items-center gap-1 text-muted-foreground text-[11px]">
-                          <MapPin className="h-3 w-3 shrink-0 text-muted-foreground/70" />
-                          <span>{evt.location || "تعیین‌نشده"}</span>
-                        </div>
-                      </td>
-
-                      {/* Exam */}
-                      <td className="py-2.5 px-3 font-mono text-[11px]">
-                        {evt.examDate ? (
-                          <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
-                            <Calendar className="h-3 w-3 shrink-0" />
-                            <span>
-                              {evt.examDate} ({evt.examStartTime || ""}-{evt.examEndTime || ""})
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground/60 text-[10px]">بدون امتحان</span>
-                        )}
-                      </td>
-
-                      {/* Actions */}
-                      <td className="py-2.5 px-3 text-center">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteEvent(evt.id)}
-                          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-
-                  {events.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="text-center py-6 text-xs text-muted-foreground">
-                        {loading
-                          ? "در حال دریافت برنامه کلاسی..."
-                          : "هنوز زمان‌بندی برای درسی ثبت نشده است."}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                {filteredEvents.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="text-center py-8 text-xs text-muted-foreground">
+                      {loading
+                        ? "در حال دریافت برنامه کلاسی..."
+                        : "هیچ رویداد کلاسی یافت نشد."}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </CardContent>
       </Card>
@@ -379,17 +435,17 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
           <DialogHeader>
             <DialogTitle className="text-sm font-bold flex items-center gap-2">
               <CalendarDays className="h-4 w-4 text-primary" />
-              تعریف زمان‌بندی هفتگی و امتحان کلاس
+              تعریف رویداد کلاسی ترم (Course Event)
             </DialogTitle>
             <DialogDescription className="text-xs">
-              جلسات هفتگی (ساعت شروع و پایان) و مشخصات آزمون پایان‌ترم را ثبت کنید.
+              ارائه درس را انتخاب کرده و مشخصات سال، نیمسال، گروه، ظرفیت، محل و زمان‌بندی جلسات را تعیین کنید.
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleCreateEvent} className="space-y-4 pt-2">
-            {/* Select Offering */}
+          <form onSubmit={handleCreateEvent} className="space-y-3.5 pt-2">
+            {/* 1. Select Offering */}
             <div className="space-y-1.5">
-              <Label className="text-xs">انتخاب ارائه درس:</Label>
+              <Label className="text-xs font-semibold">ارائه درس (درس و استاد مدرس):</Label>
               <Select
                 items={offeringOptions}
                 value={selectedOfferingId}
@@ -410,9 +466,83 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
               </Select>
             </div>
 
-            {/* Location */}
+            {/* 2. Academic Year & Semester Type (2 equal columns) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">سال تحصیلی:</Label>
+                <Select
+                  items={yearOptions}
+                  value={academicYear}
+                  onValueChange={(val) => val && setAcademicYear(val)}
+                >
+                  <SelectTrigger size="sm" className="w-full text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {yearOptions.map((y) => (
+                        <SelectItem key={y.value} value={y.value}>
+                          {y.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">نیمسال تحصیلی:</Label>
+                <Select
+                  items={semesterTypeOptions}
+                  value={semesterType}
+                  onValueChange={(val) => val && setSemesterType(val as any)}
+                >
+                  <SelectTrigger size="sm" className="w-full text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {semesterTypeOptions.map((s) => (
+                        <SelectItem key={s.value} value={s.value}>
+                          {s.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* 3. Group Code & Capacity (2 equal columns) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">کد گروه درسی:</Label>
+                <Input
+                  value={groupCode}
+                  onChange={(e) => setGroupCode(e.target.value)}
+                  placeholder="مثلاً ۰۱"
+                  className="h-8 text-xs font-mono"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">ظرفیت کلاس (نفر):</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={300}
+                  value={capacity}
+                  onChange={(e) => setCapacity(parseInt(e.target.value) || 40)}
+                  className="h-8 text-xs font-mono"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* 4. Location */}
             <div className="space-y-1.5">
-              <Label className="text-xs">محل تشکیل کلاس / شماره اتاق:</Label>
+              <Label className="text-xs font-semibold">محل تشکیل کلاس / شماره اتاق:</Label>
               <Input
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
@@ -421,8 +551,8 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
               />
             </div>
 
-            {/* Weekly Slots Builder */}
-            <div className="space-y-2 rounded-xl border border-border/70 bg-muted/20 p-3">
+            {/* 5. Weekly Slots Builder */}
+            <div className="space-y-2 rounded-xl border border-border/70 bg-muted/15 p-3">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-bold">جلسات هفتگی کلاس:</Label>
                 <Button
@@ -440,7 +570,7 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
                 {slots.map((slot, idx) => (
                   <div key={idx} className="flex items-center gap-2 text-xs">
                     {/* Day */}
-                    <div className="w-28 shrink-0">
+                    <div className="w-32 shrink-0">
                       <Select
                         items={dayOptions}
                         value={String(slot.dayOfWeek)}
@@ -448,7 +578,7 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
                           handleUpdateSlot(idx, "dayOfWeek", parseInt(val))
                         }
                       >
-                        <SelectTrigger size="sm" className="h-7 text-xs">
+                        <SelectTrigger size="sm" className="h-8 text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -468,17 +598,17 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
                       value={slot.startTime}
                       onChange={(e) => handleUpdateSlot(idx, "startTime", e.target.value)}
                       placeholder="10:30"
-                      className="h-7 w-20 text-xs font-mono text-center"
+                      className="h-8 w-24 text-xs font-mono text-center"
                     />
 
-                    <span className="text-muted-foreground text-[10px]">تا</span>
+                    <span className="text-muted-foreground text-[11px]">تا</span>
 
                     {/* End Time */}
                     <Input
                       value={slot.endTime}
                       onChange={(e) => handleUpdateSlot(idx, "endTime", e.target.value)}
                       placeholder="12:00"
-                      className="h-7 w-20 text-xs font-mono text-center"
+                      className="h-8 w-24 text-xs font-mono text-center"
                     />
 
                     {slots.length > 1 && (
@@ -487,9 +617,9 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
                         variant="ghost"
                         size="sm"
                         onClick={() => handleRemoveSlot(idx)}
-                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive shrink-0"
                       >
-                        <Trash2 className="h-3 w-3" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     )}
                   </div>
@@ -497,8 +627,8 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
               </div>
             </div>
 
-            {/* Exam Details */}
-            <div className="space-y-2 rounded-xl border border-border/70 bg-muted/20 p-3">
+            {/* 6. Exam Details */}
+            <div className="space-y-2 rounded-xl border border-border/70 bg-muted/15 p-3">
               <Label className="text-xs font-bold">مشخصات آزمون پایان‌ترم:</Label>
               <div className="grid grid-cols-3 gap-2">
                 <div className="space-y-1">
@@ -507,7 +637,7 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
                     value={examDate}
                     onChange={(e) => setExamDate(e.target.value)}
                     placeholder="1403/10/22"
-                    className="h-7 text-xs font-mono text-center"
+                    className="h-8 text-xs font-mono text-center"
                   />
                 </div>
                 <div className="space-y-1">
@@ -516,7 +646,7 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
                     value={examStartTime}
                     onChange={(e) => setExamStartTime(e.target.value)}
                     placeholder="08:30"
-                    className="h-7 text-xs font-mono text-center"
+                    className="h-8 text-xs font-mono text-center"
                   />
                 </div>
                 <div className="space-y-1">
@@ -525,7 +655,7 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
                     value={examEndTime}
                     onChange={(e) => setExamEndTime(e.target.value)}
                     placeholder="11:00"
-                    className="h-7 text-xs font-mono text-center"
+                    className="h-8 text-xs font-mono text-center"
                   />
                 </div>
               </div>
@@ -538,7 +668,7 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
                 disabled={isSubmitting || !selectedOfferingId}
                 className="w-full h-8 text-xs font-semibold"
               >
-                {isSubmitting ? "در حال ثبت..." : "ذخیره زمان‌بندی کلاس"}
+                {isSubmitting ? "در حال ثبت..." : "ذخیره رویداد کلاسی"}
               </Button>
             </DialogFooter>
           </form>

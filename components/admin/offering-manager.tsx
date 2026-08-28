@@ -30,16 +30,13 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  Sparkles,
   Plus,
   Trash2,
   Search,
   BookOpen,
   Users,
-  GraduationCap,
   Layers,
-  Calendar,
-  Building,
+  Sparkles,
 } from "lucide-react";
 
 interface OfferingManagerProps {
@@ -51,17 +48,13 @@ export function OfferingManager({ courses, professors }: OfferingManagerProps) {
   const [offerings, setOfferings] = useState<CourseOffering[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [selectedTerm, setSelectedTerm] = useState("all");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Form State
+  // Form State: Only Course + Professor
   const [form, setForm] = useState({
     courseId: "",
     professorId: "",
-    groupCode: "01",
-    capacity: 40,
-    term: "1403-1",
   });
 
   const loadOfferings = async () => {
@@ -99,9 +92,6 @@ export function OfferingManager({ courses, professors }: OfferingManagerProps) {
         setForm({
           courseId: "",
           professorId: "",
-          groupCode: "01",
-          capacity: 40,
-          term: "1403-1",
         });
         await loadOfferings();
       } else {
@@ -115,7 +105,7 @@ export function OfferingManager({ courses, professors }: OfferingManagerProps) {
   };
 
   const handleDeleteOffering = async (id: string, name: string) => {
-    if (!confirm(`آیا از حذف ارائه درس "${name}" مطمئن هستید؟`)) return;
+    if (!confirm(`آیا از حذف اتصال ارائه درس "${name}" مطمئن هستید؟`)) return;
 
     try {
       const res = await fetch(`/api/offerings?id=${id}`, { method: "DELETE" }).then((r) =>
@@ -133,18 +123,10 @@ export function OfferingManager({ courses, professors }: OfferingManagerProps) {
     const matchesSearch =
       (off.courseName || "").toLowerCase().includes(search.toLowerCase()) ||
       (off.courseCode || "").toLowerCase().includes(search.toLowerCase()) ||
-      (off.professorName || "").toLowerCase().includes(search.toLowerCase()) ||
-      (off.groupCode || "").includes(search);
+      (off.professorName || "").toLowerCase().includes(search.toLowerCase());
 
-    const matchesTerm = selectedTerm === "all" || off.term === selectedTerm;
-    return matchesSearch && matchesTerm;
+    return matchesSearch;
   });
-
-  const terms = Array.from(new Set(offerings.map((o) => o.term).filter(Boolean)));
-  const termOptions = [
-    { value: "all", label: "تمام نیمسال‌ها" },
-    ...terms.map((t) => ({ value: t!, label: `نیمسال ${t}` })),
-  ];
 
   const courseOptions = courses.map((c) => ({
     value: c.id,
@@ -163,10 +145,10 @@ export function OfferingManager({ courses, professors }: OfferingManagerProps) {
           <div>
             <CardTitle className="text-base flex items-center gap-2">
               <Layers className="h-4 w-4 text-primary" />
-              <span>مدیریت ارائه‌های درسی (Course Offerings)</span>
+              <span>ارائه‌های درسی (اتصال درس به استاد)</span>
             </CardTitle>
             <CardDescription className="text-xs">
-              ترکیب درس با استاد، شماره گروه، ظرفیت و نیمسال تحصیلی برای انتخاب واحد و ثبت نظرات
+              تعریف اینکه چه استادی چه درسی را تدریس می‌کند (موجودیت پایه جهت تفکیک نظرات دانشجویان و برنامه‌ریزی کلاسی)
             </CardDescription>
           </div>
           <Button
@@ -175,53 +157,27 @@ export function OfferingManager({ courses, professors }: OfferingManagerProps) {
               setForm({
                 courseId: courses[0]?.id || "",
                 professorId: professors[0]?.id || "",
-                groupCode: "01",
-                capacity: 40,
-                term: "1403-1",
               });
               setIsCreateModalOpen(true);
             }}
             className="h-8 gap-1.5 text-xs shadow-xs"
           >
             <Plus className="h-3.5 w-3.5" />
-            تعریف ارائه جدید
+            تعریف اتصال درس و استاد
           </Button>
         </CardHeader>
 
         <CardContent className="p-4 space-y-4">
           {/* Filters Bar */}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative">
-                <Input
-                  placeholder="جستجوی درس، استاد یا گروه..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="h-8 w-64 text-xs pr-8"
-                />
-                <Search className="pointer-events-none absolute right-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
-              </div>
-
-              {terms.length > 0 && (
-                <Select
-                  items={termOptions}
-                  value={selectedTerm}
-                  onValueChange={(val) => val && setSelectedTerm(val)}
-                >
-                  <SelectTrigger size="sm" className="h-8 min-w-[140px] text-xs">
-                    <SelectValue placeholder="فیلتر نیمسال..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {termOptions.map((t) => (
-                        <SelectItem key={t.value} value={t.value}>
-                          {t.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              )}
+            <div className="relative">
+              <Input
+                placeholder="جستجوی درس یا استاد..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-8 w-64 text-xs pr-8"
+              />
+              <Search className="pointer-events-none absolute right-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
             </div>
 
             <div className="text-xs text-muted-foreground">
@@ -234,11 +190,9 @@ export function OfferingManager({ courses, professors }: OfferingManagerProps) {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b bg-muted/40 text-muted-foreground font-semibold">
-                  <th className="py-2.5 px-3 text-right">نام درس و کد</th>
+                  <th className="py-2.5 px-3 text-right">نام درس و مشخصات</th>
                   <th className="py-2.5 px-3 text-right">استاد مدرس</th>
-                  <th className="py-2.5 px-3 text-center">کد گروه</th>
-                  <th className="py-2.5 px-3 text-center">ظرفیت</th>
-                  <th className="py-2.5 px-3 text-center">نیمسال</th>
+                  <th className="py-2.5 px-3 text-center">شناسه ارائه</th>
                   <th className="py-2.5 px-3 text-center">عملیات</th>
                 </tr>
               </thead>
@@ -265,8 +219,12 @@ export function OfferingManager({ courses, professors }: OfferingManagerProps) {
                     {/* Professor */}
                     <td className="py-2.5 px-3">
                       <div className="flex items-center gap-2">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs shrink-0">
-                          {off.professorName ? off.professorName.charAt(0) : "؟"}
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs shrink-0 overflow-hidden border border-border/70">
+                          {off.professorAvatarUrl ? (
+                            <img src={off.professorAvatarUrl} alt={off.professorName} className="h-full w-full object-cover" />
+                          ) : (
+                            <span>{off.professorName ? off.professorName.charAt(0) : "؟"}</span>
+                          )}
                         </div>
                         <div>
                           <div className="font-semibold text-foreground">{off.professorName}</div>
@@ -275,22 +233,10 @@ export function OfferingManager({ courses, professors }: OfferingManagerProps) {
                       </div>
                     </td>
 
-                    {/* Group */}
-                    <td className="py-2.5 px-3 text-center font-mono font-bold">
-                      <Badge variant="secondary" className="font-mono text-xs px-2">
-                        گروه {off.groupCode || "01"}
-                      </Badge>
-                    </td>
-
-                    {/* Capacity */}
-                    <td className="py-2.5 px-3 text-center font-mono">
-                      <span className="text-muted-foreground">{off.capacity || 40} نفر</span>
-                    </td>
-
-                    {/* Term */}
+                    {/* ID */}
                     <td className="py-2.5 px-3 text-center">
                       <Badge variant="outline" className="font-mono text-[10px]">
-                        {off.term || "1403-1"}
+                        {off.id}
                       </Badge>
                     </td>
 
@@ -312,7 +258,7 @@ export function OfferingManager({ courses, professors }: OfferingManagerProps) {
 
                 {filteredOfferings.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="text-center py-8 text-xs text-muted-foreground">
+                    <td colSpan={4} className="text-center py-8 text-xs text-muted-foreground">
                       {loading ? "در حال دریافت ارائه‌ها..." : "هیچ ارائه‌ای با این مشخصات یافت نشد."}
                     </td>
                   </tr>
@@ -329,10 +275,10 @@ export function OfferingManager({ courses, professors }: OfferingManagerProps) {
           <DialogHeader>
             <DialogTitle className="text-sm font-bold flex items-center gap-2">
               <Plus className="h-4 w-4 text-primary" />
-              تعریف ارائه درس جدید
+              اتصال درس به استاد (تعریف ارائه)
             </DialogTitle>
             <DialogDescription className="text-xs">
-              یک درس را به یک استاد اختصاص دهید تا گروه درسی در این نیمسال شکل گیرد.
+              یک درس را به یک استاد متصل کنید تا به عنوان ارائه‌دهنده این درس در سامانه شناخته شود.
             </DialogDescription>
           </DialogHeader>
 
@@ -383,44 +329,6 @@ export function OfferingManager({ courses, professors }: OfferingManagerProps) {
               </Select>
             </div>
 
-            {/* Group Code & Capacity */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs">کد گروه:</Label>
-                <Input
-                  value={form.groupCode}
-                  onChange={(e) => setForm({ ...form, groupCode: e.target.value })}
-                  placeholder="01"
-                  className="h-8 text-xs font-mono"
-                  required
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">ظرفیت کلاس (نفر):</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={200}
-                  value={form.capacity}
-                  onChange={(e) => setForm({ ...form, capacity: parseInt(e.target.value) || 40 })}
-                  className="h-8 text-xs font-mono"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Term */}
-            <div className="space-y-1.5">
-              <Label className="text-xs">نیمسال تحصیلی:</Label>
-              <Input
-                value={form.term}
-                onChange={(e) => setForm({ ...form, term: e.target.value })}
-                placeholder="1403-1"
-                className="h-8 text-xs font-mono"
-                required
-              />
-            </div>
-
             <DialogFooter className="pt-2">
               <Button
                 type="submit"
@@ -428,7 +336,7 @@ export function OfferingManager({ courses, professors }: OfferingManagerProps) {
                 disabled={isSubmitting || !form.courseId || !form.professorId}
                 className="w-full h-8 text-xs font-semibold"
               >
-                {isSubmitting ? "در حال ثبت..." : "ثبت ارائه درس"}
+                {isSubmitting ? "در حال ثبت..." : "ثبت اتصال ارائه"}
               </Button>
             </DialogFooter>
           </form>
