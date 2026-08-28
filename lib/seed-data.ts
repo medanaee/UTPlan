@@ -10,6 +10,7 @@ import type {
   Professor,
   CourseOffering,
   CourseEvent,
+  StudentChart,
 } from "./types";
 
 /**
@@ -260,6 +261,53 @@ export function getUTECEDemoSeed() {
     },
   ];
 
+  // 11. Approved Default Degree Chart (چارت مصوب ۸ ترمه مهندسی کامپیوتر)
+  const charts: StudentChart[] = [
+    {
+      id: "chart_ce_se_approved",
+      userId: "usr_admin",
+      trackId: trackId,
+      title: "چارت مصوب ۸ ترمه کارشناسی مهندسی کامپیوتر",
+      isApprovedDefault: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      semesters: [
+        {
+          semesterNumber: 1,
+          courseIds: ["crs_math1", "crs_phys1", "crs_prog", "crs_fa", "crs_en"],
+        },
+        {
+          semesterNumber: 2,
+          courseIds: ["crs_math2", "crs_phys2", "crs_ap", "crs_discrete", "crs_islam"],
+        },
+        {
+          semesterNumber: 3,
+          courseIds: ["crs_diff", "crs_ds", "crs_logic", "crs_pe1"],
+        },
+        {
+          semesterNumber: 4,
+          courseIds: ["crs_algo", "crs_arch", "crs_db"],
+        },
+        {
+          semesterNumber: 5,
+          courseIds: ["crs_os", "crs_os_lab", "crs_network"],
+        },
+        {
+          semesterNumber: 6,
+          courseIds: ["crs_se", "crs_ai"],
+        },
+        {
+          semesterNumber: 7,
+          courseIds: [],
+        },
+        {
+          semesterNumber: 8,
+          courseIds: [],
+        },
+      ],
+    },
+  ];
+
   return {
     faculties,
     majors,
@@ -272,5 +320,6 @@ export function getUTECEDemoSeed() {
     professors,
     offerings,
     events,
+    charts,
   };
 }

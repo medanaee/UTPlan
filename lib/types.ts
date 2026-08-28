@@ -242,8 +242,25 @@ export interface ValidationResult {
   termCredits: { termIndex: number; credits: number; isWithinLimits: boolean }[];
 }
 
+export interface ChartSemester {
+  semesterNumber: number;
+  courseIds: string[];
+}
+
+export interface StudentChart {
+  id: string;
+  userId: string;
+  trackId: string;
+  title: string;
+  isApprovedDefault?: boolean;
+  semesters: ChartSemester[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AuthResponse {
   success: boolean;
   message?: string;
   user?: UserSession;
 }
+

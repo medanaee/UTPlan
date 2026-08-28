@@ -13,6 +13,8 @@ import type {
   CourseEvent,
   CourseEventSlot,
   Review,
+  StudentChart,
+  ChartSemester,
 } from "./types";
 import { hashPassword } from "./auth";
 
@@ -33,6 +35,7 @@ let offeringsStore: CourseOffering[] = [];
 let eventsStore: CourseEvent[] = [];
 let eventSlotsStore: CourseEventSlot[] = [];
 let reviewsStore: Review[] = [];
+let chartsStore: StudentChart[] = [];
 
 let isInitialized = false;
 
@@ -86,6 +89,7 @@ export async function seedUTECEDemoData() {
   professorsStore = seed.professors;
   offeringsStore = seed.offerings;
   eventsStore = seed.events;
+  chartsStore = seed.charts || [];
 
   return { success: true, message: "داده‌های نمونه دانشکده فنی دانشگاه تهران با موفقیت بارگذاری شدند." };
 }
@@ -828,3 +832,90 @@ export async function deleteEvent(id: string): Promise<boolean> {
   eventsStore.splice(idx, 1);
   return true;
 }
+
+// ----------------------------------------------------
+// STUDENT CHARTS CRUD
+// ----------------------------------------------------
+
+export async function getCharts(userId?: string): Promise<StudentChart[]> {
+  await initDatabase();
+  if (!userId) {
+    return chartsStore;
+  }
+  // Return user's private charts + official approved default charts
+  return chartsStore.filter((c) => c.userId === userId || c.isApprovedDefault);
+}
+
+export async function getChartById(id: string): Promise<StudentChart | null> {
+  await initDatabase();
+  const chart = chartsStore.find((c) => c.id === id);
+  return chart ? JSON.parse(JSON.stringify(chart)) : null;
+}
+
+export async function getApprovedTrackChart(trackId: string): Promise<StudentChart | null> {
+  await initDatabase();
+  const chart = chartsStore.find((c) => c.trackId === trackId && c.isApprovedDefault);
+  return chart ? JSON.parse(JSON.stringify(chart)) : null;
+}
+
+export async function createChart(data: {
+  userId: string;
+  trackId: string;
+  title: string;
+  semesters?: ChartSemester[];
+  isApprovedDefault?: boolean;
+}): Promise<StudentChart> {
+  await initDatabase();
+  const id = `chart_${crypto.randomUUID().slice(0, 8)}`;
+
+  // Default 8 empty semesters if not provided
+  const defaultSemesters: ChartSemester[] = Array.from({ length: 8 }, (_, i) => ({
+    semesterNumber: i + 1,
+    courseIds: [],
+  }));
+
+  const newChart: StudentChart = {
+    id,
+    userId: data.userId,
+    trackId: data.trackId,
+    title: data.title.trim() || "چارت تحصیلی من",
+    isApprovedDefault: data.isApprovedDefault || false,
+    semesters: data.semesters && data.semesters.length > 0 ? data.semesters : defaultSemesters,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  chartsStore.push(newChart);
+  return newChart;
+}
+
+export async function updateChart(
+  id: string,
+  data: Partial<StudentChart>
+): Promise<StudentChart | null> {
+  await initDatabase();
+  const chart = chartsStore.find((c) => c.id === id);
+  if (!chart) return null;
+
+  if (data.title !== undefined) chart.title = data.title;
+  if (data.trackId !== undefined) chart.trackId = data.trackId;
+  if (data.semesters !== undefined) chart.semesters = data.semesters;
+  if (data.isApprovedDefault !== undefined) chart.isApprovedDefault = data.isApprovedDefault;
+  chart.updatedAt = new Date().toISOString();
+
+  return JSON.parse(JSON.stringify(chart));
+}
+
+export async function deleteChart(id: string, userId?: string): Promise<boolean> {
+  await initDatabase();
+  const idx = chartsStore.findIndex((c) => {
+    if (c.id !== id) return false;
+    if (userId && c.userId !== userId && !c.isApprovedDefault) return false;
+    return true;
+  });
+
+  if (idx === -1) return false;
+  chartsStore.splice(idx, 1);
+  return true;
+}
+
