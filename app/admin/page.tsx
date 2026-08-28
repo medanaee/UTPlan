@@ -37,9 +37,18 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { CourseCategoryManager } from "@/components/admin/course-category-manager";
 import { RuleQueryBuilder } from "@/components/admin/rule-query-builder";
 import { RuleSandboxTester } from "@/components/admin/rule-sandbox-tester";
+import { ThemeToggle } from "@/components/theme-toggle";
 import type {
   UserSession,
   Faculty,
@@ -461,6 +470,8 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <ThemeToggle />
+
             <Button
               variant="outline"
               size="sm"
@@ -1229,38 +1240,49 @@ export default function AdminDashboardPage() {
           <form onSubmit={handleAddPrerequisite} className="space-y-3 pt-2">
             <div className="space-y-1.5">
               <Label className="text-xs">انتخاب درس وابسته:</Label>
-              <select
+              <Select
                 value={prereqForm.requiredCourseId}
-                onChange={(e) => setPrereqForm({ ...prereqForm, requiredCourseId: e.target.value })}
-                required
-                className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs focus:ring-1 focus:ring-primary"
+                onValueChange={(val) => val && setPrereqForm({ ...prereqForm, requiredCourseId: val })}
               >
-                <option value="">-- یک درس را انتخاب کنید --</option>
-                {courses
-                  .filter((c) => c.id !== selectedCourseForPrereq?.id)
-                  .map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.code} - {c.units} واحد)
-                    </option>
-                  ))}
-              </select>
+                <SelectTrigger size="sm" className="w-full text-xs">
+                  <SelectValue placeholder="-- یک درس را انتخاب کنید --" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {courses
+                      .filter((c) => c.id !== selectedCourseForPrereq?.id)
+                      .map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name} ({c.code} - {c.units} واحد)
+                        </SelectItem>
+                      ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-1.5">
               <Label className="text-xs">نوع وابستگی:</Label>
-              <select
+              <Select
                 value={prereqForm.type}
-                onChange={(e) =>
+                onValueChange={(val) =>
+                  val &&
                   setPrereqForm({
                     ...prereqForm,
-                    type: e.target.value as "prerequisite" | "corequisite",
+                    type: val as "prerequisite" | "corequisite",
                   })
                 }
-                className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs"
               >
-                <option value="prerequisite">پیش‌نیاز (باید در ترم‌های قبل گذرانده شود)</option>
-                <option value="corequisite">هم‌نیاز (می‌تواند در همان ترم یا قبل از آن اخذ شود)</option>
-              </select>
+                <SelectTrigger size="sm" className="w-full text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="prerequisite">پیش‌نیاز (باید در ترم‌های قبل گذرانده شود)</SelectItem>
+                    <SelectItem value="corequisite">هم‌نیاز (می‌تواند در همان ترم یا قبل از آن اخذ شود)</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
             </div>
 
             <Button type="submit" size="sm" className="w-full h-8 text-xs font-semibold">
@@ -1356,38 +1378,62 @@ export default function AdminDashboardPage() {
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">ترم ارائه</Label>
-                <select
+                <Select
                   value={courseForm.offeredIn}
-                  onChange={(e) =>
+                  onValueChange={(val) =>
+                    val &&
                     setCourseForm({
                       ...courseForm,
-                      offeredIn: e.target.value as "fall" | "spring" | "both",
+                      offeredIn: val as "fall" | "spring" | "both",
                     })
                   }
-                  className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs"
                 >
-                  <option value="both">هردو ترم (پاییز و بهار)</option>
-                  <option value="fall">فقط ترم پاییز (فرد)</option>
-                  <option value="spring">فقط ترم بهار (زوج)</option>
-                </select>
+                  <SelectTrigger size="sm" className="w-full text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="both">هردو ترم (پاییز و بهار)</SelectItem>
+                      <SelectItem value="fall">فقط ترم پاییز (فرد)</SelectItem>
+                      <SelectItem value="spring">فقط ترم بهار (زوج)</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
             {selectedTrackId && (
               <div className="space-y-1">
                 <Label className="text-xs">دسته بصری (برای گرایش فعلی):</Label>
-                <select
-                  value={courseForm.visualCategoryId}
-                  onChange={(e) => setCourseForm({ ...courseForm, visualCategoryId: e.target.value })}
-                  className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs"
+                <Select
+                  value={courseForm.visualCategoryId || "none"}
+                  onValueChange={(val) =>
+                    setCourseForm({
+                      ...courseForm,
+                      visualCategoryId: val === "none" ? "" : val,
+                    })
+                  }
                 >
-                  <option value="">-- بدون دسته بصری --</option>
-                  {visualCats.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger size="sm" className="w-full text-xs">
+                    <SelectValue placeholder="-- بدون دسته بصری --" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="none">-- بدون دسته بصری --</SelectItem>
+                      {visualCats.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className="h-2 w-2 rounded-full"
+                              style={{ backgroundColor: c.color }}
+                            />
+                            <span>{c.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
               </div>
             )}
 
@@ -1599,16 +1645,22 @@ export default function AdminDashboardPage() {
             </div>
             <div className="space-y-1">
               <Label className="text-xs">مرتبه علمی</Label>
-              <select
+              <Select
                 value={profForm.title}
-                onChange={(e) => setProfForm({ ...profForm, title: e.target.value })}
-                className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs"
+                onValueChange={(val) => val && setProfForm({ ...profForm, title: val })}
               >
-                <option value="استاد تمام">استاد تمام</option>
-                <option value="دانشیار">دانشیار</option>
-                <option value="استادیار">استادیار</option>
-                <option value="مربی">مربی</option>
-              </select>
+                <SelectTrigger size="sm" className="w-full text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="استاد تمام">استاد تمام</SelectItem>
+                    <SelectItem value="دانشیار">دانشیار</SelectItem>
+                    <SelectItem value="استادیار">استادیار</SelectItem>
+                    <SelectItem value="مربی">مربی</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1">
               <Label className="text-xs">ایمیل دانشگاهی (اختیاری)</Label>

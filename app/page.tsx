@@ -23,6 +23,7 @@ import {
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ThemeToggle } from "@/components/theme-toggle";
 import type { UserSession } from "@/lib/types";
 
 export default function Home() {
@@ -110,6 +111,8 @@ export default function Home() {
 
           {/* Auth Button / User Profile */}
           <div className="flex items-center gap-2">
+            <ThemeToggle />
+
             {loading ? (
               <div className="h-8 w-20 animate-pulse rounded-lg bg-muted" />
             ) : user ? (

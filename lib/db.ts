@@ -96,7 +96,9 @@ export async function seedUTECEDemoData() {
     },
   ];
 
-  // 3. Track
+  // 3. Track ID
+  const trackId = "trk_ce_se";
+
   // 4. Visual Categories (Flat, colored)
   const catGeneral = "vcat_general";
   const catBasic = "vcat_basic";

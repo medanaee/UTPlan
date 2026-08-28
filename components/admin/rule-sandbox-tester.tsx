@@ -18,6 +18,14 @@ import {
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { validateFullChart, type ChartCourseEntry } from "@/lib/rules-engine";
 import type {
   RuleGroupNode,
@@ -359,20 +367,27 @@ export function RuleSandboxTester({
                 </div>
 
                 {/* Add course select */}
-                <select
+                <Select
                   value=""
-                  onChange={(e) => handleAddCourseToTerm(termNum, e.target.value)}
-                  className="h-7 w-full rounded-md border border-input bg-background px-2 text-[11px]"
+                  onValueChange={(val) => {
+                    if (val) handleAddCourseToTerm(termNum, val);
+                  }}
                 >
-                  <option value="">+ افزودن درس به این ترم</option>
-                  {courses
-                    .filter((c) => !allSelectedIds.has(c.id))
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} ({c.units} واحد)
-                      </option>
-                    ))}
-                </select>
+                  <SelectTrigger size="sm" className="h-7 w-full text-[11px] justify-between">
+                    <SelectValue placeholder="+ افزودن درس به این ترم" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {courses
+                        .filter((c) => !allSelectedIds.has(c.id))
+                        .map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name} ({c.units} واحد)
+                          </SelectItem>
+                        ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
               </div>
             );
           })}

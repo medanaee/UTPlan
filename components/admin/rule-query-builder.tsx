@@ -17,6 +17,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type {
   RuleNode,
   RuleGroupNode,
@@ -440,38 +448,51 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/70 bg-card p-3 shadow-2xs hover:border-primary/40 transition-colors">
       <div className="flex flex-wrap items-center gap-2.5 text-xs">
         {/* Rule Type Selector */}
-        <select
+        <Select
           value={leaf.type}
-          onChange={(e) =>
+          onValueChange={(val) =>
+            val &&
             onUpdate({
               ...leaf,
-              type: e.target.value as any,
+              type: val as any,
             })
           }
-          className="h-8 rounded-md border border-input bg-background px-2 text-xs font-semibold text-foreground focus:ring-1 focus:ring-primary"
         >
-          <option value="MIN_CREDITS_IN_CATEGORY">حداقل N واحد از دسته قوانین</option>
-          <option value="ALL_COURSES_IN_CATEGORY">گذراندن تمام دروس دسته قوانین</option>
-          <option value="EXACT_N_COURSES_IN_CATEGORY">دقیقاً N درس از دسته قوانین</option>
-          <option value="MIN_TOTAL_CREDITS_BEFORE_COURSE">حداقل N واحد قبل از اخذ درس خاص</option>
-          <option value="MANDATORY_COURSES">دروس اجباری مشخص</option>
-        </select>
+          <SelectTrigger size="sm" className="h-8 min-w-[210px] text-xs font-semibold">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              <SelectItem value="MIN_CREDITS_IN_CATEGORY">حداقل N واحد از دسته قوانین</SelectItem>
+              <SelectItem value="ALL_COURSES_IN_CATEGORY">گذراندن تمام دروس دسته قوانین</SelectItem>
+              <SelectItem value="EXACT_N_COURSES_IN_CATEGORY">دقیقاً N درس از دسته قوانین</SelectItem>
+              <SelectItem value="MIN_TOTAL_CREDITS_BEFORE_COURSE">حداقل N واحد قبل از اخذ درس خاص</SelectItem>
+              <SelectItem value="MANDATORY_COURSES">دروس اجباری مشخص</SelectItem>
+            </SelectGroup>
+          </SelectContent>
+        </Select>
 
         {/* Dynamic Fields by Type */}
         {leaf.type === "MIN_CREDITS_IN_CATEGORY" && (
           <div className="flex items-center gap-1.5">
             <span className="text-muted-foreground">از دسته:</span>
-            <select
-              value={leaf.ruleCategoryId || ""}
-              onChange={(e) => onUpdate({ ...leaf, ruleCategoryId: e.target.value })}
-              className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+            <Select
+              value={leaf.ruleCategoryId || ruleCategories[0]?.id || ""}
+              onValueChange={(val) => val && onUpdate({ ...leaf, ruleCategoryId: val })}
             >
-              {ruleCategories.map((rc) => (
-                <option key={rc.id} value={rc.id}>
-                  {rc.name}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger size="sm" className="h-8 min-w-[140px] text-xs">
+                <SelectValue placeholder="انتخاب دسته..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {ruleCategories.map((rc) => (
+                    <SelectItem key={rc.id} value={rc.id}>
+                      {rc.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
 
             <span className="text-muted-foreground">حداقل:</span>
             <Input
@@ -489,34 +510,46 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
         {leaf.type === "ALL_COURSES_IN_CATEGORY" && (
           <div className="flex items-center gap-1.5">
             <span className="text-muted-foreground">از دسته قوانین:</span>
-            <select
-              value={leaf.ruleCategoryId || ""}
-              onChange={(e) => onUpdate({ ...leaf, ruleCategoryId: e.target.value })}
-              className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+            <Select
+              value={leaf.ruleCategoryId || ruleCategories[0]?.id || ""}
+              onValueChange={(val) => val && onUpdate({ ...leaf, ruleCategoryId: val })}
             >
-              {ruleCategories.map((rc) => (
-                <option key={rc.id} value={rc.id}>
-                  {rc.name}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger size="sm" className="h-8 min-w-[160px] text-xs">
+                <SelectValue placeholder="انتخاب دسته قوانین..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {ruleCategories.map((rc) => (
+                    <SelectItem key={rc.id} value={rc.id}>
+                      {rc.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </div>
         )}
 
         {leaf.type === "EXACT_N_COURSES_IN_CATEGORY" && (
           <div className="flex items-center gap-1.5">
             <span className="text-muted-foreground">از دسته:</span>
-            <select
-              value={leaf.ruleCategoryId || ""}
-              onChange={(e) => onUpdate({ ...leaf, ruleCategoryId: e.target.value })}
-              className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+            <Select
+              value={leaf.ruleCategoryId || ruleCategories[0]?.id || ""}
+              onValueChange={(val) => val && onUpdate({ ...leaf, ruleCategoryId: val })}
             >
-              {ruleCategories.map((rc) => (
-                <option key={rc.id} value={rc.id}>
-                  {rc.name}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger size="sm" className="h-8 min-w-[140px] text-xs">
+                <SelectValue placeholder="انتخاب دسته..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {ruleCategories.map((rc) => (
+                    <SelectItem key={rc.id} value={rc.id}>
+                      {rc.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
 
             <span className="text-muted-foreground">دقیقاً:</span>
             <Input
@@ -534,18 +567,23 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
         {leaf.type === "MIN_TOTAL_CREDITS_BEFORE_COURSE" && (
           <div className="flex items-center gap-1.5">
             <span className="text-muted-foreground">قبل از درس:</span>
-            <select
-              value={leaf.targetCourseId || ""}
-              onChange={(e) => onUpdate({ ...leaf, targetCourseId: e.target.value })}
-              className="h-8 rounded-md border border-input bg-background px-2 text-xs max-w-[180px]"
+            <Select
+              value={leaf.targetCourseId || courses[0]?.id || ""}
+              onValueChange={(val) => val && onUpdate({ ...leaf, targetCourseId: val })}
             >
-              <option value="">-- انتخاب درس --</option>
-              {courses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({c.code})
-                </option>
-              ))}
-            </select>
+              <SelectTrigger size="sm" className="h-8 min-w-[180px] max-w-[220px] text-xs">
+                <SelectValue placeholder="-- انتخاب درس --" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {courses.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name} ({c.code})
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
 
             <span className="text-muted-foreground">حداقل:</span>
             <Input
@@ -558,30 +596,36 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
               }
               className="h-8 w-16 text-xs text-center"
             />
-            <span className="text-muted-foreground">واحد پاس شده باشد</span>
+            <span className="text-muted-foreground">واحد</span>
           </div>
         )}
 
         {leaf.type === "MANDATORY_COURSES" && (
           <div className="flex items-center gap-1.5">
             <span className="text-muted-foreground">درس اجباری:</span>
-            <select
-              value={leaf.mandatoryCourseIds?.[0] || ""}
-              onChange={(e) =>
+            <Select
+              value={leaf.mandatoryCourseIds?.[0] || courses[0]?.id || ""}
+              onValueChange={(val) =>
+                val &&
                 onUpdate({
                   ...leaf,
-                  mandatoryCourseIds: e.target.value ? [e.target.value] : [],
+                  mandatoryCourseIds: [val],
                 })
               }
-              className="h-8 rounded-md border border-input bg-background px-2 text-xs max-w-[200px]"
             >
-              <option value="">-- انتخاب درس اجباری --</option>
-              {courses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({c.code})
-                </option>
-              ))}
-            </select>
+              <SelectTrigger size="sm" className="h-8 min-w-[180px] max-w-[220px] text-xs">
+                <SelectValue placeholder="-- انتخاب درس اجباری --" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {courses.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name} ({c.code})
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </div>
         )}
       </div>

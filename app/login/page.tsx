@@ -8,6 +8,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -53,7 +54,10 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/20 p-4 font-sans selection:bg-primary/20">
+    <div className="relative flex min-h-screen items-center justify-center bg-muted/20 p-4 font-sans selection:bg-primary/20">
+      <div className="absolute top-4 left-4">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-sm space-y-4">
         {/* Header Branding */}
         <div className="flex flex-col items-center gap-1.5 text-center">

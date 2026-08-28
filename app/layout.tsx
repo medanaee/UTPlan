@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Inter, Vazirmatn } from "next/font/google";
 import { cn } from "@/lib/utils";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const vazirmatn = Vazirmatn({
   subsets: ["arabic", "latin"],
@@ -25,10 +26,13 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html
       lang="fa"
       dir="rtl"
+      suppressHydrationWarning
       className={cn("font-sans", vazirmatn.variable, inter.variable)}
     >
       <body className="min-h-screen bg-background text-foreground antialiased font-sans">
-        {children}
+        <ThemeProvider defaultTheme="system">
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -6,15 +6,20 @@ import {
   Save,
   Check,
   Search,
-  Filter,
-  CheckSquare,
-  Square,
-  Sparkles,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type {
   Course,
   VisualCategory,
@@ -86,9 +91,10 @@ export function CourseCategoryManager({
     setAssignments((prev) => {
       const next = new Map(prev);
       const current = next.get(courseId) || {};
+      const cleanVal = value === "none" || value === "" ? undefined : value;
       next.set(courseId, {
         ...current,
-        [field]: value || undefined,
+        [field]: cleanVal,
       });
       return next;
     });
@@ -227,19 +233,22 @@ export function CourseCategoryManager({
               <Search className="pointer-events-none absolute right-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
             </div>
 
-            <select
-              value={filterVcat}
-              onChange={(e) => setFilterVcat(e.target.value)}
-              className="h-8 rounded-md border border-input bg-background px-2.5 text-xs text-muted-foreground focus:ring-1 focus:ring-primary"
-            >
-              <option value="all">تمام دسته‌ها</option>
-              <option value="unassigned">دروس دسته‌بندی‌نشده</option>
-              {visualCategories.map((vc) => (
-                <option key={vc.id} value={vc.id}>
-                  {vc.name}
-                </option>
-              ))}
-            </select>
+            <Select value={filterVcat} onValueChange={(val) => val && setFilterVcat(val)}>
+              <SelectTrigger size="sm" className="h-8 min-w-[150px] text-xs">
+                <SelectValue placeholder="فیلتر دسته‌بندی..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="all">تمام دسته‌ها</SelectItem>
+                  <SelectItem value="unassigned">دروس دسته‌بندی‌نشده</SelectItem>
+                  {visualCategories.map((vc) => (
+                    <SelectItem key={vc.id} value={vc.id}>
+                      {vc.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Bulk Assign Panel */}
@@ -249,33 +258,37 @@ export function CourseCategoryManager({
                 {selectedCourseIds.size} درس انتخاب شده:
               </span>
 
-              <select
-                value={bulkVcat}
-                onChange={(e) => setBulkVcat(e.target.value)}
-                className="h-7 rounded-md border border-input bg-background px-2 text-xs"
-              >
-                <option value="">دسته بصری...</option>
-                <option value="none">بدون دسته</option>
-                {visualCategories.map((vc) => (
-                  <option key={vc.id} value={vc.id}>
-                    {vc.name}
-                  </option>
-                ))}
-              </select>
+              <Select value={bulkVcat} onValueChange={(val) => val && setBulkVcat(val)}>
+                <SelectTrigger size="sm" className="h-7 min-w-[130px] text-xs bg-background">
+                  <SelectValue placeholder="دسته بصری..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="none">بدون دسته بصری</SelectItem>
+                    {visualCategories.map((vc) => (
+                      <SelectItem key={vc.id} value={vc.id}>
+                        {vc.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
 
-              <select
-                value={bulkRcat}
-                onChange={(e) => setBulkRcat(e.target.value)}
-                className="h-7 rounded-md border border-input bg-background px-2 text-xs"
-              >
-                <option value="">دسته قوانین...</option>
-                <option value="none">بدون دسته</option>
-                {ruleCategories.map((rc) => (
-                  <option key={rc.id} value={rc.id}>
-                    {rc.name}
-                  </option>
-                ))}
-              </select>
+              <Select value={bulkRcat} onValueChange={(val) => val && setBulkRcat(val)}>
+                <SelectTrigger size="sm" className="h-7 min-w-[130px] text-xs bg-background">
+                  <SelectValue placeholder="دسته قوانین..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="none">بدون دسته قوانین</SelectItem>
+                    {ruleCategories.map((rc) => (
+                      <SelectItem key={rc.id} value={rc.id}>
+                        {rc.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
 
               <Button size="sm" onClick={applyBulkAssign} className="h-7 text-xs px-2.5">
                 اعمال
@@ -290,17 +303,12 @@ export function CourseCategoryManager({
             <thead>
               <tr className="border-b bg-muted/40 text-muted-foreground font-semibold">
                 <th className="py-2.5 px-3 text-right w-10">
-                  <button
-                    type="button"
-                    onClick={() => toggleSelectAll(filteredCourses)}
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    {selectedCourseIds.size === filteredCourses.length && filteredCourses.length > 0 ? (
-                      <CheckSquare className="h-4 w-4 text-primary" />
-                    ) : (
-                      <Square className="h-4 w-4" />
-                    )}
-                  </button>
+                  <Checkbox
+                    checked={
+                      selectedCourseIds.size === filteredCourses.length && filteredCourses.length > 0
+                    }
+                    onCheckedChange={() => toggleSelectAll(filteredCourses)}
+                  />
                 </th>
                 <th className="py-2.5 px-3 text-right">نام درس و کد</th>
                 <th className="py-2.5 px-3 text-right w-20">واحد</th>
@@ -311,8 +319,8 @@ export function CourseCategoryManager({
             <tbody className="divide-y divide-border/40">
               {filteredCourses.map((course) => {
                 const isSelected = selectedCourseIds.has(course.id);
-                const currentVcatId = assignments.get(course.id)?.vcatId || "";
-                const currentRcatId = assignments.get(course.id)?.rcatId || "";
+                const currentVcatId = assignments.get(course.id)?.vcatId || "none";
+                const currentRcatId = assignments.get(course.id)?.rcatId || "none";
                 const currentVcat = visualCategories.find((vc) => vc.id === currentVcatId);
 
                 return (
@@ -323,17 +331,10 @@ export function CourseCategoryManager({
                     }`}
                   >
                     <td className="py-2.5 px-3">
-                      <button
-                        type="button"
-                        onClick={() => toggleSelectCourse(course.id)}
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        {isSelected ? (
-                          <CheckSquare className="h-4 w-4 text-primary" />
-                        ) : (
-                          <Square className="h-4 w-4" />
-                        )}
-                      </button>
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleSelectCourse(course.id)}
+                      />
                     </td>
 
                     <td className="py-2.5 px-3">
@@ -347,7 +348,7 @@ export function CourseCategoryManager({
                       </Badge>
                     </td>
 
-                    {/* Visual Category Dropdown */}
+                    {/* Visual Category Select */}
                     <td className="py-2.5 px-3">
                       <div className="flex items-center gap-2">
                         {currentVcat && (
@@ -356,39 +357,57 @@ export function CourseCategoryManager({
                             style={{ backgroundColor: currentVcat.color }}
                           />
                         )}
-                        <select
+                        <Select
                           value={currentVcatId}
-                          onChange={(e) =>
-                            handleUpdateCourseAssignment(course.id, "vcatId", e.target.value)
+                          onValueChange={(val) =>
+                            val && handleUpdateCourseAssignment(course.id, "vcatId", val)
                           }
-                          className="h-8 w-full max-w-[200px] rounded-md border border-input bg-background px-2 text-xs focus:ring-1 focus:ring-primary"
                         >
-                          <option value="">-- بدون دسته بصری --</option>
-                          {visualCategories.map((vc) => (
-                            <option key={vc.id} value={vc.id}>
-                              {vc.name}
-                            </option>
-                          ))}
-                        </select>
+                          <SelectTrigger size="sm" className="h-8 w-full max-w-[200px] text-xs">
+                            <SelectValue placeholder="-- انتخاب دسته بصری --" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectGroup>
+                              <SelectItem value="none">-- بدون دسته بصری --</SelectItem>
+                              {visualCategories.map((vc) => (
+                                <SelectItem key={vc.id} value={vc.id}>
+                                  <div className="flex items-center gap-1.5">
+                                    <span
+                                      className="h-2.5 w-2.5 rounded-full"
+                                      style={{ backgroundColor: vc.color }}
+                                    />
+                                    <span>{vc.name}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </td>
 
-                    {/* Rule Category Dropdown */}
+                    {/* Rule Category Select */}
                     <td className="py-2.5 px-3">
-                      <select
+                      <Select
                         value={currentRcatId}
-                        onChange={(e) =>
-                          handleUpdateCourseAssignment(course.id, "rcatId", e.target.value)
+                        onValueChange={(val) =>
+                          val && handleUpdateCourseAssignment(course.id, "rcatId", val)
                         }
-                        className="h-8 w-full max-w-[220px] rounded-md border border-input bg-background px-2 text-xs focus:ring-1 focus:ring-primary"
                       >
-                        <option value="">-- بدون دسته قوانین --</option>
-                        {ruleCategories.map((rc) => (
-                          <option key={rc.id} value={rc.id}>
-                            {rc.name} {rc.minCredits ? `(حداقل ${rc.minCredits} واحد)` : ""}
-                          </option>
-                        ))}
-                      </select>
+                        <SelectTrigger size="sm" className="h-8 w-full max-w-[220px] text-xs">
+                          <SelectValue placeholder="-- انتخاب دسته قوانین --" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            <SelectItem value="none">-- بدون دسته قوانین --</SelectItem>
+                            {ruleCategories.map((rc) => (
+                              <SelectItem key={rc.id} value={rc.id}>
+                                {rc.name} {rc.minCredits ? `(حداقل ${rc.minCredits} واحد)` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
                     </td>
                   </tr>
                 );
