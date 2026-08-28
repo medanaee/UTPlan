@@ -28,11 +28,16 @@
 	 */
 	// "placement": {  "mode": "smart" }
 	/**
-	 * Bindings
-	 * Bindings allow your Worker to interact with resources on the Cloudflare Developer Platform, including
-	 * databases, object storage, AI inference, real-time communication and more.
-	 * https://developers.cloudflare.com/workers/runtime-apis/bindings/
+	 * D1 Databases
+	 * https://developers.cloudflare.com/d1/
 	 */
+	// "d1_databases": [
+	// 	{
+	// 		"binding": "DB",
+	// 		"database_name": "ut_ece_db",
+	// 		"database_id": "<your-d1-database-id>"
+	// 	}
+	// ],
 	/**
 	 * Environment Variables
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables

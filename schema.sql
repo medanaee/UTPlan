@@ -1,0 +1,219 @@
+-- Cloudflare D1 Database Schema for UT-ECE Course Planning & Scheduling System
+
+-- Users Table
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'user', -- 'super_admin', 'admin', 'user'
+  faculty_id TEXT,
+  major_id TEXT,
+  track_id TEXT,
+  entry_semester TEXT, -- e.g. "fall_1402"
+  avatar_url TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+
+-- Faculties Table
+CREATE TABLE IF NOT EXISTS faculties (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  code TEXT NOT NULL UNIQUE,
+  created_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+
+-- Majors Table
+CREATE TABLE IF NOT EXISTS majors (
+  id TEXT PRIMARY KEY,
+  faculty_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  code TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  deleted_at TEXT,
+  FOREIGN KEY (faculty_id) REFERENCES faculties(id)
+);
+CREATE INDEX IF NOT EXISTS idx_majors_faculty ON majors(faculty_id);
+
+-- Tracks Table
+CREATE TABLE IF NOT EXISTS tracks (
+  id TEXT PRIMARY KEY,
+  major_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  code TEXT NOT NULL,
+  rules_tree TEXT, -- JSON AST for degree requirements
+  created_at TEXT NOT NULL,
+  deleted_at TEXT,
+  FOREIGN KEY (major_id) REFERENCES majors(id)
+);
+CREATE INDEX IF NOT EXISTS idx_tracks_major ON tracks(major_id);
+
+-- Visual Categories Table (1-level flat with color, per track)
+CREATE TABLE IF NOT EXISTS visual_categories (
+  id TEXT PRIMARY KEY,
+  track_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  color TEXT NOT NULL DEFAULT '#3b82f6',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (track_id) REFERENCES tracks(id)
+);
+CREATE INDEX IF NOT EXISTS idx_visual_categories_track ON visual_categories(track_id);
+
+-- Rule Categories Table (Hierarchical tree for rules, per track)
+CREATE TABLE IF NOT EXISTS rule_categories (
+  id TEXT PRIMARY KEY,
+  track_id TEXT NOT NULL,
+  parent_id TEXT,
+  name TEXT NOT NULL,
+  min_credits INTEGER DEFAULT 0,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (track_id) REFERENCES tracks(id),
+  FOREIGN KEY (parent_id) REFERENCES rule_categories(id)
+);
+CREATE INDEX IF NOT EXISTS idx_rule_categories_track ON rule_categories(track_id);
+
+-- Courses Table
+CREATE TABLE IF NOT EXISTS courses (
+  id TEXT PRIMARY KEY,
+  faculty_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  code TEXT NOT NULL UNIQUE,
+  units INTEGER NOT NULL DEFAULT 3,
+  offered_in TEXT NOT NULL DEFAULT 'both', -- 'fall', 'spring', 'both'
+  description TEXT,
+  created_at TEXT NOT NULL,
+  deleted_at TEXT,
+  FOREIGN KEY (faculty_id) REFERENCES faculties(id)
+);
+CREATE INDEX IF NOT EXISTS idx_courses_faculty ON courses(faculty_id);
+CREATE INDEX IF NOT EXISTS idx_courses_code ON courses(code);
+
+-- Track Course Assignment (Associating courses with track visual & rule categories)
+CREATE TABLE IF NOT EXISTS track_course_assignments (
+  id TEXT PRIMARY KEY,
+  track_id TEXT NOT NULL,
+  course_id TEXT NOT NULL,
+  visual_category_id TEXT,
+  rule_category_id TEXT,
+  FOREIGN KEY (track_id) REFERENCES tracks(id),
+  FOREIGN KEY (course_id) REFERENCES courses(id),
+  FOREIGN KEY (visual_category_id) REFERENCES visual_categories(id),
+  FOREIGN KEY (rule_category_id) REFERENCES rule_categories(id),
+  UNIQUE(track_id, course_id)
+);
+CREATE INDEX IF NOT EXISTS idx_track_courses_track ON track_course_assignments(track_id);
+
+-- Prerequisites Table (prerequisite or corequisite)
+CREATE TABLE IF NOT EXISTS prerequisites (
+  id TEXT PRIMARY KEY,
+  course_id TEXT NOT NULL,
+  required_course_id TEXT NOT NULL,
+  type TEXT NOT NULL DEFAULT 'prerequisite', -- 'prerequisite' | 'corequisite'
+  FOREIGN KEY (course_id) REFERENCES courses(id),
+  FOREIGN KEY (required_course_id) REFERENCES courses(id),
+  UNIQUE(course_id, required_course_id, type)
+);
+CREATE INDEX IF NOT EXISTS idx_prereq_course ON prerequisites(course_id);
+
+-- Professors Table
+CREATE TABLE IF NOT EXISTS professors (
+  id TEXT PRIMARY KEY,
+  faculty_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  avatar_url TEXT,
+  title TEXT,
+  email TEXT,
+  created_at TEXT NOT NULL,
+  deleted_at TEXT,
+  FOREIGN KEY (faculty_id) REFERENCES faculties(id)
+);
+CREATE INDEX IF NOT EXISTS idx_professors_faculty ON professors(faculty_id);
+
+-- Course Offerings Table (Professor + Course)
+CREATE TABLE IF NOT EXISTS course_offerings (
+  id TEXT PRIMARY KEY,
+  course_id TEXT NOT NULL,
+  professor_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  deleted_at TEXT,
+  FOREIGN KEY (course_id) REFERENCES courses(id),
+  FOREIGN KEY (professor_id) REFERENCES professors(id),
+  UNIQUE(course_id, professor_id)
+);
+
+-- Course Events Table
+CREATE TABLE IF NOT EXISTS course_events (
+  id TEXT PRIMARY KEY,
+  offering_id TEXT NOT NULL,
+  term TEXT NOT NULL,
+  location TEXT,
+  exam_date TEXT,
+  exam_start_time TEXT,
+  exam_end_time TEXT,
+  is_user_custom INTEGER NOT NULL DEFAULT 0,
+  user_id TEXT,
+  global_event_id TEXT,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (offering_id) REFERENCES course_offerings(id)
+);
+
+-- Course Event Slots Table (Multi-sessions per week)
+CREATE TABLE IF NOT EXISTS course_event_slots (
+  id TEXT PRIMARY KEY,
+  event_id TEXT NOT NULL,
+  day_of_week INTEGER NOT NULL, -- 0: Sat, 1: Sun, 2: Mon, 3: Tue, 4: Wed
+  start_time TEXT NOT NULL,
+  end_time TEXT NOT NULL,
+  FOREIGN KEY (event_id) REFERENCES course_events(id) ON DELETE CASCADE
+);
+
+-- Charts Table
+CREATE TABLE IF NOT EXISTS charts (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  track_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  is_approved_template INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  FOREIGN KEY (track_id) REFERENCES tracks(id)
+);
+
+-- Chart Terms (Semesters 1-12)
+CREATE TABLE IF NOT EXISTS chart_terms (
+  id TEXT PRIMARY KEY,
+  chart_id TEXT NOT NULL,
+  term_index INTEGER NOT NULL, -- 1 to 12
+  term_label TEXT, -- e.g. "ترم ۱ - پاییز ۱۴۰۲"
+  FOREIGN KEY (chart_id) REFERENCES charts(id) ON DELETE CASCADE
+);
+
+-- Chart Courses (Courses in a term)
+CREATE TABLE IF NOT EXISTS chart_courses (
+  id TEXT PRIMARY KEY,
+  term_id TEXT NOT NULL,
+  course_id TEXT NOT NULL,
+  selected_event_id TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  FOREIGN KEY (term_id) REFERENCES chart_terms(id) ON DELETE CASCADE,
+  FOREIGN KEY (course_id) REFERENCES courses(id)
+);
+
+-- Reviews Table
+CREATE TABLE IF NOT EXISTS reviews (
+  id TEXT PRIMARY KEY,
+  user_id TEXT,
+  target_type TEXT NOT NULL, -- 'professor' | 'offering'
+  target_id TEXT NOT NULL,
+  is_anonymous INTEGER NOT NULL DEFAULT 0,
+  comment TEXT NOT NULL,
+  overall_rating REAL NOT NULL DEFAULT 10,
+  criteria_ratings TEXT, -- JSON
+  created_at TEXT NOT NULL,
+  deleted_at TEXT
+);
