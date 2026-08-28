@@ -68,6 +68,9 @@ export default function ChartsPage() {
 
       if (authRes.authenticated) {
         setUser(authRes.user);
+        if (authRes.user?.trackId) {
+          setSelectedTrackId(authRes.user.trackId);
+        }
       }
 
       if (chartsRes.success) {
@@ -76,7 +79,7 @@ export default function ChartsPage() {
 
       if (tracksRes.success) {
         setTracks(tracksRes.data || []);
-        if (tracksRes.data?.length > 0 && !selectedTrackId) {
+        if (tracksRes.data?.length > 0 && !authRes.user?.trackId) {
           setSelectedTrackId(tracksRes.data[0].id);
         }
       }
@@ -397,7 +400,12 @@ export default function ChartsPage() {
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs">گرایش تحصیلی</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">گرایش تحصیلی</Label>
+                <Link href="/profile" className="text-[10px] text-primary hover:underline">
+                  تنظیم پیش‌فرض در پروفایل
+                </Link>
+              </div>
               <Select
                 value={selectedTrackId}
                 onValueChange={(val) => val && setSelectedTrackId(val)}

@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { validateFullChart } from "@/lib/rules-engine";
+import { ThemeToggle } from "@/components/theme-toggle";
 import type {
   StudentChart,
   ChartSemester,
@@ -235,15 +236,15 @@ export function ChartEditor({
             const srcRect = sourceEl.getBoundingClientRect();
             const tgtRect = targetEl.getBoundingClientRect();
 
-            // Source right edge center, Target left edge center (accounting for RTL canvas)
-            const x1 = srcRect.left - canvasRect.left + 8;
-            const y1 = srcRect.top - canvasRect.top + srcRect.height / 2;
+            // Calculate vertical connection from bottom center of prerequisite to top center of dependent course
+            const x1 = srcRect.left - canvasRect.left + srcRect.width / 2;
+            const y1 = srcRect.bottom - canvasRect.top;
 
-            const x2 = tgtRect.right - canvasRect.left - 8;
-            const y2 = tgtRect.top - canvasRect.top + tgtRect.height / 2;
+            const x2 = tgtRect.left - canvasRect.left + tgtRect.width / 2;
+            const y2 = tgtRect.top - canvasRect.top;
 
-            const dx = Math.abs(x2 - x1) * 0.5;
-            const pathData = `M ${x1} ${y1} C ${x1 - dx} ${y1}, ${x2 + dx} ${y2}, ${x2} ${y2}`;
+            const dy = Math.max(25, Math.abs(y2 - y1) * 0.4);
+            const pathData = `M ${x1} ${y1} C ${x1} ${y1 + dy}, ${x2} ${y2 - dy}, ${x2} ${y2}`;
 
             const isViolation =
               pr.type === "prerequisite" ? sourceSem >= sem.semesterNumber : sourceSem > sem.semesterNumber;
@@ -276,9 +277,17 @@ export function ChartEditor({
       updateSvgCurves();
     }, 60);
 
+    const canvasEl = canvasRef.current;
+    if (canvasEl) {
+      canvasEl.addEventListener("scroll", updateSvgCurves, { passive: true });
+    }
+
     window.addEventListener("resize", updateSvgCurves);
     return () => {
       clearTimeout(timer);
+      if (canvasEl) {
+        canvasEl.removeEventListener("scroll", updateSvgCurves);
+      }
       window.removeEventListener("resize", updateSvgCurves);
     };
   }, [updateSvgCurves, chart.semesters]);
@@ -419,11 +428,11 @@ export function ChartEditor({
   }, [allCourses, drawerSearch, selectedCategoryFilter, selectedTrackId]);
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-61px)] bg-background text-foreground select-none">
+    <div className="flex flex-col h-full overflow-hidden bg-background text-foreground select-none">
       {/* ========================================================================= */}
       {/* 1. TOP INTERACTIVE TOOLBAR */}
       {/* ========================================================================= */}
-      <div className="sticky top-0 z-30 border-b border-border/70 bg-card/95 backdrop-blur px-4 py-2.5 shadow-2xs">
+      <div className="shrink-0 z-30 border-b border-border/70 bg-card/95 backdrop-blur px-4 py-2.5 shadow-2xs">
         <div className="flex flex-wrap items-center justify-between gap-3 max-w-[1700px] mx-auto">
           {/* Title & Track Info */}
           <div className="flex items-center gap-3">
@@ -531,13 +540,16 @@ export function ChartEditor({
               )}
               {saveSuccess ? "ذخیره شد!" : "ذخیره چارت"}
             </Button>
+
+            {/* Dark / Light Mode Toggle */}
+            <ThemeToggle />
           </div>
         </div>
       </div>
 
       {/* Error banner if any */}
       {errorMsg && (
-        <div className="bg-destructive/15 border-b border-destructive/30 px-4 py-2 text-xs text-destructive flex items-center justify-between">
+        <div className="shrink-0 bg-destructive/15 border-b border-destructive/30 px-4 py-2 text-xs text-destructive flex items-center justify-between">
           <span>{errorMsg}</span>
           <Button size="sm" variant="ghost" onClick={() => setErrorMsg(null)} className="h-6 w-6 p-0 text-destructive">
             <XCircle className="h-3.5 w-3.5" />
@@ -548,11 +560,11 @@ export function ChartEditor({
       {/* ========================================================================= */}
       {/* 2. MAIN WORKSPACE: CANVAS + RIGHT DRAWER */}
       {/* ========================================================================= */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 min-h-0 flex overflow-hidden">
         {/* RIGHT DRAWER: Categorized Course Palette */}
-        <aside className="w-80 shrink-0 border-l border-border/70 bg-card/50 flex flex-col justify-between overflow-hidden">
+        <aside className="w-80 shrink-0 h-full border-l border-border/70 bg-card/50 flex flex-col overflow-hidden">
           {/* Drawer Header & Search */}
-          <div className="p-3 border-b border-border/70 space-y-2.5">
+          <div className="p-3 border-b border-border/70 space-y-2.5 shrink-0">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold flex items-center gap-1.5">
                 <BookOpen className="h-3.5 w-3.5 text-primary" />
@@ -610,7 +622,7 @@ export function ChartEditor({
           </div>
 
           {/* Drawer Course List (Draggable Cards) */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2">
             {filteredDrawerCourses.map((course) => {
               const assignment = course.trackAssignments?.find((a) => a.trackId === selectedTrackId);
               const vcat = visualCategories.find((vc) => vc.id === assignment?.visualCategoryId);
@@ -686,24 +698,24 @@ export function ChartEditor({
           </div>
 
           {/* Drawer Footer Info */}
-          <div className="p-3 border-t border-border/70 bg-muted/20 text-[11px] text-muted-foreground flex items-center justify-between">
+          <div className="p-3 border-t border-border/70 bg-muted/20 text-[11px] text-muted-foreground flex items-center justify-between shrink-0">
             <span>دروس را بکشید و در ترم‌ها رها کنید</span>
             <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/60" />
           </div>
         </aside>
 
         {/* ========================================================================= */}
-        {/* CENTER CANVAS: 8 TO 12 SEMESTER COLUMNS + SVG CONNECTOR ARROWS */}
+        {/* CENTER CANVAS: VERTICAL STACKED SEMESTERS + SVG CONNECTOR ARROWS */}
         {/* ========================================================================= */}
         <main
           ref={canvasRef}
-          className="flex-1 relative overflow-x-auto overflow-y-auto p-4 sm:p-6 bg-muted/20"
+          className="flex-1 min-h-0 h-full relative overflow-y-auto p-4 sm:p-6 lg:p-8 bg-muted/20"
         >
           {/* Dynamic SVG Connections Overlay */}
           {showArrows && (
             <svg
               className="absolute inset-0 pointer-events-none z-10 w-full h-full"
-              style={{ minWidth: `${chart.semesters.length * 280 + 100}px`, minHeight: "800px" }}
+              style={{ minHeight: "100%" }}
             >
               <defs>
                 <marker
@@ -777,12 +789,9 @@ export function ChartEditor({
             </svg>
           )}
 
-          {/* Semesters Columns Grid Container */}
-          <div
-            className="flex gap-4 items-start relative z-20 pb-12"
-            style={{ minWidth: `${chart.semesters.length * 280}px` }}
-          >
-            {chart.semesters.map((sem, sIdx) => {
+          {/* Semesters Stacked Vertically */}
+          <div className="space-y-4 max-w-5xl mx-auto relative z-20 pb-16">
+            {chart.semesters.map((sem) => {
               const semStats = validation.semesterCredits.find(
                 (sc) => sc.semesterNumber === sem.semesterNumber
               );
@@ -807,148 +816,147 @@ export function ChartEditor({
                       moveCourseToSemester(courseId, sem.semesterNumber);
                     }
                   }}
-                  className={`w-72 shrink-0 rounded-2xl border transition-all duration-150 flex flex-col bg-card shadow-2xs ${
+                  className={`rounded-2xl border transition-all duration-150 flex flex-col bg-card shadow-2xs ${
                     isOver
                       ? "border-primary ring-2 ring-primary/20 bg-primary/5"
                       : "border-border/80"
                   }`}
                 >
-                  {/* Semester Column Header */}
-                  <div className="p-3 border-b border-border/70 bg-card rounded-t-2xl space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary text-primary-foreground text-xs font-bold">
-                          {sem.semesterNumber}
-                        </span>
-                        <h3 className="text-xs font-bold">ترم {sem.semesterNumber}</h3>
-                      </div>
-
-                      {/* Total Units Badge */}
-                      <span
-                        className={`text-[11px] px-2 py-0.5 rounded-md font-semibold ${
-                          isOverMax
-                            ? "bg-destructive/15 text-destructive border border-destructive/30"
-                            : isUnderMin
-                            ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
-                            : "bg-muted text-foreground"
-                        }`}
-                      >
-                        {semUnits} واحد
+                  {/* Semester Row Header */}
+                  <div className="p-3 sm:px-4 border-b border-border/70 bg-card rounded-t-2xl flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground text-xs font-bold shadow-2xs">
+                        {sem.semesterNumber}
                       </span>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-xs font-bold">ترم {sem.semesterNumber}</h3>
+                        <span
+                          className={`text-[11px] px-2 py-0.5 rounded-md font-semibold ${
+                            isOverMax
+                              ? "bg-destructive/15 text-destructive border border-destructive/30"
+                              : isUnderMin
+                              ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                              : "bg-muted text-foreground"
+                          }`}
+                        >
+                          {semUnits} واحد
+                        </span>
+                      </div>
                     </div>
 
-                    {/* Quick Link to Semester Weekly Schedule Planner */}
-                    <div className="flex items-center justify-between pt-1">
+                    {/* Quick Link to Semester Weekly Schedule Planner & Count */}
+                    <div className="flex items-center gap-3">
                       <Link
                         href={`/schedule?chartId=${chart.id}&term=${sem.semesterNumber}`}
-                        className="text-[10px] text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 font-medium"
+                        className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 font-medium bg-muted/40 hover:bg-muted px-2.5 py-1 rounded-lg border border-border/60"
                       >
-                        <Clock className="h-3 w-3" />
+                        <Clock className="h-3.5 w-3.5 text-primary" />
                         <span>برنامه زمانی هفتگی</span>
-                        <ExternalLink className="h-2.5 w-2.5 opacity-60" />
+                        <ExternalLink className="h-3 w-3 opacity-60" />
                       </Link>
 
-                      <span className="text-[10px] text-muted-foreground/70">
+                      <span className="text-xs text-muted-foreground">
                         {sem.courseIds.length} درس
                       </span>
                     </div>
                   </div>
 
-                  {/* Semester Course Cards (Drop Zone) */}
-                  <div className="p-2.5 space-y-2 min-h-[360px] flex-1">
-                    {sem.courseIds.map((cId) => {
-                      const course = allCourses.find((c) => c.id === cId);
-                      if (!course) return null;
+                  {/* Semester Course Cards Grid (Drop Zone) */}
+                  <div className="p-3 sm:p-4 min-h-[100px]">
+                    {sem.courseIds.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                        {sem.courseIds.map((cId) => {
+                          const course = allCourses.find((c) => c.id === cId);
+                          if (!course) return null;
 
-                      const assignment = course.trackAssignments?.find(
-                        (a) => a.trackId === selectedTrackId
-                      );
-                      const vcat = visualCategories.find(
-                        (vc) => vc.id === assignment?.visualCategoryId
-                      );
-                      const isViolation = validation.courseViolations.has(cId);
-                      const isHovered = hoveredCourseId === cId;
+                          const assignment = course.trackAssignments?.find(
+                            (a) => a.trackId === selectedTrackId
+                          );
+                          const vcat = visualCategories.find(
+                            (vc) => vc.id === assignment?.visualCategoryId
+                          );
+                          const isViolation = validation.courseViolations.has(cId);
+                          const isHovered = hoveredCourseId === cId;
 
-                      return (
-                        <div
-                          key={cId}
-                          ref={(el) => {
-                            if (el) cardElementsRef.current.set(cId, el);
-                            else cardElementsRef.current.delete(cId);
-                          }}
-                          draggable
-                          onDragStart={(e) => {
-                            e.dataTransfer.setData("text/plain", cId);
-                            setDraggedCourseId(cId);
-                          }}
-                          onDragEnd={() => setDraggedCourseId(null)}
-                          onMouseEnter={() => setHoveredCourseId(cId)}
-                          onMouseLeave={() => setHoveredCourseId(null)}
-                          style={{
-                            borderRightColor: vcat?.color || "#94a3b8",
-                            borderRightWidth: "4px",
-                          }}
-                          className={`group relative p-2.5 rounded-xl border bg-background transition-all cursor-grab active:cursor-grabbing shadow-2xs ${
-                            isViolation
-                              ? "border-destructive ring-1 ring-destructive/40 bg-destructive/5"
-                              : isHovered
-                              ? "border-primary ring-2 ring-primary/30 shadow-xs"
-                              : "border-border/80 hover:border-border"
-                          }`}
-                        >
-                          {/* Course Header */}
-                          <div className="flex items-start justify-between gap-1">
-                            <div>
-                              <div className="flex items-center gap-1.5">
-                                <p className="text-xs font-bold">{course.name}</p>
-                                {isViolation && (
-                                  <AlertTriangle
-                                    className="h-3.5 w-3.5 text-destructive shrink-0 animate-pulse"
-                                    title="خطای پیش‌نیاز یا عدم تطابق قوانین"
-                                  />
-                                )}
-                              </div>
-                              <p className="text-[10px] text-muted-foreground font-mono">
-                                {course.code}
-                              </p>
-                            </div>
-
-                            {/* Remove button */}
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                removeCourseFromChart(cId);
+                          return (
+                            <div
+                              key={cId}
+                              ref={(el) => {
+                                if (el) cardElementsRef.current.set(cId, el);
+                                else cardElementsRef.current.delete(cId);
                               }}
-                              className="h-6 w-6 p-0 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
-                              title="حذف از این ترم"
+                              draggable
+                              onDragStart={(e) => {
+                                e.dataTransfer.setData("text/plain", cId);
+                                setDraggedCourseId(cId);
+                              }}
+                              onDragEnd={() => setDraggedCourseId(null)}
+                              onMouseEnter={() => setHoveredCourseId(cId)}
+                              onMouseLeave={() => setHoveredCourseId(null)}
+                              style={{
+                                borderRightColor: vcat?.color || "#94a3b8",
+                                borderRightWidth: "4px",
+                              }}
+                              className={`group relative p-2.5 rounded-xl border bg-background transition-all cursor-grab active:cursor-grabbing shadow-2xs ${
+                                isViolation
+                                  ? "border-destructive ring-1 ring-destructive/40 bg-destructive/5"
+                                  : isHovered
+                                  ? "border-primary ring-2 ring-primary/30 shadow-xs"
+                                  : "border-border/80 hover:border-border"
+                              }`}
                             >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
+                              {/* Course Header */}
+                              <div className="flex items-start justify-between gap-1">
+                                <div>
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="text-xs font-bold">{course.name}</p>
+                                    {isViolation && (
+                                      <AlertTriangle
+                                        className="h-3.5 w-3.5 text-destructive shrink-0 animate-pulse"
+                                        title="خطای پیش‌نیاز یا عدم تطابق قوانین"
+                                      />
+                                    )}
+                                  </div>
+                                  <p className="text-[10px] text-muted-foreground font-mono">
+                                    {course.code}
+                                  </p>
+                                </div>
 
-                          {/* Units & Category Tag */}
-                          <div className="mt-2 flex items-center justify-between text-[10px]">
-                            <span
-                              style={{ color: vcat?.color || undefined }}
-                              className="font-medium"
-                            >
-                              {vcat?.name || "عمومی"}
-                            </span>
-                            <span className="font-semibold text-muted-foreground">
-                              {course.units} واحد
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
+                                {/* Remove button */}
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeCourseFromChart(cId);
+                                  }}
+                                  className="h-6 w-6 p-0 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                                  title="حذف از این ترم"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
 
-                    {sem.courseIds.length === 0 && (
-                      <div className="h-full border-2 border-dashed border-border/50 rounded-xl flex flex-col items-center justify-center p-6 text-center text-muted-foreground/60 text-xs">
-                        <Layers className="h-5 w-5 mb-1.5 opacity-40" />
-                        <span>درسی قرار ندارد</span>
-                        <span className="text-[10px] opacity-70">برای افزودن، درس را اینجا رها کنید</span>
+                              {/* Units & Category Tag */}
+                              <div className="mt-2 flex items-center justify-between text-[10px]">
+                                <span
+                                  style={{ color: vcat?.color || undefined }}
+                                  className="font-medium"
+                                >
+                                  {vcat?.name || "عمومی"}
+                                </span>
+                                <span className="font-semibold text-muted-foreground">
+                                  {course.units} واحد
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="border-2 border-dashed border-border/60 rounded-xl flex items-center justify-center p-6 text-center text-muted-foreground/60 text-xs gap-2">
+                        <Layers className="h-4 w-4 opacity-40" />
+                        <span>درسی در این ترم قرار ندارد — دروس را از پنل راست به اینجا بکشید</span>
                       </div>
                     )}
                   </div>

@@ -114,8 +114,7 @@ export default function ChartEditorPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
-      <Navbar user={user} />
+    <div className="h-screen overflow-hidden bg-background text-foreground flex flex-col">
       <ChartEditor
         initialChart={chart}
         allTracks={tracks}

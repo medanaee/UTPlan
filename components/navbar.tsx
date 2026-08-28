@@ -128,15 +128,29 @@ export function Navbar({ user: initialUser }: NavbarProps) {
             <div className="h-8 w-20 animate-pulse rounded-lg bg-muted" />
           ) : user ? (
             <div className="flex items-center gap-2">
-              <div className="text-left hidden sm:block">
-                <div className="flex items-center gap-1.5 justify-end">
-                  <span className="text-xs font-bold">{user.name}</span>
-                  <Badge variant="secondary" className="text-[10px] h-4.5 px-1.5">
-                    {user.role === "super_admin" || user.role === "admin" ? "مدیر سیستم" : "دانشجو"}
-                  </Badge>
+              <Link
+                href="/profile"
+                className="flex items-center gap-2 p-1 rounded-xl hover:bg-muted/50 transition-colors"
+                title="مشاهده و ویرایش پروفایل تحصیلی"
+              >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs overflow-hidden border border-border/80 shadow-2xs">
+                  {user.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={user.name} className="h-full w-full object-cover" />
+                  ) : (
+                    <User className="h-4 w-4" />
+                  )}
                 </div>
-                <p className="text-[10px] text-muted-foreground font-mono">{user.email}</p>
-              </div>
+
+                <div className="text-left hidden sm:block">
+                  <div className="flex items-center gap-1.5 justify-end">
+                    <span className="text-xs font-bold">{user.name}</span>
+                    <Badge variant="secondary" className="text-[10px] h-4.5 px-1.5">
+                      {user.role === "super_admin" || user.role === "admin" ? "مدیر سیستم" : "دانشجو"}
+                    </Badge>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground font-mono">{user.email}</p>
+                </div>
+              </Link>
 
               {(user.role === "admin" || user.role === "super_admin") && (
                 <Link href="/admin">

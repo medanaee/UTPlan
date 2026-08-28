@@ -159,6 +159,14 @@ export async function updateUserProfile(
   return user;
 }
 
+export async function changeUserPassword(userId: string, newPasswordHash: string): Promise<boolean> {
+  await initDatabase();
+  const user = usersStore.find((u) => u.id === userId);
+  if (!user) return false;
+  user.passwordHash = newPasswordHash;
+  return true;
+}
+
 // ----------------------------------------------------
 // FACULTIES CRUD
 // ----------------------------------------------------
