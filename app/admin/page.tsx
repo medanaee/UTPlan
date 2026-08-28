@@ -58,6 +58,7 @@ import { RuleSandboxTester } from "@/components/admin/rule-sandbox-tester";
 import { UserManager } from "@/components/admin/user-manager";
 import { OfferingManager } from "@/components/admin/offering-manager";
 import { EventManager } from "@/components/admin/event-manager";
+import { ProfessorManager } from "@/components/admin/professor-manager";
 import { ThemeToggle } from "@/components/theme-toggle";
 import type {
   UserSession,
@@ -129,8 +130,6 @@ export default function AdminDashboardPage() {
   const [courseModalOpen, setCourseModalOpen] = useState(false);
   const [prereqModalOpen, setPrereqModalOpen] = useState(false);
   const [selectedCourseForPrereq, setSelectedCourseForPrereq] = useState<Course | null>(null);
-  const [profModalOpen, setProfModalOpen] = useState(false);
-  const [uploadingProfImage, setUploadingProfImage] = useState(false);
   const [vcatModalOpen, setVcatModalOpen] = useState(false);
   const [rcatModalOpen, setRcatModalOpen] = useState(false);
 
@@ -153,13 +152,6 @@ export default function AdminDashboardPage() {
     type: "prerequisite" as "prerequisite" | "corequisite",
   });
   const [prereqError, setPrereqError] = useState<string | null>(null);
-  const [profForm, setProfForm] = useState({
-    name: "",
-    title: "استاد",
-    email: "",
-    avatarUrl: "",
-    facultyId: "",
-  });
   const [vcatForm, setVcatForm] = useState({ name: "", color: "#3b82f6", sortOrder: 1 });
   const [rcatForm, setRcatForm] = useState({ name: "", minCredits: 0 });
 
@@ -437,52 +429,6 @@ export default function AdminDashboardPage() {
     await loadAllData();
     const updatedCourse = await fetch(`/api/courses?id=${selectedCourseForPrereq.id}`).then((r) => r.json());
     if (updatedCourse.success) setSelectedCourseForPrereq(updatedCourse.data);
-  };
-
-  // Upload Professor Photo (Cloudflare Images / R2)
-  const handleUploadProfImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadingProfImage(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      }).then((r) => r.json());
-
-      if (res.success && res.url) {
-        setProfForm((prev) => ({ ...prev, avatarUrl: res.url }));
-      } else {
-        alert(res.message || "خطا در آپلود تصویر");
-      }
-    } catch (err) {
-      console.error("Upload error:", err);
-      alert("خطا در برقراری ارتباط با سرور آپلود");
-    } finally {
-      setUploadingProfImage(false);
-    }
-  };
-
-  // Create Professor
-  const handleCreateProf = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const res = await fetch("/api/professors", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...profForm,
-        facultyId: profForm.facultyId || selectedFacultyId,
-      }),
-    }).then((r) => r.json());
-    if (res.success) {
-      setProfModalOpen(false);
-      setProfForm({ name: "", title: "استاد تمام", email: "", avatarUrl: "", facultyId: selectedFacultyId });
-      await loadAllData();
-    }
   };
 
   if (loading) {
@@ -1276,69 +1222,12 @@ export default function AdminDashboardPage() {
           {/* TAB 5: PROFESSORS */}
           {/* ========================================================= */}
           {activeTab === "professors" && (
-            <div className="space-y-4">
-            <Card className="border-border/70 shadow-xs">
-              <CardHeader className="flex flex-row items-center justify-between border-b pb-3">
-                <div>
-                  <CardTitle className="text-base">لیست اساتید و اعضای هیئت علمی</CardTitle>
-                  <CardDescription className="text-xs">
-                    مدیریت اساتید جهت اتصال به ارائه‌های درسی و ثبت نظرات دانشجویان
-                  </CardDescription>
-                </div>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setProfForm({ name: "", title: "استاد", email: "", facultyId: selectedFacultyId });
-                    setProfModalOpen(true);
-                  }}
-                  className="h-8 gap-1 text-xs"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  افزودن استاد جدید
-                </Button>
-              </CardHeader>
-
-              <CardContent className="p-4">
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {professors.map((p) => (
-                    <div
-                      key={p.id}
-                      className="flex items-center justify-between rounded-xl border border-border/80 bg-card p-3.5 shadow-2xs"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs overflow-hidden border border-border/80 shadow-2xs">
-                          {p.avatarUrl ? (
-                            <img src={p.avatarUrl} alt={p.name} className="h-full w-full object-cover" />
-                          ) : (
-                            <span>{p.name.charAt(0)}</span>
-                          )}
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold">{p.name}</p>
-                          <p className="text-[11px] text-muted-foreground">{p.title || "استاد"}</p>
-                          {p.email && <p className="font-mono text-[10px] text-muted-foreground">{p.email}</p>}
-                        </div>
-                      </div>
-
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={async () => {
-                          if (confirm(`آیا از حذف ${p.name} مطمئن هستید؟`)) {
-                            await fetch(`/api/professors?id=${p.id}`, { method: "DELETE" });
-                            await loadAllData();
-                          }
-                        }}
-                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+            <ProfessorManager
+              professors={professors}
+              faculties={faculties}
+              selectedFacultyId={selectedFacultyId}
+              onDataChanged={loadAllData}
+            />
           )}
 
           {/* ========================================================= */}
@@ -1782,130 +1671,6 @@ export default function AdminDashboardPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 8. Add Professor Modal */}
-      <Dialog open={profModalOpen} onOpenChange={setProfModalOpen}>
-        <DialogContent className="sm:max-w-md" dir="rtl">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-bold flex items-center gap-2">
-              <Plus className="h-4 w-4 text-primary" />
-              افزودن استاد جدید
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              مشخصات استاد و تصویر پرسنلی (بارگذاری خودکار در سرویس Cloudflare) را وارد کنید.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleCreateProf} className="space-y-3.5 pt-2">
-            {/* Photo Upload Area */}
-            <div className="flex items-center gap-3.5 p-3 rounded-xl border border-border/70 bg-muted/15">
-              <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-border/80 bg-background overflow-hidden shadow-2xs">
-                {profForm.avatarUrl ? (
-                  <img
-                    src={profForm.avatarUrl}
-                    alt="پیش‌نمایش تصویر"
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <Camera className="h-6 w-6 text-muted-foreground/60" />
-                )}
-                {uploadingProfImage && (
-                  <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
-                    <RefreshCw className="h-4 w-4 animate-spin text-primary" />
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-1.5 flex-1">
-                <Label className="text-xs font-semibold">تصویر پرسنلی (Cloudflare):</Label>
-                <div className="flex items-center gap-2">
-                  <label className="cursor-pointer">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleUploadProfImage}
-                      className="hidden"
-                      disabled={uploadingProfImage}
-                    />
-                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/20 transition-colors shadow-2xs">
-                      <Upload className="h-3 w-3" />
-                      {uploadingProfImage ? "در حال آپلود..." : "انتخاب و آپلود عکس"}
-                    </span>
-                  </label>
-                  {profForm.avatarUrl && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setProfForm({ ...profForm, avatarUrl: "" })}
-                      className="h-7 text-xs text-muted-foreground hover:text-destructive px-2"
-                    >
-                      حذف عکس
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Name */}
-            <div className="space-y-1">
-              <Label className="text-xs">نام و نام خانوادگی استاد</Label>
-              <Input
-                required
-                placeholder="مثلاً دکتر محمدی"
-                value={profForm.name}
-                onChange={(e) => setProfForm({ ...profForm, name: e.target.value })}
-                className="h-8 text-xs"
-              />
-            </div>
-
-            {/* Title & Email (2 columns) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">مرتبه علمی</Label>
-                <Select
-                  items={[
-                    { value: "استاد تمام", label: "استاد تمام" },
-                    { value: "دانشیار", label: "دانشیار" },
-                    { value: "استادیار", label: "استادیار" },
-                    { value: "مربی", label: "مربی" },
-                  ]}
-                  value={profForm.title}
-                  onValueChange={(val) => val && setProfForm({ ...profForm, title: val })}
-                >
-                  <SelectTrigger size="sm" className="w-full text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem value="استاد تمام">استاد تمام</SelectItem>
-                      <SelectItem value="دانشیار">دانشیار</SelectItem>
-                      <SelectItem value="استادیار">استادیار</SelectItem>
-                      <SelectItem value="مربی">مربی</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs">ایمیل دانشگاهی (اختیاری)</Label>
-                <Input
-                  type="email"
-                  placeholder="name@ut.ac.ir"
-                  value={profForm.email}
-                  onChange={(e) => setProfForm({ ...profForm, email: e.target.value })}
-                  className="h-8 text-xs font-mono"
-                  dir="ltr"
-                />
-              </div>
-            </div>
-
-            <DialogFooter className="pt-2">
-              <Button type="submit" size="sm" disabled={uploadingProfImage} className="w-full h-8 text-xs font-semibold">
-                ثبت و ذخیره استاد
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
