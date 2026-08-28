@@ -24,6 +24,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Navbar } from "@/components/navbar";
 import type { UserSession } from "@/lib/types";
 
 export default function Home() {
@@ -51,112 +52,10 @@ export default function Home() {
     fetchSession();
   }, []);
 
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-      setUser(null);
-      router.refresh();
-    } catch {
-      setUser(null);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/20">
-      {/* ========================================================================= */}
-      {/* TOP HEADER NAVIGATION */}
-      {/* ========================================================================= */}
-      <header className="sticky top-0 z-40 border-b border-border/70 bg-background/95 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
-          {/* Logo & Brand */}
-          <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-xs">
-                <GraduationCap className="h-5 w-5" />
-              </div>
-              <div>
-                <span className="text-sm font-bold tracking-tight">سامانه انتخاب واحد</span>
-                <p className="text-[10px] text-muted-foreground">دانشکده مهندسی برق و کامپیوتر</p>
-              </div>
-            </Link>
-          </div>
-
-          {/* Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1 text-xs font-medium">
-            <Link
-              href="/"
-              className="rounded-lg px-3 py-1.5 text-primary bg-primary/5 transition-colors font-semibold"
-            >
-              خانه
-            </Link>
-            <Link
-              href={user ? (user.role === "admin" || user.role === "super_admin" ? "/admin" : "#") : "/login"}
-              className="rounded-lg px-3 py-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-            >
-              چارت‌ها
-            </Link>
-            <Link
-              href={user ? (user.role === "admin" || user.role === "super_admin" ? "/admin" : "#") : "/login"}
-              className="rounded-lg px-3 py-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-            >
-              جستجوی اساتید
-            </Link>
-            <Link
-              href={user ? (user.role === "admin" || user.role === "super_admin" ? "/admin" : "#") : "/login"}
-              className="rounded-lg px-3 py-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-            >
-              جستجوی دروس (ارائه‌ها)
-            </Link>
-          </nav>
-
-          {/* Auth Button / User Profile */}
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-
-            {loading ? (
-              <div className="h-8 w-20 animate-pulse rounded-lg bg-muted" />
-            ) : user ? (
-              <div className="flex items-center gap-2">
-                <div className="text-left hidden sm:block">
-                  <div className="flex items-center gap-1.5 justify-end">
-                    <span className="text-xs font-bold">{user.name}</span>
-                    <Badge variant="secondary" className="text-[10px] h-4.5 px-1.5">
-                      {user.role === "super_admin" || user.role === "admin" ? "مدیر سیستم" : "دانشجو"}
-                    </Badge>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground font-mono">{user.email}</p>
-                </div>
-
-                {(user.role === "admin" || user.role === "super_admin") && (
-                  <Link href="/admin">
-                    <Button size="sm" variant="default" className="h-8 gap-1 text-xs shadow-xs font-semibold">
-                      <LayoutDashboard className="h-3.5 w-3.5" />
-                      پنل مدیریت
-                    </Button>
-                  </Link>
-                )}
-
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleLogout}
-                  className="h-8 gap-1 text-xs border-border/80 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
-                >
-                  <LogOut className="h-3.5 w-3.5" />
-                  خروج
-                </Button>
-              </div>
-            ) : (
-              <Link href="/login">
-                <Button size="sm" className="h-8 gap-1.5 text-xs font-semibold shadow-xs">
-                  <LogIn className="h-3.5 w-3.5" />
-                  ورود به حساب کاربری
-                </Button>
-              </Link>
-            )}
-          </div>
-        </div>
-      </header>
+      {/* Top Shared Navbar */}
+      <Navbar user={user} />
 
       {/* ========================================================================= */}
       {/* HERO SECTION */}

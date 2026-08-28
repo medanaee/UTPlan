@@ -635,14 +635,15 @@ export default function AdminDashboardPage() {
         </aside>
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-x-hidden p-4 sm:p-6 space-y-5 max-w-7xl">
-          {/* Banner notification */}
-          {actionMessage && (
-            <div className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-700 dark:text-emerald-300">
-              <Check className="h-4 w-4 shrink-0" />
-              <span>{actionMessage}</span>
-            </div>
-          )}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8">
+          <div className="mx-auto max-w-7xl space-y-5">
+            {/* Banner notification */}
+            {actionMessage && (
+              <div className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-700 dark:text-emerald-300">
+                <Check className="h-4 w-4 shrink-0" />
+                <span>{actionMessage}</span>
+              </div>
+            )}
 
           {/* ========================================================= */}
           {/* TAB 1: COURSES & PREREQUISITES */}
@@ -1236,6 +1237,7 @@ export default function AdminDashboardPage() {
           {activeTab === "users" && user && (
             <UserManager currentUser={user} />
           )}
+          </div>
         </main>
       </div>
 
