@@ -22,12 +22,17 @@ import {
   Check,
   GitBranch,
   Play,
+  UserCheck,
+  ChevronRight,
+  ChevronLeft,
+  PanelRightClose,
+  PanelRightOpen,
+  CalendarDays,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -48,6 +53,9 @@ import {
 import { CourseCategoryManager } from "@/components/admin/course-category-manager";
 import { RuleQueryBuilder } from "@/components/admin/rule-query-builder";
 import { RuleSandboxTester } from "@/components/admin/rule-sandbox-tester";
+import { UserManager } from "@/components/admin/user-manager";
+import { OfferingManager } from "@/components/admin/offering-manager";
+import { EventManager } from "@/components/admin/event-manager";
 import { ThemeToggle } from "@/components/theme-toggle";
 import type {
   UserSession,
@@ -95,6 +103,19 @@ export default function AdminDashboardPage() {
   // Categories for selected track
   const [visualCats, setVisualCats] = useState<VisualCategory[]>([]);
   const [ruleCats, setRuleCats] = useState<RuleCategory[]>([]);
+
+  // Navigation & Sidebar
+  const [activeTab, setActiveTab] = useState<
+    | "courses"
+    | "structure"
+    | "categories"
+    | "offerings"
+    | "events"
+    | "rules"
+    | "professors"
+    | "users"
+  >("courses");
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Search filter
   const [courseSearch, setCourseSearch] = useState("");
@@ -449,23 +470,66 @@ export default function AdminDashboardPage() {
       c.code.toLowerCase().includes(courseSearch.toLowerCase())
   );
 
+  const navItems = [
+    {
+      id: "courses" as const,
+      label: "دروس و پیش‌نیازها",
+      icon: BookOpen,
+    },
+    {
+      id: "structure" as const,
+      label: "ساختار دانشگاه",
+      icon: Building2,
+    },
+    {
+      id: "categories" as const,
+      label: "دسته‌بندی و انتساب دروس",
+      icon: Layers,
+    },
+    {
+      id: "offerings" as const,
+      label: "ارائه‌های درسی (گروه‌ها)",
+      icon: Sparkles,
+    },
+    {
+      id: "events" as const,
+      label: "زمان‌بندی و برنامه هفتگی",
+      icon: CalendarDays,
+    },
+    {
+      id: "rules" as const,
+      label: "موتور قوانین و شبیه‌ساز",
+      icon: GitBranch,
+    },
+    {
+      id: "professors" as const,
+      label: "اساتید هیئت علمی",
+      icon: Users,
+    },
+    {
+      id: "users" as const,
+      label: "کاربران و سطوح دسترسی",
+      icon: UserCheck,
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-muted/15 font-sans text-foreground">
+    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/20">
       {/* Top Header */}
-      <header className="sticky top-0 z-30 border-b border-border/70 bg-background/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2.5 sm:px-6">
+      <header className="sticky top-0 z-40 border-b border-border/70 bg-background/95 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-xs">
               <Shield className="h-5 w-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-sm font-bold">پنل مدیریت جامع سامانه</h1>
-                <Badge variant="default" className="text-[10px] h-5">
-                  {user?.role === "super_admin" ? "مدیر ارشد" : "مدیر سیستم"}
+                <h1 className="text-sm font-bold tracking-tight">پنل مدیریت دانشگاه</h1>
+                <Badge variant="secondary" className="text-[10px] h-4.5 px-1.5 font-normal">
+                  {user?.role === "super_admin" ? "مدیر ارشد" : "مدیر سامانه"}
                 </Badge>
               </div>
-              <p className="text-[11px] text-muted-foreground">مدیریت ساختار دانشگاه، دروس، پیش‌نیازها و اساتید</p>
+              <p className="text-[10px] text-muted-foreground">{user?.email}</p>
             </div>
           </div>
 
@@ -506,98 +570,107 @@ export default function AdminDashboardPage() {
         </div>
       </header>
 
-      {/* Main Container */}
-      <main className="mx-auto max-w-7xl space-y-5 p-4 sm:p-6">
-        {/* Banner notification */}
-        {actionMessage && (
-          <div className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-700 dark:text-emerald-300">
-            <Check className="h-4 w-4 shrink-0" />
-            <span>{actionMessage}</span>
+      {/* Main Admin Layout with Collapsible Right Sidebar */}
+      <div className="flex min-h-[calc(100vh-61px)] bg-background">
+        {/* Right Minimal Flat Collapsible Sidebar */}
+        <aside
+          className={`sticky top-[61px] h-[calc(100vh-61px)] shrink-0 border-l border-border/40 bg-background transition-all duration-200 flex flex-col justify-between z-30 ${
+            isSidebarCollapsed ? "w-14" : "w-56"
+          }`}
+        >
+          {/* Top Section */}
+          <div className="p-2 space-y-2">
+            {/* Header & Collapse Toggle Button */}
+            <div className="flex items-center justify-between px-2 py-1.5 text-muted-foreground">
+              {!isSidebarCollapsed && (
+                <span className="text-[11px] font-medium tracking-wider text-muted-foreground/70">
+                  بخش‌های سامانه
+                </span>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                className={`h-6 w-6 p-0 rounded-md text-muted-foreground/70 hover:text-foreground hover:bg-muted/40 ${
+                  isSidebarCollapsed ? "mx-auto" : ""
+                }`}
+                title={isSidebarCollapsed ? "باز کردن منو" : "جمع کردن منو"}
+              >
+                {isSidebarCollapsed ? (
+                  <PanelRightOpen className="h-3.5 w-3.5" />
+                ) : (
+                  <PanelRightClose className="h-3.5 w-3.5" />
+                )}
+              </Button>
+            </div>
+
+            {/* Navigation Buttons */}
+            <nav className="space-y-0.5">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setActiveTab(item.id)}
+                    title={isSidebarCollapsed ? item.label : undefined}
+                    className={`w-full flex items-center rounded-lg text-xs transition-colors ${
+                      isActive
+                        ? "bg-primary/10 text-primary font-semibold"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                    } ${
+                      isSidebarCollapsed
+                        ? "justify-center h-9 w-full px-0"
+                        : "justify-start gap-2.5 px-2.5 py-2"
+                    }`}
+                  >
+                    <Icon
+                      className={`h-4 w-4 shrink-0 ${
+                        isActive ? "text-primary" : "text-muted-foreground/80"
+                      }`}
+                    />
+                    {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
+                  </button>
+                );
+              })}
+            </nav>
           </div>
-        )}
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Card className="border-border/60 p-3.5">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-500/10 text-sky-600">
-                <Building2 className="h-4 w-4" />
+          {/* Minimal Sidebar Footer */}
+          <div className="p-2.5 border-t border-border/30">
+            {!isSidebarCollapsed ? (
+              <div className="flex items-center justify-between px-2 text-[11px] text-muted-foreground/70">
+                <span className="truncate">دانشکده فنی</span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  <span className="text-[10px]">آنلاین</span>
+                </div>
               </div>
-              <div>
-                <p className="text-[11px] text-muted-foreground">دانشکده‌ها</p>
-                <p className="text-base font-bold">{faculties.length}</p>
+            ) : (
+              <div className="flex justify-center py-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" title="آنلاین" />
               </div>
+            )}
+          </div>
+        </aside>
+
+        {/* Main Content Area */}
+        <main className="flex-1 overflow-x-hidden p-4 sm:p-6 space-y-5 max-w-7xl">
+          {/* Banner notification */}
+          {actionMessage && (
+            <div className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-700 dark:text-emerald-300">
+              <Check className="h-4 w-4 shrink-0" />
+              <span>{actionMessage}</span>
             </div>
-          </Card>
-
-          <Card className="border-border/60 p-3.5">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600">
-                <GraduationCap className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-[11px] text-muted-foreground">رشته‌ها و گرایش‌ها</p>
-                <p className="text-base font-bold">
-                  {majors.length} رشته / {tracks.length} گرایش
-                </p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="border-border/60 p-3.5">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600">
-                <BookOpen className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-[11px] text-muted-foreground">کل دروس تعریف‌شده</p>
-                <p className="text-base font-bold">{courses.length} درس</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="border-border/60 p-3.5">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600">
-                <Users className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-[11px] text-muted-foreground">اساتید ثبت‌شده</p>
-                <p className="text-base font-bold">{professors.length} استاد</p>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Tab Navigation */}
-        <Tabs defaultValue="courses" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5 sm:w-auto sm:inline-flex">
-            <TabsTrigger value="courses" className="gap-1.5 text-xs">
-              <BookOpen className="h-3.5 w-3.5" />
-              دروس و پیش‌نیازها
-            </TabsTrigger>
-            <TabsTrigger value="structure" className="gap-1.5 text-xs">
-              <Building2 className="h-3.5 w-3.5" />
-              ساختار دانشگاه
-            </TabsTrigger>
-            <TabsTrigger value="categories" className="gap-1.5 text-xs">
-              <Layers className="h-3.5 w-3.5" />
-              دسته‌بندی و انتساب دروس
-            </TabsTrigger>
-            <TabsTrigger value="rules" className="gap-1.5 text-xs">
-              <GitBranch className="h-3.5 w-3.5" />
-              موتور قوانین و شبیه‌ساز
-            </TabsTrigger>
-            <TabsTrigger value="professors" className="gap-1.5 text-xs">
-              <Users className="h-3.5 w-3.5" />
-              اساتید
-            </TabsTrigger>
-          </TabsList>
+          )}
 
           {/* ========================================================= */}
           {/* TAB 1: COURSES & PREREQUISITES */}
           {/* ========================================================= */}
-          <TabsContent value="courses" className="space-y-4">
+          {activeTab === "courses" && (
+            <div className="space-y-4">
             <Card className="border-border/70 shadow-xs">
               <CardHeader className="flex flex-row items-center justify-between border-b pb-3">
                 <div>
@@ -732,12 +805,14 @@ export default function AdminDashboardPage() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          </div>
+          )}
 
           {/* ========================================================= */}
           {/* TAB 2: UNIVERSITY STRUCTURE */}
           {/* ========================================================= */}
-          <TabsContent value="structure" className="space-y-4">
+          {activeTab === "structure" && (
+            <div className="space-y-4">
             {/* Hierarchical Breadcrumb & Flow Path */}
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-2xs">
               <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -969,12 +1044,14 @@ export default function AdminDashboardPage() {
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
+            </div>
+          )}
 
           {/* ========================================================= */}
           {/* TAB 3: CATEGORIES */}
           {/* ========================================================= */}
-          <TabsContent value="categories" className="space-y-4">
+          {activeTab === "categories" && (
+            <div className="space-y-4">
             <div className="flex items-center justify-between bg-card p-3.5 rounded-xl border border-border/70">
               <div className="flex items-center gap-2 text-xs">
                 <span className="text-muted-foreground">گرایش انتخاب‌شده:</span>
@@ -1103,12 +1180,26 @@ export default function AdminDashboardPage() {
                 }}
               />
             )}
-          </TabsContent>
+          </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* TAB: OFFERINGS */}
+          {/* ========================================================= */}
+          {activeTab === "offerings" && (
+            <OfferingManager courses={courses} professors={professors} />
+          )}
+
+          {/* ========================================================= */}
+          {/* TAB: EVENTS & TIMETABLE */}
+          {/* ========================================================= */}
+          {activeTab === "events" && <EventManager />}
 
           {/* ========================================================= */}
           {/* TAB 4: RULES ENGINE & QUERY BUILDER */}
           {/* ========================================================= */}
-          <TabsContent value="rules" className="space-y-6">
+          {activeTab === "rules" && (
+            <div className="space-y-6">
             <div className="flex items-center justify-between bg-card p-3.5 rounded-xl border border-border/70">
               <div className="flex items-center gap-2 text-xs">
                 <span className="text-muted-foreground">گرایش فعال:</span>
@@ -1146,12 +1237,14 @@ export default function AdminDashboardPage() {
                 لطفاً ابتدا یک گرایش را از تب ساختار دانشگاه انتخاب کنید.
               </Card>
             )}
-          </TabsContent>
+          </div>
+          )}
 
           {/* ========================================================= */}
           {/* TAB 5: PROFESSORS */}
           {/* ========================================================= */}
-          <TabsContent value="professors" className="space-y-4">
+          {activeTab === "professors" && (
+            <div className="space-y-4">
             <Card className="border-border/70 shadow-xs">
               <CardHeader className="flex flex-row items-center justify-between border-b pb-3">
                 <div>
@@ -1209,9 +1302,17 @@ export default function AdminDashboardPage() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
-      </main>
+          </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* TAB 6: USERS & PERMISSIONS */}
+          {/* ========================================================= */}
+          {activeTab === "users" && user && (
+            <UserManager currentUser={user} />
+          )}
+        </main>
+      </div>
 
       {/* ========================================================= */}
       {/* MODALS */}
@@ -1241,6 +1342,12 @@ export default function AdminDashboardPage() {
             <div className="space-y-1.5">
               <Label className="text-xs">انتخاب درس وابسته:</Label>
               <Select
+                items={courses
+                  .filter((c) => c.id !== selectedCourseForPrereq?.id)
+                  .map((c) => ({
+                    value: c.id,
+                    label: `${c.name} (${c.code} - ${c.units} واحد)`,
+                  }))}
                 value={prereqForm.requiredCourseId}
                 onValueChange={(val) => val && setPrereqForm({ ...prereqForm, requiredCourseId: val })}
               >
@@ -1264,6 +1371,10 @@ export default function AdminDashboardPage() {
             <div className="space-y-1.5">
               <Label className="text-xs">نوع وابستگی:</Label>
               <Select
+                items={[
+                  { value: "prerequisite", label: "پیش‌نیاز (باید در ترم‌های قبل گذرانده شود)" },
+                  { value: "corequisite", label: "هم‌نیاز (می‌تواند در همان ترم یا قبل از آن اخذ شود)" },
+                ]}
                 value={prereqForm.type}
                 onValueChange={(val) =>
                   val &&
@@ -1379,6 +1490,11 @@ export default function AdminDashboardPage() {
               <div className="space-y-1">
                 <Label className="text-xs">ترم ارائه</Label>
                 <Select
+                  items={[
+                    { value: "both", label: "هردو ترم (پاییز و بهار)" },
+                    { value: "fall", label: "فقط ترم پاییز (فرد)" },
+                    { value: "spring", label: "فقط ترم بهار (زوج)" },
+                  ]}
                   value={courseForm.offeredIn}
                   onValueChange={(val) =>
                     val &&
@@ -1406,6 +1522,10 @@ export default function AdminDashboardPage() {
               <div className="space-y-1">
                 <Label className="text-xs">دسته بصری (برای گرایش فعلی):</Label>
                 <Select
+                  items={[
+                    { value: "none", label: "-- بدون دسته بصری --" },
+                    ...visualCats.map((c) => ({ value: c.id, label: c.name })),
+                  ]}
                   value={courseForm.visualCategoryId || "none"}
                   onValueChange={(val) =>
                     setCourseForm({
@@ -1646,6 +1766,12 @@ export default function AdminDashboardPage() {
             <div className="space-y-1">
               <Label className="text-xs">مرتبه علمی</Label>
               <Select
+                items={[
+                  { value: "استاد تمام", label: "استاد تمام" },
+                  { value: "دانشیار", label: "دانشیار" },
+                  { value: "استادیار", label: "استادیار" },
+                  { value: "مربی", label: "مربی" },
+                ]}
                 value={profForm.title}
                 onValueChange={(val) => val && setProfForm({ ...profForm, title: val })}
               >

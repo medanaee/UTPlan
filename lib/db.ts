@@ -226,6 +226,122 @@ export async function seedUTECEDemoData() {
     { id: "prf_4", facultyId, name: "دکتر موحدی", title: "استادیار", email: "movahedi@ut.ac.ir", createdAt: new Date().toISOString(), deletedAt: null },
   ];
 
+  // 9. Course Offerings
+  offeringsStore = [
+    {
+      id: "off_ds_1",
+      courseId: "crs_ds",
+      professorId: "prf_1",
+      groupCode: "01",
+      capacity: 45,
+      term: "1403-1",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: "off_ap_1",
+      courseId: "crs_ap",
+      professorId: "prf_2",
+      groupCode: "01",
+      capacity: 50,
+      term: "1403-1",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: "off_algo_1",
+      courseId: "crs_algo",
+      professorId: "prf_3",
+      groupCode: "01",
+      capacity: 40,
+      term: "1403-1",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: "off_db_1",
+      courseId: "crs_db",
+      professorId: "prf_4",
+      groupCode: "01",
+      capacity: 45,
+      term: "1403-1",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+  ];
+
+  // 10. Course Events & Slots
+  eventsStore = [
+    {
+      id: "evt_ds_1",
+      offeringId: "off_ds_1",
+      term: "1403-1",
+      location: "دانشکده فنی - کلاس ۱۰۲",
+      examDate: "1403/10/22",
+      examStartTime: "08:30",
+      examEndTime: "11:00",
+      isUserCustom: false,
+      userId: null,
+      globalEventId: null,
+      createdAt: new Date().toISOString(),
+      slots: [
+        { id: "slt_ds_1", eventId: "evt_ds_1", dayOfWeek: 0, startTime: "10:30", endTime: "12:00" },
+        { id: "slt_ds_2", eventId: "evt_ds_1", dayOfWeek: 2, startTime: "10:30", endTime: "12:00" },
+      ],
+    },
+    {
+      id: "evt_ap_1",
+      offeringId: "off_ap_1",
+      term: "1403-1",
+      location: "دانشکده فنی - کلاس ۲۰۴",
+      examDate: "1403/10/25",
+      examStartTime: "14:00",
+      examEndTime: "16:30",
+      isUserCustom: false,
+      userId: null,
+      globalEventId: null,
+      createdAt: new Date().toISOString(),
+      slots: [
+        { id: "slt_ap_1", eventId: "evt_ap_1", dayOfWeek: 1, startTime: "08:00", endTime: "09:30" },
+        { id: "slt_ap_2", eventId: "evt_ap_1", dayOfWeek: 3, startTime: "08:00", endTime: "09:30" },
+      ],
+    },
+    {
+      id: "evt_algo_1",
+      offeringId: "off_algo_1",
+      term: "1403-1",
+      location: "دانشکده فنی - تالار ۱",
+      examDate: "1403/10/28",
+      examStartTime: "09:00",
+      examEndTime: "11:30",
+      isUserCustom: false,
+      userId: null,
+      globalEventId: null,
+      createdAt: new Date().toISOString(),
+      slots: [
+        { id: "slt_algo_1", eventId: "evt_algo_1", dayOfWeek: 0, startTime: "13:30", endTime: "15:00" },
+        { id: "slt_algo_2", eventId: "evt_algo_1", dayOfWeek: 2, startTime: "13:30", endTime: "15:00" },
+      ],
+    },
+    {
+      id: "evt_db_1",
+      offeringId: "off_db_1",
+      term: "1403-1",
+      location: "دانشکده فنی - کلاس ۱۰۵",
+      examDate: "1403/11/02",
+      examStartTime: "08:30",
+      examEndTime: "11:00",
+      isUserCustom: false,
+      userId: null,
+      globalEventId: null,
+      createdAt: new Date().toISOString(),
+      slots: [
+        { id: "slt_db_1", eventId: "evt_db_1", dayOfWeek: 1, startTime: "10:30", endTime: "12:00" },
+        { id: "slt_db_2", eventId: "evt_db_1", dayOfWeek: 3, startTime: "10:30", endTime: "12:00" },
+      ],
+    },
+  ];
+
   return { success: true, message: "داده‌های نمونه دانشکده فنی دانشگاه تهران با موفقیت بارگذاری شدند." };
 }
 
@@ -729,5 +845,233 @@ export async function deleteProfessor(id: string): Promise<boolean> {
   const p = professorsStore.find((item) => item.id === id);
   if (!p) return false;
   p.deletedAt = new Date().toISOString();
+  return true;
+}
+
+// ----------------------------------------------------
+// COURSE OFFERINGS CRUD
+// ----------------------------------------------------
+export async function getOfferings(filter?: {
+  courseId?: string;
+  professorId?: string;
+  term?: string;
+}): Promise<CourseOffering[]> {
+  await initDatabase();
+  let list = offeringsStore.filter((o) => !o.deletedAt);
+
+  if (filter?.courseId) {
+    list = list.filter((o) => o.courseId === filter.courseId);
+  }
+  if (filter?.professorId) {
+    list = list.filter((o) => o.professorId === filter.professorId);
+  }
+  if (filter?.term) {
+    list = list.filter((o) => o.term === filter.term);
+  }
+
+  return list.map((off) => {
+    const course = coursesStore.find((c) => c.id === off.courseId);
+    const prof = professorsStore.find((p) => p.id === off.professorId);
+    return {
+      ...off,
+      courseName: course?.name || "نامشخص",
+      courseCode: course?.code || "",
+      courseUnits: course?.units || 3,
+      professorName: prof?.name || "نامشخص",
+      professorTitle: prof?.title || "استاد",
+    };
+  });
+}
+
+export async function createOffering(data: {
+  courseId: string;
+  professorId: string;
+  groupCode?: string;
+  capacity?: number;
+  term?: string;
+}): Promise<CourseOffering> {
+  await initDatabase();
+  const newOffering: CourseOffering = {
+    id: `off_${crypto.randomUUID().slice(0, 8)}`,
+    courseId: data.courseId,
+    professorId: data.professorId,
+    groupCode: data.groupCode || "01",
+    capacity: data.capacity || 40,
+    term: data.term || "1403-1",
+    createdAt: new Date().toISOString(),
+    deletedAt: null,
+  };
+  offeringsStore.push(newOffering);
+  const course = coursesStore.find((c) => c.id === newOffering.courseId);
+  const prof = professorsStore.find((p) => p.id === newOffering.professorId);
+  return {
+    ...newOffering,
+    courseName: course?.name || "",
+    courseCode: course?.code || "",
+    courseUnits: course?.units || 3,
+    professorName: prof?.name || "",
+    professorTitle: prof?.title || "",
+  };
+}
+
+export async function updateOffering(
+  id: string,
+  data: Partial<CourseOffering>
+): Promise<CourseOffering | null> {
+  await initDatabase();
+  const off = offeringsStore.find((o) => o.id === id && !o.deletedAt);
+  if (!off) return null;
+
+  if (data.courseId) off.courseId = data.courseId;
+  if (data.professorId) off.professorId = data.professorId;
+  if (data.groupCode !== undefined) off.groupCode = data.groupCode;
+  if (data.capacity !== undefined) off.capacity = data.capacity;
+  if (data.term !== undefined) off.term = data.term;
+
+  const course = coursesStore.find((c) => c.id === off.courseId);
+  const prof = professorsStore.find((p) => p.id === off.professorId);
+  return {
+    ...off,
+    courseName: course?.name || "",
+    courseCode: course?.code || "",
+    courseUnits: course?.units || 3,
+    professorName: prof?.name || "",
+    professorTitle: prof?.title || "",
+  };
+}
+
+export async function deleteOffering(id: string): Promise<boolean> {
+  await initDatabase();
+  const off = offeringsStore.find((o) => o.id === id);
+  if (!off) return false;
+  off.deletedAt = new Date().toISOString();
+  return true;
+}
+
+// ----------------------------------------------------
+// COURSE EVENTS & SLOTS CRUD
+// ----------------------------------------------------
+export async function getEvents(filter?: {
+  offeringId?: string;
+  term?: string;
+  userId?: string | null;
+}): Promise<CourseEvent[]> {
+  await initDatabase();
+  let list = eventsStore;
+
+  if (filter?.offeringId) {
+    list = list.filter((e) => e.offeringId === filter.offeringId);
+  }
+  if (filter?.term) {
+    list = list.filter((e) => e.term === filter.term);
+  }
+  if (filter?.userId !== undefined) {
+    list = list.filter((e) => e.userId === filter.userId);
+  }
+
+  return list.map((evt) => {
+    const offering = offeringsStore.find((o) => o.id === evt.offeringId);
+    const course = offering ? coursesStore.find((c) => c.id === offering.courseId) : null;
+    const prof = offering ? professorsStore.find((p) => p.id === offering.professorId) : null;
+    return {
+      ...evt,
+      courseName: course?.name,
+      courseCode: course?.code,
+      professorName: prof?.name,
+      groupCode: offering?.groupCode,
+    };
+  });
+}
+
+export async function createEvent(data: {
+  offeringId: string;
+  term?: string;
+  location?: string;
+  examDate?: string;
+  examStartTime?: string;
+  examEndTime?: string;
+  isUserCustom?: boolean;
+  userId?: string | null;
+  slots?: { dayOfWeek: number; startTime: string; endTime: string }[];
+}): Promise<CourseEvent> {
+  await initDatabase();
+  const eventId = `evt_${crypto.randomUUID().slice(0, 8)}`;
+  const slots: CourseEventSlot[] = (data.slots || []).map((s) => ({
+    id: `slt_${crypto.randomUUID().slice(0, 8)}`,
+    eventId,
+    dayOfWeek: s.dayOfWeek,
+    startTime: s.startTime,
+    endTime: s.endTime,
+  }));
+
+  const newEvent: CourseEvent = {
+    id: eventId,
+    offeringId: data.offeringId,
+    term: data.term || "1403-1",
+    location: data.location || "",
+    examDate: data.examDate || "",
+    examStartTime: data.examStartTime || "",
+    examEndTime: data.examEndTime || "",
+    isUserCustom: data.isUserCustom || false,
+    userId: data.userId || null,
+    globalEventId: null,
+    createdAt: new Date().toISOString(),
+    slots,
+  };
+
+  eventsStore.push(newEvent);
+  const offering = offeringsStore.find((o) => o.id === newEvent.offeringId);
+  const course = offering ? coursesStore.find((c) => c.id === offering.courseId) : null;
+  const prof = offering ? professorsStore.find((p) => p.id === offering.professorId) : null;
+  return {
+    ...newEvent,
+    courseName: course?.name,
+    courseCode: course?.code,
+    professorName: prof?.name,
+    groupCode: offering?.groupCode,
+  };
+}
+
+export async function updateEvent(
+  id: string,
+  data: Partial<CourseEvent> & { slots?: { dayOfWeek: number; startTime: string; endTime: string }[] }
+): Promise<CourseEvent | null> {
+  await initDatabase();
+  const evt = eventsStore.find((e) => e.id === id);
+  if (!evt) return null;
+
+  if (data.location !== undefined) evt.location = data.location;
+  if (data.term !== undefined) evt.term = data.term;
+  if (data.examDate !== undefined) evt.examDate = data.examDate;
+  if (data.examStartTime !== undefined) evt.examStartTime = data.examStartTime;
+  if (data.examEndTime !== undefined) evt.examEndTime = data.examEndTime;
+
+  if (data.slots !== undefined) {
+    evt.slots = data.slots.map((s) => ({
+      id: `slt_${crypto.randomUUID().slice(0, 8)}`,
+      eventId: id,
+      dayOfWeek: s.dayOfWeek,
+      startTime: s.startTime,
+      endTime: s.endTime,
+    }));
+  }
+
+  const offering = offeringsStore.find((o) => o.id === evt.offeringId);
+  const course = offering ? coursesStore.find((c) => c.id === offering.courseId) : null;
+  const prof = offering ? professorsStore.find((p) => p.id === offering.professorId) : null;
+  return {
+    ...evt,
+    courseName: course?.name,
+    courseCode: course?.code,
+    professorName: prof?.name,
+    groupCode: offering?.groupCode,
+  };
+}
+
+export async function deleteEvent(id: string): Promise<boolean> {
+  await initDatabase();
+  const idx = eventsStore.findIndex((e) => e.id === id);
+  if (idx === -1) return false;
+  eventsStore.splice(idx, 1);
   return true;
 }

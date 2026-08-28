@@ -367,27 +367,34 @@ export function RuleSandboxTester({
                 </div>
 
                 {/* Add course select */}
-                <Select
-                  value=""
-                  onValueChange={(val) => {
-                    if (val) handleAddCourseToTerm(termNum, val);
-                  }}
-                >
-                  <SelectTrigger size="sm" className="h-7 w-full text-[11px] justify-between">
-                    <SelectValue placeholder="+ افزودن درس به این ترم" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {courses
-                        .filter((c) => !allSelectedIds.has(c.id))
-                        .map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.name} ({c.units} واحد)
-                          </SelectItem>
-                        ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                {(() => {
+                  const availableCourseItems = courses
+                    .filter((c) => !allSelectedIds.has(c.id))
+                    .map((c) => ({ value: c.id, label: `${c.name} (${c.units} واحد)` }));
+
+                  return (
+                    <Select
+                      items={availableCourseItems}
+                      value=""
+                      onValueChange={(val) => {
+                        if (val) handleAddCourseToTerm(termNum, val);
+                      }}
+                    >
+                      <SelectTrigger size="sm" className="h-7 w-full text-[11px] justify-between">
+                        <SelectValue placeholder="+ افزودن درس به این ترم" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {availableCourseItems.map((c) => (
+                            <SelectItem key={c.value} value={c.value}>
+                              {c.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  );
+                })()}
               </div>
             );
           })}

@@ -233,7 +233,15 @@ export function CourseCategoryManager({
               <Search className="pointer-events-none absolute right-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
             </div>
 
-            <Select value={filterVcat} onValueChange={(val) => val && setFilterVcat(val)}>
+            <Select
+              items={[
+                { value: "all", label: "تمام دسته‌ها" },
+                { value: "unassigned", label: "دروس دسته‌بندی‌نشده" },
+                ...visualCategories.map((vc) => ({ value: vc.id, label: vc.name })),
+              ]}
+              value={filterVcat}
+              onValueChange={(val) => val && setFilterVcat(val)}
+            >
               <SelectTrigger size="sm" className="h-8 min-w-[150px] text-xs">
                 <SelectValue placeholder="فیلتر دسته‌بندی..." />
               </SelectTrigger>
@@ -258,7 +266,14 @@ export function CourseCategoryManager({
                 {selectedCourseIds.size} درس انتخاب شده:
               </span>
 
-              <Select value={bulkVcat} onValueChange={(val) => val && setBulkVcat(val)}>
+              <Select
+                items={[
+                  { value: "none", label: "بدون دسته بصری" },
+                  ...visualCategories.map((vc) => ({ value: vc.id, label: vc.name })),
+                ]}
+                value={bulkVcat}
+                onValueChange={(val) => val && setBulkVcat(val)}
+              >
                 <SelectTrigger size="sm" className="h-7 min-w-[130px] text-xs bg-background">
                   <SelectValue placeholder="دسته بصری..." />
                 </SelectTrigger>
@@ -274,7 +289,14 @@ export function CourseCategoryManager({
                 </SelectContent>
               </Select>
 
-              <Select value={bulkRcat} onValueChange={(val) => val && setBulkRcat(val)}>
+              <Select
+                items={[
+                  { value: "none", label: "بدون دسته قوانین" },
+                  ...ruleCategories.map((rc) => ({ value: rc.id, label: rc.name })),
+                ]}
+                value={bulkRcat}
+                onValueChange={(val) => val && setBulkRcat(val)}
+              >
                 <SelectTrigger size="sm" className="h-7 min-w-[130px] text-xs bg-background">
                   <SelectValue placeholder="دسته قوانین..." />
                 </SelectTrigger>
@@ -358,6 +380,10 @@ export function CourseCategoryManager({
                           />
                         )}
                         <Select
+                          items={[
+                            { value: "none", label: "-- بدون دسته بصری --" },
+                            ...visualCategories.map((vc) => ({ value: vc.id, label: vc.name })),
+                          ]}
                           value={currentVcatId}
                           onValueChange={(val) =>
                             val && handleUpdateCourseAssignment(course.id, "vcatId", val)
@@ -389,6 +415,13 @@ export function CourseCategoryManager({
                     {/* Rule Category Select */}
                     <td className="py-2.5 px-3">
                       <Select
+                        items={[
+                          { value: "none", label: "-- بدون دسته قوانین --" },
+                          ...ruleCategories.map((rc) => ({
+                            value: rc.id,
+                            label: `${rc.name}${rc.minCredits ? ` (حداقل ${rc.minCredits} واحد)` : ""}`,
+                          })),
+                        ]}
                         value={currentRcatId}
                         onValueChange={(val) =>
                           val && handleUpdateCourseAssignment(course.id, "rcatId", val)

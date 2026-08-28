@@ -443,12 +443,24 @@ interface RuleLeafItemProps {
   onDelete: () => void;
 }
 
+const RULE_TYPE_ITEMS = [
+  { value: "MIN_CREDITS_IN_CATEGORY", label: "حداقل N واحد از دسته قوانین" },
+  { value: "ALL_COURSES_IN_CATEGORY", label: "گذراندن تمام دروس دسته قوانین" },
+  { value: "EXACT_N_COURSES_IN_CATEGORY", label: "دقیقاً N درس از دسته قوانین" },
+  { value: "MIN_TOTAL_CREDITS_BEFORE_COURSE", label: "حداقل N واحد قبل از اخذ درس خاص" },
+  { value: "MANDATORY_COURSES", label: "دروس اجباری مشخص" },
+];
+
 function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: RuleLeafItemProps) {
+  const rcatItems = ruleCategories.map((rc) => ({ value: rc.id, label: rc.name }));
+  const courseItems = courses.map((c) => ({ value: c.id, label: `${c.name} (${c.code})` }));
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/70 bg-card p-3 shadow-2xs hover:border-primary/40 transition-colors">
       <div className="flex flex-wrap items-center gap-2.5 text-xs">
         {/* Rule Type Selector */}
         <Select
+          items={RULE_TYPE_ITEMS}
           value={leaf.type}
           onValueChange={(val) =>
             val &&
@@ -463,11 +475,11 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
-              <SelectItem value="MIN_CREDITS_IN_CATEGORY">حداقل N واحد از دسته قوانین</SelectItem>
-              <SelectItem value="ALL_COURSES_IN_CATEGORY">گذراندن تمام دروس دسته قوانین</SelectItem>
-              <SelectItem value="EXACT_N_COURSES_IN_CATEGORY">دقیقاً N درس از دسته قوانین</SelectItem>
-              <SelectItem value="MIN_TOTAL_CREDITS_BEFORE_COURSE">حداقل N واحد قبل از اخذ درس خاص</SelectItem>
-              <SelectItem value="MANDATORY_COURSES">دروس اجباری مشخص</SelectItem>
+              {RULE_TYPE_ITEMS.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
             </SelectGroup>
           </SelectContent>
         </Select>
@@ -477,6 +489,7 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
           <div className="flex items-center gap-1.5">
             <span className="text-muted-foreground">از دسته:</span>
             <Select
+              items={rcatItems}
               value={leaf.ruleCategoryId || ruleCategories[0]?.id || ""}
               onValueChange={(val) => val && onUpdate({ ...leaf, ruleCategoryId: val })}
             >
@@ -485,9 +498,9 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  {ruleCategories.map((rc) => (
-                    <SelectItem key={rc.id} value={rc.id}>
-                      {rc.name}
+                  {rcatItems.map((rc) => (
+                    <SelectItem key={rc.value} value={rc.value}>
+                      {rc.label}
                     </SelectItem>
                   ))}
                 </SelectGroup>
@@ -511,6 +524,7 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
           <div className="flex items-center gap-1.5">
             <span className="text-muted-foreground">از دسته قوانین:</span>
             <Select
+              items={rcatItems}
               value={leaf.ruleCategoryId || ruleCategories[0]?.id || ""}
               onValueChange={(val) => val && onUpdate({ ...leaf, ruleCategoryId: val })}
             >
@@ -519,9 +533,9 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  {ruleCategories.map((rc) => (
-                    <SelectItem key={rc.id} value={rc.id}>
-                      {rc.name}
+                  {rcatItems.map((rc) => (
+                    <SelectItem key={rc.value} value={rc.value}>
+                      {rc.label}
                     </SelectItem>
                   ))}
                 </SelectGroup>
@@ -534,6 +548,7 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
           <div className="flex items-center gap-1.5">
             <span className="text-muted-foreground">از دسته:</span>
             <Select
+              items={rcatItems}
               value={leaf.ruleCategoryId || ruleCategories[0]?.id || ""}
               onValueChange={(val) => val && onUpdate({ ...leaf, ruleCategoryId: val })}
             >
@@ -542,9 +557,9 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  {ruleCategories.map((rc) => (
-                    <SelectItem key={rc.id} value={rc.id}>
-                      {rc.name}
+                  {rcatItems.map((rc) => (
+                    <SelectItem key={rc.value} value={rc.value}>
+                      {rc.label}
                     </SelectItem>
                   ))}
                 </SelectGroup>
@@ -568,6 +583,7 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
           <div className="flex items-center gap-1.5">
             <span className="text-muted-foreground">قبل از درس:</span>
             <Select
+              items={courseItems}
               value={leaf.targetCourseId || courses[0]?.id || ""}
               onValueChange={(val) => val && onUpdate({ ...leaf, targetCourseId: val })}
             >
@@ -576,9 +592,9 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  {courses.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name} ({c.code})
+                  {courseItems.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>
+                      {c.label}
                     </SelectItem>
                   ))}
                 </SelectGroup>
@@ -604,6 +620,7 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
           <div className="flex items-center gap-1.5">
             <span className="text-muted-foreground">درس اجباری:</span>
             <Select
+              items={courseItems}
               value={leaf.mandatoryCourseIds?.[0] || courses[0]?.id || ""}
               onValueChange={(val) =>
                 val &&
@@ -618,9 +635,9 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  {courses.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name} ({c.code})
+                  {courseItems.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>
+                      {c.label}
                     </SelectItem>
                   ))}
                 </SelectGroup>
