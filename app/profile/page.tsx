@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -119,8 +119,32 @@ export default function ProfilePage() {
   }, [router]);
 
   // Filtered Majors & Tracks
-  const filteredMajors = majors.filter((m) => !facultyId || m.facultyId === facultyId);
-  const filteredTracks = tracks.filter((t) => !majorId || t.majorId === majorId);
+  const filteredMajors = useMemo(() => majors.filter((m) => !facultyId || m.facultyId === facultyId), [majors, facultyId]);
+  const filteredTracks = useMemo(() => tracks.filter((t) => !majorId || t.majorId === majorId), [tracks, majorId]);
+
+  const facultyOptions = useMemo(
+    () => faculties.map((f) => ({ value: f.id, label: `${f.name} (${f.code})` })),
+    [faculties]
+  );
+  const majorOptions = useMemo(
+    () => filteredMajors.map((m) => ({ value: m.id, label: `${m.name} (${m.code})` })),
+    [filteredMajors]
+  );
+  const trackOptions = useMemo(
+    () => filteredTracks.map((t) => ({ value: t.id, label: `${t.name} (${t.code})` })),
+    [filteredTracks]
+  );
+  const yearOptions = useMemo(
+    () => ACADEMIC_YEARS.map((yr) => ({ value: yr, label: `سال ${yr}` })),
+    []
+  );
+  const semesterTypeOptions = useMemo(
+    () => [
+      { value: "1", label: "پاییز (نیمسال اول)" },
+      { value: "2", label: "بهار (نیمسال دوم)" },
+    ],
+    []
+  );
 
   // Upload Avatar to Cloudflare / local dev
   const handleUploadAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -368,6 +392,7 @@ export default function ProfilePage() {
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold">دانشکده</Label>
                   <Select
+                    items={facultyOptions}
                     value={facultyId}
                     onValueChange={(val) => {
                       if (val) {
@@ -387,9 +412,9 @@ export default function ProfilePage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
-                        {faculties.map((f) => (
-                          <SelectItem key={f.id} value={f.id}>
-                            {f.name} ({f.code})
+                        {facultyOptions.map((f) => (
+                          <SelectItem key={f.value} value={f.value}>
+                            {f.label}
                           </SelectItem>
                         ))}
                       </SelectGroup>
@@ -400,6 +425,7 @@ export default function ProfilePage() {
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold">رشته تحصیلی</Label>
                   <Select
+                    items={majorOptions}
                     value={majorId}
                     onValueChange={(val) => {
                       if (val) {
@@ -414,9 +440,9 @@ export default function ProfilePage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
-                        {filteredMajors.map((m) => (
-                          <SelectItem key={m.id} value={m.id}>
-                            {m.name} ({m.code})
+                        {majorOptions.map((m) => (
+                          <SelectItem key={m.value} value={m.value}>
+                            {m.label}
                           </SelectItem>
                         ))}
                       </SelectGroup>
@@ -430,6 +456,7 @@ export default function ProfilePage() {
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold">گرایش تخصصی</Label>
                   <Select
+                    items={trackOptions}
                     value={trackId}
                     onValueChange={(val) => val && setTrackId(val)}
                   >
@@ -438,9 +465,9 @@ export default function ProfilePage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
-                        {filteredTracks.map((t) => (
-                          <SelectItem key={t.id} value={t.id}>
-                            {t.name} ({t.code})
+                        {trackOptions.map((t) => (
+                          <SelectItem key={t.value} value={t.value}>
+                            {t.label}
                           </SelectItem>
                         ))}
                       </SelectGroup>
@@ -452,29 +479,32 @@ export default function ProfilePage() {
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold">نیمسال ورود به دانشگاه</Label>
                   <div className="grid grid-cols-2 gap-2">
-                    <Select value={entryYear} onValueChange={(val) => val && setEntryYear(val)}>
+                    <Select items={yearOptions} value={entryYear} onValueChange={(val) => val && setEntryYear(val)}>
                       <SelectTrigger size="sm" className="w-full text-xs h-9">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectGroup>
-                          {ACADEMIC_YEARS.map((yr) => (
-                            <SelectItem key={yr} value={yr}>
-                              سال {yr}
+                          {yearOptions.map((yr) => (
+                            <SelectItem key={yr.value} value={yr.value}>
+                              {yr.label}
                             </SelectItem>
                           ))}
                         </SelectGroup>
                       </SelectContent>
                     </Select>
 
-                    <Select value={entryType} onValueChange={(val) => val && setEntryType(val)}>
+                    <Select items={semesterTypeOptions} value={entryType} onValueChange={(val) => val && setEntryType(val)}>
                       <SelectTrigger size="sm" className="w-full text-xs h-9">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectGroup>
-                          <SelectItem value="1">پاییز (نیمسال اول)</SelectItem>
-                          <SelectItem value="2">بهار (نیمسال دوم)</SelectItem>
+                          {semesterTypeOptions.map((st) => (
+                            <SelectItem key={st.value} value={st.value}>
+                              {st.label}
+                            </SelectItem>
+                          ))}
                         </SelectGroup>
                       </SelectContent>
                     </Select>

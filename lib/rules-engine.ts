@@ -152,7 +152,7 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
             issues.push({
               id: `issue_prereq_order_${entry.courseId}_${prereq.requiredCourseId}`,
               type: "error",
-              message: `پیش‌نیاز «${targetName}» (ترم ${termP}) باید در ترم‌های قبل از درس «${courseName}» (ترم ${termC}) گذرانده شود.`,
+              message: `درس «${targetName}» (ترم ${termP}) پیش نیاز «${courseName}» (ترم ${termC}) است و باید در ترم‌های قبل از آن گذرانده شود.`,
               termIndex: termC,
               courseId: entry.courseId,
             });
@@ -162,7 +162,7 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
             issues.push({
               id: `issue_coreq_order_${entry.courseId}_${prereq.requiredCourseId}`,
               type: "error",
-              message: `هم‌نیاز «${targetName}» (ترم ${termP}) باید همزمان یا قبل از درس «${courseName}» (ترم ${termC}) اخذ شود.`,
+              message: `درس «${targetName}» (ترم ${termP}) هم نیاز «${courseName}» (ترم ${termC}) است و باید باید همزمان یا قبل از آن گذرانده شود.`,
               termIndex: termC,
               courseId: entry.courseId,
             });

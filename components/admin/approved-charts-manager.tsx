@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
   GraduationCap,
@@ -71,6 +71,18 @@ export function ApprovedChartsManager({
     (c) => c.trackId === selectedTrackId && c.isApprovedDefault
   );
   const currentApprovedChart = trackApprovedCharts[0];
+
+  const cloneOptions = useMemo(
+    () =>
+      allApprovedCharts.map((c) => {
+        const trk = tracks.find((t) => t.id === c.trackId);
+        return {
+          value: c.id,
+          label: `${c.title} (${trk?.name || "گرایش"})`,
+        };
+      }),
+    [allApprovedCharts, tracks]
+  );
 
   // Load all approved charts
   const loadApprovedCharts = async () => {
@@ -329,7 +341,8 @@ export function ApprovedChartsManager({
                           <div className="flex flex-wrap items-center gap-2">
                             {chart.isPrimaryApproved ? (
                               <Badge className="bg-emerald-600 text-white dark:bg-emerald-500 dark:text-black border-transparent text-[11px] h-5.5 font-bold gap-1 shadow-2xs">
-                                🌟 چارت مصوب رسمی اصلی
+                                <Sparkles className="h-3 w-3 shrink-0" />
+                                <span>چارت مصوب رسمی اصلی</span>
                               </Badge>
                             ) : (
                               <div className="flex items-center gap-2">
@@ -618,19 +631,21 @@ export function ApprovedChartsManager({
           <form onSubmit={handleCloneApprovedChart} className="space-y-4 pt-2">
             <div className="space-y-1.5">
               <Label className="text-xs">انتخاب چارت مبدا برای کپی</Label>
-              <Select value={sourceChartIdToClone} onValueChange={setSourceChartIdToClone} required>
+              <Select
+                items={cloneOptions}
+                value={sourceChartIdToClone}
+                onValueChange={setSourceChartIdToClone}
+                required
+              >
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue placeholder="چارت مصوب مبدا را انتخاب کنید..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {allApprovedCharts.map((c) => {
-                    const trk = tracks.find((t) => t.id === c.trackId);
-                    return (
-                      <SelectItem key={c.id} value={c.id} className="text-xs">
-                        {c.title} ({trk?.name || "گرایش"})
-                      </SelectItem>
-                    );
-                  })}
+                  {cloneOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                      {opt.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -57,6 +57,25 @@ export default function ChartsPage() {
   const [selectedTrackId, setSelectedTrackId] = useState("");
   const [selectedTemplateChartId, setSelectedTemplateChartId] = useState("empty");
   const [isCreating, setIsCreating] = useState(false);
+
+  const trackSelectItems = useMemo(
+    () => tracks.map((t) => ({ value: t.id, label: `${t.name} (${t.code})` })),
+    [tracks]
+  );
+
+  const templateSelectItems = useMemo(() => {
+    const items = [{ value: "empty", label: "-- چارت خام (بدون درس) --" }];
+    const approved = charts.filter(
+      (c) => c.isApprovedDefault && (!selectedTrackId || c.trackId === selectedTrackId)
+    );
+    approved.forEach((ac) => {
+      items.push({
+        value: ac.id,
+        label: `${ac.title} (${ac.semesters.length} ترم)`,
+      });
+    });
+    return items;
+  }, [charts, selectedTrackId]);
 
   const loadData = async () => {
     try {
@@ -410,6 +429,7 @@ export default function ChartsPage() {
                 </Link>
               </div>
               <Select
+                items={trackSelectItems}
                 value={selectedTrackId}
                 onValueChange={(val) => val && setSelectedTrackId(val)}
               >
@@ -418,9 +438,9 @@ export default function ChartsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    {tracks.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.name} ({t.code})
+                    {trackSelectItems.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>
+                        {t.label}
                       </SelectItem>
                     ))}
                   </SelectGroup>
@@ -432,6 +452,7 @@ export default function ChartsPage() {
             <div className="space-y-1">
               <Label className="text-xs">الگوی اولیه چارت (اختیاری)</Label>
               <Select
+                items={templateSelectItems}
                 value={selectedTemplateChartId}
                 onValueChange={(val) => setSelectedTemplateChartId(val || "empty")}
               >
@@ -440,14 +461,16 @@ export default function ChartsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    <SelectItem value="empty">-- چارت خام (بدون درس) --</SelectItem>
-                    {approvedCharts
-                      .filter((c) => !selectedTrackId || c.trackId === selectedTrackId)
-                      .map((ac) => (
-                        <SelectItem key={ac.id} value={ac.id}>
-                          ✨ {ac.title} ({ac.semesters.length} ترم)
-                        </SelectItem>
-                      ))}
+                    {templateSelectItems.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        <div className="flex items-center gap-1.5">
+                          {opt.value !== "empty" && (
+                            <Sparkles className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          )}
+                          <span>{opt.label}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
                   </SelectGroup>
                 </SelectContent>
               </Select>
