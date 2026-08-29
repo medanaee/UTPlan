@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -681,13 +682,12 @@ export function EventManager({
 
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold">ظرفیت کلاس (نفر):</Label>
-                <Input
-                  type="number"
+                <NumberInput
                   min={1}
                   max={300}
                   value={capacity}
-                  onChange={(e) => setCapacity(parseInt(e.target.value) || 40)}
-                  className="h-8 text-xs"
+                  onChange={(val) => setCapacity(parseInt(String(val)) || 40)}
+                  sizeVariant="sm"
                   required
                 />
               </div>
@@ -923,12 +923,11 @@ export function EventManager({
           <form onSubmit={handleCreateNewTerm} className="space-y-4 pt-2">
             <div className="space-y-2">
               <Label className="text-sm font-semibold">سال تحصیلی:</Label>
-              <Input
-                type="number"
+              <NumberInput
                 min={1350}
                 max={1499}
                 value={newTermYear}
-                onChange={(e) => setNewTermYear(e.target.value)}
+                onChange={(val) => setNewTermYear(String(val))}
                 placeholder="مثلاً ۱۴۰۴"
                 required
                 className="w-full"

@@ -13,6 +13,7 @@ import {
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -623,13 +624,12 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">تعداد واحد:</Label>
-                <Input
-                  type="number"
+                <NumberInput
                   min={1}
                   max={6}
                   value={courseForm.units}
-                  onChange={(e) => setCourseForm({ ...courseForm, units: parseInt(e.target.value) || 3 })}
-                  className="h-8 text-xs"
+                  onChange={(val) => setCourseForm({ ...courseForm, units: parseInt(String(val)) || 3 })}
+                  sizeVariant="sm"
                 />
               </div>
               <div className="space-y-1">

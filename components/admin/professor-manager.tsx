@@ -378,6 +378,18 @@ export function ProfessorManager({
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-3.5 pt-2">
+            {/* Target Faculty Indicator */}
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-2.5 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs">
+                <Building2 className="h-4 w-4 text-primary shrink-0" />
+                <span className="text-muted-foreground">دانشکده:</span>
+                <span className="font-bold text-foreground">
+                  {currentFaculty ? `${currentFaculty.name} (${currentFaculty.code})` : "انتخاب نشده"}
+                </span>
+              </div>
+              <Badge variant="outline" className="text-[10px]">تثبیت‌شده</Badge>
+            </div>
+
             {/* Photo Upload Area */}
             <div className="flex items-center gap-3.5 p-3 rounded-xl border border-border/70 bg-muted/15">
               <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-border/80 bg-background overflow-hidden shadow-2xs">
@@ -436,57 +448,31 @@ export function ProfessorManager({
                 placeholder="مثلاً دکتر علی محمدی"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="h-8 text-xs"
+                className="h-9 text-sm"
               />
             </div>
 
-            {/* Faculty & Rank (2 columns) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Faculty */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">دانشکده:</Label>
-                <Select
-                  items={modalFacultyOptions}
-                  value={form.facultyId}
-                  onValueChange={(val) => val && setForm({ ...form, facultyId: val })}
-                >
-                  <SelectTrigger size="sm" className="w-full text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {modalFacultyOptions.map((f) => (
-                        <SelectItem key={f.value} value={f.value}>
-                          {f.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Title / Rank */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">مرتبه علمی:</Label>
-                <Select
-                  items={rankOptions}
-                  value={form.title}
-                  onValueChange={(val) => val && setForm({ ...form, title: val })}
-                >
-                  <SelectTrigger size="sm" className="w-full text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {rankOptions.map((r) => (
-                        <SelectItem key={r.value} value={r.value}>
-                          {r.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* Title / Rank */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">مرتبه علمی:</Label>
+              <Select
+                items={rankOptions}
+                value={form.title}
+                onValueChange={(val) => val && setForm({ ...form, title: val })}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {rankOptions.map((r) => (
+                      <SelectItem key={r.value} value={r.value}>
+                        {r.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Email */}
@@ -497,7 +483,7 @@ export function ProfessorManager({
                 placeholder="mohammadi@ut.ac.ir"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="h-8 text-xs"
+                className="h-9 text-sm"
                 dir="ltr"
               />
             </div>
@@ -505,9 +491,8 @@ export function ProfessorManager({
             <DialogFooter className="pt-2">
               <Button
                 type="submit"
-                size="sm"
                 disabled={isSubmitting || uploadingImage || !form.name.trim()}
-                className="w-full h-8 text-xs font-semibold"
+                className="w-full font-semibold"
               >
                 {isSubmitting
                   ? "در حال ذخیره..."

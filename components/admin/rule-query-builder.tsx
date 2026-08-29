@@ -16,6 +16,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -514,13 +515,13 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
             </Select>
 
             <span className="text-muted-foreground">حداقل:</span>
-            <Input
-              type="number"
+            <NumberInput
               min={1}
               max={150}
               value={leaf.minCredits || 20}
-              onChange={(e) => onUpdate({ ...leaf, minCredits: parseInt(e.target.value) || 0 })}
-              className="h-8 w-16 text-xs text-center"
+              onChange={(val) => onUpdate({ ...leaf, minCredits: parseInt(String(val)) || 0 })}
+              sizeVariant="sm"
+              className="w-20"
             />
             <span className="text-muted-foreground">واحد</span>
           </div>
@@ -573,13 +574,13 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
             </Select>
 
             <span className="text-muted-foreground">دقیقاً:</span>
-            <Input
-              type="number"
+            <NumberInput
               min={1}
               max={20}
               value={leaf.exactCount || 3}
-              onChange={(e) => onUpdate({ ...leaf, exactCount: parseInt(e.target.value) || 1 })}
-              className="h-8 w-16 text-xs text-center"
+              onChange={(val) => onUpdate({ ...leaf, exactCount: parseInt(String(val)) || 1 })}
+              sizeVariant="sm"
+              className="w-20"
             />
             <span className="text-muted-foreground">درس</span>
           </div>
@@ -608,15 +609,15 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
             </Select>
 
             <span className="text-muted-foreground">حداقل:</span>
-            <Input
-              type="number"
+            <NumberInput
               min={1}
               max={140}
               value={leaf.requiredCreditsBefore || 80}
-              onChange={(e) =>
-                onUpdate({ ...leaf, requiredCreditsBefore: parseInt(e.target.value) || 0 })
+              onChange={(val) =>
+                onUpdate({ ...leaf, requiredCreditsBefore: parseInt(String(val)) || 0 })
               }
-              className="h-8 w-16 text-xs text-center"
+              sizeVariant="sm"
+              className="w-20"
             />
             <span className="text-muted-foreground">واحد</span>
           </div>
