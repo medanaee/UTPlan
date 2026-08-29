@@ -155,7 +155,10 @@ export default function AdminDashboardPage() {
   });
   const [prereqError, setPrereqError] = useState<string | null>(null);
   const [vcatForm, setVcatForm] = useState({ name: "", color: "#3b82f6", sortOrder: 1 });
-  const [rcatForm, setRcatForm] = useState({ name: "" });
+  const [rcatForm, setRcatForm] = useState<{ name: string; parentId: string | null }>({
+    name: "",
+    parentId: null,
+  });
 
   // Status message
   const [actionMessage, setActionMessage] = useState<string | null>(null);
@@ -354,7 +357,7 @@ export default function AdminDashboardPage() {
     }).then((r) => r.json());
     if (res.success) {
       setRcatModalOpen(false);
-      setRcatForm({ name: "" });
+      setRcatForm({ name: "", parentId: null });
       const updated = await fetch(`/api/categories?trackId=${selectedTrackId}`).then((r) => r.json());
       if (updated.success) setRuleCats(updated.data.rule);
     }
@@ -1098,47 +1101,193 @@ export default function AdminDashboardPage() {
                 </CardContent>
               </Card>
 
-              {/* Rule Categories */}
+              {/* Rule Categories (Hierarchical Tree) */}
               <Card className="border-border/70">
                 <CardHeader className="flex flex-row items-center justify-between pb-2 border-b">
                   <div>
-                    <CardTitle className="text-xs font-bold">دسته‌های قوانین (درختی و شروط واحدی)</CardTitle>
+                    <CardTitle className="text-xs font-bold">دسته‌های قوانین (درختی و تو‌در‌تو)</CardTitle>
                     <CardDescription className="text-[11px]">
-                      این دسته‌ها مبنای ساخت درخت شروط فارغ‌التحصیلی و محاسبه حداقل واحدها هستند.
+                      تعریف ساختار درختی و دسته‌های والد و زیردسته جهت انتساب دروس و ساخت قوانین فارغ‌التحصیلی
                     </CardDescription>
                   </div>
                   <Button
                     size="sm"
                     disabled={!selectedTrackId}
-                    onClick={() => setRcatModalOpen(true)}
+                    onClick={() => {
+                      setRcatForm({ name: "", parentId: null });
+                      setRcatModalOpen(true);
+                    }}
                     className="h-7 text-[11px] gap-1"
                   >
-                    <Plus className="h-3 w-3" /> افزودن
+                    <Plus className="h-3 w-3" /> دسته اصلی
                   </Button>
                 </CardHeader>
-                <CardContent className="p-3 space-y-2">
-                  {ruleCats.map((rcat) => (
-                    <div
-                      key={rcat.id}
-                      className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/20 p-2.5 text-xs"
-                    >
-                      <span className="font-semibold text-foreground">{rcat.name}</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={async () => {
-                          await fetch(`/api/categories?id=${rcat.id}&type=rule`, { method: "DELETE" });
-                          const res = await fetch(`/api/categories?trackId=${selectedTrackId}`).then((r) =>
-                            r.json()
-                          );
-                          if (res.success) setRuleCats(res.data.rule);
-                        }}
-                        className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  ))}
+                <CardContent className="p-3 space-y-2.5">
+                  {(() => {
+                    const topLevelCats = ruleCats.filter(
+                      (c) => !c.parentId || !ruleCats.some((p) => p.id === c.parentId)
+                    );
+                    const getChildCats = (parentId: string) =>
+                      ruleCats.filter((c) => c.parentId === parentId);
+
+                    if (ruleCats.length === 0) {
+                      return (
+                        <p className="text-xs text-muted-foreground text-center py-4">
+                          دسته‌ای تعریف نشده است.
+                        </p>
+                      );
+                    }
+
+                    return topLevelCats.map((parentCat) => {
+                      const children = getChildCats(parentCat.id);
+
+                      return (
+                        <div
+                          key={parentCat.id}
+                          className="space-y-1.5 rounded-xl border border-border/70 bg-muted/15 p-2.5"
+                        >
+                          {/* Parent Category Row */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="h-2 w-2 rounded-full bg-primary" />
+                              <span className="font-bold text-xs text-foreground">
+                                {parentCat.name}
+                              </span>
+                              {children.length > 0 && (
+                                <Badge variant="secondary" className="text-[10px] h-4.5 px-1.5">
+                                  {children.length} زیردسته
+                                </Badge>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setRcatForm({ name: "", parentId: parentCat.id });
+                                  setRcatModalOpen(true);
+                                }}
+                                className="h-6 text-[10px] px-2 gap-1 text-primary hover:bg-primary/10"
+                                title="افزودن زیردسته به این دسته"
+                              >
+                                <Plus className="h-3 w-3" />
+                                زیردسته
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={async () => {
+                                  await fetch(`/api/categories?id=${parentCat.id}&type=rule`, {
+                                    method: "DELETE",
+                                  });
+                                  const res = await fetch(
+                                    `/api/categories?trackId=${selectedTrackId}`
+                                  ).then((r) => r.json());
+                                  if (res.success) setRuleCats(res.data.rule);
+                                }}
+                                className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                                title="حذف دسته"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Nested Children Subcategories */}
+                          {children.length > 0 && (
+                            <div className="mr-3.5 pr-2.5 border-r-2 border-primary/30 space-y-1 pt-1">
+                              {children.map((childCat) => {
+                                const subChildren = getChildCats(childCat.id);
+                                return (
+                                  <div key={childCat.id} className="space-y-1">
+                                    <div className="flex items-center justify-between rounded-lg bg-background/80 border border-border/50 p-2 text-xs">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-muted-foreground font-mono text-[10px]">↳</span>
+                                        <span className="font-medium text-foreground">
+                                          {childCat.name}
+                                        </span>
+                                        {subChildren.length > 0 && (
+                                          <Badge variant="outline" className="text-[9px] h-4 px-1">
+                                            {subChildren.length} زیردسته
+                                          </Badge>
+                                        )}
+                                      </div>
+
+                                      <div className="flex items-center gap-1">
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => {
+                                            setRcatForm({ name: "", parentId: childCat.id });
+                                            setRcatModalOpen(true);
+                                          }}
+                                          className="h-5 text-[9px] px-1.5 gap-0.5 text-primary hover:bg-primary/10"
+                                          title="افزودن زیردسته"
+                                        >
+                                          <Plus className="h-2.5 w-2.5" />
+                                          زیردسته
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={async () => {
+                                            await fetch(
+                                              `/api/categories?id=${childCat.id}&type=rule`,
+                                              { method: "DELETE" }
+                                            );
+                                            const res = await fetch(
+                                              `/api/categories?trackId=${selectedTrackId}`
+                                            ).then((r) => r.json());
+                                            if (res.success) setRuleCats(res.data.rule);
+                                          }}
+                                          className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive"
+                                          title="حذف زیردسته"
+                                        >
+                                          <Trash2 className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    </div>
+
+                                    {/* Level 3 Subchildren */}
+                                    {subChildren.length > 0 && (
+                                      <div className="mr-3 pr-2 border-r border-border/60 space-y-1">
+                                        {subChildren.map((subChild) => (
+                                          <div
+                                            key={subChild.id}
+                                            className="flex items-center justify-between rounded-md bg-muted/40 p-1.5 text-[11px]"
+                                          >
+                                            <span className="text-muted-foreground">↳ {subChild.name}</span>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={async () => {
+                                                await fetch(
+                                                  `/api/categories?id=${subChild.id}&type=rule`,
+                                                  { method: "DELETE" }
+                                                );
+                                                const res = await fetch(
+                                                  `/api/categories?trackId=${selectedTrackId}`
+                                                ).then((r) => r.json());
+                                                if (res.success) setRuleCats(res.data.rule);
+                                              }}
+                                              className="h-4 w-4 p-0 text-muted-foreground hover:text-destructive"
+                                            >
+                                              <Trash2 className="h-2.5 w-2.5" />
+                                            </Button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    });
+                  })()}
                 </CardContent>
               </Card>
             </div>
@@ -1171,12 +1320,7 @@ export default function AdminDashboardPage() {
               majors={majors}
               tracks={tracks}
               courses={courses}
-              selectedFacultyId={selectedFacultyId}
-              onSelectFaculty={setSelectedFacultyId}
-              selectedMajorId={selectedMajorId}
-              onSelectMajor={setSelectedMajorId}
               selectedTrackId={selectedTrackId}
-              onSelectTrack={setSelectedTrackId}
             />
           )}
 
@@ -1661,22 +1805,56 @@ export default function AdminDashboardPage() {
       <Dialog open={rcatModalOpen} onOpenChange={setRcatModalOpen}>
         <DialogContent className="sm:max-w-sm" dir="rtl">
           <DialogHeader>
-            <DialogTitle className="text-sm font-bold">افزودن دسته قوانین</DialogTitle>
+            <DialogTitle className="text-sm font-bold">
+              {rcatForm.parentId ? "افزودن زیردسته قوانین" : "افزودن دسته قوانین اصلی"}
+            </DialogTitle>
             <DialogDescription className="text-xs">
-              نام دسته را وارد کنید. تعیین قوانین حداقل واحد و شروط فارغ‌التحصیلی در تب «موتور قوانین و شبیه‌ساز» انجام می‌شود.
+              دسته‌های قوانین می‌توانند به صورت درختی و تو‌در‌تو تعریف شوند.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateRcat} className="space-y-3 pt-2">
             <div className="space-y-1">
+              <Label className="text-xs">دسته والد (اختیاری):</Label>
+              <Select
+                items={[
+                  { value: "none", label: "-- دسته اصلی (بدون والد) --" },
+                  ...ruleCats.map((rc) => ({
+                    value: rc.id,
+                    label: rc.parentId ? `↳ ${rc.name}` : rc.name,
+                  })),
+                ]}
+                value={rcatForm.parentId || "none"}
+                onValueChange={(val) =>
+                  setRcatForm({ ...rcatForm, parentId: val === "none" || !val ? null : val })
+                }
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="دسته اصلی (بدون والد)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="none">-- دسته اصلی (بدون والد) --</SelectItem>
+                    {ruleCats.map((rc) => (
+                      <SelectItem key={rc.id} value={rc.id}>
+                        {rc.parentId ? `↳ ${rc.name}` : rc.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
               <Label className="text-xs">نام دسته قوانین</Label>
               <Input
                 required
-                placeholder="مثلاً دروس تخصصی اختیاری"
+                placeholder="مثلاً شبکه‌های کامپیوتری"
                 value={rcatForm.name}
-                onChange={(e) => setRcatForm({ name: e.target.value })}
+                onChange={(e) => setRcatForm({ ...rcatForm, name: e.target.value })}
                 className="h-8 text-xs"
               />
             </div>
+
             <Button type="submit" size="sm" className="w-full h-8 text-xs font-semibold">
               ثبت دسته قوانین
             </Button>

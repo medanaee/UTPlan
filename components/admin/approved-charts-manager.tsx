@@ -47,12 +47,7 @@ interface ApprovedChartsManagerProps {
   majors: Major[];
   tracks: Track[];
   courses: Course[];
-  selectedFacultyId: string;
-  onSelectFaculty: (id: string) => void;
-  selectedMajorId: string;
-  onSelectMajor: (id: string) => void;
   selectedTrackId: string;
-  onSelectTrack: (id: string) => void;
 }
 
 export function ApprovedChartsManager({
@@ -60,12 +55,7 @@ export function ApprovedChartsManager({
   majors,
   tracks,
   courses,
-  selectedFacultyId,
-  onSelectFaculty,
-  selectedMajorId,
-  onSelectMajor,
   selectedTrackId,
-  onSelectTrack,
 }: ApprovedChartsManagerProps) {
   const [allApprovedCharts, setAllApprovedCharts] = useState<StudentChart[]>([]);
   const [loading, setLoading] = useState(false);
@@ -76,11 +66,10 @@ export function ApprovedChartsManager({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
-  // Filter majors & tracks
-  const filteredMajors = majors.filter((m) => !selectedFacultyId || m.facultyId === selectedFacultyId);
-  const filteredTracks = tracks.filter((t) => !selectedMajorId || t.majorId === selectedMajorId);
   const currentTrack = tracks.find((t) => t.id === selectedTrackId);
-  const currentApprovedChart = allApprovedCharts.find((c) => c.trackId === selectedTrackId && c.isApprovedDefault);
+  const currentApprovedChart = allApprovedCharts.find(
+    (c) => c.trackId === selectedTrackId && c.isApprovedDefault
+  );
 
   // Load all approved charts
   const loadApprovedCharts = async () => {
@@ -216,88 +205,33 @@ export function ApprovedChartsManager({
         </div>
       )}
 
-      {/* Faculty / Major / Track Selector Toolbar */}
-      <Card className="border-border/70 shadow-xs">
-        <CardHeader className="p-4 border-b pb-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <CardTitle className="text-base flex items-center gap-2">
-                <GraduationCap className="h-5 w-5 text-primary" />
-                مدیریت چارت‌های مصوب و پیش‌فرض گرایش‌ها
-              </CardTitle>
-              <CardDescription className="text-xs">
-                تعریف و ویرایش چارت‌های استاندارد دانشگاهی که دانشجویان در هنگام بارگذاری چارت مصوب از آن‌ها استفاده می‌کنند
-              </CardDescription>
-            </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={loadApprovedCharts}
-              disabled={loading}
-              className="h-8 gap-1.5 text-xs"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-              به‌روزرسانی
-            </Button>
+      {/* Active Track Header Bar */}
+      {selectedTrackId ? (
+        <div className="flex items-center justify-between bg-card p-3.5 rounded-xl border border-border/70">
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-muted-foreground">گرایش فعال:</span>
+            <Badge variant="default" className="font-bold text-xs">
+              {currentTrack?.name || "گرایش انتخابی"} ({currentTrack?.code || ""})
+            </Badge>
           </div>
-        </CardHeader>
-
-        <CardContent className="p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {/* Faculty */}
-            <div className="space-y-1.5">
-              <Label className="text-xs">دانشکده</Label>
-              <Select value={selectedFacultyId} onValueChange={onSelectFaculty}>
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="انتخاب دانشکده" />
-                </SelectTrigger>
-                <SelectContent>
-                  {faculties.map((f) => (
-                    <SelectItem key={f.id} value={f.id} className="text-xs">
-                      {f.name} ({f.code})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Major */}
-            <div className="space-y-1.5">
-              <Label className="text-xs">رشته تحصیلی</Label>
-              <Select value={selectedMajorId} onValueChange={onSelectMajor}>
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="انتخاب رشته" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredMajors.map((m) => (
-                    <SelectItem key={m.id} value={m.id} className="text-xs">
-                      {m.name} ({m.code})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Track */}
-            <div className="space-y-1.5">
-              <Label className="text-xs">گرایش تخصصی</Label>
-              <Select value={selectedTrackId} onValueChange={onSelectTrack}>
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="انتخاب گرایش" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredTracks.map((t) => (
-                    <SelectItem key={t.id} value={t.id} className="text-xs">
-                      {t.name} ({t.code})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadApprovedCharts}
+            disabled={loading}
+            className="h-8 gap-1.5 text-xs"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+            به‌روزرسانی
+          </Button>
+        </div>
+      ) : (
+        <Card className="p-8 text-center text-xs text-muted-foreground space-y-2">
+          <AlertTriangle className="h-6 w-6 text-amber-500 mx-auto opacity-75" />
+          <p className="font-semibold text-foreground">گرایشی انتخاب نشده است</p>
+          <p>لطفاً ابتدا یک گرایش را از تب «ساختار دانشگاه» انتخاب کنید.</p>
+        </Card>
+      )}
 
       {/* Current Selected Track Status Card */}
       {selectedTrackId && (

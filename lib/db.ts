@@ -866,6 +866,12 @@ export async function getApprovedTrackChart(trackId: string): Promise<StudentCha
   return chart ? JSON.parse(JSON.stringify(chart)) : null;
 }
 
+export async function getApprovedTrackCharts(trackId?: string): Promise<StudentChart[]> {
+  await initDatabase();
+  const list = chartsStore.filter((c) => c.isApprovedDefault && (!trackId || c.trackId === trackId));
+  return JSON.parse(JSON.stringify(list));
+}
+
 export async function createChart(data: {
   userId: string;
   trackId: string;

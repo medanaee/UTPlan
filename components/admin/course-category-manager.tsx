@@ -292,7 +292,11 @@ export function CourseCategoryManager({
               <Select
                 items={[
                   { value: "none", label: "بدون دسته قوانین" },
-                  ...ruleCategories.map((rc) => ({ value: rc.id, label: rc.name })),
+                  ...ruleCategories.map((rc) => {
+                    const parent = rc.parentId ? ruleCategories.find((p) => p.id === rc.parentId) : null;
+                    const label = parent ? `${parent.name} ↳ ${rc.name}` : rc.name;
+                    return { value: rc.id, label };
+                  }),
                 ]}
                 value={bulkRcat}
                 onValueChange={(val) => val && setBulkRcat(val)}
@@ -303,11 +307,14 @@ export function CourseCategoryManager({
                 <SelectContent>
                   <SelectGroup>
                     <SelectItem value="none">بدون دسته قوانین</SelectItem>
-                    {ruleCategories.map((rc) => (
-                      <SelectItem key={rc.id} value={rc.id}>
-                        {rc.name}
-                      </SelectItem>
-                    ))}
+                    {ruleCategories.map((rc) => {
+                      const parent = rc.parentId ? ruleCategories.find((p) => p.id === rc.parentId) : null;
+                      return (
+                        <SelectItem key={rc.id} value={rc.id}>
+                          {parent ? `${parent.name} ↳ ${rc.name}` : rc.name}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectGroup>
                 </SelectContent>
               </Select>
@@ -417,10 +424,11 @@ export function CourseCategoryManager({
                       <Select
                         items={[
                           { value: "none", label: "-- بدون دسته قوانین --" },
-                          ...ruleCategories.map((rc) => ({
-                            value: rc.id,
-                            label: `${rc.name}${rc.minCredits ? ` (حداقل ${rc.minCredits} واحد)` : ""}`,
-                          })),
+                          ...ruleCategories.map((rc) => {
+                            const parent = rc.parentId ? ruleCategories.find((p) => p.id === rc.parentId) : null;
+                            const label = parent ? `${parent.name} ↳ ${rc.name}` : rc.name;
+                            return { value: rc.id, label };
+                          }),
                         ]}
                         value={currentRcatId}
                         onValueChange={(val) =>
@@ -433,11 +441,14 @@ export function CourseCategoryManager({
                         <SelectContent>
                           <SelectGroup>
                             <SelectItem value="none">-- بدون دسته قوانین --</SelectItem>
-                            {ruleCategories.map((rc) => (
-                              <SelectItem key={rc.id} value={rc.id}>
-                                {rc.name} {rc.minCredits ? `(حداقل ${rc.minCredits} واحد)` : ""}
-                              </SelectItem>
-                            ))}
+                            {ruleCategories.map((rc) => {
+                              const parent = rc.parentId ? ruleCategories.find((p) => p.id === rc.parentId) : null;
+                              return (
+                                <SelectItem key={rc.id} value={rc.id}>
+                                  {parent ? `${parent.name} ↳ ${rc.name}` : rc.name}
+                                </SelectItem>
+                              );
+                            })}
                           </SelectGroup>
                         </SelectContent>
                       </Select>

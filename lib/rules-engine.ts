@@ -274,46 +274,67 @@ function evaluateRuleNode(
     }
   }
 
-  // 2. Leaf Nodes
-  const leaf = node as RuleLeafNode;
-  const issues: ValidationIssue[] = [];
-
-  switch (leaf.type) {
-    case "MIN_CREDITS_IN_CATEGORY": {
-      const cat = ruleCategories.find((c) => c.id === leaf.ruleCategoryId);
-      const catName = cat ? cat.name : "دسته نامشخص";
-      const required = leaf.minCredits || 0;
-
-      const earned = chartCourses
-        .filter((entry) => courseToRuleCatMap.get(entry.courseId) === leaf.ruleCategoryId)
-        .reduce((sum, entry) => {
-          const c = courseMap.get(entry.courseId);
-          return sum + (c ? c.units : 3);
-        }, 0);
-
-      const satisfied = earned >= required;
-      if (!satisfied) {
-        issues.push({
-          id: `issue_leaf_${leaf.id}`,
-          type: "error",
-          message: `شرط حداقل واحد: در دسته «${catName}» باید حداقل ${required} واحد گذرانده شود (واحدهای فعلی: ${earned}).`,
-          ruleNodeId: leaf.id,
-        });
+// Helper to collect a category ID and all its recursive subcategory IDs
+function getCategoryAndDescendantIds(targetCatId: string, allCategories: RuleCategory[]): Set<string> {
+  const result = new Set<string>([targetCatId]);
+  let added = true;
+  while (added) {
+    added = false;
+    for (const c of allCategories) {
+      if (c.parentId && result.has(c.parentId) && !result.has(c.id)) {
+        result.add(c.id);
+        added = true;
       }
-      return { satisfied, issues };
     }
+  }
+  return result;
+}
 
-    case "ALL_COURSES_IN_CATEGORY": {
-      const cat = ruleCategories.find((c) => c.id === leaf.ruleCategoryId);
-      const catName = cat ? cat.name : "دسته نامشخص";
+// 2. Leaf Nodes
+const leaf = node as RuleLeafNode;
+const issues: ValidationIssue[] = [];
 
-      // Find all courses assigned to this category
-      const requiredCourseIds: string[] = [];
-      courseToRuleCatMap.forEach((catId, courseId) => {
-        if (catId === leaf.ruleCategoryId) {
-          requiredCourseIds.push(courseId);
-        }
+switch (leaf.type) {
+  case "MIN_CREDITS_IN_CATEGORY": {
+    const cat = ruleCategories.find((c) => c.id === leaf.ruleCategoryId);
+    const catName = cat ? cat.name : "دسته نامشخص";
+    const required = leaf.minCredits || 0;
+    const targetCatIds = getCategoryAndDescendantIds(leaf.ruleCategoryId, ruleCategories);
+
+    const earned = chartCourses
+      .filter((entry) => {
+        const assignedCatId = courseToRuleCatMap.get(entry.courseId);
+        return assignedCatId && targetCatIds.has(assignedCatId);
+      })
+      .reduce((sum, entry) => {
+        const c = courseMap.get(entry.courseId);
+        return sum + (c ? c.units : 3);
+      }, 0);
+
+    const satisfied = earned >= required;
+    if (!satisfied) {
+      issues.push({
+        id: `issue_leaf_${leaf.id}`,
+        type: "error",
+        message: `شرط حداقل واحد: در دسته «${catName}» باید حداقل ${required} واحد گذرانده شود (واحدهای فعلی: ${earned}).`,
+        ruleNodeId: leaf.id,
       });
+    }
+    return { satisfied, issues };
+  }
+
+  case "ALL_COURSES_IN_CATEGORY": {
+    const cat = ruleCategories.find((c) => c.id === leaf.ruleCategoryId);
+    const catName = cat ? cat.name : "دسته نامشخص";
+    const targetCatIds = getCategoryAndDescendantIds(leaf.ruleCategoryId, ruleCategories);
+
+    // Find all courses assigned to this category or its subcategories
+    const requiredCourseIds: string[] = [];
+    courseToRuleCatMap.forEach((catId, courseId) => {
+      if (targetCatIds.has(catId)) {
+        requiredCourseIds.push(courseId);
+      }
+    });
 
       const takenCourseIds = new Set(chartCourses.map((c) => c.courseId));
       const missing = requiredCourseIds.filter((id) => !takenCourseIds.has(id));

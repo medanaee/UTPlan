@@ -452,7 +452,13 @@ const RULE_TYPE_ITEMS = [
 ];
 
 function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: RuleLeafItemProps) {
-  const rcatItems = ruleCategories.map((rc) => ({ value: rc.id, label: rc.name }));
+  const rcatItems = ruleCategories.map((rc) => {
+    const parent = rc.parentId ? ruleCategories.find((p) => p.id === rc.parentId) : null;
+    return {
+      value: rc.id,
+      label: parent ? `${parent.name} ↳ ${rc.name}` : rc.name,
+    };
+  });
   const courseItems = courses.map((c) => ({ value: c.id, label: `${c.name} (${c.code})` }));
 
   return (
