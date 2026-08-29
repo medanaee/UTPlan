@@ -95,6 +95,7 @@ export function ChartEditor({
   // Drag & Drop State
   const [draggedCourseId, setDraggedCourseId] = useState<string | null>(null);
   const [dragOverSemester, setDragOverSemester] = useState<number | null>(null);
+  const [dragOverCardId, setDragOverCardId] = useState<string | null>(null);
 
   // Issues & Validation Details Modal
   const [issuesModalOpen, setIssuesModalOpen] = useState(false);
@@ -142,14 +143,14 @@ export function ChartEditor({
 
   // Total credits in chart
   const totalChartCredits = useMemo(() => {
-    let sum = 0;
+    let total = 0;
     chart.semesters.forEach((sem) => {
       sem.courseIds.forEach((cId) => {
-        const course = allCourses.find((c) => c.id === cId);
-        if (course) sum += course.units;
+        const c = allCourses.find((course) => course.id === cId);
+        if (c) total += c.units;
       });
     });
-    return sum;
+    return total;
   }, [chart.semesters, allCourses]);
 
   // Validate prerequisites, corequisites, term credits, and graduation rules
@@ -220,14 +221,17 @@ export function ChartEditor({
     };
   }, [chart.semesters, allCourses, placedCourseIdMap, activeTrack, ruleCategories, totalChartCredits]);
 
-  // Recalculate SVG connection curves
+  // Recalculate SVG connection curves in absolute scroll content space
   const updateSvgCurves = useCallback(() => {
     if (!canvasRef.current || !showArrows) {
       setSvgCurves([]);
       return;
     }
 
-    const canvasRect = canvasRef.current.getBoundingClientRect();
+    const canvas = canvasRef.current;
+    const canvasRect = canvas.getBoundingClientRect();
+    const scrollTop = canvas.scrollTop;
+    const scrollLeft = canvas.scrollLeft;
     const curves: typeof svgCurves = [];
 
     chart.semesters.forEach((sem) => {
@@ -247,12 +251,12 @@ export function ChartEditor({
             const srcRect = sourceEl.getBoundingClientRect();
             const tgtRect = targetEl.getBoundingClientRect();
 
-            // Calculate vertical connection from bottom center of prerequisite to top center of dependent course
-            const x1 = srcRect.left - canvasRect.left + srcRect.width / 2;
-            const y1 = srcRect.bottom - canvasRect.top;
+            // Calculate vertical connection in absolute scroll-content space:
+            const x1 = srcRect.left - canvasRect.left + scrollLeft + srcRect.width / 2;
+            const y1 = srcRect.bottom - canvasRect.top + scrollTop;
 
-            const x2 = tgtRect.left - canvasRect.left + tgtRect.width / 2;
-            const y2 = tgtRect.top - canvasRect.top;
+            const x2 = tgtRect.left - canvasRect.left + scrollLeft + tgtRect.width / 2;
+            const y2 = tgtRect.top - canvasRect.top + scrollTop;
 
             const dy = Math.max(25, Math.abs(y2 - y1) * 0.4);
             const pathData = `M ${x1} ${y1} C ${x1} ${y1 + dy}, ${x2} ${y2 - dy}, ${x2} ${y2}`;
@@ -303,8 +307,12 @@ export function ChartEditor({
     };
   }, [updateSvgCurves, chart.semesters]);
 
-  // Move a course to a specific semester
-  const moveCourseToSemester = (courseId: string, targetSemesterNumber: number) => {
+  // Move a course to a specific semester with optional target index for reordering
+  const moveCourseToSemester = (
+    courseId: string,
+    targetSemesterNumber: number,
+    targetIndex?: number
+  ) => {
     setChart((prev) => {
       // 1. Remove course from any existing semester
       const cleanedSemesters = prev.semesters.map((sem) => ({
@@ -312,12 +320,16 @@ export function ChartEditor({
         courseIds: sem.courseIds.filter((id) => id !== courseId),
       }));
 
-      // 2. Add to target semester (if not already there)
+      // 2. Add to target semester at specified index or at end
       const targetSemIndex = cleanedSemesters.findIndex((s) => s.semesterNumber === targetSemesterNumber);
       if (targetSemIndex !== -1) {
-        if (!cleanedSemesters[targetSemIndex].courseIds.includes(courseId)) {
-          cleanedSemesters[targetSemIndex].courseIds.push(courseId);
+        const semCourses = [...cleanedSemesters[targetSemIndex].courseIds];
+        if (targetIndex !== undefined && targetIndex >= 0 && targetIndex <= semCourses.length) {
+          semCourses.splice(targetIndex, 0, courseId);
+        } else {
+          semCourses.push(courseId);
         }
+        cleanedSemesters[targetSemIndex].courseIds = semCourses;
       }
 
       return {
@@ -448,9 +460,9 @@ export function ChartEditor({
       <div className="shrink-0 z-30 border-b border-border/70 bg-card/95 backdrop-blur px-4 py-2.5 shadow-2xs">
         <div className="flex flex-wrap items-center justify-between gap-3 max-w-[1700px] mx-auto">
           {/* Title & Track Info */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <Link href="/charts">
-              <Button size="sm" variant="ghost" className="h-8 gap-1 text-xs px-2 text-muted-foreground hover:text-foreground">
+              <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs px-2.5 rounded-lg border border-border/80 bg-background/50 text-muted-foreground hover:text-foreground hover:bg-muted/70 shadow-2xs">
                 <ArrowRight className="h-3.5 w-3.5" />
                 چارت‌ها
               </Button>
@@ -460,10 +472,10 @@ export function ChartEditor({
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="h-8 text-xs font-bold w-52 sm:w-64 border-transparent hover:border-border focus:border-primary px-2 transition-colors"
+                className="h-8 text-xs font-bold w-52 sm:w-64 rounded-lg border-border/70 focus:border-primary px-3 transition-colors bg-background/60 shadow-2xs"
                 placeholder="عنوان چارت تحصیلی..."
               />
-              <Badge variant="outline" className="text-[11px] h-6 px-2 text-primary border-primary/30">
+              <Badge variant="outline" className="text-[11px] h-8 px-2.5 rounded-lg text-primary border-primary/30 bg-primary/5 flex items-center shadow-2xs font-medium">
                 {activeTrack?.name || "گرایش انتخاب‌نشده"}
               </Badge>
             </div>
@@ -475,9 +487,9 @@ export function ChartEditor({
               size="sm"
               variant="ghost"
               onClick={() => setIssuesModalOpen(true)}
-              className={`h-8 gap-1.5 text-xs font-semibold px-2.5 rounded-lg transition-all cursor-pointer ${
+              className={`h-8 gap-1.5 text-xs font-semibold px-3 rounded-lg transition-all cursor-pointer shadow-2xs ${
                 validation.hasErrors
-                  ? "bg-destructive/15 text-destructive hover:bg-destructive/25 border border-destructive/30 shadow-2xs"
+                  ? "bg-destructive/15 text-destructive hover:bg-destructive/25 border border-destructive/30"
                   : validation.isGraduationReady
                   ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25 border border-emerald-500/30"
                   : "bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25 border border-amber-500/30"
@@ -505,9 +517,13 @@ export function ChartEditor({
             {/* Toggle Arrow Layer */}
             <Button
               size="sm"
-              variant={showArrows ? "secondary" : "ghost"}
+              variant="ghost"
               onClick={() => setShowArrows(!showArrows)}
-              className="h-8 gap-1 text-xs px-2.5 text-muted-foreground"
+              className={`h-8 gap-1.5 text-xs px-3 rounded-lg border transition-all shadow-2xs ${
+                showArrows
+                  ? "bg-muted/70 text-foreground border-border/90"
+                  : "bg-background/50 text-muted-foreground border-border/80 hover:bg-muted/50"
+              }`}
               title="نمایش / پنهان کردن فلش‌های پیش‌نیاز"
             >
               {showArrows ? <Eye className="h-3.5 w-3.5 text-primary" /> : <EyeOff className="h-3.5 w-3.5" />}
@@ -517,36 +533,36 @@ export function ChartEditor({
             {/* Load Approved Curriculum Button */}
             <Button
               size="sm"
-              variant="outline"
+              variant="ghost"
               onClick={handleLoadApprovedCurriculum}
-              className="h-8 gap-1.5 text-xs text-primary border-primary/30 hover:bg-primary/5"
+              className="h-8 gap-1.5 text-xs px-3 rounded-lg text-primary border border-primary/30 bg-primary/5 hover:bg-primary/15 transition-all shadow-2xs font-medium"
             >
               <Sparkles className="h-3.5 w-3.5 text-amber-500" />
               <span className="hidden sm:inline">بارگذاری چارت مصوب</span>
             </Button>
 
             {/* Add / Remove Semester */}
-            <div className="flex items-center gap-1 bg-muted/40 p-0.5 rounded-lg border border-border/50">
+            <div className="h-8 flex items-center bg-background/60 p-0.5 rounded-lg border border-border/80 shadow-2xs">
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={addSemester}
                 disabled={chart.semesters.length >= 12}
-                className="h-7 text-xs px-2 gap-1 text-foreground"
+                className="h-7 text-xs px-2.5 rounded-md gap-1 text-foreground hover:bg-muted/80 transition-colors"
                 title="افزودن یک ترم جدید به انتها"
               >
-                <Plus className="h-3 w-3" />
-                ترم {chart.semesters.length + 1}
+                <Plus className="h-3.5 w-3.5 text-primary" />
+                <span>ترم {chart.semesters.length + 1}</span>
               </Button>
               {chart.semesters.length > 8 && (
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={removeLastSemester}
-                  className="h-7 text-xs px-1.5 text-destructive hover:bg-destructive/10"
+                  className="h-7 w-7 p-0 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                   title="حذف آخرین ترم"
                 >
-                  <Trash2 className="h-3 w-3" />
+                  <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               )}
             </div>
@@ -556,12 +572,12 @@ export function ChartEditor({
               size="sm"
               onClick={handleSaveChart}
               disabled={isSaving}
-              className="h-8 gap-1.5 text-xs font-semibold shadow-xs"
+              className="h-8 gap-1.5 text-xs px-3.5 rounded-lg font-semibold shadow-2xs border border-primary/40 bg-primary text-primary-foreground hover:bg-primary/90 transition-all"
             >
               {isSaving ? (
                 <RefreshCw className="h-3.5 w-3.5 animate-spin" />
               ) : saveSuccess ? (
-                <Check className="h-3.5 w-3.5 text-emerald-400" />
+                <Check className="h-3.5 w-3.5 text-emerald-300" />
               ) : (
                 <Save className="h-3.5 w-3.5" />
               )}
@@ -658,6 +674,7 @@ export function ChartEditor({
               const placedSem = placedCourseIdMap.get(course.id);
               const isPlaced = placedSem !== undefined;
               const prereqs = course.prerequisites || [];
+              const baseColor = vcat?.color || "#64748b";
 
               return (
                 <div
@@ -671,10 +688,11 @@ export function ChartEditor({
                   onMouseEnter={() => setHoveredCourseId(course.id)}
                   onMouseLeave={() => setHoveredCourseId(null)}
                   style={{
-                    borderRightColor: vcat?.color || "#94a3b8",
-                    borderRightWidth: "4px",
+                    backgroundColor: `${baseColor}12`,
+                    borderColor: `${baseColor}38`,
+                    borderRight: `4px solid ${baseColor}`,
                   }}
-                  className={`p-2.5 rounded-xl border border-border/80 bg-card transition-all cursor-grab active:cursor-grabbing shadow-2xs ${
+                  className={`p-2.5 rounded-xl border transition-all cursor-grab active:cursor-grabbing shadow-2xs ${
                     isPlaced
                       ? "opacity-60 bg-muted/40 hover:opacity-100"
                       : "hover:border-primary/50 hover:shadow-xs"
@@ -686,7 +704,7 @@ export function ChartEditor({
                       <p className="text-[10px] text-muted-foreground font-mono">{course.code}</p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-foreground">
+                      <span className="rounded bg-background/80 px-1.5 py-0.5 text-[10px] font-semibold text-foreground border border-border/40">
                         {course.units} واحد
                       </span>
                       {isPlaced && (
@@ -734,7 +752,7 @@ export function ChartEditor({
         </aside>
 
         {/* ========================================================================= */}
-        {/* CENTER CANVAS: VERTICAL STACKED SEMESTERS + SVG CONNECTOR ARROWS */}
+        {/* CENTER CANVAS: FULL-WIDTH VERTICAL STACKED SEMESTERS + SVG CONNECTOR ARROWS */}
         {/* ========================================================================= */}
         <main
           ref={canvasRef}
@@ -743,8 +761,12 @@ export function ChartEditor({
           {/* Dynamic SVG Connections Overlay (z-30 so it flies ABOVE semester and course card backgrounds) */}
           {showArrows && (
             <svg
-              className="absolute inset-0 pointer-events-none z-30 w-full h-full"
-              style={{ minHeight: "100%" }}
+              className="absolute top-0 left-0 pointer-events-none z-30"
+              style={{
+                width: "100%",
+                height: `${canvasRef.current ? Math.max(canvasRef.current.scrollHeight, canvasRef.current.clientHeight) : 2500}px`,
+                minHeight: "100%",
+              }}
             >
               <defs>
                 <marker
@@ -818,8 +840,8 @@ export function ChartEditor({
             </svg>
           )}
 
-          {/* Semesters Stacked Vertically (z-10) */}
-          <div className="space-y-4 max-w-5xl mx-auto relative z-10 pb-16">
+          {/* Semesters Stacked Vertically (Full Width, z-10) */}
+          <div className="space-y-4 w-full relative z-10 pb-20">
             {chart.semesters.map((sem) => {
               const semStats = validation.semesterCredits.find(
                 (sc) => sc.semesterNumber === sem.semesterNumber
@@ -836,10 +858,13 @@ export function ChartEditor({
                     e.preventDefault();
                     setDragOverSemester(sem.semesterNumber);
                   }}
-                  onDragLeave={() => setDragOverSemester(null)}
+                  onDragLeave={() => {
+                    setDragOverSemester(null);
+                  }}
                   onDrop={(e) => {
                     e.preventDefault();
                     setDragOverSemester(null);
+                    setDragOverCardId(null);
                     const courseId = e.dataTransfer.getData("text/plain") || draggedCourseId;
                     if (courseId) {
                       moveCourseToSemester(courseId, sem.semesterNumber);
@@ -890,10 +915,10 @@ export function ChartEditor({
                     </div>
                   </div>
 
-                  {/* Semester Course Cards Grid (Drop Zone) */}
+                  {/* Semester Course Cards Grid (Drop Zone with Reordering) */}
                   <div className="p-3 sm:p-4 min-h-[100px]">
                     {sem.courseIds.length > 0 ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
                         {sem.courseIds.map((cId) => {
                           const course = allCourses.find((c) => c.id === cId);
                           if (!course) return null;
@@ -906,6 +931,8 @@ export function ChartEditor({
                           );
                           const isViolation = validation.courseViolations.has(cId);
                           const isHovered = hoveredCourseId === cId;
+                          const isDragTarget = dragOverCardId === cId;
+                          const baseColor = isViolation ? "#ef4444" : vcat?.color || "#64748b";
 
                           return (
                             <div
@@ -919,26 +946,58 @@ export function ChartEditor({
                                 e.dataTransfer.setData("text/plain", cId);
                                 setDraggedCourseId(cId);
                               }}
-                              onDragEnd={() => setDraggedCourseId(null)}
+                              onDragEnd={() => {
+                                setDraggedCourseId(null);
+                                setDragOverCardId(null);
+                                setDragOverSemester(null);
+                              }}
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setDragOverCardId(cId);
+                                setDragOverSemester(sem.semesterNumber);
+                              }}
+                              onDragLeave={(e) => {
+                                e.stopPropagation();
+                                if (dragOverCardId === cId) setDragOverCardId(null);
+                              }}
+                              onDrop={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setDragOverCardId(null);
+                                setDragOverSemester(null);
+                                const droppedCourseId = e.dataTransfer.getData("text/plain") || draggedCourseId;
+                                if (droppedCourseId) {
+                                  const targetIdx = sem.courseIds.indexOf(cId);
+                                  moveCourseToSemester(droppedCourseId, sem.semesterNumber, targetIdx);
+                                }
+                              }}
                               onMouseEnter={() => setHoveredCourseId(cId)}
                               onMouseLeave={() => setHoveredCourseId(null)}
                               style={{
-                                borderRightColor: vcat?.color || "#94a3b8",
-                                borderRightWidth: "4px",
+                                backgroundColor: isViolation ? "rgba(239, 68, 68, 0.09)" : `${baseColor}14`,
+                                borderColor: isViolation
+                                  ? "rgba(239, 68, 68, 0.5)"
+                                  : isHovered || isDragTarget
+                                  ? baseColor
+                                  : `${baseColor}38`,
+                                borderRight: `4px solid ${baseColor}`,
                               }}
-                              className={`group relative p-2.5 rounded-xl border bg-background transition-all cursor-grab active:cursor-grabbing shadow-2xs ${
-                                isViolation
-                                  ? "border-destructive ring-1 ring-destructive/40 bg-destructive/5"
+                              className={`group relative p-3 rounded-xl border transition-all cursor-grab active:cursor-grabbing shadow-2xs ${
+                                isDragTarget
+                                  ? "ring-2 ring-primary ring-offset-2 scale-[1.02] bg-primary/15"
+                                  : isViolation
+                                  ? "ring-1 ring-destructive/40 shadow-xs"
                                   : isHovered
-                                  ? "border-primary ring-2 ring-primary/30 shadow-xs"
-                                  : "border-border/80 hover:border-border"
+                                  ? "ring-2 ring-primary/40 shadow-md scale-[1.01]"
+                                  : "hover:shadow-xs"
                               }`}
                             >
                               {/* Course Header */}
                               <div className="flex items-start justify-between gap-1">
                                 <div>
                                   <div className="flex items-center gap-1.5">
-                                    <p className="text-xs font-bold">{course.name}</p>
+                                    <p className="text-xs font-bold leading-snug">{course.name}</p>
                                     {isViolation && (
                                       <button
                                         type="button"
@@ -955,7 +1014,7 @@ export function ChartEditor({
                                       </button>
                                     )}
                                   </div>
-                                  <p className="text-[10px] text-muted-foreground font-mono">
+                                  <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
                                     {course.code}
                                   </p>
                                 </div>
@@ -968,7 +1027,7 @@ export function ChartEditor({
                                     e.stopPropagation();
                                     removeCourseFromChart(cId);
                                   }}
-                                  className="h-6 w-6 p-0 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                                  className="h-6 w-6 p-0 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors shrink-0"
                                   title="حذف از این ترم"
                                 >
                                   <Trash2 className="h-3 w-3" />
@@ -976,14 +1035,18 @@ export function ChartEditor({
                               </div>
 
                               {/* Units & Category Tag */}
-                              <div className="mt-2 flex items-center justify-between text-[10px]">
+                              <div className="mt-2.5 pt-2 border-t border-border/40 flex items-center justify-between text-[10px]">
                                 <span
-                                  style={{ color: vcat?.color || undefined }}
-                                  className="font-medium"
+                                  style={{
+                                    backgroundColor: `${baseColor}20`,
+                                    color: baseColor,
+                                    borderColor: `${baseColor}40`,
+                                  }}
+                                  className="px-2 py-0.5 rounded-md font-semibold border"
                                 >
                                   {vcat?.name || "عمومی"}
                                 </span>
-                                <span className="font-semibold text-muted-foreground">
+                                <span className="font-bold text-foreground bg-background/80 px-1.5 py-0.5 rounded border border-border/40">
                                   {course.units} واحد
                                 </span>
                               </div>

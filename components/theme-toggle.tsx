@@ -16,7 +16,7 @@ export function ThemeToggle({ className }: { className?: string }) {
       variant="ghost"
       size="sm"
       onClick={toggleTheme}
-      className={`h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-foreground transition-colors ${className || ""}`}
+      className={`h-8 w-8 p-0 rounded-lg border border-border/80 bg-background/50 text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors shadow-2xs ${className || ""}`}
       title={resolvedTheme === "dark" ? "تغییر به حالت روشن" : "تغییر به حالت تاریک"}
       aria-label="Toggle theme"
     >
