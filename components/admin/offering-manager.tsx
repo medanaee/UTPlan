@@ -169,7 +169,7 @@ export function OfferingManager({
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-semibold text-muted-foreground">دانشکده انتخابی شما:</span>
+                <span className="text-xs font-semibold text-muted-foreground">دانشکده انتخابی:</span>
                 {currentFaculty ? (
                   <Badge variant="default" className="text-xs px-2.5 py-0.5 font-bold shadow-xs">
                     {currentFaculty.name} ({currentFaculty.code})
@@ -200,7 +200,7 @@ export function OfferingManager({
             </CardDescription>
           </div>
           <Button
-            size="sm"
+          
             onClick={() => {
               setForm({
                 courseId: facultyCourses[0]?.id || "",
@@ -292,7 +292,7 @@ export function OfferingManager({
                     <td className="py-2.5 px-3 text-center">
                       <Button
                         variant="ghost"
-                        size="sm"
+                      
                         onClick={() =>
                           handleDeleteOffering(off.id, `${off.courseName} (${off.professorName})`)
                         }
@@ -339,7 +339,7 @@ export function OfferingManager({
                 value={form.courseId}
                 onValueChange={(val) => val && setForm({ ...form, courseId: val })}
               >
-                <SelectTrigger size="sm" className="w-full text-xs">
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="-- انتخاب درس --" />
                 </SelectTrigger>
                 <SelectContent>
@@ -362,7 +362,7 @@ export function OfferingManager({
                 value={form.professorId}
                 onValueChange={(val) => val && setForm({ ...form, professorId: val })}
               >
-                <SelectTrigger size="sm" className="w-full text-xs">
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="-- انتخاب استاد --" />
                 </SelectTrigger>
                 <SelectContent>
@@ -380,7 +380,7 @@ export function OfferingManager({
             <DialogFooter className="pt-2">
               <Button
                 type="submit"
-                size="sm"
+              
                 disabled={isSubmitting || !form.courseId || !form.professorId}
                 className="w-full h-8 text-xs font-semibold"
               >

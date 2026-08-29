@@ -221,7 +221,7 @@ export function ProfessorManager({
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-semibold text-muted-foreground">دانشکده انتخابی شما:</span>
+                <span className="text-xs font-semibold text-muted-foreground">دانشکده انتخابی:</span>
                 {currentFaculty ? (
                   <Badge variant="default" className="text-xs px-2.5 py-0.5 font-bold shadow-xs">
                     {currentFaculty.name} ({currentFaculty.code})

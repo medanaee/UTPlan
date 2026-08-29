@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Shield,
@@ -10,194 +10,70 @@ import {
   BookOpen,
   Users,
   Layers,
-  Plus,
-  Trash2,
   RefreshCw,
-  AlertTriangle,
   ArrowRight,
   Sparkles,
-  Link as LinkIcon,
-  Tag,
-  Clock,
-  Check,
   GitBranch,
-  Play,
   UserCheck,
-  ChevronRight,
-  ChevronLeft,
   PanelRightClose,
   PanelRightOpen,
   CalendarDays,
-  Camera,
-  Upload,
-  Pencil,
   Database,
+  Check,
 } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { CourseCategoryManager } from "@/components/admin/course-category-manager";
+import { Card } from "@/components/ui/card";
+import { ThemeToggle } from "@/components/theme-toggle";
+
+import { useAdminStore } from "@/lib/stores/admin-store";
+import { UniversityStructureManager } from "@/components/admin/university-structure-manager";
+import { CourseManager } from "@/components/admin/course-manager";
+import { OfferingManager } from "@/components/admin/offering-manager";
+import { EventManager } from "@/components/admin/event-manager";
+import { ProfessorManager } from "@/components/admin/professor-manager";
+import { CategoryManager } from "@/components/admin/category-manager";
 import { ApprovedChartsManager } from "@/components/admin/approved-charts-manager";
 import { RuleQueryBuilder } from "@/components/admin/rule-query-builder";
 import { RuleSandboxTester } from "@/components/admin/rule-sandbox-tester";
 import { UserManager } from "@/components/admin/user-manager";
-import { OfferingManager } from "@/components/admin/offering-manager";
-import { EventManager } from "@/components/admin/event-manager";
-import { ProfessorManager } from "@/components/admin/professor-manager";
-import { ThemeToggle } from "@/components/theme-toggle";
-import type {
-  UserSession,
-  Faculty,
-  Major,
-  Track,
-  VisualCategory,
-  RuleCategory,
-  Course,
-  Professor,
-  TrackCourseAssignment,
-  RuleGroupNode,
-} from "@/lib/types";
-
-const COLOR_PRESETS = [
-  { name: "آبی", hex: "#3b82f6" },
-  { name: "بنفش", hex: "#8b5cf6" },
-  { name: "سبز زمردی", hex: "#10b981" },
-  { name: "آسمانی", hex: "#0ea5e9" },
-  { name: "خاکستری", hex: "#64748b" },
-  { name: "کهربایی", hex: "#f59e0b" },
-  { name: "رز", hex: "#f43f5e" },
-  { name: "نیلی", hex: "#6366f1" },
-];
 
 export default function AdminDashboardPage() {
   const router = useRouter();
-  const [user, setUser] = useState<UserSession | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isPending, startTransition] = useTransition();
+  const {
+    user,
+    setUser,
+    loading,
+    faculties,
+    majors,
+    tracks,
+    courses,
+    professors,
+    ruleCats,
+    trackAssignments,
+    selectedFacultyId,
+    selectedMajorId,
+    selectedTrackId,
+    actionMessage,
+    loadAllData,
+    setActionMessage,
+  } = useAdminStore();
 
-  // Data states
-  const [faculties, setFaculties] = useState<Faculty[]>([]);
-  const [majors, setMajors] = useState<Major[]>([]);
-  const [tracks, setTracks] = useState<Track[]>([]);
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [professors, setProfessors] = useState<Professor[]>([]);
-  const [trackAssignments, setTrackAssignments] = useState<TrackCourseAssignment[]>([]);
-
-  // Selection states
-  const [selectedFacultyId, setSelectedFacultyId] = useState<string>("");
-  const [selectedMajorId, setSelectedMajorId] = useState<string>("");
-  const [selectedTrackId, setSelectedTrackId] = useState<string>("");
-
-  // Categories for selected track
-  const [visualCats, setVisualCats] = useState<VisualCategory[]>([]);
-  const [ruleCats, setRuleCats] = useState<RuleCategory[]>([]);
-
-  // Navigation & Sidebar
   const [activeTab, setActiveTab] = useState<
     | "structure"
     | "courses"
-    | "categories"
-    | "approved-charts"
     | "offerings"
     | "events"
-    | "rules"
     | "professors"
+    | "categories"
+    | "approved-charts"
+    | "rules"
     | "users"
   >("structure");
+
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  // Search filter
-  const [courseSearch, setCourseSearch] = useState("");
-
-  // Modals
-  const [facultyModalOpen, setFacultyModalOpen] = useState(false);
-  const [majorModalOpen, setMajorModalOpen] = useState(false);
-  const [trackModalOpen, setTrackModalOpen] = useState(false);
-  const [courseModalOpen, setCourseModalOpen] = useState(false);
-  const [prereqModalOpen, setPrereqModalOpen] = useState(false);
-  const [selectedCourseForPrereq, setSelectedCourseForPrereq] = useState<Course | null>(null);
-  const [vcatModalOpen, setVcatModalOpen] = useState(false);
-  const [rcatModalOpen, setRcatModalOpen] = useState(false);
-
-  // Editing states for structure & courses
-  const [editingFaculty, setEditingFaculty] = useState<Faculty | null>(null);
-  const [editingMajor, setEditingMajor] = useState<Major | null>(null);
-  const [editingTrack, setEditingTrack] = useState<Track | null>(null);
-  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
-
-  // Form states
-  const [facultyForm, setFacultyForm] = useState({ name: "", code: "" });
-  const [majorForm, setMajorForm] = useState({ name: "", code: "" });
-  const [trackForm, setTrackForm] = useState({ name: "", code: "" });
-  const [courseForm, setCourseForm] = useState({
-    name: "",
-    code: "",
-    units: 3,
-    facultyId: "",
-    offeredIn: "both" as "fall" | "spring" | "both",
-    visualCategoryId: "",
-    ruleCategoryId: "",
-    description: "",
-  });
-  const [prereqForm, setPrereqForm] = useState({
-    requiredCourseId: "",
-    type: "prerequisite" as "prerequisite" | "corequisite",
-  });
-  const [prereqError, setPrereqError] = useState<string | null>(null);
-  const [vcatForm, setVcatForm] = useState({ name: "", color: "#3b82f6", sortOrder: 1 });
-  const [rcatForm, setRcatForm] = useState<{ name: string; parentId: string | null }>({
-    name: "",
-    parentId: null,
-  });
-
-  // Status message
-  const [actionMessage, setActionMessage] = useState<string | null>(null);
-
-  // Fetch all basic data
-  const loadAllData = async () => {
-    try {
-      const [facRes, majRes, trkRes, crsRes, prfRes] = await Promise.all([
-        fetch("/api/faculties").then((r) => r.json()),
-        fetch("/api/majors").then((r) => r.json()),
-        fetch("/api/tracks").then((r) => r.json()),
-        fetch("/api/courses").then((r) => r.json()),
-        fetch("/api/professors").then((r) => r.json()),
-      ]);
-
-      if (facRes.success) {
-        setFaculties(facRes.data);
-        if (facRes.data.length > 0 && !selectedFacultyId) {
-          setSelectedFacultyId(facRes.data[0].id);
-        }
-      }
-      if (majRes.success) setMajors(majRes.data);
-      if (trkRes.success) setTracks(trkRes.data);
-      if (crsRes.success) setCourses(crsRes.data);
-      if (prfRes.success) setProfessors(prfRes.data);
-    } catch (e) {
-      console.error("Load data error:", e);
-    }
-  };
-
-  // Auth check and initial load
+  // Authentication check and initial data load
   useEffect(() => {
     async function checkAuthAndLoad() {
       try {
@@ -215,359 +91,17 @@ export default function AdminDashboardPage() {
         await loadAllData();
       } catch {
         router.push("/login");
-      } finally {
-        setLoading(false);
       }
     }
     checkAuthAndLoad();
-  }, [router]);
+  }, [router, setUser, loadAllData]);
 
-  // Load categories and assignments when track changes
-  useEffect(() => {
-    if (!selectedTrackId) return;
-    async function loadCatsAndAssignments() {
-      try {
-        const [catRes, assignRes] = await Promise.all([
-          fetch(`/api/categories?trackId=${selectedTrackId}`).then((r) => r.json()),
-          fetch(`/api/tracks/assignments?trackId=${selectedTrackId}`).then((r) => r.json()),
-        ]);
-        if (catRes.success) {
-          setVisualCats(catRes.data.visual);
-          setRuleCats(catRes.data.rule);
-        }
-        if (assignRes.success) {
-          setTrackAssignments(assignRes.data);
-        }
-      } catch (e) {
-        console.error("Error loading track details:", e);
-      }
-    }
-    loadCatsAndAssignments();
-  }, [selectedTrackId]);
-
-  // Auto select major and track when faculty changes
-  useEffect(() => {
-    if (!selectedFacultyId) return;
-    const relatedMajors = majors.filter((m) => m.facultyId === selectedFacultyId);
-    if (relatedMajors.length > 0) {
-      setSelectedMajorId(relatedMajors[0].id);
-    } else {
-      setSelectedMajorId("");
-      setSelectedTrackId("");
-    }
-  }, [selectedFacultyId, majors]);
-
-  useEffect(() => {
-    if (!selectedMajorId) return;
-    const relatedTracks = tracks.filter((t) => t.majorId === selectedMajorId);
-    if (relatedTracks.length > 0) {
-      setSelectedTrackId(relatedTracks[0].id);
-    } else {
-      setSelectedTrackId("");
-    }
-  }, [selectedMajorId, tracks]);
-
-  // Handlers
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
-    router.refresh();
   };
 
-  // Save Faculty (Create or Edit)
-  const handleSaveFaculty = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const url = "/api/faculties";
-    const method = editingFaculty ? "PUT" : "POST";
-    const payload = editingFaculty
-      ? { id: editingFaculty.id, ...facultyForm }
-      : facultyForm;
-
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    }).then((r) => r.json());
-
-    if (res.success) {
-      setFacultyModalOpen(false);
-      setEditingFaculty(null);
-      setFacultyForm({ name: "", code: "" });
-      await loadAllData();
-    } else {
-      alert(res.message || "خطا در ثبت دانشکده");
-    }
-  };
-
-  const handleDeleteFaculty = async (id: string, name: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!confirm(`آیا از حذف دانشکده «${name}» مطمئن هستید؟ توجه: رشته‌ها و دروس این دانشکده نیز حذف خواهند شد.`)) {
-      return;
-    }
-
-    const res = await fetch(`/api/faculties?id=${id}`, { method: "DELETE" }).then((r) => r.json());
-    if (res.success) {
-      if (selectedFacultyId === id) {
-        setSelectedFacultyId("");
-        setSelectedMajorId("");
-        setSelectedTrackId("");
-      }
-      await loadAllData();
-    } else {
-      alert(res.message || "خطا در حذف دانشکده");
-    }
-  };
-
-  // Save Major (Create or Edit)
-  const handleSaveMajor = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const url = "/api/majors";
-    const method = editingMajor ? "PUT" : "POST";
-    const payload = editingMajor
-      ? { id: editingMajor.id, ...majorForm }
-      : { ...majorForm, facultyId: selectedFacultyId };
-
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    }).then((r) => r.json());
-
-    if (res.success) {
-      setMajorModalOpen(false);
-      setEditingMajor(null);
-      setMajorForm({ name: "", code: "" });
-      await loadAllData();
-    } else {
-      alert(res.message || "خطا در ثبت رشته");
-    }
-  };
-
-  const handleDeleteMajor = async (id: string, name: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!confirm(`آیا از حذف رشته «${name}» مطمئن هستید؟`)) {
-      return;
-    }
-
-    const res = await fetch(`/api/majors?id=${id}`, { method: "DELETE" }).then((r) => r.json());
-    if (res.success) {
-      if (selectedMajorId === id) {
-        setSelectedMajorId("");
-        setSelectedTrackId("");
-      }
-      await loadAllData();
-    } else {
-      alert(res.message || "خطا در حذف رشته");
-    }
-  };
-
-  // Save Track (Create or Edit)
-  const handleSaveTrack = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const url = "/api/tracks";
-    const method = editingTrack ? "PUT" : "POST";
-    const payload = editingTrack
-      ? { id: editingTrack.id, ...trackForm }
-      : { ...trackForm, majorId: selectedMajorId };
-
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    }).then((r) => r.json());
-
-    if (res.success) {
-      setTrackModalOpen(false);
-      setEditingTrack(null);
-      setTrackForm({ name: "", code: "" });
-      await loadAllData();
-    } else {
-      alert(res.message || "خطا در ثبت گرایش");
-    }
-  };
-
-  const handleDeleteTrack = async (id: string, name: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!confirm(`آیا از حذف گرایش «${name}» مطمئن هستید؟`)) {
-      return;
-    }
-
-    const res = await fetch(`/api/tracks?id=${id}`, { method: "DELETE" }).then((r) => r.json());
-    if (res.success) {
-      if (selectedTrackId === id) {
-        setSelectedTrackId("");
-      }
-      await loadAllData();
-    } else {
-      alert(res.message || "خطا در حذف گرایش");
-    }
-  };
-
-  // Create Visual Category
-  const handleCreateVcat = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const res = await fetch("/api/categories", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: "visual",
-        trackId: selectedTrackId,
-        ...vcatForm,
-      }),
-    }).then((r) => r.json());
-    if (res.success) {
-      setVcatModalOpen(false);
-      setVcatForm({ name: "", color: "#3b82f6", sortOrder: visualCats.length + 1 });
-      const updated = await fetch(`/api/categories?trackId=${selectedTrackId}`).then((r) => r.json());
-      if (updated.success) setVisualCats(updated.data.visual);
-    }
-  };
-
-  // Create Rule Category
-  const handleCreateRcat = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const res = await fetch("/api/categories", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: "rule",
-        trackId: selectedTrackId,
-        ...rcatForm,
-      }),
-    }).then((r) => r.json());
-    if (res.success) {
-      setRcatModalOpen(false);
-      setRcatForm({ name: "", parentId: null });
-      const updated = await fetch(`/api/categories?trackId=${selectedTrackId}`).then((r) => r.json());
-      if (updated.success) setRuleCats(updated.data.rule);
-    }
-  };
-
-  // Create or Update Course
-  const handleSaveCourse = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedFacultyId) {
-      alert("لطفاً ابتدا یک دانشکده را انتخاب یا ایجاد کنید.");
-      return;
-    }
-
-    if (editingCourse) {
-      // Edit mode
-      const res = await fetch("/api/courses", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: editingCourse.id,
-          name: courseForm.name,
-          code: courseForm.code,
-          units: Number(courseForm.units) || 3,
-          facultyId: selectedFacultyId,
-          offeredIn: courseForm.offeredIn,
-          description: courseForm.description || "",
-        }),
-      }).then((r) => r.json());
-
-      if (res.success) {
-        setCourseModalOpen(false);
-        setEditingCourse(null);
-        setCourseForm({
-          name: "",
-          code: "",
-          units: 3,
-          facultyId: selectedFacultyId,
-          offeredIn: "both",
-          visualCategoryId: "",
-          ruleCategoryId: "",
-          description: "",
-        });
-        setActionMessage("مشخصات درس با موفقیت ویرایش شد.");
-        await loadAllData();
-        setTimeout(() => setActionMessage(null), 3000);
-      } else {
-        alert(res.message || "خطا در ویرایش درس");
-      }
-    } else {
-      // Create mode
-      const res = await fetch("/api/courses", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: courseForm.name,
-          code: courseForm.code,
-          units: Number(courseForm.units) || 3,
-          facultyId: selectedFacultyId,
-          offeredIn: courseForm.offeredIn,
-          description: courseForm.description || "",
-        }),
-      }).then((r) => r.json());
-
-      if (res.success) {
-        setCourseModalOpen(false);
-        setCourseForm({
-          name: "",
-          code: "",
-          units: 3,
-          facultyId: selectedFacultyId,
-          offeredIn: "both",
-          visualCategoryId: "",
-          ruleCategoryId: "",
-          description: "",
-        });
-        setActionMessage("درس جدید با موفقیت اضافه شد.");
-        await loadAllData();
-        setTimeout(() => setActionMessage(null), 3000);
-      } else {
-        alert(res.message || "خطا در ثبت درس");
-      }
-    }
-  };
-
-  // Add Prerequisite with Cycle Check
-  const handleAddPrerequisite = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPrereqError(null);
-    if (!selectedCourseForPrereq || !prereqForm.requiredCourseId) return;
-
-    const res = await fetch("/api/courses", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "add_prerequisite",
-        courseId: selectedCourseForPrereq.id,
-        requiredCourseId: prereqForm.requiredCourseId,
-        type: prereqForm.type,
-      }),
-    }).then((r) => r.json());
-
-    if (!res.success) {
-      setPrereqError(res.message);
-      return;
-    }
-
-    setPrereqForm({ requiredCourseId: "", type: "prerequisite" });
-    await loadAllData();
-    // Refresh selected course details
-    const updatedCourse = await fetch(`/api/courses?id=${selectedCourseForPrereq.id}`).then((r) => r.json());
-    if (updatedCourse.success) setSelectedCourseForPrereq(updatedCourse.data);
-  };
-
-  // Remove Prerequisite
-  const handleRemovePrerequisite = async (relationId: string) => {
-    if (!selectedCourseForPrereq) return;
-    await fetch("/api/courses", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "remove_prerequisite",
-        relationId,
-      }),
-    });
-    await loadAllData();
-    const updatedCourse = await fetch(`/api/courses?id=${selectedCourseForPrereq.id}`).then((r) => r.json());
-    if (updatedCourse.success) setSelectedCourseForPrereq(updatedCourse.data);
-  };
-
-  if (loading) {
+  if (loading && !user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-muted/30">
         <div className="flex flex-col items-center gap-2">
@@ -581,16 +115,6 @@ export default function AdminDashboardPage() {
   const currentFaculty = faculties.find((f) => f.id === selectedFacultyId);
   const currentMajor = majors.find((m) => m.id === selectedMajorId);
   const currentTrack = tracks.find((t) => t.id === selectedTrackId);
-
-  const facultyCourses = courses.filter(
-    (c) => !selectedFacultyId || c.facultyId === selectedFacultyId
-  );
-
-  const filteredCourses = facultyCourses.filter(
-    (c) =>
-      c.name.toLowerCase().includes(courseSearch.toLowerCase()) ||
-      c.code.toLowerCase().includes(courseSearch.toLowerCase())
-  );
 
   const navItems = [
     {
@@ -690,7 +214,11 @@ export default function AdminDashboardPage() {
               variant="outline"
               size="sm"
               onClick={async () => {
-                if (confirm("آیا مایل به بازنشانی و بارگذاری کامل داده‌های نمونه دولوپ (شامل دروس، اساتید، ارائه‌ها و چارت نمونه) هستید؟")) {
+                if (
+                  confirm(
+                    "آیا مایل به بازنشانی و بارگذاری کامل داده‌های نمونه دولوپ (شامل دروس، اساتید، ارائه‌ها و چارت نمونه) هستید؟"
+                  )
+                ) {
                   const res = await fetch("/api/admin/seed", { method: "POST" }).then((r) => r.json());
                   if (res.success) {
                     await loadAllData();
@@ -827,1510 +355,150 @@ export default function AdminDashboardPage() {
               </div>
             )}
 
-          {/* ========================================================= */}
-          {/* TAB 1: COURSES & PREREQUISITES */}
-          {/* ========================================================= */}
-          {activeTab === "courses" && (
-            <div className="space-y-4">
-              {/* Active Faculty Indicator & Switcher */}
-              <div className="rounded-2xl border border-primary/20 bg-gradient-to-l from-primary/10 via-primary/5 to-card p-4 shadow-sm">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20 shrink-0">
-                      <Building2 className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold text-muted-foreground">دانشکده انتخابی شما:</span>
-                        {currentFaculty ? (
-                          <Badge variant="default" className="text-xs px-2.5 py-0.5 font-bold shadow-xs">
-                            {currentFaculty.name} ({currentFaculty.code})
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-xs px-2.5 py-0.5 text-destructive border-destructive/40">
-                            دانشکده‌ای انتخاب نشده است
-                          </Badge>
-                        )}
+            {/* TAB 1: UNIVERSITY STRUCTURE */}
+            {activeTab === "structure" && <UniversityStructureManager />}
+
+            {/* TAB 2: COURSES & PREREQUISITES */}
+            {activeTab === "courses" && (
+              <CourseManager onNavigateToStructure={() => setActiveTab("structure")} />
+            )}
+
+            {/* TAB 3: OFFERINGS */}
+            {activeTab === "offerings" && (
+              <OfferingManager
+                courses={courses}
+                professors={professors}
+                faculties={faculties}
+                selectedFacultyId={selectedFacultyId}
+              />
+            )}
+
+            {/* TAB 4: EVENTS & TIMETABLE */}
+            {activeTab === "events" && (
+              <EventManager
+                faculties={faculties}
+                selectedFacultyId={selectedFacultyId}
+              />
+            )}
+
+            {/* TAB 5: PROFESSORS */}
+            {activeTab === "professors" && (
+              <ProfessorManager
+                professors={professors}
+                faculties={faculties}
+                selectedFacultyId={selectedFacultyId}
+                onDataChanged={loadAllData}
+              />
+            )}
+
+            {/* TAB 6: CATEGORIES */}
+            {activeTab === "categories" && (
+              <CategoryManager onNavigateToStructure={() => setActiveTab("structure")} />
+            )}
+
+            {/* TAB 7: APPROVED CHARTS */}
+            {activeTab === "approved-charts" && (
+              <ApprovedChartsManager
+                faculties={faculties}
+                majors={majors}
+                tracks={tracks}
+                courses={courses}
+                selectedTrackId={selectedTrackId}
+              />
+            )}
+
+            {/* TAB 8: RULES ENGINE & QUERY BUILDER */}
+            {activeTab === "rules" && (
+              <div className="space-y-6">
+                {/* Active Track Banner */}
+                <div className="rounded-2xl border border-primary/20 bg-gradient-to-l from-primary/10 via-primary/5 to-card p-4 shadow-sm">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20 shrink-0">
+                        <GitBranch className="h-5 w-5" />
                       </div>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        فقط دروس و روابط پیش‌نیازی مربوط به این دانشکده نمایش داده می‌شوند.
-                      </p>
-                    </div>
-                  </div>
-
-                  {!currentFaculty && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setActiveTab("structure")}
-                      className="h-8 text-xs gap-1 shadow-2xs"
-                    >
-                      <Building2 className="h-3.5 w-3.5" />
-                      انتخاب در ساختار دانشگاه
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              <Card className="border-border/70 shadow-xs">
-                <CardHeader className="flex flex-row items-center justify-between border-b pb-3">
-                  <div>
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <BookOpen className="h-4 w-4 text-primary" />
-                      <span>بانک اطلاعاتی دروس {currentFaculty ? `«${currentFaculty.name}»` : ""}</span>
-                    </CardTitle>
-                    <CardDescription className="text-xs">
-                      مدیریت دروس، تعداد واحدها، نوع ارائه و تعیین پیش‌نیازها و هم‌نیازها
-                    </CardDescription>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setEditingCourse(null);
-                      setCourseForm({
-                        name: "",
-                        code: "",
-                        units: 3,
-                        facultyId: selectedFacultyId,
-                        offeredIn: "both",
-                        visualCategoryId: "",
-                        ruleCategoryId: "",
-                        description: "",
-                      });
-                      setCourseModalOpen(true);
-                    }}
-                    disabled={!selectedFacultyId}
-                    className="h-8 gap-1 text-xs"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    افزودن درس جدید
-                  </Button>
-                </CardHeader>
-
-                <CardContent className="p-4 space-y-4">
-                  {/* Search Bar */}
-                  <div className="flex items-center justify-between gap-3">
-                    <Input
-                      placeholder="جستجو بر اساس نام یا کد درس..."
-                      value={courseSearch}
-                      onChange={(e) => setCourseSearch(e.target.value)}
-                      className="h-8 max-w-sm text-xs"
-                    />
-                    <Badge variant="secondary" className="text-xs">
-                      نمایش {filteredCourses.length} از {facultyCourses.length} درس این دانشکده
-                    </Badge>
-                  </div>
-
-                {/* Courses Grid */}
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {filteredCourses.map((course) => (
-                    <div
-                      key={course.id}
-                      className="flex flex-col justify-between rounded-xl border border-border/80 bg-card p-3.5 shadow-2xs hover:border-primary/40 transition-colors"
-                    >
-                      <div className="space-y-2">
-                        {/* Course header */}
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <h3 className="text-xs font-bold text-foreground">{course.name}</h3>
-                            <span className="text-[11px] text-muted-foreground">{course.code}</span>
-                          </div>
-                          <Badge variant="outline" className="text-[11px] font-semibold">
-                            {course.units} واحد
-                          </Badge>
-                        </div>
-
-                        {/* Badges */}
-                        <div className="flex flex-wrap items-center gap-1 text-[10px]">
-                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                            ارائه:{" "}
-                            {course.offeredIn === "fall"
-                              ? "فقط پاییز"
-                              : course.offeredIn === "spring"
-                              ? "فقط بهار"
-                              : "پاییز و بهار"}
-                          </Badge>
-                        </div>
-
-                        {/* Prerequisites & Corequisites */}
-                        <div className="space-y-1 pt-1 border-t border-border/50">
-                          <p className="text-[10px] font-semibold text-muted-foreground">وابستگی‌ها:</p>
-                          {(!course.prerequisites || course.prerequisites.length === 0) ? (
-                            <span className="text-[10px] text-muted-foreground/70 italic">بدون پیش‌نیاز</span>
-                          ) : (
-                            <div className="flex flex-wrap gap-1">
-                              {course.prerequisites.map((p) => (
-                                <span
-                                  key={p.id}
-                                  className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                                    p.type === "prerequisite"
-                                      ? "bg-amber-500/10 text-amber-700 dark:text-amber-300"
-                                      : "bg-sky-500/10 text-sky-700 dark:text-sky-300"
-                                  }`}
-                                >
-                                  {p.type === "prerequisite" ? "پیش:" : "هم:"} {p.requiredCourseName}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Card Actions */}
-                      <div className="mt-3 flex items-center justify-between pt-2 border-t border-border/40">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedCourseForPrereq(course);
-                            setPrereqError(null);
-                            setPrereqModalOpen(true);
-                          }}
-                          className="h-7 gap-1 text-[11px]"
-                        >
-                          <LinkIcon className="h-3 w-3" />
-                          پیش‌نیازها ({course.prerequisites?.length || 0})
-                        </Button>
-
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setEditingCourse(course);
-                              setCourseForm({
-                                name: course.name,
-                                code: course.code,
-                                units: course.units,
-                                facultyId: course.facultyId || selectedFacultyId,
-                                offeredIn: course.offeredIn || "both",
-                                visualCategoryId: "",
-                                ruleCategoryId: "",
-                                description: course.description || "",
-                              });
-                              setCourseModalOpen(true);
-                            }}
-                            className="h-7 w-7 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                            title="ویرایش مشخصات درس"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={async () => {
-                              if (confirm(`آیا از حذف درس ${course.name} مطمئن هستید؟`)) {
-                                await fetch(`/api/courses?id=${course.id}`, { method: "DELETE" });
-                                setActionMessage(`درس «${course.name}» حذف شد.`);
-                                await loadAllData();
-                                setTimeout(() => setActionMessage(null), 3000);
-                              }
-                            }}
-                            className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                            title="حذف درس"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-          )}
-
-          {/* ========================================================= */}
-          {/* TAB 2: UNIVERSITY STRUCTURE */}
-          {/* ========================================================= */}
-          {activeTab === "structure" && (
-            <div className="space-y-4">
-            {/* Hierarchical Breadcrumb & Flow Path */}
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-2xs">
-              <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="font-semibold text-muted-foreground">مسیر انتخابی:</span>
-                <Badge variant="secondary" className="gap-1 font-semibold text-xs py-1">
-                  <Building2 className="h-3 w-3 text-primary" />
-                  {faculties.find((f) => f.id === selectedFacultyId)?.name || "انتخاب دانشکده"}
-                </Badge>
-                <span className="text-muted-foreground font-bold">←</span>
-                <Badge variant="secondary" className="gap-1 font-semibold text-xs py-1">
-                  <GraduationCap className="h-3 w-3 text-violet-500" />
-                  {majors.find((m) => m.id === selectedMajorId)?.name || "انتخاب رشته"}
-                </Badge>
-                <span className="text-muted-foreground font-bold">←</span>
-                <Badge variant="default" className="gap-1 font-semibold text-xs py-1 shadow-xs">
-                  <Layers className="h-3 w-3 text-primary-foreground" />
-                  {tracks.find((t) => t.id === selectedTrackId)?.name || "انتخاب گرایش"}
-                </Badge>
-              </div>
-              <span className="text-[11px] text-muted-foreground">
-                روی هر سطح کلیک کنید تا زیرمجموعه‌های آن در ستون بعدی نمایش داده شوند
-              </span>
-            </div>
-
-            {/* 3-Column Connected Hierarchical Grid */}
-            <div className="grid gap-4 md:grid-cols-3">
-              {/* Column 1: Faculties */}
-              <Card className="border-border/70 shadow-2xs">
-                <CardHeader className="flex flex-row items-center justify-between pb-3 border-b bg-muted/20">
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
-                        ۱
-                      </span>
-                      <CardTitle className="text-xs font-bold">دانشکده‌ها</CardTitle>
-                    </div>
-                    <CardDescription className="text-[10px]">سطح اول ساختار دانشگاهی</CardDescription>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setEditingFaculty(null);
-                      setFacultyForm({ name: "", code: "" });
-                      setFacultyModalOpen(true);
-                    }}
-                    className="h-7 text-[11px] gap-1 shadow-2xs"
-                  >
-                    <Plus className="h-3 w-3" /> جدید
-                  </Button>
-                </CardHeader>
-                <CardContent className="p-3 space-y-2 max-h-[420px] overflow-y-auto">
-                  {faculties.map((f) => {
-                    const isSelected = selectedFacultyId === f.id;
-                    const majorsCount = majors.filter((m) => m.facultyId === f.id).length;
-                    return (
-                      <div
-                        key={f.id}
-                        onClick={() => setSelectedFacultyId(f.id)}
-                        className={`group relative flex cursor-pointer items-center justify-between rounded-xl border p-3 text-xs transition-all ${
-                          isSelected
-                            ? "border-primary bg-primary/10 font-bold text-primary shadow-xs ring-1 ring-primary/40"
-                            : "border-border/60 bg-card hover:border-border hover:bg-muted/40"
-                        }`}
-                      >
-                        <div className="space-y-0.5">
-                          <p className="text-xs leading-snug">{f.name}</p>
-                          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                            <span>{f.code}</span>
-                            <span>•</span>
-                            <span>{majorsCount} رشته</span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-1 shrink-0">
-                          {isSelected && (
-                            <span className="rounded-full bg-primary p-1 text-primary-foreground shadow-2xs ml-1">
-                              <Check className="h-3 w-3" />
-                            </span>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingFaculty(f);
-                              setFacultyForm({ name: f.name, code: f.code });
-                              setFacultyModalOpen(true);
-                            }}
-                            className="h-6 w-6 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                            title="ویرایش دانشکده"
-                          >
-                            <Pencil className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => handleDeleteFaculty(f.id, f.name, e)}
-                            className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                            title="حذف دانشکده"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {faculties.length === 0 && (
-                    <p className="text-center text-xs text-muted-foreground py-6">دانشکده‌ای ثبت نشده است.</p>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Column 2: Majors */}
-              <Card className="border-border/70 shadow-2xs">
-                <CardHeader className="flex flex-row items-center justify-between pb-3 border-b bg-muted/20">
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-600 text-[11px] font-bold text-primary-foreground">
-                        ۲
-                      </span>
-                      <CardTitle className="text-xs font-bold">
-                        رشته‌های {faculties.find((f) => f.id === selectedFacultyId)?.name ? `«${faculties.find((f) => f.id === selectedFacultyId)?.code}»` : ""}
-                      </CardTitle>
-                    </div>
-                    <CardDescription className="text-[10px]">سطح دوم: رشته‌های زیرمجموعه</CardDescription>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={!selectedFacultyId}
-                    onClick={() => {
-                      setEditingMajor(null);
-                      setMajorForm({ name: "", code: "" });
-                      setMajorModalOpen(true);
-                    }}
-                    className="h-7 text-[11px] gap-1 shadow-2xs"
-                  >
-                    <Plus className="h-3 w-3" /> جدید
-                  </Button>
-                </CardHeader>
-                <CardContent className="p-3 space-y-2 max-h-[420px] overflow-y-auto">
-                  {majors
-                    .filter((m) => m.facultyId === selectedFacultyId)
-                    .map((m) => {
-                      const isSelected = selectedMajorId === m.id;
-                      const tracksCount = tracks.filter((t) => t.majorId === m.id).length;
-                      return (
-                        <div
-                          key={m.id}
-                          onClick={() => setSelectedMajorId(m.id)}
-                          className={`group relative flex cursor-pointer items-center justify-between rounded-xl border p-3 text-xs transition-all ${
-                            isSelected
-                              ? "border-violet-500 bg-violet-500/10 font-bold text-violet-700 dark:text-violet-300 shadow-xs ring-1 ring-violet-500/40"
-                              : "border-border/60 bg-card hover:border-border hover:bg-muted/40"
-                          }`}
-                        >
-                          <div className="space-y-0.5">
-                            <p className="text-xs leading-snug">{m.name}</p>
-                            <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                              <span>{m.code}</span>
-                              <span>•</span>
-                              <span>{tracksCount} گرایش</span>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-1 shrink-0">
-                            {isSelected && (
-                              <span className="rounded-full bg-violet-600 p-1 text-white shadow-2xs ml-1">
-                                <Check className="h-3 w-3" />
-                              </span>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingMajor(m);
-                                setMajorForm({ name: m.name, code: m.code });
-                                setMajorModalOpen(true);
-                              }}
-                              className="h-6 w-6 p-0 text-muted-foreground hover:text-violet-600 hover:bg-violet-500/10"
-                              title="ویرایش رشته"
-                            >
-                              <Pencil className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => handleDeleteMajor(m.id, m.name, e)}
-                              className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                              title="حذف رشته"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  {selectedFacultyId && majors.filter((m) => m.facultyId === selectedFacultyId).length === 0 && (
-                    <div className="text-center text-xs text-muted-foreground py-6 space-y-2">
-                      <p>هیچ رشته‌ای برای این دانشکده ثبت نشده است.</p>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setEditingMajor(null);
-                          setMajorForm({ name: "", code: "" });
-                          setMajorModalOpen(true);
-                        }}
-                        className="h-7 text-xs"
-                      >
-                        + ایجاد اولین رشته
-                      </Button>
-                    </div>
-                  )}
-                  {!selectedFacultyId && (
-                    <p className="text-center text-xs text-muted-foreground py-6">ابتدا یک دانشکده را از ستون اول انتخاب کنید.</p>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Column 3: Tracks */}
-              <Card className="border-border/70 shadow-2xs">
-                <CardHeader className="flex flex-row items-center justify-between pb-3 border-b bg-muted/20">
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-[11px] font-bold text-primary-foreground">
-                        ۳
-                      </span>
-                      <CardTitle className="text-xs font-bold">
-                        گرایش‌های {majors.find((m) => m.id === selectedMajorId)?.name ? `«${majors.find((m) => m.id === selectedMajorId)?.name}»` : ""}
-                      </CardTitle>
-                    </div>
-                    <CardDescription className="text-[10px]">سطح سوم: گرایش‌ها، قوانین و چارت</CardDescription>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={!selectedMajorId}
-                    onClick={() => {
-                      setEditingTrack(null);
-                      setTrackForm({ name: "", code: "" });
-                      setTrackModalOpen(true);
-                    }}
-                    className="h-7 text-[11px] gap-1 shadow-2xs"
-                  >
-                    <Plus className="h-3 w-3" /> جدید
-                  </Button>
-                </CardHeader>
-                <CardContent className="p-3 space-y-2 max-h-[420px] overflow-y-auto">
-                  {tracks
-                    .filter((t) => t.majorId === selectedMajorId)
-                    .map((t) => {
-                      const isSelected = selectedTrackId === t.id;
-                      return (
-                        <div
-                          key={t.id}
-                          onClick={() => setSelectedTrackId(t.id)}
-                          className={`group relative flex cursor-pointer items-center justify-between rounded-xl border p-3 text-xs transition-all ${
-                            isSelected
-                              ? "border-emerald-500 bg-emerald-500/10 font-bold text-emerald-700 dark:text-emerald-300 shadow-xs ring-1 ring-emerald-500/40"
-                              : "border-border/60 bg-card hover:border-border hover:bg-muted/40"
-                          }`}
-                        >
-                          <div className="space-y-0.5">
-                            <p className="text-xs leading-snug">{t.name}</p>
-                            <span className="text-[10px] text-muted-foreground">{t.code}</span>
-                          </div>
-
-                          <div className="flex items-center gap-1 shrink-0">
-                            {isSelected && (
-                              <span className="rounded-full bg-emerald-600 p-1 text-white shadow-2xs ml-1">
-                                <Check className="h-3 w-3" />
-                              </span>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingTrack(t);
-                                setTrackForm({ name: t.name, code: t.code });
-                                setTrackModalOpen(true);
-                              }}
-                              className="h-6 w-6 p-0 text-muted-foreground hover:text-emerald-600 hover:bg-emerald-500/10"
-                              title="ویرایش گرایش"
-                            >
-                              <Pencil className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => handleDeleteTrack(t.id, t.name, e)}
-                              className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                              title="حذف گرایش"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  {selectedMajorId && tracks.filter((t) => t.majorId === selectedMajorId).length === 0 && (
-                    <div className="text-center text-xs text-muted-foreground py-6 space-y-2">
-                      <p>هیچ گرایشی برای این رشته ثبت نشده است.</p>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setEditingTrack(null);
-                          setTrackForm({ name: "", code: "" });
-                          setTrackModalOpen(true);
-                        }}
-                        className="h-7 text-xs"
-                      >
-                        + ایجاد اولین گرایش
-                      </Button>
-                    </div>
-                  )}
-                  {!selectedMajorId && (
-                    <p className="text-center text-xs text-muted-foreground py-6">ابتدا یک رشته را از ستون دوم انتخاب کنید.</p>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-            </div>
-          )}
-
-          {/* ========================================================= */}
-          {/* TAB 3: CATEGORIES */}
-          {/* ========================================================= */}
-          {activeTab === "categories" && (
-            <div className="space-y-4">
-              {/* Active Track Banner */}
-              <div className="rounded-2xl border border-primary/20 bg-gradient-to-l from-primary/10 via-primary/5 to-card p-4 shadow-sm">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20 shrink-0">
-                      <Layers className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-xs font-semibold text-muted-foreground">گرایش انتخابی شما:</span>
-                        {currentTrack ? (
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <Badge variant="default" className="text-xs px-2.5 py-0.5 font-bold shadow-xs">
-                              {currentTrack.name} ({currentTrack.code})
-                            </Badge>
-                            {currentMajor && (
-                              <Badge variant="secondary" className="text-xs px-2 py-0.5">
-                                رشته: {currentMajor.name}
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs font-semibold text-muted-foreground">گرایش فعال شما:</span>
+                          {currentTrack ? (
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <Badge variant="default" className="text-xs px-2.5 py-0.5 font-bold shadow-xs">
+                                {currentTrack.name} ({currentTrack.code})
                               </Badge>
-                            )}
-                            {currentFaculty && (
-                              <Badge variant="outline" className="text-xs px-2 py-0.5">
-                                دانشکده: {currentFaculty.name}
-                              </Badge>
-                            )}
-                          </div>
-                        ) : (
-                          <Badge variant="outline" className="text-xs px-2.5 py-0.5 text-destructive border-destructive/40">
-                            گرایشی در بخش ساختار دانشگاه انتخاب نشده است
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        دسته‌های بصری و دسته‌های قوانین برای دروس این گرایش تنظیم می‌شوند.
-                      </p>
-                    </div>
-                  </div>
-
-                  {!currentTrack && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setActiveTab("structure")}
-                      className="h-8 text-xs gap-1 shadow-2xs"
-                    >
-                      <Building2 className="h-3.5 w-3.5" />
-                      انتخاب در ساختار دانشگاه
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              {/* Visual Categories */}
-              <Card className="border-border/70">
-                <CardHeader className="flex flex-row items-center justify-between pb-2 border-b">
-                  <div>
-                    <CardTitle className="text-xs font-bold">دسته‌های بصری (رنگی سایدبار چارت)</CardTitle>
-                    <CardDescription className="text-[11px]">
-                      این دسته‌ها با رنگ دلخواه در سایدبار ساخت چارت به دانشجو نشان داده می‌شوند.
-                    </CardDescription>
-                  </div>
-                  <Button
-                    size="sm"
-                    disabled={!selectedTrackId}
-                    onClick={() => setVcatModalOpen(true)}
-                    className="h-7 text-[11px] gap-1"
-                  >
-                    <Plus className="h-3 w-3" /> افزودن
-                  </Button>
-                </CardHeader>
-                <CardContent className="p-3 space-y-2">
-                  {visualCats.map((cat) => (
-                    <div
-                      key={cat.id}
-                      className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/20 p-2.5 text-xs"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="h-4 w-4 rounded-full border shadow-xs"
-                          style={{ backgroundColor: cat.color }}
-                        />
-                        <span className="font-semibold">{cat.name}</span>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={async () => {
-                          await fetch(`/api/categories?id=${cat.id}&type=visual`, { method: "DELETE" });
-                          const res = await fetch(`/api/categories?trackId=${selectedTrackId}`).then((r) =>
-                            r.json()
-                          );
-                          if (res.success) setVisualCats(res.data.visual);
-                        }}
-                        className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-
-              {/* Rule Categories (Hierarchical Tree) */}
-              <Card className="border-border/70">
-                <CardHeader className="flex flex-row items-center justify-between pb-2 border-b">
-                  <div>
-                    <CardTitle className="text-xs font-bold">دسته‌های قوانین (درختی و تو‌در‌تو)</CardTitle>
-                    <CardDescription className="text-[11px]">
-                      تعریف ساختار درختی و دسته‌های والد و زیردسته جهت انتساب دروس و ساخت قوانین فارغ‌التحصیلی
-                    </CardDescription>
-                  </div>
-                  <Button
-                    size="sm"
-                    disabled={!selectedTrackId}
-                    onClick={() => {
-                      setRcatForm({ name: "", parentId: null });
-                      setRcatModalOpen(true);
-                    }}
-                    className="h-7 text-[11px] gap-1"
-                  >
-                    <Plus className="h-3 w-3" /> دسته اصلی
-                  </Button>
-                </CardHeader>
-                <CardContent className="p-3 space-y-2.5">
-                  {(() => {
-                    const topLevelCats = ruleCats.filter(
-                      (c) => !c.parentId || !ruleCats.some((p) => p.id === c.parentId)
-                    );
-                    const getChildCats = (parentId: string) =>
-                      ruleCats.filter((c) => c.parentId === parentId);
-
-                    if (ruleCats.length === 0) {
-                      return (
-                        <p className="text-xs text-muted-foreground text-center py-4">
-                          دسته‌ای تعریف نشده است.
-                        </p>
-                      );
-                    }
-
-                    return topLevelCats.map((parentCat) => {
-                      const children = getChildCats(parentCat.id);
-
-                      return (
-                        <div
-                          key={parentCat.id}
-                          className="space-y-1.5 rounded-xl border border-border/70 bg-muted/15 p-2.5"
-                        >
-                          {/* Parent Category Row */}
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="h-2 w-2 rounded-full bg-primary" />
-                              <span className="font-bold text-xs text-foreground">
-                                {parentCat.name}
-                              </span>
-                              {children.length > 0 && (
-                                <Badge variant="secondary" className="text-[10px] h-4.5 px-1.5">
-                                  {children.length} زیردسته
+                              {currentMajor && (
+                                <Badge variant="secondary" className="text-xs px-2 py-0.5">
+                                  رشته: {currentMajor.name}
+                                </Badge>
+                              )}
+                              {currentFaculty && (
+                                <Badge variant="outline" className="text-xs px-2 py-0.5">
+                                  دانشکده: {currentFaculty.name}
                                 </Badge>
                               )}
                             </div>
-
-                            <div className="flex items-center gap-1">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => {
-                                  setRcatForm({ name: "", parentId: parentCat.id });
-                                  setRcatModalOpen(true);
-                                }}
-                                className="h-6 text-[10px] px-2 gap-1 text-primary hover:bg-primary/10"
-                                title="افزودن زیردسته به این دسته"
-                              >
-                                <Plus className="h-3 w-3" />
-                                زیردسته
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={async () => {
-                                  await fetch(`/api/categories?id=${parentCat.id}&type=rule`, {
-                                    method: "DELETE",
-                                  });
-                                  const res = await fetch(
-                                    `/api/categories?trackId=${selectedTrackId}`
-                                  ).then((r) => r.json());
-                                  if (res.success) setRuleCats(res.data.rule);
-                                }}
-                                className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                                title="حذف دسته"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                          </div>
-
-                          {/* Nested Children Subcategories */}
-                          {children.length > 0 && (
-                            <div className="mr-3.5 pr-2.5 border-r-2 border-primary/30 space-y-1 pt-1">
-                              {children.map((childCat) => {
-                                const subChildren = getChildCats(childCat.id);
-                                return (
-                                  <div key={childCat.id} className="space-y-1">
-                                    <div className="flex items-center justify-between rounded-lg bg-background/80 border border-border/50 p-2 text-xs">
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="text-muted-foreground text-[10px]">↳</span>
-                                        <span className="font-medium text-foreground">
-                                          {childCat.name}
-                                        </span>
-                                        {subChildren.length > 0 && (
-                                          <Badge variant="outline" className="text-[9px] h-4 px-1">
-                                            {subChildren.length} زیردسته
-                                          </Badge>
-                                        )}
-                                      </div>
-
-                                      <div className="flex items-center gap-1">
-                                        <Button
-                                          size="sm"
-                                          variant="ghost"
-                                          onClick={() => {
-                                            setRcatForm({ name: "", parentId: childCat.id });
-                                            setRcatModalOpen(true);
-                                          }}
-                                          className="h-5 text-[9px] px-1.5 gap-0.5 text-primary hover:bg-primary/10"
-                                          title="افزودن زیردسته"
-                                        >
-                                          <Plus className="h-2.5 w-2.5" />
-                                          زیردسته
-                                        </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={async () => {
-                                            await fetch(
-                                              `/api/categories?id=${childCat.id}&type=rule`,
-                                              { method: "DELETE" }
-                                            );
-                                            const res = await fetch(
-                                              `/api/categories?trackId=${selectedTrackId}`
-                                            ).then((r) => r.json());
-                                            if (res.success) setRuleCats(res.data.rule);
-                                          }}
-                                          className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive"
-                                          title="حذف زیردسته"
-                                        >
-                                          <Trash2 className="h-3 w-3" />
-                                        </Button>
-                                      </div>
-                                    </div>
-
-                                    {/* Level 3 Subchildren */}
-                                    {subChildren.length > 0 && (
-                                      <div className="mr-3 pr-2 border-r border-border/60 space-y-1">
-                                        {subChildren.map((subChild) => (
-                                          <div
-                                            key={subChild.id}
-                                            className="flex items-center justify-between rounded-md bg-muted/40 p-1.5 text-[11px]"
-                                          >
-                                            <span className="text-muted-foreground">↳ {subChild.name}</span>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={async () => {
-                                                await fetch(
-                                                  `/api/categories?id=${subChild.id}&type=rule`,
-                                                  { method: "DELETE" }
-                                                );
-                                                const res = await fetch(
-                                                  `/api/categories?trackId=${selectedTrackId}`
-                                                ).then((r) => r.json());
-                                                if (res.success) setRuleCats(res.data.rule);
-                                              }}
-                                              className="h-4 w-4 p-0 text-muted-foreground hover:text-destructive"
-                                            >
-                                              <Trash2 className="h-2.5 w-2.5" />
-                                            </Button>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
+                          ) : (
+                            <Badge variant="outline" className="text-xs px-2.5 py-0.5 text-destructive border-destructive/40">
+                              گرایشی در بخش ساختار دانشگاه انتخاب نشده است
+                            </Badge>
                           )}
                         </div>
-                      );
-                    });
-                  })()}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Course Category Assignment Manager */}
-            {selectedTrackId && (
-              <CourseCategoryManager
-                trackId={selectedTrackId}
-                trackName={tracks.find((t) => t.id === selectedTrackId)?.name || "گرایش انتخابی"}
-                courses={courses}
-                visualCategories={visualCats}
-                ruleCategories={ruleCats}
-                onAssignmentsUpdated={async () => {
-                  const assignRes = await fetch(`/api/tracks/assignments?trackId=${selectedTrackId}`).then(
-                    (r) => r.json()
-                  );
-                  if (assignRes.success) setTrackAssignments(assignRes.data);
-                }}
-              />
-            )}
-          </div>
-          )}
-
-          {/* ========================================================= */}
-          {/* TAB: APPROVED CHARTS (DEFAULT CURRICULUM CHARTS) */}
-          {/* ========================================================= */}
-          {activeTab === "approved-charts" && (
-            <ApprovedChartsManager
-              faculties={faculties}
-              majors={majors}
-              tracks={tracks}
-              courses={courses}
-              selectedTrackId={selectedTrackId}
-            />
-          )}
-
-          {/* ========================================================= */}
-          {/* TAB: OFFERINGS */}
-          {/* ========================================================= */}
-          {activeTab === "offerings" && (
-            <OfferingManager
-              courses={courses}
-              professors={professors}
-              faculties={faculties}
-              selectedFacultyId={selectedFacultyId}
-            />
-          )}
-
-          {/* ========================================================= */}
-          {/* TAB: EVENTS & TIMETABLE */}
-          {/* ========================================================= */}
-          {activeTab === "events" && (
-            <EventManager
-              faculties={faculties}
-              selectedFacultyId={selectedFacultyId}
-            />
-          )}
-
-          {/* ========================================================= */}
-          {/* TAB 4: RULES ENGINE & QUERY BUILDER */}
-          {/* ========================================================= */}
-          {activeTab === "rules" && (
-            <div className="space-y-6">
-              {/* Active Track Banner */}
-              <div className="rounded-2xl border border-primary/20 bg-gradient-to-l from-primary/10 via-primary/5 to-card p-4 shadow-sm">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20 shrink-0">
-                      <GitBranch className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-xs font-semibold text-muted-foreground">گرایش فعال شما:</span>
-                        {currentTrack ? (
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <Badge variant="default" className="text-xs px-2.5 py-0.5 font-bold shadow-xs">
-                              {currentTrack.name} ({currentTrack.code})
-                            </Badge>
-                            {currentMajor && (
-                              <Badge variant="secondary" className="text-xs px-2 py-0.5">
-                                رشته: {currentMajor.name}
-                              </Badge>
-                            )}
-                            {currentFaculty && (
-                              <Badge variant="outline" className="text-xs px-2 py-0.5">
-                                دانشکده: {currentFaculty.name}
-                              </Badge>
-                            )}
-                          </div>
-                        ) : (
-                          <Badge variant="outline" className="text-xs px-2.5 py-0.5 text-destructive border-destructive/40">
-                            گرایشی در بخش ساختار دانشگاه انتخاب نشده است
-                          </Badge>
-                        )}
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          شروط فارغ‌التحصیلی و اعتبارسنجی چارت دانشجو برای این گرایش محاسبه می‌شود.
+                        </p>
                       </div>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        درخت منطقی قوانین فارغ‌التحصیلی و شبیه‌ساز روی این گرایش اعمال می‌شود.
-                      </p>
                     </div>
+
+                    {!currentTrack && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setActiveTab("structure")}
+                        className="h-8 text-xs gap-1 shadow-2xs"
+                      >
+                        <Building2 className="h-3.5 w-3.5" />
+                        انتخاب در ساختار دانشگاه
+                      </Button>
+                    )}
                   </div>
-
-                  {!currentTrack && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setActiveTab("structure")}
-                      className="h-8 text-xs gap-1 shadow-2xs"
-                    >
-                      <Building2 className="h-3.5 w-3.5" />
-                      انتخاب در ساختار دانشگاه
-                    </Button>
-                  )}
                 </div>
+
+                {selectedTrackId ? (
+                  <>
+                    <RuleQueryBuilder
+                      trackId={selectedTrackId}
+                      trackName={tracks.find((t) => t.id === selectedTrackId)?.name || "گرایش انتخابی"}
+                      initialTree={tracks.find((t) => t.id === selectedTrackId)?.rulesTree}
+                      ruleCategories={ruleCats}
+                      courses={courses}
+                      onTreeSaved={async () => {
+                        setActionMessage("درخت قوانین با موفقیت ذخیره شد.");
+                        await loadAllData();
+                      }}
+                    />
+
+                    <RuleSandboxTester
+                      trackId={selectedTrackId}
+                      trackName={tracks.find((t) => t.id === selectedTrackId)?.name || "گرایش انتخابی"}
+                      rulesTree={tracks.find((t) => t.id === selectedTrackId)?.rulesTree}
+                      ruleCategories={ruleCats}
+                      courses={courses}
+                      prerequisites={courses.flatMap((c) => c.prerequisites || [])}
+                      trackAssignments={trackAssignments}
+                    />
+                  </>
+                ) : (
+                  <Card className="p-8 text-center text-xs text-muted-foreground">
+                    لطفاً ابتدا یک گرایش را از تب ساختار دانشگاه انتخاب کنید.
+                  </Card>
+                )}
               </div>
-
-            {selectedTrackId ? (
-              <>
-                {/* Visual Query Builder */}
-                <RuleQueryBuilder
-                  trackId={selectedTrackId}
-                  trackName={tracks.find((t) => t.id === selectedTrackId)?.name || "گرایش انتخابی"}
-                  initialTree={tracks.find((t) => t.id === selectedTrackId)?.rulesTree}
-                  ruleCategories={ruleCats}
-                  courses={courses}
-                  onTreeSaved={loadAllData}
-                />
-
-                {/* Sandbox Live Tester */}
-                <RuleSandboxTester
-                  trackId={selectedTrackId}
-                  trackName={tracks.find((t) => t.id === selectedTrackId)?.name || "گرایش انتخابی"}
-                  rulesTree={tracks.find((t) => t.id === selectedTrackId)?.rulesTree}
-                  ruleCategories={ruleCats}
-                  courses={courses}
-                  prerequisites={courses.flatMap((c) => c.prerequisites || [])}
-                  trackAssignments={trackAssignments}
-                />
-              </>
-            ) : (
-              <Card className="p-8 text-center text-xs text-muted-foreground">
-                لطفاً ابتدا یک گرایش را از تب ساختار دانشگاه انتخاب کنید.
-              </Card>
             )}
-          </div>
-          )}
 
-          {/* ========================================================= */}
-          {/* TAB 5: PROFESSORS */}
-          {/* ========================================================= */}
-          {activeTab === "professors" && (
-            <ProfessorManager
-              professors={professors}
-              faculties={faculties}
-              selectedFacultyId={selectedFacultyId}
-              onDataChanged={loadAllData}
-            />
-          )}
-
-          {/* ========================================================= */}
-          {/* TAB 6: USERS & PERMISSIONS */}
-          {/* ========================================================= */}
-          {activeTab === "users" && user && (
-            <UserManager currentUser={user} />
-          )}
+            {/* TAB 9: USERS & PERMISSIONS */}
+            {activeTab === "users" && user && <UserManager currentUser={user} />}
           </div>
         </main>
       </div>
-
-      {/* ========================================================= */}
-      {/* MODALS */}
-      {/* ========================================================= */}
-
-      {/* 1. Prerequisite Management Modal */}
-      <Dialog open={prereqModalOpen} onOpenChange={setPrereqModalOpen}>
-        <DialogContent className="sm:max-w-md" dir="rtl">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-bold">
-              مدیریت پیش‌نیازهای درس: {selectedCourseForPrereq?.name}
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              پیش‌نیازها یا هم‌نیازهای این درس را تعیین کنید. سیستم از ایجاد روابط چرخشی جلوگیری می‌کند.
-            </DialogDescription>
-          </DialogHeader>
-
-          {prereqError && (
-            <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-2.5 text-xs text-destructive">
-              <AlertTriangle className="h-4 w-4 shrink-0" />
-              <span>{prereqError}</span>
-            </div>
-          )}
-
-          {/* Form */}
-          <form onSubmit={handleAddPrerequisite} className="space-y-3 pt-2">
-            <div className="space-y-1.5">
-              <Label className="text-sm">انتخاب درس وابسته (از همین دانشکده):</Label>
-              <Select
-                items={courses
-                  .filter(
-                    (c) =>
-                      c.id !== selectedCourseForPrereq?.id &&
-                      (!selectedCourseForPrereq?.facultyId || c.facultyId === selectedCourseForPrereq.facultyId)
-                  )
-                  .map((c) => ({
-                    value: c.id,
-                    label: `${c.name} (${c.code} - ${c.units} واحد)`,
-                  }))}
-                value={prereqForm.requiredCourseId}
-                onValueChange={(val) => val && setPrereqForm({ ...prereqForm, requiredCourseId: val })}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="-- یک درس را انتخاب کنید --" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {courses
-                      .filter(
-                        (c) =>
-                          c.id !== selectedCourseForPrereq?.id &&
-                          (!selectedCourseForPrereq?.facultyId || c.facultyId === selectedCourseForPrereq.facultyId)
-                      )
-                      .map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name} ({c.code} - {c.units} واحد)
-                        </SelectItem>
-                      ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-sm">نوع وابستگی:</Label>
-              <Select
-                items={[
-                  { value: "prerequisite", label: "پیش‌نیاز (باید در ترم‌های قبل گذرانده شود)" },
-                  { value: "corequisite", label: "هم‌نیاز (می‌تواند در همان ترم یا قبل از آن اخذ شود)" },
-                ]}
-                value={prereqForm.type}
-                onValueChange={(val) =>
-                  val &&
-                  setPrereqForm({
-                    ...prereqForm,
-                    type: val as "prerequisite" | "corequisite",
-                  })
-                }
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value="prerequisite">پیش‌نیاز (باید در ترم‌های قبل گذرانده شود)</SelectItem>
-                    <SelectItem value="corequisite">هم‌نیاز (می‌تواند در همان ترم یا قبل از آن اخذ شود)</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Button type="submit" className="w-full font-semibold">
-              افزودن رابطه
-            </Button>
-          </form>
-
-          {/* Current List */}
-          <div className="space-y-2 pt-3 border-t">
-            <p className="text-xs font-semibold">روابط فعلی این درس:</p>
-            {(!selectedCourseForPrereq?.prerequisites || selectedCourseForPrereq.prerequisites.length === 0) ? (
-              <p className="text-xs text-muted-foreground">هیچ پیش‌نیاز یا هم‌نیازی ثبت نشده است.</p>
-            ) : (
-              <div className="space-y-1.5">
-                {selectedCourseForPrereq.prerequisites.map((rel) => (
-                  <div
-                    key={rel.id}
-                    className="flex items-center justify-between rounded-lg border bg-muted/30 p-2 text-xs"
-                  >
-                    <div>
-                      <span className="font-semibold">{rel.requiredCourseName}</span>
-                      <Badge
-                        variant="outline"
-                        className={`mr-2 text-[10px] ${
-                          rel.type === "prerequisite" ? "text-amber-600" : "text-sky-600"
-                        }`}
-                      >
-                        {rel.type === "prerequisite" ? "پیش‌نیاز" : "هم‌نیاز"}
-                      </Badge>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemovePrerequisite(rel.id)}
-                      className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* 2. Add / Edit Course Modal */}
-      <Dialog open={courseModalOpen} onOpenChange={(open) => {
-        setCourseModalOpen(open);
-        if (!open) setEditingCourse(null);
-      }}>
-        <DialogContent className="sm:max-w-md" dir="rtl">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-bold flex items-center gap-2">
-              {editingCourse ? (
-                <>
-                  <Pencil className="h-4 w-4 text-primary" />
-                  <span>ویرایش مشخصات درس: {editingCourse.name}</span>
-                </>
-              ) : (
-                <>
-                  <BookOpen className="h-4 w-4 text-primary" />
-                  <span>تعریف درس جدید</span>
-                </>
-              )}
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              {editingCourse
-                ? "مشخصات، نام، کد، تعداد واحد، ترم ارائه و توضیحات درس را ویرایش کنید."
-                : "مشخصات درس و تعداد واحد را وارد کنید. انتساب دسته و چارت در بخش دسته‌بندی انجام می‌شود."}
-            </DialogDescription>
-          </DialogHeader>
-
-          {/* Target Faculty Indicator */}
-          <div className="rounded-xl border border-primary/20 bg-primary/5 p-2.5 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs">
-              <Building2 className="h-4 w-4 text-primary shrink-0" />
-              <span className="text-muted-foreground">دانشکده هدف:</span>
-              <span className="font-bold text-foreground">
-                {currentFaculty ? `${currentFaculty.name} (${currentFaculty.code})` : "انتخاب نشده"}
-              </span>
-            </div>
-            <Badge variant="outline" className="text-[10px]">تثبیت‌شده</Badge>
-          </div>
-
-          <form onSubmit={handleSaveCourse} className="space-y-3 pt-1">
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">نام درس:</Label>
-                <Input
-                  required
-                  placeholder="مثلاً ریاضی عمومی ۱"
-                  value={courseForm.name}
-                  onChange={(e) => setCourseForm({ ...courseForm, name: e.target.value })}
-                  className="text-xs"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">کد درس:</Label>
-                <Input
-                  required
-                  placeholder="مثلاً MATH101"
-                  value={courseForm.code}
-                  onChange={(e) => setCourseForm({ ...courseForm, code: e.target.value })}
-                  className="h-8 text-xs"
-                  dir="ltr"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">تعداد واحد:</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={6}
-                  value={courseForm.units}
-                  onChange={(e) => setCourseForm({ ...courseForm, units: parseInt(e.target.value) || 3 })}
-                  className="h-8 text-xs"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">ترم ارائه:</Label>
-                <Select
-                  items={[
-                    { value: "both", label: "هردو ترم (پاییز و بهار)" },
-                    { value: "fall", label: "فقط ترم پاییز (فرد)" },
-                    { value: "spring", label: "فقط ترم بهار (زوج)" },
-                  ]}
-                  value={courseForm.offeredIn}
-                  onValueChange={(val) =>
-                    val &&
-                    setCourseForm({
-                      ...courseForm,
-                      offeredIn: val as "fall" | "spring" | "both",
-                    })
-                  }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem value="both">هردو ترم (پاییز و بهار)</SelectItem>
-                      <SelectItem value="fall">فقط ترم پاییز (فرد)</SelectItem>
-                      <SelectItem value="spring">فقط ترم بهار (زوج)</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">توضیحات اختیاری:</Label>
-              <Input
-                placeholder="توضیحات تکمیلی یا سرفصل درس..."
-                value={courseForm.description}
-                onChange={(e) => setCourseForm({ ...courseForm, description: e.target.value })}
-                className="h-8 text-xs"
-              />
-            </div>
-
-            <DialogFooter className="pt-2">
-              <Button
-                type="submit"
-                size="sm"
-                disabled={!selectedFacultyId}
-                className="h-8 text-xs font-semibold w-full"
-              >
-                {editingCourse
-                  ? "ذخیره تغییرات درس"
-                  : `ذخیره درس در ${currentFaculty ? currentFaculty.name : "دانشکده"}`}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* 3. Add / Edit Faculty Modal */}
-      <Dialog open={facultyModalOpen} onOpenChange={(open) => {
-        setFacultyModalOpen(open);
-        if (!open) setEditingFaculty(null);
-      }}>
-        <DialogContent className="sm:max-w-sm" dir="rtl">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-bold flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-primary" />
-              <span>{editingFaculty ? "ویرایش مشخصات دانشکده" : "افزودن دانشکده جدید"}</span>
-            </DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSaveFaculty} className="space-y-3 pt-2">
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">نام دانشکده</Label>
-              <Input
-                required
-                placeholder="مثلاً دانشکده فنی و مهندسی"
-                value={facultyForm.name}
-                onChange={(e) => setFacultyForm({ ...facultyForm, name: e.target.value })}
-                className="h-8 text-xs"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">کد اختصاری</Label>
-              <Input
-                required
-                placeholder="مثلاً ENG"
-                value={facultyForm.code}
-                onChange={(e) => setFacultyForm({ ...facultyForm, code: e.target.value })}
-                className="h-8 text-xs"
-                dir="ltr"
-              />
-            </div>
-            <Button type="submit" size="sm" className="w-full h-8 text-xs font-semibold">
-              {editingFaculty ? "ذخیره تغییرات دانشکده" : "ثبت دانشکده"}
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* 4. Add / Edit Major Modal */}
-      <Dialog open={majorModalOpen} onOpenChange={(open) => {
-        setMajorModalOpen(open);
-        if (!open) setEditingMajor(null);
-      }}>
-        <DialogContent className="sm:max-w-sm" dir="rtl">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-bold flex items-center gap-2">
-              <GraduationCap className="h-4 w-4 text-violet-600" />
-              <span>{editingMajor ? "ویرایش مشخصات رشته" : "افزودن رشته جدید"}</span>
-            </DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSaveMajor} className="space-y-3 pt-2">
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">نام رشته</Label>
-              <Input
-                required
-                placeholder="مثلاً مهندسی برق"
-                value={majorForm.name}
-                onChange={(e) => setMajorForm({ ...majorForm, name: e.target.value })}
-                className="h-8 text-xs"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">کد رشته</Label>
-              <Input
-                required
-                placeholder="مثلاً EE"
-                value={majorForm.code}
-                onChange={(e) => setMajorForm({ ...majorForm, code: e.target.value })}
-                className="h-8 text-xs"
-                dir="ltr"
-              />
-            </div>
-            <Button type="submit" size="sm" className="w-full h-8 text-xs font-semibold bg-violet-600 hover:bg-violet-700 text-white">
-              {editingMajor ? "ذخیره تغییرات رشته" : "ثبت رشته"}
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* 5. Add / Edit Track Modal */}
-      <Dialog open={trackModalOpen} onOpenChange={(open) => {
-        setTrackModalOpen(open);
-        if (!open) setEditingTrack(null);
-      }}>
-        <DialogContent className="sm:max-w-sm" dir="rtl">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-bold flex items-center gap-2">
-              <Layers className="h-4 w-4 text-emerald-600" />
-              <span>{editingTrack ? "ویرایش مشخصات گرایش" : "افزودن گرایش جدید"}</span>
-            </DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSaveTrack} className="space-y-3 pt-2">
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">نام گرایش</Label>
-              <Input
-                required
-                placeholder="مثلاً هوش مصنوعی و رباتیک"
-                value={trackForm.name}
-                onChange={(e) => setTrackForm({ ...trackForm, name: e.target.value })}
-                className="h-8 text-xs"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">کد گرایش</Label>
-              <Input
-                required
-                placeholder="مثلاً AI"
-                value={trackForm.code}
-                onChange={(e) => setTrackForm({ ...trackForm, code: e.target.value })}
-                className="h-8 text-xs"
-                dir="ltr"
-              />
-            </div>
-            <Button type="submit" size="sm" className="w-full h-8 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white">
-              {editingTrack ? "ذخیره تغییرات گرایش" : "ثبت گرایش"}
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* 6. Add Visual Category Modal */}
-      <Dialog open={vcatModalOpen} onOpenChange={setVcatModalOpen}>
-        <DialogContent className="sm:max-w-sm" dir="rtl">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-bold">افزودن دسته بصری رنگی</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleCreateVcat} className="space-y-3 pt-2">
-            <div className="space-y-1">
-              <Label className="text-xs">نام دسته</Label>
-              <Input
-                required
-                placeholder="مثلاً دروس پایه"
-                value={vcatForm.name}
-                onChange={(e) => setVcatForm({ ...vcatForm, name: e.target.value })}
-                className="h-8 text-xs"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">رنگ شاخص:</Label>
-              <div className="flex flex-wrap gap-2">
-                {COLOR_PRESETS.map((color) => (
-                  <button
-                    type="button"
-                    key={color.hex}
-                    onClick={() => setVcatForm({ ...vcatForm, color: color.hex })}
-                    className={`h-7 w-7 rounded-full border-2 transition-transform ${
-                      vcatForm.color === color.hex ? "scale-110 border-foreground" : "border-transparent"
-                    }`}
-                    style={{ backgroundColor: color.hex }}
-                    title={color.name}
-                  />
-                ))}
-              </div>
-            </div>
-            <Button type="submit" size="sm" className="w-full h-8 text-xs">
-              ثبت دسته بصری
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* 7. Add Rule Category Modal */}
-      <Dialog open={rcatModalOpen} onOpenChange={setRcatModalOpen}>
-        <DialogContent className="sm:max-w-sm" dir="rtl">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-bold">
-              {rcatForm.parentId ? "افزودن زیردسته قوانین" : "افزودن دسته قوانین اصلی"}
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              دسته‌های قوانین می‌توانند به صورت درختی و تو‌در‌تو تعریف شوند.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleCreateRcat} className="space-y-3 pt-2">
-            <div className="space-y-1">
-              <Label className="text-xs">دسته والد (اختیاری):</Label>
-              <Select
-                items={[
-                  { value: "none", label: "-- دسته اصلی (بدون والد) --" },
-                  ...ruleCats.map((rc) => ({
-                    value: rc.id,
-                    label: rc.parentId ? `↳ ${rc.name}` : rc.name,
-                  })),
-                ]}
-                value={rcatForm.parentId || "none"}
-                onValueChange={(val) =>
-                  setRcatForm({ ...rcatForm, parentId: val === "none" || !val ? null : val })
-                }
-              >
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="دسته اصلی (بدون والد)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value="none">-- دسته اصلی (بدون والد) --</SelectItem>
-                    {ruleCats.map((rc) => (
-                      <SelectItem key={rc.id} value={rc.id}>
-                        {rc.parentId ? `↳ ${rc.name}` : rc.name}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1">
-              <Label className="text-xs">نام دسته قوانین</Label>
-              <Input
-                required
-                placeholder="مثلاً شبکه‌های کامپیوتری"
-                value={rcatForm.name}
-                onChange={(e) => setRcatForm({ ...rcatForm, name: e.target.value })}
-                className="h-8 text-xs"
-              />
-            </div>
-
-            <Button type="submit" size="sm" className="w-full h-8 text-xs font-semibold">
-              ثبت دسته قوانین
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
-
     </div>
   );
 }

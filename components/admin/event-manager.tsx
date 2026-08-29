@@ -316,7 +316,7 @@ export function EventManager({
       <div className="rounded-2xl border border-primary/20 bg-gradient-to-l from-primary/10 via-primary/5 to-card p-4 shadow-sm">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20 shrink-0">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20 shrink-0">
               <CalendarDays className="h-5 w-5" />
             </div>
             <div>
@@ -337,7 +337,7 @@ export function EventManager({
                   {formatSemesterLabel(activeTerm)} ({activeTerm})
                 </Badge>
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="text-[11px] text-muted-foreground mt-0.5">
                 تمام رویدادها، ساعات هفتگی و آزمون‌های ارائه‌شده در این دانشکده و نیمسال مدیریت می‌شوند.
               </p>
             </div>
@@ -350,6 +350,10 @@ export function EventManager({
                 تغییر نیمسال:
               </span>
               <Select
+                items={existingTerms.map((t) => ({
+                  value: t,
+                  label: `${formatSemesterLabel(t)} (${events.filter((e) => e.term === t).length} رویداد)`,
+                }))}
                 value={activeTerm}
                 onValueChange={(val) => val && setActiveTerm(val)}
               >
@@ -643,6 +647,7 @@ export function EventManager({
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">ارائه درس (درس و استاد مدرس):</Label>
               <Select
+                items={offeringOptions}
                 value={selectedOfferingId}
                 onValueChange={(val) => val && setSelectedOfferingId(val)}
               >
@@ -720,6 +725,7 @@ export function EventManager({
                     {/* Day */}
                     <div className="w-32 shrink-0">
                       <Select
+                        items={dayOptions}
                         value={String(slot.dayOfWeek)}
                         onValueChange={(val) =>
                           handleUpdateSlot(idx, "dayOfWeek", parseInt(val))
@@ -839,6 +845,10 @@ export function EventManager({
             <div className="space-y-2">
               <Label className="text-xs font-semibold">نیمسال مبدأ (جهت کپی رویدادها):</Label>
               <Select
+                items={cloneableSourceTerms.map((t) => ({
+                  value: t,
+                  label: `${formatSemesterLabel(t)} (${events.filter((e) => e.term === t).length} رویداد کلاسی)`,
+                }))}
                 value={cloneSourceTerm}
                 onValueChange={(val) => val && setCloneSourceTerm(val)}
               >
@@ -901,44 +911,38 @@ export function EventManager({
       <Dialog open={isNewTermModalOpen} onOpenChange={setIsNewTermModalOpen}>
         <DialogContent className="sm:max-w-sm" dir="rtl">
           <DialogHeader>
-            <DialogTitle className="text-sm font-bold flex items-center gap-2">
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
               <CalendarRange className="h-4 w-4 text-primary" />
               تعریف / جابجایی به نیمسال جدید
             </DialogTitle>
             <DialogDescription className="text-xs">
-              سال و دوره تحصیلی را انتخاب کنید تا پنل رویدادها به آن نیمسال منتقل شود.
+              سال و دوره تحصیلی را وارد کنید تا پنل رویدادها به آن نیمسال منتقل شود.
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleCreateNewTerm} className="space-y-3.5 pt-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">سال تحصیلی:</Label>
-              <Select
+          <form onSubmit={handleCreateNewTerm} className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">سال تحصیلی:</Label>
+              <Input
+                type="number"
+                min={1350}
+                max={1499}
                 value={newTermYear}
-                onValueChange={(val) => val && setNewTermYear(val)}
-              >
-                <SelectTrigger size="sm" className="w-full text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {yearOptions.map((y) => (
-                      <SelectItem key={y.value} value={y.value}>
-                        {y.label}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+                onChange={(e) => setNewTermYear(e.target.value)}
+                placeholder="مثلاً ۱۴۰۴"
+                required
+                className="w-full"
+              />
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">دوره نیمسال:</Label>
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">دوره نیمسال:</Label>
               <Select
+                items={semesterTypeOptions}
                 value={newTermType}
                 onValueChange={(val) => val && setNewTermType(val as any)}
               >
-                <SelectTrigger size="sm" className="w-full text-xs">
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -956,8 +960,7 @@ export function EventManager({
             <DialogFooter className="pt-2">
               <Button
                 type="submit"
-                size="sm"
-                className="w-full h-8 text-xs font-semibold"
+                className="w-full font-semibold"
               >
                 تنظیم و انتقال به این نیمسال
               </Button>
