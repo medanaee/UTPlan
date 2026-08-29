@@ -49,12 +49,10 @@ export function getD1(): any {
 
 let isInitialized = false;
 
-export async function initDatabase() {
-  if (isInitialized) return;
-
+export async function seedDevData() {
   const adminHash = await hashPassword("admin123");
+  const studentHash = await hashPassword("student123");
 
-  // Initial Super Admin Account (Ready for real production data entry)
   usersStore = [
     {
       id: "usr_super_admin",
@@ -64,20 +62,625 @@ export async function initDatabase() {
       passwordHash: adminHash,
       createdAt: new Date().toISOString(),
     },
+    {
+      id: "usr_student",
+      name: "دانشجو نمونه",
+      email: "student@example.com",
+      role: "student",
+      passwordHash: studentHash,
+      facultyId: "fac_ece",
+      majorId: "maj_ce",
+      trackId: "trk_software",
+      entrySemester: "1402-1",
+      createdAt: new Date().toISOString(),
+    },
   ];
 
-  facultiesStore = [];
-  majorsStore = [];
-  tracksStore = [];
-  visualCategoriesStore = [];
-  ruleCategoriesStore = [];
-  coursesStore = [];
-  trackAssignmentsStore = [];
-  prerequisitesStore = [];
-  professorsStore = [];
-  offeringsStore = [];
-  eventsStore = [];
-  chartsStore = [];
+  facultiesStore = [
+    {
+      id: "fac_ece",
+      name: "دانشکده مهندسی برق و کامپیوتر",
+      code: "ECE",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: "fac_mech",
+      name: "دانشکده مهندسی مکانیک",
+      code: "MECH",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+  ];
+
+  majorsStore = [
+    {
+      id: "maj_ce",
+      facultyId: "fac_ece",
+      name: "مهندسی کامپیوتر",
+      code: "CE",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: "maj_ee",
+      facultyId: "fac_ece",
+      name: "مهندسی برق",
+      code: "EE",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+  ];
+
+  tracksStore = [
+    {
+      id: "trk_software",
+      majorId: "maj_ce",
+      name: "نرم‌افزار و هوش مصنوعی",
+      code: "CE_SW",
+      rulesTree: {
+        id: "root_and",
+        type: "AND",
+        title: "قوانین فارغ‌التحصیلی نرم‌افزار",
+        children: [
+          {
+            id: "rule_total",
+            type: "MIN_UNITS",
+            title: "حداقل کل واحدهای دوره",
+            minUnits: 140,
+          },
+          {
+            id: "rule_core",
+            type: "MIN_UNITS",
+            title: "حداقل واحدهای تخصصی و اصلی",
+            categoryId: "rcat_core",
+            minUnits: 60,
+          },
+          {
+            id: "rule_base",
+            type: "MIN_UNITS",
+            title: "حداقل واحدهای پایه",
+            categoryId: "rcat_base",
+            minUnits: 20,
+          },
+          {
+            id: "rule_gen",
+            type: "MIN_UNITS",
+            title: "حداقل واحدهای عمومی",
+            categoryId: "rcat_gen",
+            minUnits: 22,
+          },
+        ],
+      },
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: "trk_hardware",
+      majorId: "maj_ce",
+      name: "سخت‌افزار و سیستم‌های دیجیتال",
+      code: "CE_HW",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+  ];
+
+  visualCategoriesStore = [
+    {
+      id: "vcat_gen",
+      trackId: "trk_software",
+      name: "دروس عمومی",
+      color: "#f59e0b",
+      sortOrder: 0,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "vcat_base",
+      trackId: "trk_software",
+      name: "دروس پایه",
+      color: "#3b82f6",
+      sortOrder: 1,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "vcat_core",
+      trackId: "trk_software",
+      name: "دروس اصلی و تخصصی",
+      color: "#8b5cf6",
+      sortOrder: 2,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "vcat_elective",
+      trackId: "trk_software",
+      name: "دروس اختیاری و کارگاه‌ها",
+      color: "#10b981",
+      sortOrder: 3,
+      createdAt: new Date().toISOString(),
+    },
+  ];
+
+  ruleCategoriesStore = [
+    {
+      id: "rcat_total",
+      trackId: "trk_software",
+      name: "کل دروس دوره کارشناسی",
+      minCredits: 140,
+      parentId: null,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "rcat_gen",
+      trackId: "trk_software",
+      name: "دروس عمومی",
+      minCredits: 22,
+      parentId: "rcat_total",
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "rcat_base",
+      trackId: "trk_software",
+      name: "دروس پایه",
+      minCredits: 20,
+      parentId: "rcat_total",
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "rcat_core",
+      trackId: "trk_software",
+      name: "دروس اصلی و تخصصی",
+      minCredits: 60,
+      parentId: "rcat_total",
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "rcat_elective",
+      trackId: "trk_software",
+      name: "دروس اختیاری تخصصی",
+      minCredits: 16,
+      parentId: "rcat_total",
+      createdAt: new Date().toISOString(),
+    },
+  ];
+
+  coursesStore = [
+    {
+      id: "crs_math1",
+      facultyId: "fac_ece",
+      name: "ریاضی عمومی ۱",
+      code: "MATH101",
+      units: 3,
+      offeredIn: "both",
+      description: "حساب دیفرانسیل و انتگرال توابع یک‌متغیره",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: "crs_math2",
+      facultyId: "fac_ece",
+      name: "ریاضی عمومی ۲",
+      code: "MATH102",
+      units: 3,
+      offeredIn: "both",
+      description: "حساب دیفرانسیل و انتگرال توابع چندمتغیره و برداری",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: "crs_phys1",
+      facultyId: "fac_ece",
+      name: "فیزیک ۱ (مکانیک)",
+      code: "PHYS101",
+      units: 3,
+      offeredIn: "both",
+      description: "مکانیک کلاسیک و دینامیک نیوتنی",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: "crs_phys2",
+      facultyId: "fac_ece",
+      name: "فیزیک ۲ (الکتریسیته و مغناطیس)",
+      code: "PHYS102",
+      units: 3,
+      offeredIn: "both",
+      description: "میدان‌های الکتریکی و مغناطیسی و امواج الکترومغناطیس",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: "crs_prog",
+      facultyId: "fac_ece",
+      name: "مبانی برنامه‌سازی",
+      code: "CS101",
+      units: 3,
+      offeredIn: "both",
+      description: "آشنایی با الگوریتم‌ها و برنامه‌نویسی به زبان C/C++",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: "crs_ap",
+      facultyId: "fac_ece",
+      name: "برنامه‌سازی پیشرفته",
+      code: "CS102",
+      units: 3,
+      offeredIn: "both",
+      description: "برنامه‌نویسی شیءگرا و طراحی الگوها با Java/C++",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: "crs_ds",
+      facultyId: "fac_ece",
+      name: "ساختمان داده‌ها و الگوریتم‌ها",
+      code: "CS201",
+      units: 3,
+      offeredIn: "both",
+      description: "آرایه، لیست پیوندی، درخت، گراف و تحلیل مرتبه پیچیدگی",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: "crs_algo",
+      facultyId: "fac_ece",
+      name: "طراحی الگوریتم‌ها",
+      code: "CS301",
+      units: 3,
+      offeredIn: "both",
+      description: "الگوریتم‌های حریصانه، برنامه‌ریزی پویا و تقسیم و حل",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: "crs_logic",
+      facultyId: "fac_ece",
+      name: "مدارهای منطقی",
+      code: "CE201",
+      units: 3,
+      offeredIn: "both",
+      description: "جبر بولی، گیت‌ها، مدارهای ترکیبی و ترتیبی",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: "crs_arch",
+      facultyId: "fac_ece",
+      name: "معماری کامپیوتر",
+      code: "CE301",
+      units: 3,
+      offeredIn: "both",
+      description: "ساختار پردازنده، حافظه، گذرگاه‌ها و دستورالعمل‌های اسمبلی",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: "crs_os",
+      facultyId: "fac_ece",
+      name: "سیستم‌های عامل",
+      code: "CS302",
+      units: 3,
+      offeredIn: "both",
+      description: "مدیریت پردازه‌ها، حافظه، ریسمان‌ها، قفل‌ها و سیستم فایل",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: "crs_net",
+      facultyId: "fac_ece",
+      name: "شبکه‌های کامپیوتری",
+      code: "CS303",
+      units: 3,
+      offeredIn: "both",
+      description: "مدل OSI، پروتکل‌های اینترنت TCP/IP و مسیریابی",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: "crs_db",
+      facultyId: "fac_ece",
+      name: "پایگاه داده‌ها",
+      code: "CS304",
+      units: 3,
+      offeredIn: "both",
+      description: "مدل رابطه‌ای، SQL، نرمال‌سازی و تراکنش‌ها",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: "crs_ai",
+      facultyId: "fac_ece",
+      name: "هوش مصنوعی",
+      code: "CS401",
+      units: 3,
+      offeredIn: "both",
+      description: "جستجو در فضای حالت، منطق، یادگیری و سیستم‌های خبره",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: "crs_ml",
+      facultyId: "fac_ece",
+      name: "یادگیری ماشین",
+      code: "CS402",
+      units: 3,
+      offeredIn: "both",
+      description: "رگرسیون، دسته‌بندی، خوشه‌بندی و شبکه‌های عصبی عمیق",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: "crs_se",
+      facultyId: "fac_ece",
+      name: "مهندسی نرم‌افزار",
+      code: "CS403",
+      units: 3,
+      offeredIn: "both",
+      description: "متدولوژی‌های چابک، معماری نرم‌افزار و تست سیستم",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: "crs_persian",
+      facultyId: "fac_ece",
+      name: "فارسی عمومی",
+      code: "GEN101",
+      units: 2,
+      offeredIn: "both",
+      description: "نگارش و ادبیات فارسی",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: "crs_english",
+      facultyId: "fac_ece",
+      name: "زبان انگلیسی عمومی",
+      code: "GEN102",
+      units: 2,
+      offeredIn: "both",
+      description: "گرامر و درک مطلب زبان انگلیسی",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: "crs_islam1",
+      facultyId: "fac_ece",
+      name: "اندیشه اسلامی ۱",
+      code: "GEN103",
+      units: 2,
+      offeredIn: "both",
+      description: "مبانی معرفتی و اندیشه اسلامی",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: "crs_pe1",
+      facultyId: "fac_ece",
+      name: "تربیت بدنی ۱",
+      code: "GEN104",
+      units: 1,
+      offeredIn: "both",
+      description: "آمادگی جسمانی و ورزش عمومی",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+  ];
+
+  prerequisitesStore = [
+    { id: "pr_1", courseId: "crs_math2", requiredCourseId: "crs_math1", type: "prerequisite" },
+    { id: "pr_2", courseId: "crs_phys2", requiredCourseId: "crs_phys1", type: "prerequisite" },
+    { id: "pr_3", courseId: "crs_ap", requiredCourseId: "crs_prog", type: "prerequisite" },
+    { id: "pr_4", courseId: "crs_ds", requiredCourseId: "crs_ap", type: "prerequisite" },
+    { id: "pr_5", courseId: "crs_algo", requiredCourseId: "crs_ds", type: "prerequisite" },
+    { id: "pr_6", courseId: "crs_arch", requiredCourseId: "crs_logic", type: "prerequisite" },
+    { id: "pr_7", courseId: "crs_os", requiredCourseId: "crs_ds", type: "prerequisite" },
+    { id: "pr_8", courseId: "crs_os", requiredCourseId: "crs_arch", type: "prerequisite" },
+    { id: "pr_9", courseId: "crs_net", requiredCourseId: "crs_os", type: "prerequisite" },
+    { id: "pr_10", courseId: "crs_db", requiredCourseId: "crs_ds", type: "prerequisite" },
+    { id: "pr_11", courseId: "crs_ai", requiredCourseId: "crs_algo", type: "prerequisite" },
+    { id: "pr_12", courseId: "crs_ml", requiredCourseId: "crs_ai", type: "prerequisite" },
+    { id: "pr_13", courseId: "crs_se", requiredCourseId: "crs_db", type: "corequisite" },
+  ];
+
+  trackAssignmentsStore = [
+    { id: "as_1", trackId: "trk_software", courseId: "crs_math1", visualCategoryId: "vcat_base", ruleCategoryId: "rcat_base" },
+    { id: "as_2", trackId: "trk_software", courseId: "crs_math2", visualCategoryId: "vcat_base", ruleCategoryId: "rcat_base" },
+    { id: "as_3", trackId: "trk_software", courseId: "crs_phys1", visualCategoryId: "vcat_base", ruleCategoryId: "rcat_base" },
+    { id: "as_4", trackId: "trk_software", courseId: "crs_phys2", visualCategoryId: "vcat_base", ruleCategoryId: "rcat_base" },
+    { id: "as_5", trackId: "trk_software", courseId: "crs_prog", visualCategoryId: "vcat_core", ruleCategoryId: "rcat_core" },
+    { id: "as_6", trackId: "trk_software", courseId: "crs_ap", visualCategoryId: "vcat_core", ruleCategoryId: "rcat_core" },
+    { id: "as_7", trackId: "trk_software", courseId: "crs_ds", visualCategoryId: "vcat_core", ruleCategoryId: "rcat_core" },
+    { id: "as_8", trackId: "trk_software", courseId: "crs_algo", visualCategoryId: "vcat_core", ruleCategoryId: "rcat_core" },
+    { id: "as_9", trackId: "trk_software", courseId: "crs_logic", visualCategoryId: "vcat_core", ruleCategoryId: "rcat_core" },
+    { id: "as_10", trackId: "trk_software", courseId: "crs_arch", visualCategoryId: "vcat_core", ruleCategoryId: "rcat_core" },
+    { id: "as_11", trackId: "trk_software", courseId: "crs_os", visualCategoryId: "vcat_core", ruleCategoryId: "rcat_core" },
+    { id: "as_12", trackId: "trk_software", courseId: "crs_net", visualCategoryId: "vcat_core", ruleCategoryId: "rcat_core" },
+    { id: "as_13", trackId: "trk_software", courseId: "crs_db", visualCategoryId: "vcat_core", ruleCategoryId: "rcat_core" },
+    { id: "as_14", trackId: "trk_software", courseId: "crs_ai", visualCategoryId: "vcat_core", ruleCategoryId: "rcat_core" },
+    { id: "as_15", trackId: "trk_software", courseId: "crs_ml", visualCategoryId: "vcat_elective", ruleCategoryId: "rcat_elective" },
+    { id: "as_16", trackId: "trk_software", courseId: "crs_se", visualCategoryId: "vcat_core", ruleCategoryId: "rcat_core" },
+    { id: "as_17", trackId: "trk_software", courseId: "crs_persian", visualCategoryId: "vcat_gen", ruleCategoryId: "rcat_gen" },
+    { id: "as_18", trackId: "trk_software", courseId: "crs_english", visualCategoryId: "vcat_gen", ruleCategoryId: "rcat_gen" },
+    { id: "as_19", trackId: "trk_software", courseId: "crs_islam1", visualCategoryId: "vcat_gen", ruleCategoryId: "rcat_gen" },
+    { id: "as_20", trackId: "trk_software", courseId: "crs_pe1", visualCategoryId: "vcat_gen", ruleCategoryId: "rcat_gen" },
+  ];
+
+  professorsStore = [
+    {
+      id: "prf_rezvani",
+      facultyId: "fac_ece",
+      name: "دکتر سارا رضوانی",
+      title: "استاد تمام",
+      email: "s.rezvani@ut.ac.ir",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: "prf_mohammadi",
+      facultyId: "fac_ece",
+      name: "دکتر علی محمدی",
+      title: "دانشیار",
+      email: "a.mohammadi@ut.ac.ir",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: "prf_hosseini",
+      facultyId: "fac_ece",
+      name: "دکتر مریم حسینی",
+      title: "استادیار",
+      email: "m.hosseini@ut.ac.ir",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: "prf_kazemi",
+      facultyId: "fac_ece",
+      name: "دکتر بهزاد کاظمی",
+      title: "استادیار",
+      email: "b.kazemi@ut.ac.ir",
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+  ];
+
+  offeringsStore = [
+    { id: "off_1", courseId: "crs_ds", professorId: "prf_rezvani", createdAt: new Date().toISOString(), deletedAt: null },
+    { id: "off_2", courseId: "crs_prog", professorId: "prf_mohammadi", createdAt: new Date().toISOString(), deletedAt: null },
+    { id: "off_3", courseId: "crs_os", professorId: "prf_hosseini", createdAt: new Date().toISOString(), deletedAt: null },
+    { id: "off_4", courseId: "crs_ai", professorId: "prf_kazemi", createdAt: new Date().toISOString(), deletedAt: null },
+    { id: "off_5", courseId: "crs_db", professorId: "prf_rezvani", createdAt: new Date().toISOString(), deletedAt: null },
+    { id: "off_6", courseId: "crs_math1", professorId: "prf_mohammadi", createdAt: new Date().toISOString(), deletedAt: null },
+  ];
+
+  eventsStore = [
+    {
+      id: "evt_1",
+      offeringId: "off_1",
+      term: "1403-1",
+      groupCode: "01",
+      capacity: 45,
+      location: "دانشکده برق و کامپیوتر - کلاس ۱۰۱",
+      examDate: "1403/10/22",
+      examStartTime: "08:30",
+      examEndTime: "11:00",
+      isUserCustom: false,
+      slots: [
+        { id: "slt_1_1", eventId: "evt_1", dayOfWeek: 0, startTime: "10:30", endTime: "12:00" },
+        { id: "slt_1_2", eventId: "evt_1", dayOfWeek: 2, startTime: "10:30", endTime: "12:00" },
+      ],
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "evt_2",
+      offeringId: "off_2",
+      term: "1403-1",
+      groupCode: "01",
+      capacity: 50,
+      location: "دانشکده برق و کامپیوتر - سایت محاسبات",
+      examDate: "1403/10/25",
+      examStartTime: "13:30",
+      examEndTime: "16:00",
+      isUserCustom: false,
+      slots: [
+        { id: "slt_2_1", eventId: "evt_2", dayOfWeek: 1, startTime: "08:00", endTime: "09:30" },
+        { id: "slt_2_2", eventId: "evt_2", dayOfWeek: 3, startTime: "08:00", endTime: "09:30" },
+      ],
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "evt_3",
+      offeringId: "off_3",
+      term: "1403-1",
+      groupCode: "01",
+      capacity: 40,
+      location: "دانشکده برق و کامپیوتر - کلاس ۱۰۳",
+      examDate: "1403/10/28",
+      examStartTime: "08:30",
+      examEndTime: "11:00",
+      isUserCustom: false,
+      slots: [
+        { id: "slt_3_1", eventId: "evt_3", dayOfWeek: 0, startTime: "13:30", endTime: "15:00" },
+        { id: "slt_3_2", eventId: "evt_3", dayOfWeek: 4, startTime: "13:30", endTime: "15:00" },
+      ],
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "evt_4",
+      offeringId: "off_4",
+      term: "1403-1",
+      groupCode: "01",
+      capacity: 35,
+      location: "دانشکده برق و کامپیوتر - کلاس ۱۰۴",
+      examDate: "1403/11/01",
+      examStartTime: "08:30",
+      examEndTime: "11:00",
+      isUserCustom: false,
+      slots: [
+        { id: "slt_4_1", eventId: "evt_4", dayOfWeek: 1, startTime: "10:30", endTime: "12:00" },
+        { id: "slt_4_2", eventId: "evt_4", dayOfWeek: 3, startTime: "10:30", endTime: "12:00" },
+      ],
+      createdAt: new Date().toISOString(),
+    },
+  ];
+
+  chartsStore = [
+    {
+      id: "chart_approved_ce_sw",
+      userId: "usr_super_admin",
+      trackId: "trk_software",
+      title: "چارت مصوب کارشناسی مهندسی کامپیوتر (گرایش نرم‌افزار)",
+      isApprovedDefault: true,
+      description: "برنامه درسی مصوب شورای آموزشی دانشگاه تهران جهت هدایت تحصیلی دانشجویان ورودی جدید",
+      semesters: [
+        { semesterNumber: 1, courseIds: ["crs_math1", "crs_phys1", "crs_prog", "crs_persian", "crs_pe1"] },
+        { semesterNumber: 2, courseIds: ["crs_math2", "crs_phys2", "crs_ap", "crs_english", "crs_islam1"] },
+        { semesterNumber: 3, courseIds: ["crs_ds", "crs_logic"] },
+        { semesterNumber: 4, courseIds: ["crs_algo", "crs_arch", "crs_db"] },
+        { semesterNumber: 5, courseIds: ["crs_os", "crs_se"] },
+        { semesterNumber: 6, courseIds: ["crs_net", "crs_ai"] },
+        { semesterNumber: 7, courseIds: ["crs_ml"] },
+        { semesterNumber: 8, courseIds: [] },
+      ],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      deletedAt: null,
+    },
+  ];
+}
+
+export async function initDatabase() {
+  if (isInitialized) return;
+
+  const isDev = process.env.NODE_ENV !== "production" || !getD1();
+  if (isDev) {
+    await seedDevData();
+  } else {
+    const adminHash = await hashPassword("admin123");
+    usersStore = [
+      {
+        id: "usr_super_admin",
+        name: "مدیر ارشد سامانه",
+        email: "admin@example.com",
+        role: "super_admin",
+        passwordHash: adminHash,
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    facultiesStore = [];
+    majorsStore = [];
+    tracksStore = [];
+    visualCategoriesStore = [];
+    ruleCategoriesStore = [];
+    coursesStore = [];
+    trackAssignmentsStore = [];
+    prerequisitesStore = [];
+    professorsStore = [];
+    offeringsStore = [];
+    eventsStore = [];
+    chartsStore = [];
+  }
 
   isInitialized = true;
 }
@@ -788,6 +1391,7 @@ export async function deleteProfessor(id: string): Promise<boolean> {
 export async function getOfferings(filter?: {
   courseId?: string;
   professorId?: string;
+  facultyId?: string;
 }): Promise<CourseOffering[]> {
   await initDatabase();
   let list = offeringsStore.filter((o) => !o.deletedAt);
@@ -797,6 +1401,12 @@ export async function getOfferings(filter?: {
   }
   if (filter?.professorId) {
     list = list.filter((o) => o.professorId === filter.professorId);
+  }
+  if (filter?.facultyId) {
+    list = list.filter((o) => {
+      const course = coursesStore.find((c) => c.id === o.courseId);
+      return !course || course.facultyId === filter.facultyId;
+    });
   }
 
   return list.map((off) => {
@@ -872,6 +1482,7 @@ export async function getEvents(filter?: {
   offeringId?: string;
   term?: string;
   userId?: string | null;
+  facultyId?: string;
 }): Promise<CourseEvent[]> {
   await initDatabase();
   let list = eventsStore;
@@ -884,6 +1495,13 @@ export async function getEvents(filter?: {
   }
   if (filter?.userId !== undefined) {
     list = list.filter((e) => e.userId === filter.userId);
+  }
+  if (filter?.facultyId) {
+    list = list.filter((e) => {
+      const offering = offeringsStore.find((o) => o.id === e.offeringId);
+      const course = offering ? coursesStore.find((c) => c.id === offering.courseId) : null;
+      return !course || course.facultyId === filter.facultyId;
+    });
   }
 
   return list.map((evt) => {

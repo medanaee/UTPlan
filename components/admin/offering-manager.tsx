@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import type { Course, Professor, CourseOffering } from "@/lib/types";
+import type { Course, Professor, CourseOffering, Faculty } from "@/lib/types";
 import {
   Card,
   CardHeader,
@@ -37,19 +37,29 @@ import {
   Users,
   Layers,
   Sparkles,
+  Building2,
 } from "lucide-react";
 
 interface OfferingManagerProps {
   courses: Course[];
   professors: Professor[];
+  faculties?: Faculty[];
+  selectedFacultyId?: string;
 }
 
-export function OfferingManager({ courses, professors }: OfferingManagerProps) {
+export function OfferingManager({
+  courses,
+  professors,
+  faculties = [],
+  selectedFacultyId,
+}: OfferingManagerProps) {
   const [offerings, setOfferings] = useState<CourseOffering[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const currentFaculty = faculties.find((f) => f.id === selectedFacultyId);
 
   // Form State: Only Course + Professor
   const [form, setForm] = useState({
@@ -60,7 +70,10 @@ export function OfferingManager({ courses, professors }: OfferingManagerProps) {
   const loadOfferings = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/offerings").then((r) => r.json());
+      const url = selectedFacultyId
+        ? `/api/offerings?facultyId=${selectedFacultyId}`
+        : "/api/offerings";
+      const res = await fetch(url).then((r) => r.json());
       if (res.success) {
         setOfferings(res.data);
       }
@@ -73,7 +86,7 @@ export function OfferingManager({ courses, professors }: OfferingManagerProps) {
 
   useEffect(() => {
     loadOfferings();
-  }, []);
+  }, [selectedFacultyId]);
 
   const handleCreateOffering = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,23 +141,58 @@ export function OfferingManager({ courses, professors }: OfferingManagerProps) {
     return matchesSearch;
   });
 
-  const courseOptions = courses.map((c) => ({
+  const facultyCourses = courses.filter(
+    (c) => !selectedFacultyId || c.facultyId === selectedFacultyId
+  );
+  const facultyProfessors = professors.filter(
+    (p) => !selectedFacultyId || p.facultyId === selectedFacultyId
+  );
+
+  const courseOptions = facultyCourses.map((c) => ({
     value: c.id,
     label: `${c.name} (${c.code} - ${c.units} واحد)`,
   }));
 
-  const professorOptions = professors.map((p) => ({
+  const professorOptions = facultyProfessors.map((p) => ({
     value: p.id,
     label: `${p.name} (${p.title || "استاد"})`,
   }));
 
   return (
     <div className="space-y-4">
+      {/* Standard Active Faculty Header Banner */}
+      <div className="rounded-2xl border border-primary/20 bg-gradient-to-l from-primary/10 via-primary/5 to-card p-4 shadow-sm">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20 shrink-0">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold text-muted-foreground">دانشکده انتخابی شما:</span>
+                {currentFaculty ? (
+                  <Badge variant="default" className="text-xs px-2.5 py-0.5 font-bold shadow-xs">
+                    {currentFaculty.name} ({currentFaculty.code})
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-xs px-2.5 py-0.5 text-destructive border-destructive/40">
+                    دانشکده‌ای در بخش ساختار دانشگاه انتخاب نشده است
+                  </Badge>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                فقط ارائه‌های درسی (ترکیب درس + استاد) مربوط به این دانشکده نمایش داده می‌شوند و ارائه‌های جدید نیز از دروس و اساتید این دانشکده ساخته می‌شوند.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <Card className="border-border/70 shadow-xs">
         <CardHeader className="flex flex-row items-center justify-between pb-3 border-b">
           <div>
             <CardTitle className="text-base flex items-center gap-2">
-              <Layers className="h-4 w-4 text-primary" />
+              <Sparkles className="h-4 w-4 text-primary" />
               <span>ارائه‌های درسی (اتصال درس به استاد)</span>
             </CardTitle>
             <CardDescription className="text-xs">
@@ -155,8 +203,8 @@ export function OfferingManager({ courses, professors }: OfferingManagerProps) {
             size="sm"
             onClick={() => {
               setForm({
-                courseId: courses[0]?.id || "",
-                professorId: professors[0]?.id || "",
+                courseId: facultyCourses[0]?.id || "",
+                professorId: facultyProfessors[0]?.id || "",
               });
               setIsCreateModalOpen(true);
             }}

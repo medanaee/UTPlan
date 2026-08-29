@@ -7,8 +7,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const courseId = searchParams.get("courseId") || undefined;
     const professorId = searchParams.get("professorId") || undefined;
+    const facultyId = searchParams.get("facultyId") || undefined;
 
-    const data = await getOfferings({ courseId, professorId });
+    const data = await getOfferings({ courseId, professorId, facultyId });
     return NextResponse.json({ success: true, data });
   } catch (error) {
     console.error("GET offerings error:", error);

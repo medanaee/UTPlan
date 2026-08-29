@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import type { CourseOffering, CourseEvent } from "@/lib/types";
+import type { CourseOffering, CourseEvent, Faculty } from "@/lib/types";
 import {
   Card,
   CardHeader,
@@ -43,10 +43,13 @@ import {
   Sparkles,
   CheckCircle2,
   CalendarRange,
+  Building2,
 } from "lucide-react";
 
 interface EventManagerProps {
   offerings?: CourseOffering[];
+  faculties?: Faculty[];
+  selectedFacultyId?: string;
 }
 
 const DAYS_OF_WEEK = [
@@ -77,12 +80,18 @@ export function formatSemesterLabel(termStr: string): string {
   return termStr;
 }
 
-export function EventManager({ offerings: initialOfferings }: EventManagerProps) {
+export function EventManager({
+  offerings: initialOfferings,
+  faculties = [],
+  selectedFacultyId,
+}: EventManagerProps) {
   const [offerings, setOfferings] = useState<CourseOffering[]>(initialOfferings || []);
   const [events, setEvents] = useState<CourseEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   
+  const currentFaculty = faculties.find((f) => f.id === selectedFacultyId);
+
   // Active selected semester - ALL operations & views are strictly bound to this term
   const [activeTerm, setActiveTerm] = useState<string>("1403-1");
 
@@ -118,9 +127,11 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
   const loadData = async () => {
     try {
       setLoading(true);
+      const offUrl = selectedFacultyId ? `/api/offerings?facultyId=${selectedFacultyId}` : "/api/offerings";
+      const evUrl = selectedFacultyId ? `/api/events?facultyId=${selectedFacultyId}` : "/api/events";
       const [offRes, evRes] = await Promise.all([
-        fetch("/api/offerings").then((r) => r.json()),
-        fetch("/api/events").then((r) => r.json()),
+        fetch(offUrl).then((r) => r.json()),
+        fetch(evUrl).then((r) => r.json()),
       ]);
 
       if (offRes.success) setOfferings(offRes.data);
@@ -141,7 +152,7 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [selectedFacultyId]);
 
   const handleAddSlot = () => {
     setSlots([...slots, { dayOfWeek: 1, startTime: "08:00", endTime: "09:30" }]);
@@ -301,7 +312,7 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
 
   return (
     <div className="space-y-4">
-      {/* Top Semester Active Filter Bar */}
+      {/* Top Semester & Faculty Active Filter Bar */}
       <div className="rounded-2xl border border-primary/20 bg-gradient-to-l from-primary/10 via-primary/5 to-card p-4 shadow-sm">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -309,14 +320,25 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
               <CalendarDays className="h-5 w-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-foreground">نیمسال تحصیلی فعال:</h3>
-                <Badge variant="default" className="text-xs px-2.5 py-0.5 font-bold shadow-xs">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold text-muted-foreground">دانشکده انتخابی:</span>
+                {currentFaculty ? (
+                  <Badge variant="default" className="text-xs px-2.5 py-0.5 font-bold shadow-xs">
+                    {currentFaculty.name} ({currentFaculty.code})
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-xs px-2.5 py-0.5 text-destructive border-destructive/40">
+                    دانشکده‌ای انتخاب نشده است
+                  </Badge>
+                )}
+                <span className="text-muted-foreground font-bold">|</span>
+                <span className="text-xs font-semibold text-muted-foreground">نیمسال فعال:</span>
+                <Badge variant="secondary" className="text-xs px-2.5 py-0.5 font-bold shadow-xs bg-primary/15 text-primary border-primary/20">
                   {formatSemesterLabel(activeTerm)} ({activeTerm})
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                تمام رویدادها، ساعات هفتگی و آزمون‌ها مربوط به این نیمسال مدیریت می‌شوند.
+                تمام رویدادها، ساعات هفتگی و آزمون‌های ارائه‌شده در این دانشکده و نیمسال مدیریت می‌شوند.
               </p>
             </div>
           </div>

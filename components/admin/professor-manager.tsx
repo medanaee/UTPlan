@@ -183,22 +183,20 @@ export function ProfessorManager({
     }
   };
 
-  const filteredProfessors = professors.filter((p) => {
+  const currentFaculty = faculties.find((f) => f.id === selectedFacultyId);
+
+  const facultyProfessors = professors.filter(
+    (p) => !selectedFacultyId || p.facultyId === selectedFacultyId
+  );
+
+  const filteredProfessors = facultyProfessors.filter((p) => {
     const matchesSearch =
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       (p.email || "").toLowerCase().includes(search.toLowerCase()) ||
       (p.title || "").toLowerCase().includes(search.toLowerCase());
 
-    const matchesFaculty =
-      facultyFilter === "all" || p.facultyId === facultyFilter;
-
-    return matchesSearch && matchesFaculty;
+    return matchesSearch;
   });
-
-  const facultyOptions = [
-    { value: "all", label: "تمام دانشکده‌ها" },
-    ...faculties.map((f) => ({ value: f.id, label: f.name })),
-  ];
 
   const modalFacultyOptions = faculties.map((f) => ({
     value: f.id,
@@ -214,6 +212,34 @@ export function ProfessorManager({
 
   return (
     <div className="space-y-4">
+      {/* Standard Active Faculty Header Banner */}
+      <div className="rounded-2xl border border-primary/20 bg-gradient-to-l from-primary/10 via-primary/5 to-card p-4 shadow-sm">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20 shrink-0">
+              <Users className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold text-muted-foreground">دانشکده انتخابی شما:</span>
+                {currentFaculty ? (
+                  <Badge variant="default" className="text-xs px-2.5 py-0.5 font-bold shadow-xs">
+                    {currentFaculty.name} ({currentFaculty.code})
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-xs px-2.5 py-0.5 text-destructive border-destructive/40">
+                    دانشکده‌ای در بخش ساختار دانشگاه انتخاب نشده است
+                  </Badge>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                فقط اساتید و اعضای هیئت علمی این دانشکده نمایش داده می‌شوند و استاد جدید نیز به این دانشکده منتسب می‌شود.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <Card className="border-border/70 shadow-xs">
         <CardHeader className="flex flex-row items-center justify-between pb-3 border-b">
           <div>
@@ -248,27 +274,6 @@ export function ProfessorManager({
                 />
                 <Search className="pointer-events-none absolute right-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
               </div>
-
-              {faculties.length > 1 && (
-                <Select
-                  items={facultyOptions}
-                  value={facultyFilter}
-                  onValueChange={(val) => val && setFacultyFilter(val)}
-                >
-                  <SelectTrigger size="sm" className="h-8 min-w-[150px] text-xs">
-                    <SelectValue placeholder="فیلتر دانشکده..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {facultyOptions.map((f) => (
-                        <SelectItem key={f.value} value={f.value}>
-                          {f.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              )}
             </div>
 
             <div className="text-xs text-muted-foreground">

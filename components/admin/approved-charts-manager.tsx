@@ -239,33 +239,58 @@ export function ApprovedChartsManager({
         </div>
       )}
 
-      {/* Active Track Header Bar */}
-      {selectedTrackId ? (
-        <div className="flex items-center justify-between bg-card p-3.5 rounded-xl border border-border/70">
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-muted-foreground">گرایش فعال:</span>
-            <Badge variant="default" className="font-bold text-xs">
-              {currentTrack?.name || "گرایش انتخابی"} ({currentTrack?.code || ""})
-            </Badge>
+      {/* Standard Active Track Header Banner */}
+      <div className="rounded-2xl border border-primary/20 bg-gradient-to-l from-primary/10 via-primary/5 to-card p-4 shadow-sm">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20 shrink-0">
+              <GraduationCap className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold text-muted-foreground">گرایش انتخابی شما:</span>
+                {currentTrack ? (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Badge variant="default" className="text-xs px-2.5 py-0.5 font-bold shadow-xs">
+                      {currentTrack.name} ({currentTrack.code})
+                    </Badge>
+                    {(() => {
+                      const maj = majors.find((m) => m.id === currentTrack.majorId);
+                      const fac = faculties.find((f) => f.id === maj?.facultyId);
+                      return (
+                        <>
+                          {maj && <Badge variant="secondary" className="text-xs px-2 py-0.5">رشته: {maj.name}</Badge>}
+                          {fac && <Badge variant="outline" className="text-xs px-2 py-0.5">دانشکده: {fac.name}</Badge>}
+                        </>
+                      );
+                    })()}
+                  </div>
+                ) : (
+                  <Badge variant="outline" className="text-xs px-2.5 py-0.5 text-destructive border-destructive/40">
+                    گرایشی در بخش ساختار دانشگاه انتخاب نشده است
+                  </Badge>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                چارت‌های رسمی و سرفصل‌های مصوب برای دانشجویان این گرایش مدیریت و بارگذاری می‌شوند.
+              </p>
+            </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={loadApprovedCharts}
-            disabled={loading}
-            className="h-8 gap-1.5 text-xs"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-            به‌روزرسانی
-          </Button>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={loadApprovedCharts}
+              disabled={loading}
+              className="h-8 gap-1.5 text-xs bg-background shadow-2xs"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+              به‌روزرسانی
+            </Button>
+          </div>
         </div>
-      ) : (
-        <Card className="p-8 text-center text-xs text-muted-foreground space-y-2">
-          <AlertTriangle className="h-6 w-6 text-amber-500 mx-auto opacity-75" />
-          <p className="font-semibold text-foreground">گرایشی انتخاب نشده است</p>
-          <p>لطفاً ابتدا یک گرایش را از تب «ساختار دانشگاه» انتخاب کنید.</p>
-        </Card>
-      )}
+      </div>
 
       {/* Current Selected Track Approved Charts Section */}
       {selectedTrackId && (

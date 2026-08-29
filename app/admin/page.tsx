@@ -31,6 +31,7 @@ import {
   Camera,
   Upload,
   Pencil,
+  Database,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -136,10 +137,11 @@ export default function AdminDashboardPage() {
   const [vcatModalOpen, setVcatModalOpen] = useState(false);
   const [rcatModalOpen, setRcatModalOpen] = useState(false);
 
-  // Editing states for structure
+  // Editing states for structure & courses
   const [editingFaculty, setEditingFaculty] = useState<Faculty | null>(null);
   const [editingMajor, setEditingMajor] = useState<Major | null>(null);
   const [editingTrack, setEditingTrack] = useState<Track | null>(null);
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
 
   // Form states
   const [facultyForm, setFacultyForm] = useState({ name: "", code: "" });
@@ -441,40 +443,82 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Create Course
-  const handleCreateCourse = async (e: React.FormEvent) => {
+  // Create or Update Course
+  const handleSaveCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFacultyId) {
       alert("لطفاً ابتدا یک دانشکده را انتخاب یا ایجاد کنید.");
       return;
     }
-    const res = await fetch("/api/courses", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: courseForm.name,
-        code: courseForm.code,
-        units: Number(courseForm.units) || 3,
-        facultyId: selectedFacultyId,
-        offeredIn: courseForm.offeredIn,
-        description: courseForm.description || "",
-      }),
-    }).then((r) => r.json());
-    if (res.success) {
-      setCourseModalOpen(false);
-      setCourseForm({
-        name: "",
-        code: "",
-        units: 3,
-        facultyId: selectedFacultyId,
-        offeredIn: "both",
-        visualCategoryId: "",
-        ruleCategoryId: "",
-        description: "",
-      });
-      await loadAllData();
+
+    if (editingCourse) {
+      // Edit mode
+      const res = await fetch("/api/courses", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editingCourse.id,
+          name: courseForm.name,
+          code: courseForm.code,
+          units: Number(courseForm.units) || 3,
+          facultyId: selectedFacultyId,
+          offeredIn: courseForm.offeredIn,
+          description: courseForm.description || "",
+        }),
+      }).then((r) => r.json());
+
+      if (res.success) {
+        setCourseModalOpen(false);
+        setEditingCourse(null);
+        setCourseForm({
+          name: "",
+          code: "",
+          units: 3,
+          facultyId: selectedFacultyId,
+          offeredIn: "both",
+          visualCategoryId: "",
+          ruleCategoryId: "",
+          description: "",
+        });
+        setActionMessage("مشخصات درس با موفقیت ویرایش شد.");
+        await loadAllData();
+        setTimeout(() => setActionMessage(null), 3000);
+      } else {
+        alert(res.message || "خطا در ویرایش درس");
+      }
     } else {
-      alert(res.message || "خطا در ثبت درس");
+      // Create mode
+      const res = await fetch("/api/courses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: courseForm.name,
+          code: courseForm.code,
+          units: Number(courseForm.units) || 3,
+          facultyId: selectedFacultyId,
+          offeredIn: courseForm.offeredIn,
+          description: courseForm.description || "",
+        }),
+      }).then((r) => r.json());
+
+      if (res.success) {
+        setCourseModalOpen(false);
+        setCourseForm({
+          name: "",
+          code: "",
+          units: 3,
+          facultyId: selectedFacultyId,
+          offeredIn: "both",
+          visualCategoryId: "",
+          ruleCategoryId: "",
+          description: "",
+        });
+        setActionMessage("درس جدید با موفقیت اضافه شد.");
+        await loadAllData();
+        setTimeout(() => setActionMessage(null), 3000);
+      } else {
+        alert(res.message || "خطا در ثبت درس");
+      }
     }
   };
 
@@ -535,6 +579,8 @@ export default function AdminDashboardPage() {
   }
 
   const currentFaculty = faculties.find((f) => f.id === selectedFacultyId);
+  const currentMajor = majors.find((m) => m.id === selectedMajorId);
+  const currentTrack = tracks.find((t) => t.id === selectedTrackId);
 
   const facultyCourses = courses.filter(
     (c) => !selectedFacultyId || c.facultyId === selectedFacultyId
@@ -558,16 +604,6 @@ export default function AdminDashboardPage() {
       icon: BookOpen,
     },
     {
-      id: "categories" as const,
-      label: "دسته‌بندی و انتساب دروس",
-      icon: Layers,
-    },
-    {
-      id: "approved-charts" as const,
-      label: "چارت‌های مصوب گرایش‌ها",
-      icon: GraduationCap,
-    },
-    {
       id: "offerings" as const,
       label: "ارائه‌های درسی (درس + استاد)",
       icon: Sparkles,
@@ -578,14 +614,24 @@ export default function AdminDashboardPage() {
       icon: CalendarDays,
     },
     {
-      id: "rules" as const,
-      label: "موتور قوانین و شبیه‌ساز",
-      icon: GitBranch,
-    },
-    {
       id: "professors" as const,
       label: "اساتید هیئت علمی",
       icon: Users,
+    },
+    {
+      id: "categories" as const,
+      label: "دسته‌بندی و انتساب دروس",
+      icon: Layers,
+    },
+    {
+      id: "approved-charts" as const,
+      label: "چارت‌های مصوب گرایش‌ها",
+      icon: GraduationCap,
+    },
+    {
+      id: "rules" as const,
+      label: "موتور قوانین و شبیه‌ساز",
+      icon: GitBranch,
     },
     {
       id: "users" as const,
@@ -598,25 +644,68 @@ export default function AdminDashboardPage() {
     <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/20">
       {/* Top Header */}
       <header className="sticky top-0 z-40 border-b border-border/70 bg-background/95 backdrop-blur">
-        <div className="mx-auto flex items-center justify-between px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-xs">
-              <Shield className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-sm font-bold tracking-tight">پنل مدیریت دانشگاه</h1>
-                <Badge variant="secondary" className="text-[10px] h-4.5 px-1.5 font-normal">
-                  {user?.role === "super_admin" ? "مدیر ارشد" : "مدیر سامانه"}
-                </Badge>
+        <div className="mx-auto flex items-center justify-between px-4 py-2.5 sm:px-6">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-xs shrink-0">
+                <Shield className="h-5 w-5" />
               </div>
-              <p className="text-[10px] text-muted-foreground">{user?.email}</p>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-sm font-bold tracking-tight">پنل مدیریت دانشگاه</h1>
+                  <Badge variant="secondary" className="text-[10px] h-4.5 px-1.5 font-normal">
+                    {user?.role === "super_admin" ? "مدیر ارشد" : "مدیر سامانه"}
+                  </Badge>
+                </div>
+                <p className="text-[10px] text-muted-foreground">{user?.email}</p>
+              </div>
+            </div>
+
+            {/* Always Visible Active Context Path on Right side without background/border with larger icons */}
+            <div className="hidden lg:flex items-center gap-2 px-3 py-2 rounded-md bg-muted">
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="text-xs text-muted-foreground font-semibold">موقعیت:</span>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="flex items-center gap-2 font-semibold text-foreground">
+                    <Building2 className="h-4.5 w-4.5 text-primary shrink-0" />
+                    <span>{currentFaculty ? currentFaculty.name : "بدون دانشکده"}</span>
+                  </span>
+                  <span className="text-muted-foreground/60 font-bold mx-1">←</span>
+                  <span className="flex items-center gap-2 font-semibold text-foreground">
+                    <GraduationCap className="h-4.5 w-4.5 text-violet-600 shrink-0" />
+                    <span>{currentMajor ? currentMajor.name : "بدون رشته"}</span>
+                  </span>
+                  <span className="text-muted-foreground/60 font-bold mx-1">←</span>
+                  <span className="flex items-center gap-2 font-bold text-primary">
+                    <Layers className="h-4.5 w-4.5 text-emerald-600 shrink-0" />
+                    <span>{currentTrack ? currentTrack.name : "بدون گرایش"}</span>
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <ThemeToggle />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                if (confirm("آیا مایل به بازنشانی و بارگذاری کامل داده‌های نمونه دولوپ (شامل دروس، اساتید، ارائه‌ها و چارت نمونه) هستید؟")) {
+                  const res = await fetch("/api/admin/seed", { method: "POST" }).then((r) => r.json());
+                  if (res.success) {
+                    await loadAllData();
+                    alert("داده‌های نمونه دانشگاهی با موفقیت در محیط دولوپ بارگذاری شدند.");
+                  }
+                }
+              }}
+              className="h-8 gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/10 shadow-2xs"
+              title="بارگذاری مجدد دیتای نمونه دولوپ"
+            >
+              <Database className="h-3.5 w-3.5" />
+              <span className="hidden xl:inline">دیتای نمونه</span>
+            </Button>
 
+            <ThemeToggle />
 
             <Button
               variant="ghost"
@@ -797,6 +886,7 @@ export default function AdminDashboardPage() {
                   <Button
                     size="sm"
                     onClick={() => {
+                      setEditingCourse(null);
                       setCourseForm({
                         name: "",
                         code: "",
@@ -902,19 +992,47 @@ export default function AdminDashboardPage() {
                           پیش‌نیازها ({course.prerequisites?.length || 0})
                         </Button>
 
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={async () => {
-                            if (confirm(`آیا از حذف درس ${course.name} مطمئن هستید؟`)) {
-                              await fetch(`/api/courses?id=${course.id}`, { method: "DELETE" });
-                              await loadAllData();
-                            }
-                          }}
-                          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setEditingCourse(course);
+                              setCourseForm({
+                                name: course.name,
+                                code: course.code,
+                                units: course.units,
+                                facultyId: course.facultyId || selectedFacultyId,
+                                offeredIn: course.offeredIn || "both",
+                                visualCategoryId: "",
+                                ruleCategoryId: "",
+                                description: course.description || "",
+                              });
+                              setCourseModalOpen(true);
+                            }}
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                            title="ویرایش مشخصات درس"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={async () => {
+                              if (confirm(`آیا از حذف درس ${course.name} مطمئن هستید؟`)) {
+                                await fetch(`/api/courses?id=${course.id}`, { method: "DELETE" });
+                                setActionMessage(`درس «${course.name}» حذف شد.`);
+                                await loadAllData();
+                                setTimeout(() => setActionMessage(null), 3000);
+                              }
+                            }}
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            title="حذف درس"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1263,14 +1381,57 @@ export default function AdminDashboardPage() {
           {/* ========================================================= */}
           {activeTab === "categories" && (
             <div className="space-y-4">
-            <div className="flex items-center justify-between bg-card p-3.5 rounded-xl border border-border/70">
-              <div className="flex items-center gap-2 text-xs">
-                <span className="text-muted-foreground">گرایش انتخاب‌شده:</span>
-                <span className="font-bold text-foreground">
-                  {tracks.find((t) => t.id === selectedTrackId)?.name || "هیچ گرایشی انتخاب نشده"}
-                </span>
+              {/* Active Track Banner */}
+              <div className="rounded-2xl border border-primary/20 bg-gradient-to-l from-primary/10 via-primary/5 to-card p-4 shadow-sm">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20 shrink-0">
+                      <Layers className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-semibold text-muted-foreground">گرایش انتخابی شما:</span>
+                        {currentTrack ? (
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <Badge variant="default" className="text-xs px-2.5 py-0.5 font-bold shadow-xs">
+                              {currentTrack.name} ({currentTrack.code})
+                            </Badge>
+                            {currentMajor && (
+                              <Badge variant="secondary" className="text-xs px-2 py-0.5">
+                                رشته: {currentMajor.name}
+                              </Badge>
+                            )}
+                            {currentFaculty && (
+                              <Badge variant="outline" className="text-xs px-2 py-0.5">
+                                دانشکده: {currentFaculty.name}
+                              </Badge>
+                            )}
+                          </div>
+                        ) : (
+                          <Badge variant="outline" className="text-xs px-2.5 py-0.5 text-destructive border-destructive/40">
+                            گرایشی در بخش ساختار دانشگاه انتخاب نشده است
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        دسته‌های بصری و دسته‌های قوانین برای دروس این گرایش تنظیم می‌شوند.
+                      </p>
+                    </div>
+                  </div>
+
+                  {!currentTrack && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setActiveTab("structure")}
+                      className="h-8 text-xs gap-1 shadow-2xs"
+                    >
+                      <Building2 className="h-3.5 w-3.5" />
+                      انتخاب در ساختار دانشگاه
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               {/* Visual Categories */}
@@ -1550,27 +1711,80 @@ export default function AdminDashboardPage() {
           {/* TAB: OFFERINGS */}
           {/* ========================================================= */}
           {activeTab === "offerings" && (
-            <OfferingManager courses={courses} professors={professors} />
+            <OfferingManager
+              courses={courses}
+              professors={professors}
+              faculties={faculties}
+              selectedFacultyId={selectedFacultyId}
+            />
           )}
 
           {/* ========================================================= */}
           {/* TAB: EVENTS & TIMETABLE */}
           {/* ========================================================= */}
-          {activeTab === "events" && <EventManager />}
+          {activeTab === "events" && (
+            <EventManager
+              faculties={faculties}
+              selectedFacultyId={selectedFacultyId}
+            />
+          )}
 
           {/* ========================================================= */}
           {/* TAB 4: RULES ENGINE & QUERY BUILDER */}
           {/* ========================================================= */}
           {activeTab === "rules" && (
             <div className="space-y-6">
-            <div className="flex items-center justify-between bg-card p-3.5 rounded-xl border border-border/70">
-              <div className="flex items-center gap-2 text-xs">
-                <span className="text-muted-foreground">گرایش فعال:</span>
-                <Badge variant="default" className="font-bold text-xs">
-                  {tracks.find((t) => t.id === selectedTrackId)?.name || "گرایشی انتخاب نشده است"}
-                </Badge>
+              {/* Active Track Banner */}
+              <div className="rounded-2xl border border-primary/20 bg-gradient-to-l from-primary/10 via-primary/5 to-card p-4 shadow-sm">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20 shrink-0">
+                      <GitBranch className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-semibold text-muted-foreground">گرایش فعال شما:</span>
+                        {currentTrack ? (
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <Badge variant="default" className="text-xs px-2.5 py-0.5 font-bold shadow-xs">
+                              {currentTrack.name} ({currentTrack.code})
+                            </Badge>
+                            {currentMajor && (
+                              <Badge variant="secondary" className="text-xs px-2 py-0.5">
+                                رشته: {currentMajor.name}
+                              </Badge>
+                            )}
+                            {currentFaculty && (
+                              <Badge variant="outline" className="text-xs px-2 py-0.5">
+                                دانشکده: {currentFaculty.name}
+                              </Badge>
+                            )}
+                          </div>
+                        ) : (
+                          <Badge variant="outline" className="text-xs px-2.5 py-0.5 text-destructive border-destructive/40">
+                            گرایشی در بخش ساختار دانشگاه انتخاب نشده است
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        درخت منطقی قوانین فارغ‌التحصیلی و شبیه‌ساز روی این گرایش اعمال می‌شود.
+                      </p>
+                    </div>
+                  </div>
+
+                  {!currentTrack && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setActiveTab("structure")}
+                      className="h-8 text-xs gap-1 shadow-2xs"
+                    >
+                      <Building2 className="h-3.5 w-3.5" />
+                      انتخاب در ساختار دانشگاه
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
 
             {selectedTrackId ? (
               <>
@@ -1651,7 +1865,7 @@ export default function AdminDashboardPage() {
           {/* Form */}
           <form onSubmit={handleAddPrerequisite} className="space-y-3 pt-2">
             <div className="space-y-1.5">
-              <Label className="text-xs">انتخاب درس وابسته (از همین دانشکده):</Label>
+              <Label className="text-sm">انتخاب درس وابسته (از همین دانشکده):</Label>
               <Select
                 items={courses
                   .filter(
@@ -1666,7 +1880,7 @@ export default function AdminDashboardPage() {
                 value={prereqForm.requiredCourseId}
                 onValueChange={(val) => val && setPrereqForm({ ...prereqForm, requiredCourseId: val })}
               >
-                <SelectTrigger size="sm" className="w-full text-xs">
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="-- یک درس را انتخاب کنید --" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1688,7 +1902,7 @@ export default function AdminDashboardPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs">نوع وابستگی:</Label>
+              <Label className="text-sm">نوع وابستگی:</Label>
               <Select
                 items={[
                   { value: "prerequisite", label: "پیش‌نیاز (باید در ترم‌های قبل گذرانده شود)" },
@@ -1703,7 +1917,7 @@ export default function AdminDashboardPage() {
                   })
                 }
               >
-                <SelectTrigger size="sm" className="w-full text-xs">
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1715,7 +1929,7 @@ export default function AdminDashboardPage() {
               </Select>
             </div>
 
-            <Button type="submit" size="sm" className="w-full h-8 text-xs font-semibold">
+            <Button type="submit" className="w-full font-semibold">
               افزودن رابطه
             </Button>
           </form>
@@ -1759,16 +1973,30 @@ export default function AdminDashboardPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 2. Add Course Modal */}
-      <Dialog open={courseModalOpen} onOpenChange={setCourseModalOpen}>
+      {/* 2. Add / Edit Course Modal */}
+      <Dialog open={courseModalOpen} onOpenChange={(open) => {
+        setCourseModalOpen(open);
+        if (!open) setEditingCourse(null);
+      }}>
         <DialogContent className="sm:max-w-md" dir="rtl">
           <DialogHeader>
             <DialogTitle className="text-sm font-bold flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-primary" />
-              <span>تعریف درس جدید</span>
+              {editingCourse ? (
+                <>
+                  <Pencil className="h-4 w-4 text-primary" />
+                  <span>ویرایش مشخصات درس: {editingCourse.name}</span>
+                </>
+              ) : (
+                <>
+                  <BookOpen className="h-4 w-4 text-primary" />
+                  <span>تعریف درس جدید</span>
+                </>
+              )}
             </DialogTitle>
             <DialogDescription className="text-xs">
-              مشخصات درس و تعداد واحد را وارد کنید. انتساب دسته و چارت در بخش دسته‌بندی انجام می‌شود.
+              {editingCourse
+                ? "مشخصات، نام، کد، تعداد واحد، ترم ارائه و توضیحات درس را ویرایش کنید."
+                : "مشخصات درس و تعداد واحد را وارد کنید. انتساب دسته و چارت در بخش دسته‌بندی انجام می‌شود."}
             </DialogDescription>
           </DialogHeader>
 
@@ -1784,7 +2012,7 @@ export default function AdminDashboardPage() {
             <Badge variant="outline" className="text-[10px]">تثبیت‌شده</Badge>
           </div>
 
-          <form onSubmit={handleCreateCourse} className="space-y-3 pt-1">
+          <form onSubmit={handleSaveCourse} className="space-y-3 pt-1">
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">نام درس:</Label>
@@ -1793,7 +2021,7 @@ export default function AdminDashboardPage() {
                   placeholder="مثلاً ریاضی عمومی ۱"
                   value={courseForm.name}
                   onChange={(e) => setCourseForm({ ...courseForm, name: e.target.value })}
-                  className="h-8 text-xs"
+                  className="text-xs"
                 />
               </div>
               <div className="space-y-1">
@@ -1838,7 +2066,7 @@ export default function AdminDashboardPage() {
                     })
                   }
                 >
-                  <SelectTrigger size="sm" className="w-full text-xs">
+                  <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1869,7 +2097,9 @@ export default function AdminDashboardPage() {
                 disabled={!selectedFacultyId}
                 className="h-8 text-xs font-semibold w-full"
               >
-                ذخیره درس در {currentFaculty ? currentFaculty.name : "دانشکده"}
+                {editingCourse
+                  ? "ذخیره تغییرات درس"
+                  : `ذخیره درس در ${currentFaculty ? currentFaculty.name : "دانشکده"}`}
               </Button>
             </DialogFooter>
           </form>

@@ -7,8 +7,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const offeringId = searchParams.get("offeringId") || undefined;
     const term = searchParams.get("term") || undefined;
+    const facultyId = searchParams.get("facultyId") || undefined;
 
-    const data = await getEvents({ offeringId, term });
+    const data = await getEvents({ offeringId, term, facultyId });
     return NextResponse.json({ success: true, data });
   } catch (error) {
     console.error("GET events error:", error);
