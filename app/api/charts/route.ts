@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
       trackId,
       title: title || "چارت تحصیلی من",
       semesters: initialSemesters,
-      isApprovedDefault: session.role === "super_admin" && isApprovedDefault,
+      isApprovedDefault: (session.role === "super_admin" || session.role === "admin") && isApprovedDefault,
     });
 
     return NextResponse.json({ success: true, data: newChart, message: "چارت جدید با موفقیت ایجاد شد." });

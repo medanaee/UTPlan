@@ -53,6 +53,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CourseCategoryManager } from "@/components/admin/course-category-manager";
+import { ApprovedChartsManager } from "@/components/admin/approved-charts-manager";
 import { RuleQueryBuilder } from "@/components/admin/rule-query-builder";
 import { RuleSandboxTester } from "@/components/admin/rule-sandbox-tester";
 import { UserManager } from "@/components/admin/user-manager";
@@ -112,6 +113,7 @@ export default function AdminDashboardPage() {
     | "courses"
     | "structure"
     | "categories"
+    | "approved-charts"
     | "offerings"
     | "events"
     | "rules"
@@ -153,7 +155,7 @@ export default function AdminDashboardPage() {
   });
   const [prereqError, setPrereqError] = useState<string | null>(null);
   const [vcatForm, setVcatForm] = useState({ name: "", color: "#3b82f6", sortOrder: 1 });
-  const [rcatForm, setRcatForm] = useState({ name: "", minCredits: 0 });
+  const [rcatForm, setRcatForm] = useState({ name: "" });
 
   // Status message
   const [actionMessage, setActionMessage] = useState<string | null>(null);
@@ -352,7 +354,7 @@ export default function AdminDashboardPage() {
     }).then((r) => r.json());
     if (res.success) {
       setRcatModalOpen(false);
-      setRcatForm({ name: "", minCredits: 0 });
+      setRcatForm({ name: "" });
       const updated = await fetch(`/api/categories?trackId=${selectedTrackId}`).then((r) => r.json());
       if (updated.success) setRuleCats(updated.data.rule);
     }
@@ -463,6 +465,11 @@ export default function AdminDashboardPage() {
       id: "categories" as const,
       label: "دسته‌بندی و انتساب دروس",
       icon: Layers,
+    },
+    {
+      id: "approved-charts" as const,
+      label: "چارت‌های مصوب گرایش‌ها",
+      icon: GraduationCap,
     },
     {
       id: "offerings" as const,
@@ -1115,14 +1122,7 @@ export default function AdminDashboardPage() {
                       key={rcat.id}
                       className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/20 p-2.5 text-xs"
                     >
-                      <div>
-                        <span className="font-semibold">{rcat.name}</span>
-                        {rcat.minCredits ? (
-                          <span className="mr-2 text-[11px] text-muted-foreground">
-                            (حداقل {rcat.minCredits} واحد)
-                          </span>
-                        ) : null}
-                      </div>
+                      <span className="font-semibold text-foreground">{rcat.name}</span>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -1160,6 +1160,24 @@ export default function AdminDashboardPage() {
               />
             )}
           </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* TAB: APPROVED CHARTS (DEFAULT CURRICULUM CHARTS) */}
+          {/* ========================================================= */}
+          {activeTab === "approved-charts" && (
+            <ApprovedChartsManager
+              faculties={faculties}
+              majors={majors}
+              tracks={tracks}
+              courses={courses}
+              selectedFacultyId={selectedFacultyId}
+              onSelectFaculty={setSelectedFacultyId}
+              selectedMajorId={selectedMajorId}
+              onSelectMajor={setSelectedMajorId}
+              selectedTrackId={selectedTrackId}
+              onSelectTrack={setSelectedTrackId}
+            />
           )}
 
           {/* ========================================================= */}
@@ -1644,29 +1662,22 @@ export default function AdminDashboardPage() {
         <DialogContent className="sm:max-w-sm" dir="rtl">
           <DialogHeader>
             <DialogTitle className="text-sm font-bold">افزودن دسته قوانین</DialogTitle>
+            <DialogDescription className="text-xs">
+              نام دسته را وارد کنید. تعیین قوانین حداقل واحد و شروط فارغ‌التحصیلی در تب «موتور قوانین و شبیه‌ساز» انجام می‌شود.
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateRcat} className="space-y-3 pt-2">
             <div className="space-y-1">
               <Label className="text-xs">نام دسته قوانین</Label>
               <Input
                 required
-                placeholder="مثلاً دروس تخصصی اجباری"
+                placeholder="مثلاً دروس تخصصی اختیاری"
                 value={rcatForm.name}
-                onChange={(e) => setRcatForm({ ...rcatForm, name: e.target.value })}
+                onChange={(e) => setRcatForm({ name: e.target.value })}
                 className="h-8 text-xs"
               />
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs">حداقل واحد مورد نیاز (اختیاری):</Label>
-              <Input
-                type="number"
-                min={0}
-                value={rcatForm.minCredits}
-                onChange={(e) => setRcatForm({ ...rcatForm, minCredits: parseInt(e.target.value) || 0 })}
-                className="h-8 text-xs"
-              />
-            </div>
-            <Button type="submit" size="sm" className="w-full h-8 text-xs">
+            <Button type="submit" size="sm" className="w-full h-8 text-xs font-semibold">
               ثبت دسته قوانین
             </Button>
           </form>
