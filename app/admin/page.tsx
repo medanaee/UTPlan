@@ -266,18 +266,6 @@ export default function AdminDashboardPage() {
     router.refresh();
   };
 
-  const handleSeedData = async () => {
-    if (!confirm("آیا مایل به بارگذاری مجدد داده‌های نمونه دانشکده فنی دانشگاه تهران هستید؟")) return;
-    startTransition(async () => {
-      const res = await fetch("/api/admin/seed", { method: "POST" }).then((r) => r.json());
-      if (res.success) {
-        setActionMessage(res.message);
-        await loadAllData();
-        setTimeout(() => setActionMessage(null), 4000);
-      }
-    });
-  };
-
   // Create Faculty
   const handleCreateFaculty = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -524,16 +512,6 @@ export default function AdminDashboardPage() {
           <div className="flex items-center gap-2">
             <ThemeToggle />
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSeedData}
-              disabled={isPending}
-              className="h-8 gap-1.5 border-primary/30 text-xs text-primary hover:bg-primary/5"
-            >
-              <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-              {isPending ? "در حال بارگذاری..." : "تزریق داده‌های دانشگاه تهران (Seed)"}
-            </Button>
 
             <Button
               variant="ghost"

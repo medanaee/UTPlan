@@ -43,9 +43,8 @@ export async function initDatabase() {
   if (isInitialized) return;
 
   const adminHash = await hashPassword("admin123");
-  const userHash = await hashPassword("user123");
 
-  // Default Users
+  // Initial Super Admin Account (Ready for real production data entry)
   usersStore = [
     {
       id: "usr_super_admin",
@@ -55,43 +54,22 @@ export async function initDatabase() {
       passwordHash: adminHash,
       createdAt: new Date().toISOString(),
     },
-    {
-      id: "usr_demo_student",
-      name: "دانشجوی کامپیوتر",
-      email: "user@example.com",
-      role: "user",
-      passwordHash: userHash,
-      createdAt: new Date().toISOString(),
-    },
   ];
 
-  // Auto seed UT-ECE Demo Data
-  await seedUTECEDemoData();
+  facultiesStore = [];
+  majorsStore = [];
+  tracksStore = [];
+  visualCategoriesStore = [];
+  ruleCategoriesStore = [];
+  coursesStore = [];
+  trackAssignmentsStore = [];
+  prerequisitesStore = [];
+  professorsStore = [];
+  offeringsStore = [];
+  eventsStore = [];
+  chartsStore = [];
+
   isInitialized = true;
-}
-
-import { getUTECEDemoSeed } from "./seed-data";
-
-/**
- * Seed realistic UT-ECE data (دانشکده برق و کامپیوتر - مهندسی کامپیوتر)
- */
-export async function seedUTECEDemoData() {
-  const seed = getUTECEDemoSeed();
-
-  facultiesStore = seed.faculties;
-  majorsStore = seed.majors;
-  tracksStore = seed.tracks;
-  visualCategoriesStore = seed.visualCategories;
-  ruleCategoriesStore = seed.ruleCategories;
-  coursesStore = seed.courses;
-  trackAssignmentsStore = seed.trackAssignments;
-  prerequisitesStore = seed.prerequisites;
-  professorsStore = seed.professors;
-  offeringsStore = seed.offerings;
-  eventsStore = seed.events;
-  chartsStore = seed.charts || [];
-
-  return { success: true, message: "داده‌های نمونه دانشکده فنی دانشگاه تهران با موفقیت بارگذاری شدند." };
 }
 
 // ----------------------------------------------------
