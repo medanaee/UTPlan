@@ -41,6 +41,15 @@ import {
   Building2,
 } from "lucide-react";
 
+const items = [
+  { label: "Select a fruit", value: null },
+  { label: "Apple", value: "apple" },
+  { label: "Banana", value: "banana" },
+  { label: "Blueberry", value: "blueberry" },
+  { label: "Grapes", value: "grapes" },
+  { label: "Pineapple", value: "pineapple" },
+];
+
 interface OfferingManagerProps {
   courses: Course[];
   professors: Professor[];
@@ -184,7 +193,7 @@ export function OfferingManager({
 
   const courseOptions = facultyCourses.map((c) => ({
     value: c.id,
-    label: `${c.name} (${c.code} - ${c.units} واحد)`,
+    label: `${c.name} (${c.units} واحد)`,
   }));
 
   const professorOptions = facultyProfessors.map((p) => ({
@@ -354,12 +363,13 @@ export function OfferingManager({
               </tbody>
             </table>
           </div>
+          
         </CardContent>
       </Card>
 
       {/* Create / Edit Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-md" dir="rtl">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2">
               {editingOffering ? (
@@ -378,6 +388,7 @@ export function OfferingManager({
               درس و استاد مربوطه را انتخاب کنید تا به عنوان ارائه‌دهنده در سامانه ثبت شود.
             </DialogDescription>
           </DialogHeader>
+          
 
           {/* Target Faculty Indicator */}
           <div className="rounded-xl border border-primary/20 bg-primary/5 p-2.5 flex items-center justify-between">
@@ -394,7 +405,7 @@ export function OfferingManager({
           <form onSubmit={handleSaveOffering} className="space-y-4 pt-2">
             {/* Course Select */}
             <div className="space-y-2">
-              <Label className="text-sm font-semibold">انتخاب درس:</Label>
+              <Label className="text-xs font-semibold">انتخاب درس:</Label>
               <Select
                 items={courseOptions}
                 value={form.courseId}
@@ -457,3 +468,4 @@ export function OfferingManager({
     </div>
   );
 }
+

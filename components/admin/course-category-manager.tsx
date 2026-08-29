@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CategoryPicker } from "./category-picker";
 import type {
   Course,
   VisualCategory,
@@ -157,7 +158,7 @@ export function CourseCategoryManager({
 
       if (res.success) {
         setSavedSuccess(true);
-        if (onAssignmentsUpdated) onAssignmentsUpdated();
+        onAssignmentsUpdated?.();
         setTimeout(() => setSavedSuccess(false), 3000);
       }
     } catch (e) {
@@ -168,90 +169,100 @@ export function CourseCategoryManager({
   };
 
   const filteredCourses = courses.filter((c) => {
-    const matchesSearch =
+    const matchSearch =
       c.name.toLowerCase().includes(search.toLowerCase()) ||
       c.code.toLowerCase().includes(search.toLowerCase());
 
-    const currentVcat = assignments.get(c.id)?.vcatId;
-    const matchesVcat =
-      filterVcat === "all" ||
-      (filterVcat === "unassigned" && !currentVcat) ||
-      currentVcat === filterVcat;
+    if (!matchSearch) return false;
 
-    return matchesSearch && matchesVcat;
+    if (filterVcat === "all") return true;
+    if (filterVcat === "unassigned") {
+      const a = assignments.get(c.id);
+      return !a?.vcatId;
+    }
+    const a = assignments.get(c.id);
+    return a?.vcatId === filterVcat;
   });
 
+  const visualCategoryFilterItems = [
+    { value: "all", label: "همه دسته‌ها" },
+    { value: "unassigned", label: "تخصیص‌نیافته" },
+    ...visualCategories.map((vc) => ({ value: vc.id, label: vc.name })),
+  ];
+
+  const bulkVisualCategoryItems = [
+    { value: "none", label: "بدون دسته بصری" },
+    ...visualCategories.map((vc) => ({ value: vc.id, label: vc.name })),
+  ];
+
   return (
-    <Card className="border-border/70 shadow-xs">
-      <CardHeader className="border-b pb-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <Layers className="h-4 w-4 text-primary" />
-              <CardTitle className="text-sm font-bold">
-                تخصیص دروس به دسته‌ها در گرایش: «{trackName}»
-              </CardTitle>
+    <Card className="rounded-2xl border-border/80 shadow-xs">
+      <CardHeader className="pb-4 sm:pb-5 border-b border-border/60">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
+              <Layers className="h-4.5 w-4.5" />
             </div>
-            <CardDescription className="text-xs">
-              هر درس را به یک دسته بصری (برای نمایش با رنگ اختصاصی در سایدبار) و یک دسته قوانین (جهت
-              محاسبه سقف و کف واحدها در موتور شروط) متصل کنید.
-            </CardDescription>
+            <div>
+              <CardTitle className="text-base font-bold">
+                تخصیص دسته‌ها به دروس گرایش ({trackName})
+              </CardTitle>
+              <CardDescription className="text-xs">
+                تعیین دسته بصری (رنگ در چارت) و دسته قوانین (سلسله‌مراتب شبیه‌ساز) برای هر درس
+              </CardDescription>
+            </div>
           </div>
 
           <Button
-            size="sm"
             onClick={handleSaveAll}
             disabled={saving}
-            className="h-8 gap-1.5 text-xs font-semibold shadow-xs"
+            size="sm"
+            className="h-8 gap-1.5 text-xs shadow-2xs font-semibold"
           >
             {savedSuccess ? (
               <>
                 <Check className="h-3.5 w-3.5 text-emerald-300" />
-                تغییرات ذخیره شد
+                <span>ذخیره شد</span>
               </>
             ) : (
               <>
                 <Save className="h-3.5 w-3.5" />
-                {saving ? "در حال ذخیره..." : "ذخیره تغییرات دسته‌بندی"}
+                <span>{saving ? "در حال ذخیره..." : "ذخیره تمام تغییرات"}</span>
               </>
             )}
           </Button>
         </div>
       </CardHeader>
 
-      <CardContent className="p-4 space-y-4">
-        {/* Filter and Search controls */}
+      <CardContent className="px-4 sm:px-5 space-y-4">
+        {/* Filter & Bulk Actions Bar */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="relative">
+            {/* Search */}
+            <div className="relative w-48 sm:w-60">
+              <Search className="absolute right-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="جستجوی درس..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-8 max-w-[200px] text-xs pr-8"
+                className="h-8 pr-8 text-xs"
               />
-              <Search className="pointer-events-none absolute right-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
             </div>
 
+            {/* Filter by Visual Category */}
             <Select
-              items={[
-                { value: "all", label: "تمام دسته‌ها" },
-                { value: "unassigned", label: "دروس دسته‌بندی‌نشده" },
-                ...visualCategories.map((vc) => ({ value: vc.id, label: vc.name })),
-              ]}
+              items={visualCategoryFilterItems}
               value={filterVcat}
               onValueChange={(val) => val && setFilterVcat(val)}
             >
-              <SelectTrigger size="sm" className="h-8 min-w-[150px] text-xs">
-                <SelectValue placeholder="فیلتر دسته‌بندی..." />
+              <SelectTrigger size="sm" className="h-8 text-xs min-w-[130px]">
+                <SelectValue placeholder="فیلتر دسته بصری..." />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  <SelectItem value="all">تمام دسته‌ها</SelectItem>
-                  <SelectItem value="unassigned">دروس دسته‌بندی‌نشده</SelectItem>
-                  {visualCategories.map((vc) => (
-                    <SelectItem key={vc.id} value={vc.id}>
-                      {vc.name}
+                  {visualCategoryFilterItems.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
                     </SelectItem>
                   ))}
                 </SelectGroup>
@@ -259,22 +270,19 @@ export function CourseCategoryManager({
             </Select>
           </div>
 
-          {/* Bulk Assign Panel */}
+          {/* Bulk Assign Controls */}
           {selectedCourseIds.size > 0 && (
-            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 p-1.5 text-xs">
-              <span className="font-semibold text-primary px-1">
+            <div className="flex flex-wrap items-center gap-2 bg-muted/60 p-1.5 px-3 rounded-xl border border-primary/20 text-xs animate-in fade-in">
+              <span className="font-semibold text-primary">
                 {selectedCourseIds.size} درس انتخاب شده:
               </span>
 
               <Select
-                items={[
-                  { value: "none", label: "بدون دسته بصری" },
-                  ...visualCategories.map((vc) => ({ value: vc.id, label: vc.name })),
-                ]}
+                items={bulkVisualCategoryItems}
                 value={bulkVcat}
                 onValueChange={(val) => val && setBulkVcat(val)}
               >
-                <SelectTrigger size="sm" className="h-7 min-w-[130px] text-xs bg-background">
+                <SelectTrigger size="sm" className="h-7 min-w-[120px] text-xs bg-background">
                   <SelectValue placeholder="دسته بصری..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -289,35 +297,13 @@ export function CourseCategoryManager({
                 </SelectContent>
               </Select>
 
-              <Select
-                items={[
-                  { value: "none", label: "بدون دسته قوانین" },
-                  ...ruleCategories.map((rc) => {
-                    const parent = rc.parentId ? ruleCategories.find((p) => p.id === rc.parentId) : null;
-                    const label = parent ? `${parent.name} ↳ ${rc.name}` : rc.name;
-                    return { value: rc.id, label };
-                  }),
-                ]}
-                value={bulkRcat}
-                onValueChange={(val) => val && setBulkRcat(val)}
-              >
-                <SelectTrigger size="sm" className="h-7 min-w-[130px] text-xs bg-background">
-                  <SelectValue placeholder="دسته قوانین..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value="none">بدون دسته قوانین</SelectItem>
-                    {ruleCategories.map((rc) => {
-                      const parent = rc.parentId ? ruleCategories.find((p) => p.id === rc.parentId) : null;
-                      return (
-                        <SelectItem key={rc.id} value={rc.id}>
-                          {parent ? `${parent.name} ↳ ${rc.name}` : rc.name}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+              <CategoryPicker
+                categories={ruleCategories}
+                value={bulkRcat === "none" || !bulkRcat ? null : bulkRcat}
+                onChange={(val) => setBulkRcat(val || "none")}
+                placeholder="دسته قوانین..."
+                triggerClassName="h-7 min-w-[150px] text-xs bg-background"
+              />
 
               <Button size="sm" onClick={applyBulkAssign} className="h-7 text-xs px-2.5">
                 اعمال
@@ -367,7 +353,7 @@ export function CourseCategoryManager({
                     </td>
 
                     <td className="py-2.5 px-3">
-                      <div className="font-semibold text-foreground">{course.name}</div>
+                      <div className="font-semibold text-foreground text-sm">{course.name}</div>
                       <div className="text-[10px] text-muted-foreground">{course.code}</div>
                     </td>
 
@@ -396,7 +382,7 @@ export function CourseCategoryManager({
                             val && handleUpdateCourseAssignment(course.id, "vcatId", val)
                           }
                         >
-                          <SelectTrigger size="sm" className="h-8 w-full max-w-[200px] text-xs">
+                          <SelectTrigger className="h-8 w-full max-w-[200px]">
                             <SelectValue placeholder="-- انتخاب دسته بصری --" />
                           </SelectTrigger>
                           <SelectContent>
@@ -421,37 +407,15 @@ export function CourseCategoryManager({
 
                     {/* Rule Category Select */}
                     <td className="py-2.5 px-3">
-                      <Select
-                        items={[
-                          { value: "none", label: "-- بدون دسته قوانین --" },
-                          ...ruleCategories.map((rc) => {
-                            const parent = rc.parentId ? ruleCategories.find((p) => p.id === rc.parentId) : null;
-                            const label = parent ? `${parent.name} ↳ ${rc.name}` : rc.name;
-                            return { value: rc.id, label };
-                          }),
-                        ]}
-                        value={currentRcatId}
-                        onValueChange={(val) =>
-                          val && handleUpdateCourseAssignment(course.id, "rcatId", val)
+                      <CategoryPicker
+                        categories={ruleCategories}
+                        value={currentRcatId === "none" || !currentRcatId ? null : currentRcatId}
+                        onChange={(val) =>
+                          handleUpdateCourseAssignment(course.id, "rcatId", val || "none")
                         }
-                      >
-                        <SelectTrigger size="sm" className="h-8 w-full max-w-[220px] text-xs">
-                          <SelectValue placeholder="-- انتخاب دسته قوانین --" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectGroup>
-                            <SelectItem value="none">-- بدون دسته قوانین --</SelectItem>
-                            {ruleCategories.map((rc) => {
-                              const parent = rc.parentId ? ruleCategories.find((p) => p.id === rc.parentId) : null;
-                              return (
-                                <SelectItem key={rc.id} value={rc.id}>
-                                  {parent ? `${parent.name} ↳ ${rc.name}` : rc.name}
-                                </SelectItem>
-                              );
-                            })}
-                          </SelectGroup>
-                        </SelectContent>
-                      </Select>
+                        placeholder="-- بدون دسته قوانین --"
+                        triggerClassName="h-8 w-full max-w-[220px] text-xs"
+                      />
                     </td>
                   </tr>
                 );

@@ -605,7 +605,6 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                   placeholder="مثلاً ریاضی عمومی ۱"
                   value={courseForm.name}
                   onChange={(e) => setCourseForm({ ...courseForm, name: e.target.value })}
-                  className="text-xs"
                 />
               </div>
               <div className="space-y-1">
@@ -615,7 +614,6 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                   placeholder="مثلاً MATH101"
                   value={courseForm.code}
                   onChange={(e) => setCourseForm({ ...courseForm, code: e.target.value })}
-                  className="h-8 text-xs"
                   dir="ltr"
                 />
               </div>
@@ -629,7 +627,6 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                   max={6}
                   value={courseForm.units}
                   onChange={(val) => setCourseForm({ ...courseForm, units: parseInt(String(val)) || 3 })}
-                  sizeVariant="sm"
                 />
               </div>
               <div className="space-y-1">
@@ -667,7 +664,6 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                 placeholder="توضیحات تکمیلی یا سرفصل درس..."
                 value={courseForm.description}
                 onChange={(e) => setCourseForm({ ...courseForm, description: e.target.value })}
-                className="h-8 text-xs"
               />
             </div>
 

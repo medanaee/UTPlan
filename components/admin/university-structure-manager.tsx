@@ -547,7 +547,6 @@ export function UniversityStructureManager() {
                 placeholder="مثلاً دانشکده مهندسی برق و کامپیوتر"
                 value={facultyForm.name}
                 onChange={(e) => setFacultyForm({ ...facultyForm, name: e.target.value })}
-                className="text-xs"
               />
             </div>
             <div className="space-y-1">
@@ -557,7 +556,6 @@ export function UniversityStructureManager() {
                 placeholder="مثلاً ECE"
                 value={facultyForm.code}
                 onChange={(e) => setFacultyForm({ ...facultyForm, code: e.target.value.toUpperCase() })}
-                className="h-8 text-xs"
                 dir="ltr"
               />
             </div>

@@ -6,6 +6,7 @@ import {
   Building2,
   Plus,
   Trash2,
+  CornerDownLeft,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CategoryPicker } from "./category-picker";
 import { useAdminStore } from "@/lib/stores/admin-store";
 import { CourseCategoryManager } from "./course-category-manager";
 
@@ -120,13 +122,6 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
     }
   };
 
-  const ruleCatParentSelectItems = [
-    { value: "none", label: "-- دسته اصلی (بدون والد) --" },
-    ...ruleCats.map((rc) => ({
-      value: rc.id,
-      label: rc.parentId ? `↳ ${rc.name}` : rc.name,
-    })),
-  ];
 
   return (
     <div className="space-y-4">
@@ -201,7 +196,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
               <Plus className="h-3 w-3" /> افزودن
             </Button>
           </CardHeader>
-          <CardContent className="p-3 space-y-2">
+          <CardContent className="px-3 space-y-2">
             {visualCats.map((cat) => (
               <div
                 key={cat.id}
@@ -257,7 +252,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
               <Plus className="h-3 w-3" /> دسته اصلی
             </Button>
           </CardHeader>
-          <CardContent className="p-3 space-y-2.5">
+          <CardContent className="px-3 space-y-2.5">
             {(() => {
               const topLevelCats = ruleCats.filter(
                 (c) => !c.parentId || !ruleCats.some((p) => p.id === c.parentId)
@@ -338,7 +333,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                             <div key={childCat.id} className="space-y-1">
                               <div className="flex items-center justify-between rounded-lg bg-background/80 border border-border/50 p-2 text-xs">
                                 <div className="flex items-center gap-1.5">
-                                  <span className="text-muted-foreground text-[10px]">↳</span>
+                                  <CornerDownLeft className="h-3 w-3 text-muted-foreground/70 shrink-0" />
                                   <span className="font-medium text-foreground">
                                     {childCat.name}
                                   </span>
@@ -392,7 +387,10 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                                       key={subChild.id}
                                       className="flex items-center justify-between rounded-md bg-muted/40 p-1.5 text-[11px]"
                                     >
-                                      <span className="text-muted-foreground">↳ {subChild.name}</span>
+                                      <div className="flex items-center gap-1.5">
+                                        <CornerDownLeft className="h-3 w-3 text-muted-foreground/70 shrink-0" />
+                                        <span className="text-muted-foreground">{subChild.name}</span>
+                                      </div>
                                       <Button
                                         variant="ghost"
                                         size="sm"
@@ -446,13 +444,16 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
 
       {/* Add Visual Category Modal */}
       <Dialog open={vcatModalOpen} onOpenChange={setVcatModalOpen}>
-        <DialogContent className="sm:max-w-sm" dir="rtl">
+        <DialogContent className="sm:max-w-xs" dir="rtl">
           <DialogHeader>
-            <DialogTitle className="text-sm font-bold">افزودن دسته بصری رنگی</DialogTitle>
+            <DialogTitle className="text-sm font-bold">افزودن دسته بصری چارت</DialogTitle>
+            <DialogDescription className="text-xs">
+              رنگ و نام این دسته در پیش‌نمایش گرافیکی چارت نمایش داده خواهد شد.
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateVcat} className="space-y-3 pt-2">
             <div className="space-y-1">
-              <Label className="text-xs">نام دسته</Label>
+              <Label className="text-xs">نام دسته بصری</Label>
               <Input
                 required
                 placeholder="مثلاً دروس پایه"
@@ -461,16 +462,19 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                 className="h-8 text-xs"
               />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">رنگ شاخص:</Label>
-              <div className="flex flex-wrap gap-2">
+
+            <div className="space-y-1">
+              <Label className="text-xs">رنگ شاخص دسته</Label>
+              <div className="flex flex-wrap gap-1.5 pt-1">
                 {COLOR_PRESETS.map((color) => (
                   <button
-                    type="button"
                     key={color.hex}
+                    type="button"
                     onClick={() => setVcatForm({ ...vcatForm, color: color.hex })}
-                    className={`h-7 w-7 rounded-full border-2 transition-transform ${
-                      vcatForm.color === color.hex ? "scale-110 border-foreground" : "border-transparent"
+                    className={`h-6 w-6 rounded-full transition-transform ${
+                      vcatForm.color === color.hex
+                        ? "ring-2 ring-primary ring-offset-2 scale-110"
+                        : "opacity-80 hover:opacity-100"
                     }`}
                     style={{ backgroundColor: color.hex }}
                     title={color.name}
@@ -478,6 +482,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                 ))}
               </div>
             </div>
+
             <Button type="submit" size="sm" className="w-full h-8 text-xs">
               ثبت دسته بصری
             </Button>
@@ -485,54 +490,38 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
         </DialogContent>
       </Dialog>
 
-      {/* Add Rule Category Modal */}
+      {/* Rule Category Modal with Drilldown CategoryPicker */}
       <Dialog open={rcatModalOpen} onOpenChange={setRcatModalOpen}>
         <DialogContent className="sm:max-w-sm" dir="rtl">
           <DialogHeader>
-            <DialogTitle className="text-sm font-bold">
-              {rcatForm.parentId ? "افزودن زیردسته قوانین" : "افزودن دسته قوانین اصلی"}
-            </DialogTitle>
+            <DialogTitle className="text-sm font-bold">افزودن دسته قوانین آموزشی</DialogTitle>
             <DialogDescription className="text-xs">
-              دسته‌های قوانین می‌توانند به صورت درختی و تو‌در‌تو تعریف شوند.
+              دسته‌ها به صورت درختی و سلسله‌مراتبی سازمان‌دهی می‌شوند.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleCreateRcat} className="space-y-3 pt-2">
-            <div className="space-y-1">
-              <Label className="text-xs">دسته والد (اختیاری):</Label>
-              <Select
-                items={ruleCatParentSelectItems}
-                value={rcatForm.parentId || "none"}
-                onValueChange={(val) =>
-                  setRcatForm({ ...rcatForm, parentId: val === "none" || !val ? null : val })
-                }
-              >
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="دسته اصلی (بدون والد)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {ruleCatParentSelectItems.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+          <form onSubmit={handleCreateRcat} className="space-y-3.5 pt-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">دسته والد (اختیاری):</Label>
+              <CategoryPicker
+                categories={ruleCats}
+                value={rcatForm.parentId}
+                onChange={(val) => setRcatForm({ ...rcatForm, parentId: val })}
+                placeholder="دسته اصلی (بدون والد)"
+              />
             </div>
 
-            <div className="space-y-1">
-              <Label className="text-xs">نام دسته قوانین</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">نام دسته قوانین:</Label>
               <Input
                 required
                 placeholder="مثلاً شبکه‌های کامپیوتری"
                 value={rcatForm.name}
                 onChange={(e) => setRcatForm({ ...rcatForm, name: e.target.value })}
-                className="h-8 text-xs"
+                className="h-9 text-sm"
               />
             </div>
 
-            <Button type="submit" size="sm" className="w-full h-8 text-xs">
+            <Button type="submit" className="w-full font-semibold">
               ثبت دسته قوانین
             </Button>
           </form>

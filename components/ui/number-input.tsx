@@ -92,7 +92,7 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
           value={currentValue}
           onChange={handleInputChange}
           className={cn(
-            "w-full rounded-lg border border-input bg-transparent px-3 text-sm transition-colors outline-none",
+            "w-full rounded-lg border border-input bg-transparent px-3 text-xs transition-colors outline-none",
             "placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
             "disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50",
             "dark:bg-input/30 dark:disabled:bg-input/80",
@@ -100,7 +100,7 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
             "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
             // Padding for the stepper buttons at the end
             "pe-8",
-            sizeVariant === "sm" ? "h-8 text-xs px-2.5 pe-7" : "h-9"
+            sizeVariant === "sm" ? "h-6 text-xs px-2.5 pe-7" : "h-7"
           )}
           {...props}
         />

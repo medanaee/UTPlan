@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CategoryPicker } from "./category-picker";
 import type {
   RuleNode,
   RuleGroupNode,
@@ -453,13 +454,6 @@ const RULE_TYPE_ITEMS = [
 ];
 
 function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: RuleLeafItemProps) {
-  const rcatItems = ruleCategories.map((rc) => {
-    const parent = rc.parentId ? ruleCategories.find((p) => p.id === rc.parentId) : null;
-    return {
-      value: rc.id,
-      label: parent ? `${parent.name} ↳ ${rc.name}` : rc.name,
-    };
-  });
   const courseItems = courses.map((c) => ({ value: c.id, label: `${c.name} (${c.code})` }));
 
   return (
@@ -495,24 +489,13 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
         {leaf.type === "MIN_CREDITS_IN_CATEGORY" && (
           <div className="flex items-center gap-1.5">
             <span className="text-muted-foreground">از دسته:</span>
-            <Select
-              items={rcatItems}
-              value={leaf.ruleCategoryId || ruleCategories[0]?.id || ""}
-              onValueChange={(val) => val && onUpdate({ ...leaf, ruleCategoryId: val })}
-            >
-              <SelectTrigger size="sm" className="h-8 min-w-[140px] text-xs">
-                <SelectValue placeholder="انتخاب دسته..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {rcatItems.map((rc) => (
-                    <SelectItem key={rc.value} value={rc.value}>
-                      {rc.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            <CategoryPicker
+              categories={ruleCategories}
+              value={leaf.ruleCategoryId || null}
+              onChange={(val) => onUpdate({ ...leaf, ruleCategoryId: val || undefined })}
+              placeholder="انتخاب دسته..."
+              triggerClassName="h-8 min-w-[160px] text-xs"
+            />
 
             <span className="text-muted-foreground">حداقل:</span>
             <NumberInput
@@ -530,48 +513,26 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
         {leaf.type === "ALL_COURSES_IN_CATEGORY" && (
           <div className="flex items-center gap-1.5">
             <span className="text-muted-foreground">از دسته قوانین:</span>
-            <Select
-              items={rcatItems}
-              value={leaf.ruleCategoryId || ruleCategories[0]?.id || ""}
-              onValueChange={(val) => val && onUpdate({ ...leaf, ruleCategoryId: val })}
-            >
-              <SelectTrigger size="sm" className="h-8 min-w-[160px] text-xs">
-                <SelectValue placeholder="انتخاب دسته قوانین..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {rcatItems.map((rc) => (
-                    <SelectItem key={rc.value} value={rc.value}>
-                      {rc.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            <CategoryPicker
+              categories={ruleCategories}
+              value={leaf.ruleCategoryId || null}
+              onChange={(val) => onUpdate({ ...leaf, ruleCategoryId: val || undefined })}
+              placeholder="انتخاب دسته قوانین..."
+              triggerClassName="h-8 min-w-[180px] text-xs"
+            />
           </div>
         )}
 
         {leaf.type === "EXACT_N_COURSES_IN_CATEGORY" && (
           <div className="flex items-center gap-1.5">
             <span className="text-muted-foreground">از دسته:</span>
-            <Select
-              items={rcatItems}
-              value={leaf.ruleCategoryId || ruleCategories[0]?.id || ""}
-              onValueChange={(val) => val && onUpdate({ ...leaf, ruleCategoryId: val })}
-            >
-              <SelectTrigger size="sm" className="h-8 min-w-[140px] text-xs">
-                <SelectValue placeholder="انتخاب دسته..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {rcatItems.map((rc) => (
-                    <SelectItem key={rc.value} value={rc.value}>
-                      {rc.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            <CategoryPicker
+              categories={ruleCategories}
+              value={leaf.ruleCategoryId || null}
+              onChange={(val) => onUpdate({ ...leaf, ruleCategoryId: val || undefined })}
+              placeholder="انتخاب دسته..."
+              triggerClassName="h-8 min-w-[160px] text-xs"
+            />
 
             <span className="text-muted-foreground">دقیقاً:</span>
             <NumberInput
