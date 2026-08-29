@@ -12,6 +12,7 @@ export interface NumberInputProps
   max?: number;
   step?: number;
   onChange?: (value: number | string, e?: React.ChangeEvent<HTMLInputElement>) => void;
+  onStep?: (value: number) => void;
   sizeVariant?: "default" | "sm";
 }
 
@@ -25,6 +26,7 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
       max,
       step = 1,
       onChange,
+      onStep,
       disabled,
       sizeVariant = "default",
       ...props
@@ -63,6 +65,7 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
         setInternalValue(next);
       }
       onChange?.(next);
+      onStep?.(next);
     };
 
     const isMinReached =

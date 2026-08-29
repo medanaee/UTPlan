@@ -12,6 +12,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
+import { JalaliDatePicker } from "@/components/ui/jalali-date-picker";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -35,6 +37,7 @@ import {
   Clock,
   MapPin,
   Plus,
+  Pencil,
   Trash2,
   BookOpen,
   CalendarDays,
@@ -97,7 +100,8 @@ export function EventManager({
   const [activeTerm, setActiveTerm] = useState<string>("1403-1");
 
   // Modals
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<CourseEvent | null>(null);
   const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
   const [isNewTermModalOpen, setIsNewTermModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -113,7 +117,6 @@ export function EventManager({
   // Event Form state (Term is omitted because it's locked to activeTerm)
   const [selectedOfferingId, setSelectedOfferingId] = useState("");
   const [groupCode, setGroupCode] = useState("01");
-  const [capacity, setCapacity] = useState(40);
   const [location, setLocation] = useState("دانشکده فنی - کلاس ۱۰۲");
   const [examDate, setExamDate] = useState("1403/10/22");
   const [examStartTime, setExamStartTime] = useState("08:30");
@@ -155,6 +158,37 @@ export function EventManager({
     loadData();
   }, [selectedFacultyId]);
 
+  const handleOpenCreateModal = () => {
+    setEditingEvent(null);
+    setSelectedOfferingId(offerings[0]?.id || "");
+    setGroupCode("01");
+    setLocation("دانشکده فنی - کلاس ۱۰۲");
+    setExamDate("1403/10/22");
+    setExamStartTime("08:30");
+    setExamEndTime("11:00");
+    setSlots([
+      { dayOfWeek: 0, startTime: "10:30", endTime: "12:00" },
+      { dayOfWeek: 2, startTime: "10:30", endTime: "12:00" },
+    ]);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditModal = (evt: CourseEvent) => {
+    setEditingEvent(evt);
+    setSelectedOfferingId(evt.offeringId || "");
+    setGroupCode(evt.groupCode || "01");
+    setLocation(evt.location || "");
+    setExamDate(evt.examDate || "");
+    setExamStartTime(evt.examStartTime || "08:30");
+    setExamEndTime(evt.examEndTime || "11:00");
+    setSlots(
+      evt.slots && evt.slots.length > 0
+        ? evt.slots.map((s) => ({ dayOfWeek: s.dayOfWeek, startTime: s.startTime, endTime: s.endTime }))
+        : [{ dayOfWeek: 0, startTime: "10:30", endTime: "12:00" }]
+    );
+    setIsModalOpen(true);
+  };
+
   const handleAddSlot = () => {
     setSlots([...slots, { dayOfWeek: 1, startTime: "08:00", endTime: "09:30" }]);
   };
@@ -173,7 +207,7 @@ export function EventManager({
     setSlots(updated);
   };
 
-  const handleCreateEvent = async (e: React.FormEvent) => {
+  const handleSaveEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedOfferingId) {
       alert("لطفاً یک ارائه درس را انتخاب کنید.");
@@ -182,30 +216,56 @@ export function EventManager({
 
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/events", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          offeringId: selectedOfferingId,
-          term: activeTerm, // Automatically use selected active term
-          groupCode,
-          capacity: Number(capacity),
-          location,
-          examDate,
-          examStartTime,
-          examEndTime,
-          slots,
-        }),
-      }).then((r) => r.json());
+      if (editingEvent) {
+        // Edit existing
+        const res = await fetch("/api/events", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: editingEvent.id,
+            offeringId: selectedOfferingId,
+            term: activeTerm,
+            groupCode,
+            location,
+            examDate,
+            examStartTime,
+            examEndTime,
+            slots,
+          }),
+        }).then((r) => r.json());
 
-      if (res.success) {
-        setIsCreateModalOpen(false);
-        await loadData();
+        if (res.success) {
+          setIsModalOpen(false);
+          await loadData();
+        } else {
+          alert(res.message || "خطا در ویرایش رویداد");
+        }
       } else {
-        alert(res.message || "خطا در ثبت رویداد");
+        // Create new
+        const res = await fetch("/api/events", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            offeringId: selectedOfferingId,
+            term: activeTerm,
+            groupCode,
+            location,
+            examDate,
+            examStartTime,
+            examEndTime,
+            slots,
+          }),
+        }).then((r) => r.json());
+
+        if (res.success) {
+          setIsModalOpen(false);
+          await loadData();
+        } else {
+          alert(res.message || "خطا در ثبت رویداد");
+        }
       }
     } catch (err) {
-      console.error("Create event error:", err);
+      console.error("Save event error:", err);
     } finally {
       setIsSubmitting(false);
     }
@@ -423,13 +483,7 @@ export function EventManager({
             {/* Create Event Button */}
             <Button
               size="sm"
-              onClick={() => {
-                setSelectedOfferingId(offerings[0]?.id || "");
-                setGroupCode("01");
-                setCapacity(40);
-                setLocation("دانشکده فنی - کلاس ۱۰۲");
-                setIsCreateModalOpen(true);
-              }}
+              onClick={handleOpenCreateModal}
               disabled={offerings.length === 0}
               className="h-8 gap-1.5 text-xs shadow-xs"
             >
@@ -467,7 +521,6 @@ export function EventManager({
                 <tr className="border-b bg-muted/40 text-muted-foreground font-semibold">
                   <th className="py-2.5 px-3 text-right">نام درس و استاد</th>
                   <th className="py-2.5 px-3 text-center">کد گروه</th>
-                  <th className="py-2.5 px-3 text-center">ظرفیت</th>
                   <th className="py-2.5 px-3 text-right">جلسات هفتگی کلاس</th>
                   <th className="py-2.5 px-3 text-right">محل تشکیل</th>
                   <th className="py-2.5 px-3 text-right">آزمون پایان‌ترم</th>
@@ -497,11 +550,6 @@ export function EventManager({
                       <Badge variant="secondary" className="text-[10px] px-1.5">
                         گروه {evt.groupCode || "01"}
                       </Badge>
-                    </td>
-
-                    {/* Capacity */}
-                    <td className="py-2.5 px-3 text-center text-muted-foreground">
-                      {evt.capacity || 40} نفر
                     </td>
 
                     {/* Slots */}
@@ -550,21 +598,33 @@ export function EventManager({
 
                     {/* Actions */}
                     <td className="py-2.5 px-3 text-center">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteEvent(evt.id)}
-                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      <div className="flex items-center justify-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenEditModal(evt)}
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                          title="ویرایش رویداد"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteEvent(evt.id)}
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                          title="حذف رویداد"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
 
                 {filteredEvents.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="text-center py-12 text-xs text-muted-foreground">
+                    <td colSpan={6} className="text-center py-12 text-xs text-muted-foreground">
                       {loading ? (
                         "در حال دریافت برنامه کلاسی..."
                       ) : (
@@ -597,12 +657,7 @@ export function EventManager({
                             )}
                             <Button
                               size="sm"
-                              onClick={() => {
-                                setSelectedOfferingId(offerings[0]?.id || "");
-                                setGroupCode("01");
-                                setCapacity(40);
-                                setIsCreateModalOpen(true);
-                              }}
+                              onClick={handleOpenCreateModal}
                               className="h-8 gap-1.5 text-xs"
                             >
                               <Plus className="h-3.5 w-3.5" />
@@ -620,16 +675,25 @@ export function EventManager({
         </CardContent>
       </Card>
 
-      {/* 1. Modal: Create Event (NO semester/year asked - pre-locked to activeTerm) */}
-      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+      {/* 1. Modal: Create / Edit Event (Pre-locked to activeTerm) */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-lg" dir="rtl">
           <DialogHeader>
-            <DialogTitle className="text-sm font-bold flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 text-primary" />
-              تعریف رویداد کلاسی جدید
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              {editingEvent ? (
+                <>
+                  <Pencil className="h-4 w-4 text-primary" />
+                  ویرایش رویداد کلاسی
+                </>
+              ) : (
+                <>
+                  <CalendarDays className="h-4 w-4 text-primary" />
+                  تعریف رویداد کلاسی جدید
+                </>
+              )}
             </DialogTitle>
             <DialogDescription className="text-xs">
-              مشخصات درس، گروه، ظرفیت، محل تشکیل و زمان‌بندی جلسات هفتگی را وارد کنید.
+              مشخصات درس، گروه، محل تشکیل و زمان‌بندی جلسات هفتگی را وارد یا ویرایش کنید.
             </DialogDescription>
           </DialogHeader>
 
@@ -643,16 +707,16 @@ export function EventManager({
             <Badge variant="outline" className="text-[10px]">تثبیت‌شده</Badge>
           </div>
 
-          <form onSubmit={handleCreateEvent} className="space-y-3.5 pt-1">
+          <form onSubmit={handleSaveEvent} className="space-y-4 pt-1">
             {/* Select Offering */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">ارائه درس (درس و استاد مدرس):</Label>
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">ارائه درس (درس و استاد مدرس):</Label>
               <Select
                 items={offeringOptions}
                 value={selectedOfferingId}
                 onValueChange={(val) => val && setSelectedOfferingId(val)}
               >
-                <SelectTrigger size="sm" className="w-full text-xs">
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="-- انتخاب ارائه درس --" />
                 </SelectTrigger>
                 <SelectContent>
@@ -667,63 +731,48 @@ export function EventManager({
               </Select>
             </div>
 
-            {/* Group Code & Capacity */}
+            {/* Group Code & Location */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">کد گروه درسی:</Label>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">کد گروه درسی:</Label>
                 <Input
                   value={groupCode}
                   onChange={(e) => setGroupCode(e.target.value)}
                   placeholder="مثلاً ۰۱"
-                  className="h-8 text-xs"
                   required
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">ظرفیت کلاس (نفر):</Label>
-                <NumberInput
-                  min={1}
-                  max={300}
-                  value={capacity}
-                  onChange={(val) => setCapacity(parseInt(String(val)) || 40)}
-                  sizeVariant="sm"
-                  required
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">محل تشکیل کلاس / شماره اتاق:</Label>
+                <Input
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="مثلاً دانشکده فنی - کلاس ۱۰۲"
                 />
               </div>
-            </div>
-
-            {/* Location */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">محل تشکیل کلاس / شماره اتاق:</Label>
-              <Input
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="مثلاً دانشکده فنی - کلاس ۱۰۲"
-                className="h-8 text-xs"
-              />
             </div>
 
             {/* Weekly Slots Builder */}
-            <div className="space-y-2 rounded-xl border border-border/70 bg-muted/15 p-3">
+            <div className="space-y-2.5 rounded-xl border border-border/70 bg-muted/15 p-3.5">
               <div className="flex items-center justify-between">
-                <Label className="text-xs font-bold">جلسات هفتگی کلاس:</Label>
+                <Label className="text-sm font-bold">جلسات هفتگی کلاس:</Label>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={handleAddSlot}
-                  className="h-6 text-[10px] gap-1 shadow-2xs"
+                  className="h-7 text-xs gap-1 shadow-2xs"
                 >
-                  <Plus className="h-2.5 w-2.5" /> افزودن جلسه
+                  <Plus className="h-3 w-3" /> افزودن جلسه
                 </Button>
               </div>
 
               <div className="space-y-2">
                 {slots.map((slot, idx) => (
-                  <div key={idx} className="flex items-center gap-2 text-xs">
+                  <div key={idx} className="flex items-center gap-2">
                     {/* Day */}
-                    <div className="w-32 shrink-0">
+                    <div className="w-36 shrink-0">
                       <Select
                         items={dayOptions}
                         value={String(slot.dayOfWeek)}
@@ -731,7 +780,7 @@ export function EventManager({
                           handleUpdateSlot(idx, "dayOfWeek", parseInt(val))
                         }
                       >
-                        <SelectTrigger size="sm" className="h-8 text-xs">
+                        <SelectTrigger className="w-full">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -751,17 +800,17 @@ export function EventManager({
                       value={slot.startTime}
                       onChange={(e) => handleUpdateSlot(idx, "startTime", e.target.value)}
                       placeholder="10:30"
-                      className="h-8 w-24 text-xs text-center"
+                      className="w-28 text-center"
                     />
 
-                    <span className="text-muted-foreground text-[11px]">تا</span>
+                    <span className="text-muted-foreground text-xs">تا</span>
 
                     {/* End Time */}
                     <Input
                       value={slot.endTime}
                       onChange={(e) => handleUpdateSlot(idx, "endTime", e.target.value)}
                       placeholder="12:00"
-                      className="h-8 w-24 text-xs text-center"
+                      className="w-28 text-center"
                     />
 
                     {slots.length > 1 && (
@@ -772,7 +821,7 @@ export function EventManager({
                         onClick={() => handleRemoveSlot(idx)}
                         className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive shrink-0"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     )}
                   </div>
@@ -781,34 +830,33 @@ export function EventManager({
             </div>
 
             {/* Exam Details */}
-            <div className="space-y-2 rounded-xl border border-border/70 bg-muted/15 p-3">
-              <Label className="text-xs font-bold">مشخصات آزمون پایان‌ترم:</Label>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="space-y-1">
-                  <span className="text-[10px] text-muted-foreground">تاریخ آزمون:</span>
-                  <Input
+            <div className="space-y-2.5 rounded-xl border border-border/70 bg-muted/15 p-3.5">
+              <Label className="text-sm font-bold">مشخصات آزمون پایان‌ترم:</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1.5 sm:col-span-1">
+                  <span className="text-xs text-muted-foreground font-medium">تاریخ آزمون (شمسی):</span>
+                  <JalaliDatePicker
                     value={examDate}
-                    onChange={(e) => setExamDate(e.target.value)}
-                    placeholder="1403/10/22"
-                    className="h-8 text-xs text-center"
+                    onChange={setExamDate}
+                    placeholder="انتخاب تاریخ آزمون"
                   />
                 </div>
-                <div className="space-y-1">
-                  <span className="text-[10px] text-muted-foreground">ساعت شروع:</span>
+                <div className="space-y-1.5">
+                  <span className="text-xs text-muted-foreground font-medium">ساعت شروع:</span>
                   <Input
                     value={examStartTime}
                     onChange={(e) => setExamStartTime(e.target.value)}
                     placeholder="08:30"
-                    className="h-8 text-xs text-center"
+                    className="text-center"
                   />
                 </div>
-                <div className="space-y-1">
-                  <span className="text-[10px] text-muted-foreground">ساعت پایان:</span>
+                <div className="space-y-1.5">
+                  <span className="text-xs text-muted-foreground font-medium">ساعت پایان:</span>
                   <Input
                     value={examEndTime}
                     onChange={(e) => setExamEndTime(e.target.value)}
                     placeholder="11:00"
-                    className="h-8 text-xs text-center"
+                    className="text-center"
                   />
                 </div>
               </div>
@@ -817,11 +865,14 @@ export function EventManager({
             <DialogFooter className="pt-2">
               <Button
                 type="submit"
-                size="sm"
                 disabled={isSubmitting || !selectedOfferingId}
-                className="w-full h-8 text-xs font-semibold"
+                className="w-full font-semibold"
               >
-                {isSubmitting ? "در حال ثبت..." : `ذخیره رویداد در ${formatSemesterLabel(activeTerm)}`}
+                {isSubmitting
+                  ? "در حال ثبت..."
+                  : editingEvent
+                  ? `ذخیره تغییرات رویداد در ${formatSemesterLabel(activeTerm)}`
+                  : `ثبت رویداد در ${formatSemesterLabel(activeTerm)}`}
               </Button>
             </DialogFooter>
           </form>
@@ -832,7 +883,7 @@ export function EventManager({
       <Dialog open={isCloneModalOpen} onOpenChange={setIsCloneModalOpen}>
         <DialogContent className="sm:max-w-md" dir="rtl">
           <DialogHeader>
-            <DialogTitle className="text-sm font-bold flex items-center gap-2">
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
               <Copy className="h-4 w-4 text-primary" />
               کپی کامل رویدادها از نیمسال دیگر
             </DialogTitle>
@@ -843,7 +894,7 @@ export function EventManager({
 
           <form onSubmit={handleCloneEvents} className="space-y-4 pt-2">
             <div className="space-y-2">
-              <Label className="text-xs font-semibold">نیمسال مبدأ (جهت کپی رویدادها):</Label>
+              <Label className="text-sm font-semibold">نیمسال مبدأ (جهت کپی رویدادها):</Label>
               <Select
                 items={cloneableSourceTerms.map((t) => ({
                   value: t,
@@ -852,7 +903,7 @@ export function EventManager({
                 value={cloneSourceTerm}
                 onValueChange={(val) => val && setCloneSourceTerm(val)}
               >
-                <SelectTrigger size="sm" className="w-full text-xs font-medium">
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="-- انتخاب نیمسال مبدأ --" />
                 </SelectTrigger>
                 <SelectContent>
@@ -860,7 +911,7 @@ export function EventManager({
                     {cloneableSourceTerms.map((t) => {
                       const count = events.filter((e) => e.term === t).length;
                       return (
-                        <SelectItem key={t} value={t} className="text-xs">
+                        <SelectItem key={t} value={t}>
                           {formatSemesterLabel(t)} ({count} رویداد کلاسی)
                         </SelectItem>
                       );
@@ -878,15 +929,13 @@ export function EventManager({
                 </Badge>
               </div>
 
-              <div className="pt-2 border-t border-border/60 flex items-center gap-2">
-                <input
-                  type="checkbox"
+              <div className="pt-2 border-t border-border/60 flex items-center gap-2.5">
+                <Checkbox
                   id="resetExams"
                   checked={resetExamDates}
-                  onChange={(e) => setResetExamDates(e.target.checked)}
-                  className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+                  onCheckedChange={(checked) => setResetExamDates(Boolean(checked))}
                 />
-                <Label htmlFor="resetExams" className="text-xs cursor-pointer font-normal">
+                <Label htmlFor="resetExams" className="text-xs cursor-pointer font-normal select-none">
                   پاک کردن تاریخ امتحانات قبلی (جهت تعیین مجدد در ترم جدید)
                 </Label>
               </div>
@@ -895,11 +944,10 @@ export function EventManager({
             <DialogFooter className="pt-2">
               <Button
                 type="submit"
-                size="sm"
                 disabled={isSubmitting || !cloneSourceTerm}
-                className="w-full h-8 text-xs font-semibold gap-1.5"
+                className="w-full font-semibold gap-1.5"
               >
-                <Sparkles className="h-3.5 w-3.5" />
+                <Sparkles className="h-4 w-4" />
                 {isSubmitting ? "در حال کپی رویدادها..." : `کپی همه رویدادها به ${formatSemesterLabel(activeTerm)}`}
               </Button>
             </DialogFooter>

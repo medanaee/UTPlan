@@ -1467,6 +1467,28 @@ export async function createOffering(data: {
   };
 }
 
+export async function updateOffering(
+  id: string,
+  data: { courseId?: string; professorId?: string }
+): Promise<CourseOffering | null> {
+  await initDatabase();
+  const off = offeringsStore.find((o) => o.id === id && !o.deletedAt);
+  if (!off) return null;
+  if (data.courseId) off.courseId = data.courseId;
+  if (data.professorId) off.professorId = data.professorId;
+  const course = coursesStore.find((c) => c.id === off.courseId);
+  const prof = professorsStore.find((p) => p.id === off.professorId);
+  return {
+    ...off,
+    courseName: course?.name || "",
+    courseCode: course?.code || "",
+    courseUnits: course?.units || 3,
+    professorName: prof?.name || "",
+    professorTitle: prof?.title || "",
+    professorAvatarUrl: prof?.avatarUrl,
+  };
+}
+
 export async function deleteOffering(id: string): Promise<boolean> {
   await initDatabase();
   const off = offeringsStore.find((o) => o.id === id);
