@@ -219,7 +219,7 @@ export function RuleSandboxTester({
                   </h3>
                   <p className="text-[11px] text-muted-foreground">
                     مجموع واحدهای چیده‌شده:{" "}
-                    <span className="font-bold font-mono text-foreground">
+                    <span className="font-bold text-foreground">
                       {validationResult.totalCredits} واحد
                     </span>
                   </p>
@@ -259,7 +259,7 @@ export function RuleSandboxTester({
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                     <span>واحدهای گذرانده:</span>
-                    <span className="font-mono font-bold text-foreground">
+                    <span className="font-bold text-foreground">
                       {stat.earnedCredits} {stat.requiredCredits ? `/ ${stat.requiredCredits}` : ""} واحد
                     </span>
                   </div>
@@ -291,7 +291,7 @@ export function RuleSandboxTester({
                       <div>
                         <span>{issue.message}</span>
                         {issue.termIndex && (
-                          <span className="mr-1.5 font-mono text-[10px] opacity-80">
+                          <span className="mr-1.5 text-[10px] opacity-80">
                             [ترم {issue.termIndex}]
                           </span>
                         )}
@@ -329,7 +329,7 @@ export function RuleSandboxTester({
                   </div>
                   <Badge
                     variant={termUnits < 12 && termNum < 8 ? "outline" : "secondary"}
-                    className="text-[10px] font-mono"
+                    className="text-[10px]"
                   >
                     {termUnits} واحد
                   </Badge>

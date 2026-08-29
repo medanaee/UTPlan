@@ -340,7 +340,7 @@ export default function ProfilePage() {
                   <Input
                     disabled
                     value={user?.email || ""}
-                    className="h-9 text-xs font-mono bg-muted/50 cursor-not-allowed opacity-80"
+                    className="h-9 text-xs bg-muted/50 cursor-not-allowed opacity-80"
                     dir="ltr"
                   />
                 </div>
@@ -453,7 +453,7 @@ export default function ProfilePage() {
                   <Label className="text-xs font-semibold">نیمسال ورود به دانشگاه</Label>
                   <div className="grid grid-cols-2 gap-2">
                     <Select value={entryYear} onValueChange={(val) => val && setEntryYear(val)}>
-                      <SelectTrigger size="sm" className="w-full text-xs h-9 font-mono">
+                      <SelectTrigger size="sm" className="w-full text-xs h-9">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>

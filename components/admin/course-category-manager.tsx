@@ -368,11 +368,11 @@ export function CourseCategoryManager({
 
                     <td className="py-2.5 px-3">
                       <div className="font-semibold text-foreground">{course.name}</div>
-                      <div className="font-mono text-[10px] text-muted-foreground">{course.code}</div>
+                      <div className="text-[10px] text-muted-foreground">{course.code}</div>
                     </td>
 
                     <td className="py-2.5 px-3">
-                      <Badge variant="outline" className="text-[10px] font-mono">
+                      <Badge variant="outline" className="text-[10px]">
                         {course.units} واحد
                       </Badge>
                     </td>

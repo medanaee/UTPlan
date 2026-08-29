@@ -121,6 +121,7 @@ export default function ChartEditorPage() {
         allCourses={courses}
         visualCategories={visualCategories}
         ruleCategories={ruleCategories}
+        user={user}
       />
     </div>
   );

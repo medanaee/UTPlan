@@ -182,6 +182,27 @@ export function ApprovedChartsManager({
     }
   };
 
+  // Set a chart as the single primary approved chart for this track
+  const handleSetPrimary = async (chartId: string) => {
+    try {
+      const res = await fetch("/api/charts", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: chartId, action: "set_primary" }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setActionMessage(data.message || "چارت مصوب اصلی گرایش تعیین شد.");
+        await loadApprovedCharts();
+        setTimeout(() => setActionMessage(null), 4000);
+      } else {
+        alert(data.message || "خطا در تنظیم چارت مصوب");
+      }
+    } catch {
+      alert("خطا در برقراری ارتباط با سرور");
+    }
+  };
+
   // Helper to calculate total credits and courses in a chart
   const getChartStats = (chart: StudentChart) => {
     let totalCredits = 0;
@@ -246,12 +267,12 @@ export function ApprovedChartsManager({
                 <div>
                   <h3 className="text-sm font-bold flex items-center gap-2">
                     <span>چارت‌های مصوب و پیشنهادی گرایش: {currentTrack?.name}</span>
-                    <Badge variant="outline" className="text-[10px] h-5 font-mono">
+                    <Badge variant="outline" className="text-[10px] h-5">
                       {currentTrack?.code}
                     </Badge>
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    تعریف و ویرایش نسخه‌های مختلف چارت مصوب یا برنامه‌های پیشنهادی برای این گرایش ({trackApprovedCharts.length} چارت)
+                    تنها ۱ چارت می‌تواند به عنوان چارت مصوب رسمی اصلی انتخاب شود. سایر چارت‌ها به عنوان الگوهای پیشنهادی در دسترس خواهند بود.
                   </p>
                 </div>
               </div>
@@ -297,21 +318,42 @@ export function ApprovedChartsManager({
                   return (
                     <div
                       key={chart.id}
-                      className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 space-y-3 transition-all hover:border-emerald-500/50"
+                      className={`p-4 rounded-xl border space-y-3 transition-all ${
+                        chart.isPrimaryApproved
+                          ? "border-emerald-500/50 bg-emerald-500/10 shadow-xs ring-1 ring-emerald-500/30"
+                          : "border-border/80 bg-muted/20 hover:border-primary/40"
+                      }`}
                     >
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                          <div className="flex flex-wrap items-center gap-2">
+                            {chart.isPrimaryApproved ? (
+                              <Badge className="bg-emerald-600 text-white dark:bg-emerald-500 dark:text-black border-transparent text-[11px] h-5.5 font-bold gap-1 shadow-2xs">
+                                🌟 چارت مصوب رسمی اصلی
+                              </Badge>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="text-muted-foreground border-border/80 text-[10px] h-5">
+                                  الگوی پیشنهادی
+                                </Badge>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleSetPrimary(chart.id)}
+                                  className="h-6 text-[10px] gap-1 text-primary border-primary/30 hover:bg-primary/5"
+                                  title="تنها ۱ چارت در هر گرایش مصوب اصلی است"
+                                >
+                                  تعیین به عنوان مصوب اصلی گرایش
+                                </Button>
+                              </div>
+                            )}
+
                             <span className="text-xs font-bold text-foreground">
                               {chart.title}
                             </span>
-                            <Badge className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 text-[10px] h-5">
-                              چارت مصوب دانشگاه
-                            </Badge>
                           </div>
                           <p className="text-[11px] text-muted-foreground">
-                            شناسه: <span className="font-mono">{chart.id}</span> | آخرین ویرایش:{" "}
+                            شناسه: <span>{chart.id}</span> | آخرین ویرایش:{" "}
                             {new Date(chart.updatedAt).toLocaleDateString("fa-IR")}
                           </p>
                         </div>
@@ -321,7 +363,7 @@ export function ApprovedChartsManager({
                           <Link href={`/charts/${chart.id}`} target="_blank">
                             <Button size="sm" className="h-8 gap-1.5 text-xs font-semibold shadow-xs">
                               <Edit className="h-3.5 w-3.5" />
-                              ویرایش بصری چارت در ادیتور
+                              ویرایش بصری در ادیتور
                               <ExternalLink className="h-3 w-3 opacity-60" />
                             </Button>
                           </Link>
@@ -338,20 +380,20 @@ export function ApprovedChartsManager({
                       </div>
 
                       {/* Stats & terms breakdown */}
-                      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 items-center pt-2 border-t border-emerald-500/20">
+                      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 items-center pt-2 border-t border-border/60">
                         {/* Stats Summary */}
                         <div className="flex items-center gap-2 text-center">
                           <div className="flex-1 px-2.5 py-1 rounded-lg bg-background border border-border/60">
                             <p className="text-[9px] text-muted-foreground">ترم‌ها</p>
-                            <p className="text-xs font-bold font-mono">{stats.semestersCount} ترم</p>
+                            <p className="text-xs font-bold">{stats.semestersCount} ترم</p>
                           </div>
                           <div className="flex-1 px-2.5 py-1 rounded-lg bg-background border border-border/60">
                             <p className="text-[9px] text-muted-foreground">دروس</p>
-                            <p className="text-xs font-bold font-mono">{stats.totalCourses} درس</p>
+                            <p className="text-xs font-bold">{stats.totalCourses} درس</p>
                           </div>
                           <div className="flex-1 px-2.5 py-1 rounded-lg bg-background border border-border/60">
                             <p className="text-[9px] text-muted-foreground">مجموع واحد</p>
-                            <p className="text-xs font-bold text-primary font-mono">{stats.totalCredits} واحد</p>
+                            <p className="text-xs font-bold text-primary">{stats.totalCredits} واحد</p>
                           </div>
                         </div>
 
@@ -372,7 +414,7 @@ export function ApprovedChartsManager({
                                 <span className="text-[10px] font-bold text-foreground block">
                                   ترم {sem.semesterNumber}
                                 </span>
-                                <span className="text-[9px] text-muted-foreground block font-mono">
+                                <span className="text-[9px] text-muted-foreground block">
                                   {sem.courseIds.length} درس ({semCredits}و)
                                 </span>
                               </div>
@@ -442,13 +484,23 @@ export function ApprovedChartsManager({
 
                     return (
                       <tr key={chart.id} className="hover:bg-muted/20 transition-colors">
-                        <td className="p-3 font-bold text-foreground flex items-center gap-2">
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                          <span>{chart.title}</span>
+                        <td className="p-3 font-bold text-foreground">
+                          <div className="flex items-center gap-2">
+                            {chart.isPrimaryApproved ? (
+                              <Badge className="bg-emerald-600 text-white text-[10px] h-4.5 px-1.5 font-bold">
+                                مصوب اصلی
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px] h-4.5 px-1.5 text-muted-foreground">
+                                پیشنهادی
+                              </Badge>
+                            )}
+                            <span>{chart.title}</span>
+                          </div>
                         </td>
                         <td className="p-3">
                           <span className="font-semibold text-foreground">{track?.name || "نامشخص"}</span>
-                          <span className="text-[10px] text-muted-foreground font-mono block">
+                          <span className="text-[10px] text-muted-foreground block">
                             {track?.code || "---"}
                           </span>
                         </td>
@@ -456,9 +508,9 @@ export function ApprovedChartsManager({
                           <span>{major?.name || "نامشخص"}</span>
                           <span className="text-[10px] opacity-75 block">{faculty?.name}</span>
                         </td>
-                        <td className="p-3 font-mono font-medium">{stats.semestersCount} ترم</td>
-                        <td className="p-3 font-mono font-medium">{stats.totalCourses} درس</td>
-                        <td className="p-3 font-mono font-bold text-primary">{stats.totalCredits} واحد</td>
+                        <td className="p-3 font-medium">{stats.semestersCount} ترم</td>
+                        <td className="p-3 font-medium">{stats.totalCourses} درس</td>
+                        <td className="p-3 font-bold text-primary">{stats.totalCredits} واحد</td>
                         <td className="p-3 text-center">
                           <div className="flex items-center justify-center gap-1.5">
                             <Link href={`/charts/${chart.id}`} target="_blank">

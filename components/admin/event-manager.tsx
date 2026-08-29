@@ -300,7 +300,7 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
             </div>
 
             <div className="text-xs text-muted-foreground">
-              تعداد کل رویدادها: <span className="font-bold text-foreground font-mono">{filteredEvents.length}</span>
+              تعداد کل رویدادها: <span className="font-bold text-foreground">{filteredEvents.length}</span>
             </div>
           </div>
 
@@ -345,14 +345,14 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
                     </td>
 
                     {/* Group */}
-                    <td className="py-2.5 px-3 text-center font-mono">
+                    <td className="py-2.5 px-3 text-center">
                       <Badge variant="secondary" className="text-[10px] px-1.5">
                         گروه {evt.groupCode || "01"}
                       </Badge>
                     </td>
 
                     {/* Capacity */}
-                    <td className="py-2.5 px-3 text-center font-mono text-muted-foreground">
+                    <td className="py-2.5 px-3 text-center text-muted-foreground">
                       {evt.capacity || 40} نفر
                     </td>
 
@@ -366,7 +366,7 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
                             <Badge
                               key={slot.id}
                               variant="secondary"
-                              className="text-[10px] font-mono gap-1"
+                              className="text-[10px] gap-1"
                             >
                               <span>{dayName}</span>
                               <span>
@@ -387,7 +387,7 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
                     </td>
 
                     {/* Exam */}
-                    <td className="py-2.5 px-3 font-mono text-[11px]">
+                    <td className="py-2.5 px-3 text-[11px]">
                       {evt.examDate ? (
                         <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
                           <Calendar className="h-3 w-3 shrink-0" />
@@ -521,7 +521,7 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
                   value={groupCode}
                   onChange={(e) => setGroupCode(e.target.value)}
                   placeholder="مثلاً ۰۱"
-                  className="h-8 text-xs font-mono"
+                  className="h-8 text-xs"
                   required
                 />
               </div>
@@ -534,7 +534,7 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
                   max={300}
                   value={capacity}
                   onChange={(e) => setCapacity(parseInt(e.target.value) || 40)}
-                  className="h-8 text-xs font-mono"
+                  className="h-8 text-xs"
                   required
                 />
               </div>
@@ -598,7 +598,7 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
                       value={slot.startTime}
                       onChange={(e) => handleUpdateSlot(idx, "startTime", e.target.value)}
                       placeholder="10:30"
-                      className="h-8 w-24 text-xs font-mono text-center"
+                      className="h-8 w-24 text-xs text-center"
                     />
 
                     <span className="text-muted-foreground text-[11px]">تا</span>
@@ -608,7 +608,7 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
                       value={slot.endTime}
                       onChange={(e) => handleUpdateSlot(idx, "endTime", e.target.value)}
                       placeholder="12:00"
-                      className="h-8 w-24 text-xs font-mono text-center"
+                      className="h-8 w-24 text-xs text-center"
                     />
 
                     {slots.length > 1 && (
@@ -637,7 +637,7 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
                     value={examDate}
                     onChange={(e) => setExamDate(e.target.value)}
                     placeholder="1403/10/22"
-                    className="h-8 text-xs font-mono text-center"
+                    className="h-8 text-xs text-center"
                   />
                 </div>
                 <div className="space-y-1">
@@ -646,7 +646,7 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
                     value={examStartTime}
                     onChange={(e) => setExamStartTime(e.target.value)}
                     placeholder="08:30"
-                    className="h-8 text-xs font-mono text-center"
+                    className="h-8 text-xs text-center"
                   />
                 </div>
                 <div className="space-y-1">
@@ -655,7 +655,7 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
                     value={examEndTime}
                     onChange={(e) => setExamEndTime(e.target.value)}
                     placeholder="11:00"
-                    className="h-8 text-xs font-mono text-center"
+                    className="h-8 text-xs text-center"
                   />
                 </div>
               </div>

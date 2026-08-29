@@ -8,6 +8,7 @@ import {
   deleteChart,
   getApprovedTrackChart,
   getApprovedTrackCharts,
+  setPrimaryApprovedChart,
 } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
@@ -96,7 +97,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { id, title, trackId, semesters } = body;
+    const { id, title, trackId, semesters, isPrimaryApproved, isApprovedDefault, action } = body;
 
     if (!id) {
       return NextResponse.json({ success: false, message: "شناسه چارت الزامی است." }, { status: 400 });
@@ -107,15 +108,50 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ success: false, message: "چارت مورد نظر یافت نشد." }, { status: 404 });
     }
 
-    // Permission check: only owner or super_admin
-    if (existing.userId !== session.id && session.role !== "super_admin" && session.role !== "admin") {
-      return NextResponse.json({ success: false, message: "شما دسترسی ویرایش این چارت را ندارید." }, { status: 403 });
+    const isAdmin = session.role === "super_admin" || session.role === "admin";
+
+    // Strict Security Guard:
+    // 1. If this is an official approved default track chart, ONLY admins can edit it!
+    if (existing.isApprovedDefault && !isAdmin) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "دسترسی غیرمجاز: چارت‌های مصوب و رسمی دانشگاه فقط توسط مدیران قابل ویرایش هستند.",
+        },
+        { status: 403 }
+      );
+    }
+
+    // 2. If this is a student's private chart, only the owner or admins can edit it.
+    if (!existing.isApprovedDefault && existing.userId !== session.id && !isAdmin) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "دسترسی غیرمجاز: شما دسترسی ویرایش این چارت تحصیلی را ندارید.",
+        },
+        { status: 403 }
+      );
+    }
+
+    if (action === "set_primary" || isPrimaryApproved) {
+      if (!isAdmin) {
+        return NextResponse.json({ success: false, message: "دسترسی غیرمجاز" }, { status: 403 });
+      }
+      await setPrimaryApprovedChart(existing.trackId, id);
+      const updated = await getChartById(id);
+      return NextResponse.json({
+        success: true,
+        data: updated,
+        message: "این چارت به عنوان چارت مصوب اصلی گرایش تعیین شد.",
+      });
     }
 
     const updated = await updateChart(id, {
       title,
       trackId,
       semesters,
+      isApprovedDefault: isAdmin ? isApprovedDefault : undefined,
+      isPrimaryApproved: isAdmin ? isPrimaryApproved : undefined,
     });
 
     return NextResponse.json({ success: true, data: updated, message: "چارت با موفقیت ذخیره شد." });
@@ -148,8 +184,21 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ success: false, message: "چارت یافت نشد." }, { status: 404 });
     }
 
-    if (existing.userId !== session.id && session.role !== "super_admin") {
-      return NextResponse.json({ success: false, message: "دسترسی حذف این چارت را ندارید." }, { status: 403 });
+    const isAdmin = session.role === "super_admin" || session.role === "admin";
+
+    // Strict Security Guard for DELETE:
+    if (existing.isApprovedDefault && !isAdmin) {
+      return NextResponse.json(
+        { success: false, message: "دسترسی غیرمجاز: چارت‌های مصوب رسمی دانشگاه فقط توسط مدیران قابل حذف هستند." },
+        { status: 403 }
+      );
+    }
+
+    if (!existing.isApprovedDefault && existing.userId !== session.id && !isAdmin) {
+      return NextResponse.json(
+        { success: false, message: "دسترسی غیرمجاز: شما اجازه حذف این چارت را ندارید." },
+        { status: 403 }
+      );
     }
 
     await deleteChart(id, session.id);

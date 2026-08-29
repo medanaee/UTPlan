@@ -148,7 +148,7 @@ export function Navbar({ user: initialUser }: NavbarProps) {
                       {user.role === "super_admin" || user.role === "admin" ? "مدیر سیستم" : "دانشجو"}
                     </Badge>
                   </div>
-                  <p className="text-[10px] text-muted-foreground font-mono">{user.email}</p>
+                  <p className="text-[10px] text-muted-foreground">{user.email}</p>
                 </div>
               </Link>
 

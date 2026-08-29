@@ -862,14 +862,34 @@ export async function getChartById(id: string): Promise<StudentChart | null> {
 
 export async function getApprovedTrackChart(trackId: string): Promise<StudentChart | null> {
   await initDatabase();
-  const chart = chartsStore.find((c) => c.trackId === trackId && c.isApprovedDefault);
-  return chart ? JSON.parse(JSON.stringify(chart)) : null;
+  const primary = chartsStore.find((c) => c.trackId === trackId && c.isApprovedDefault && c.isPrimaryApproved);
+  if (primary) return JSON.parse(JSON.stringify(primary));
+  const fallback = chartsStore.find((c) => c.trackId === trackId && c.isApprovedDefault);
+  return fallback ? JSON.parse(JSON.stringify(fallback)) : null;
 }
 
 export async function getApprovedTrackCharts(trackId?: string): Promise<StudentChart[]> {
   await initDatabase();
   const list = chartsStore.filter((c) => c.isApprovedDefault && (!trackId || c.trackId === trackId));
+  list.sort((a, b) => (b.isPrimaryApproved ? 1 : 0) - (a.isPrimaryApproved ? 1 : 0));
   return JSON.parse(JSON.stringify(list));
+}
+
+export async function setPrimaryApprovedChart(trackId: string, chartId: string): Promise<boolean> {
+  await initDatabase();
+  let found = false;
+  chartsStore.forEach((c) => {
+    if (c.trackId === trackId && c.isApprovedDefault) {
+      if (c.id === chartId) {
+        c.isPrimaryApproved = true;
+        c.updatedAt = new Date().toISOString();
+        found = true;
+      } else {
+        c.isPrimaryApproved = false;
+      }
+    }
+  });
+  return found;
 }
 
 export async function createChart(data: {
@@ -878,6 +898,7 @@ export async function createChart(data: {
   title: string;
   semesters?: ChartSemester[];
   isApprovedDefault?: boolean;
+  isPrimaryApproved?: boolean;
 }): Promise<StudentChart> {
   await initDatabase();
   const id = `chart_${crypto.randomUUID().slice(0, 8)}`;
@@ -888,12 +909,28 @@ export async function createChart(data: {
     courseIds: [],
   }));
 
+  const existingApprovedForTrack = chartsStore.some(
+    (c) => c.trackId === data.trackId && c.isApprovedDefault
+  );
+  const isPrimary = data.isApprovedDefault
+    ? data.isPrimaryApproved ?? !existingApprovedForTrack
+    : false;
+
+  if (isPrimary && data.isApprovedDefault) {
+    chartsStore.forEach((c) => {
+      if (c.trackId === data.trackId && c.isApprovedDefault) {
+        c.isPrimaryApproved = false;
+      }
+    });
+  }
+
   const newChart: StudentChart = {
     id,
     userId: data.userId,
     trackId: data.trackId,
     title: data.title.trim() || "چارت تحصیلی من",
     isApprovedDefault: data.isApprovedDefault || false,
+    isPrimaryApproved: isPrimary,
     semesters: data.semesters && data.semesters.length > 0 ? data.semesters : defaultSemesters,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -915,6 +952,17 @@ export async function updateChart(
   if (data.trackId !== undefined) chart.trackId = data.trackId;
   if (data.semesters !== undefined) chart.semesters = data.semesters;
   if (data.isApprovedDefault !== undefined) chart.isApprovedDefault = data.isApprovedDefault;
+
+  if (data.isPrimaryApproved && chart.isApprovedDefault) {
+    chartsStore.forEach((c) => {
+      if (c.trackId === chart.trackId && c.isApprovedDefault) {
+        c.isPrimaryApproved = c.id === id;
+      }
+    });
+  } else if (data.isPrimaryApproved !== undefined) {
+    chart.isPrimaryApproved = data.isPrimaryApproved;
+  }
+
   chart.updatedAt = new Date().toISOString();
 
   return JSON.parse(JSON.stringify(chart));

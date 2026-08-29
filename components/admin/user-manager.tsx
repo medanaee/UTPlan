@@ -119,7 +119,7 @@ export function UserManager({ currentUser }: UserManagerProps) {
           <CardContent className="p-3.5 flex items-center justify-between">
             <div className="space-y-0.5">
               <p className="text-[11px] text-muted-foreground">کل کاربران ثبت‌شده</p>
-              <p className="text-xl font-bold font-mono text-foreground">{totalUsers}</p>
+              <p className="text-xl font-bold text-foreground">{totalUsers}</p>
             </div>
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <Users className="h-5 w-5" />
@@ -131,7 +131,7 @@ export function UserManager({ currentUser }: UserManagerProps) {
           <CardContent className="p-3.5 flex items-center justify-between">
             <div className="space-y-0.5">
               <p className="text-[11px] text-muted-foreground">مدیران ارشد (Super Admin)</p>
-              <p className="text-xl font-bold font-mono text-purple-600 dark:text-purple-400">
+              <p className="text-xl font-bold text-purple-600 dark:text-purple-400">
                 {superAdminsCount}
               </p>
             </div>
@@ -145,7 +145,7 @@ export function UserManager({ currentUser }: UserManagerProps) {
           <CardContent className="p-3.5 flex items-center justify-between">
             <div className="space-y-0.5">
               <p className="text-[11px] text-muted-foreground">مدیران سامانه (Admin)</p>
-              <p className="text-xl font-bold font-mono text-sky-600 dark:text-sky-400">
+              <p className="text-xl font-bold text-sky-600 dark:text-sky-400">
                 {adminsCount}
               </p>
             </div>
@@ -159,7 +159,7 @@ export function UserManager({ currentUser }: UserManagerProps) {
           <CardContent className="p-3.5 flex items-center justify-between">
             <div className="space-y-0.5">
               <p className="text-[11px] text-muted-foreground">دانشجویان و کاربران عادی</p>
-              <p className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
+              <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
                 {studentsCount}
               </p>
             </div>
@@ -288,7 +288,7 @@ export function UserManager({ currentUser }: UserManagerProps) {
                                 </Badge>
                               )}
                             </div>
-                            <span className="font-mono text-[10px] text-muted-foreground">
+                            <span className="text-[10px] text-muted-foreground">
                               {user.id}
                             </span>
                           </div>
@@ -296,7 +296,7 @@ export function UserManager({ currentUser }: UserManagerProps) {
                       </td>
 
                       {/* Email */}
-                      <td className="py-2.5 px-3 font-mono text-[11px] text-muted-foreground" dir="ltr">
+                      <td className="py-2.5 px-3 text-[11px] text-muted-foreground" dir="ltr">
                         {user.email}
                       </td>
 

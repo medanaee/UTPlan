@@ -272,7 +272,7 @@ export function ProfessorManager({
             </div>
 
             <div className="text-xs text-muted-foreground">
-              مجموع اساتید: <span className="font-bold text-foreground font-mono">{filteredProfessors.length}</span>
+              مجموع اساتید: <span className="font-bold text-foreground">{filteredProfessors.length}</span>
             </div>
           </div>
 
@@ -286,7 +286,7 @@ export function ProfessorManager({
                   className="flex items-center justify-between rounded-xl border border-border/80 bg-card p-3.5 shadow-2xs hover:border-primary/30 transition-colors"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs overflow-hidden border border-border/80 shadow-2xs">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs overflow-hidden border border-border/70 shadow-2xs">
                       {p.avatarUrl ? (
                         <img
                           src={p.avatarUrl}
@@ -309,7 +309,7 @@ export function ProfessorManager({
                         )}
                       </div>
                       {p.email && (
-                        <p className="font-mono text-[10px] text-muted-foreground/80 truncate dir-ltr text-right">
+                        <p className="text-[10px] text-muted-foreground/80 truncate dir-ltr text-right">
                           {p.email}
                         </p>
                       )}
@@ -492,7 +492,7 @@ export function ProfessorManager({
                 placeholder="mohammadi@ut.ac.ir"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="h-8 text-xs font-mono"
+                className="h-8 text-xs"
                 dir="ltr"
               />
             </div>

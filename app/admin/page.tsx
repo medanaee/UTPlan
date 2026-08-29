@@ -716,7 +716,7 @@ export default function AdminDashboardPage() {
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <h3 className="text-xs font-bold text-foreground">{course.name}</h3>
-                            <span className="font-mono text-[11px] text-muted-foreground">{course.code}</span>
+                            <span className="text-[11px] text-muted-foreground">{course.code}</span>
                           </div>
                           <Badge variant="outline" className="text-[11px] font-semibold">
                             {course.units} واحد
@@ -866,7 +866,7 @@ export default function AdminDashboardPage() {
                         <div className="space-y-0.5">
                           <p className="text-xs leading-snug">{f.name}</p>
                           <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                            <span className="font-mono">{f.code}</span>
+                            <span>{f.code}</span>
                             <span>•</span>
                             <span>{majorsCount} رشته</span>
                           </div>
@@ -929,7 +929,7 @@ export default function AdminDashboardPage() {
                           <div className="space-y-0.5">
                             <p className="text-xs leading-snug">{m.name}</p>
                             <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                              <span className="font-mono">{m.code}</span>
+                              <span>{m.code}</span>
                               <span>•</span>
                               <span>{tracksCount} گرایش</span>
                             </div>
@@ -1003,7 +1003,7 @@ export default function AdminDashboardPage() {
                         >
                           <div className="space-y-0.5">
                             <p className="text-xs leading-snug">{t.name}</p>
-                            <span className="font-mono text-[10px] text-muted-foreground">{t.code}</span>
+                            <span className="text-[10px] text-muted-foreground">{t.code}</span>
                           </div>
 
                           {isSelected && (
@@ -1203,7 +1203,7 @@ export default function AdminDashboardPage() {
                                   <div key={childCat.id} className="space-y-1">
                                     <div className="flex items-center justify-between rounded-lg bg-background/80 border border-border/50 p-2 text-xs">
                                       <div className="flex items-center gap-1.5">
-                                        <span className="text-muted-foreground font-mono text-[10px]">↳</span>
+                                        <span className="text-muted-foreground text-[10px]">↳</span>
                                         <span className="font-medium text-foreground">
                                           {childCat.name}
                                         </span>
@@ -1558,7 +1558,7 @@ export default function AdminDashboardPage() {
                   placeholder="مثلاً MATH101"
                   value={courseForm.code}
                   onChange={(e) => setCourseForm({ ...courseForm, code: e.target.value })}
-                  className="h-8 text-xs font-mono"
+                  className="h-8 text-xs"
                   dir="ltr"
                 />
               </div>
@@ -1679,7 +1679,7 @@ export default function AdminDashboardPage() {
                 placeholder="مثلاً ENG"
                 value={facultyForm.code}
                 onChange={(e) => setFacultyForm({ ...facultyForm, code: e.target.value })}
-                className="h-8 text-xs font-mono"
+                className="h-8 text-xs"
                 dir="ltr"
               />
             </div>
@@ -1714,7 +1714,7 @@ export default function AdminDashboardPage() {
                 placeholder="مثلاً EE"
                 value={majorForm.code}
                 onChange={(e) => setMajorForm({ ...majorForm, code: e.target.value })}
-                className="h-8 text-xs font-mono"
+                className="h-8 text-xs"
                 dir="ltr"
               />
             </div>
@@ -1749,7 +1749,7 @@ export default function AdminDashboardPage() {
                 placeholder="مثلاً AI"
                 value={trackForm.code}
                 onChange={(e) => setTrackForm({ ...trackForm, code: e.target.value })}
-                className="h-8 text-xs font-mono"
+                className="h-8 text-xs"
                 dir="ltr"
               />
             </div>

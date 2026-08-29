@@ -253,6 +253,7 @@ export interface StudentChart {
   trackId: string;
   title: string;
   isApprovedDefault?: boolean;
+  isPrimaryApproved?: boolean;
   semesters: ChartSemester[];
   createdAt: string;
   updatedAt: string;

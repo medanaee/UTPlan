@@ -26,6 +26,9 @@ import {
   HelpCircle,
   Eye,
   EyeOff,
+  Lock,
+  Shield,
+  Copy,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,6 +55,7 @@ import type {
   RuleGroupNode,
   ValidationResult,
   ValidationIssue,
+  UserSession,
 } from "@/lib/types";
 
 interface ChartEditorProps {
@@ -60,6 +64,7 @@ interface ChartEditorProps {
   allCourses: Course[];
   visualCategories: VisualCategory[];
   ruleCategories: RuleCategory[];
+  user?: UserSession | null;
 }
 
 interface SvgConnection {
@@ -78,6 +83,7 @@ export function ChartEditor({
   allCourses,
   visualCategories,
   ruleCategories,
+  user,
 }: ChartEditorProps) {
   const router = useRouter();
   const [chart, setChart] = useState<StudentChart>(initialChart);
@@ -86,6 +92,12 @@ export function ChartEditor({
   const [activeTrack, setActiveTrack] = useState<Track | null>(
     allTracks.find((t) => t.id === initialChart.trackId) || null
   );
+
+  // Authorization and Read-Only Rules
+  const isApprovedChart = Boolean(initialChart.isApprovedDefault);
+  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+  const isOwner = user ? initialChart.userId === user.id : false;
+  const isReadOnly = (isApprovedChart && !isAdmin) || (!isApprovedChart && !isOwner && !isAdmin);
 
   // Search & Category Filter for drawer
   const [drawerSearch, setDrawerSearch] = useState("");
@@ -108,10 +120,42 @@ export function ChartEditor({
   // Hovered Course for SVG Arrow Highlighting
   const [hoveredCourseId, setHoveredCourseId] = useState<string | null>(null);
 
-  // Saving & Status
+  // Saving & Cloning Status
   const [isSaving, setIsSaving] = useState(false);
+  const [isCloning, setIsCloning] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Clone approved / read-only chart for current user
+  const handleCloneForMe = async () => {
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    setIsCloning(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetch("/api/charts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: `نسخه من از ${chart.title}`,
+          trackId: chart.trackId,
+          cloneFromId: chart.id,
+        }),
+      }).then((r) => r.json());
+
+      if (res.success && res.data) {
+        router.push(`/charts/${res.data.id}`);
+      } else {
+        setErrorMsg(res.message || "خطا در ایجاد نسخه شخصی از چارت");
+      }
+    } catch {
+      setErrorMsg("خطا در برقراری ارتباط با سرور");
+    } finally {
+      setIsCloning(false);
+    }
+  };
 
   // References for SVG curve coordinates
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -318,6 +362,7 @@ export function ChartEditor({
     targetSemesterNumber: number,
     targetIndex?: number
   ) => {
+    if (isReadOnly) return;
     setChart((prev) => {
       // 1. Remove course from any existing semester
       const cleanedSemesters = prev.semesters.map((sem) => ({
@@ -346,6 +391,7 @@ export function ChartEditor({
 
   // Remove a course from the entire chart
   const removeCourseFromChart = (courseId: string) => {
+    if (isReadOnly) return;
     setChart((prev) => ({
       ...prev,
       semesters: prev.semesters.map((sem) => ({
@@ -357,7 +403,7 @@ export function ChartEditor({
 
   // Add new semester (up to 12)
   const addSemester = () => {
-    if (chart.semesters.length >= 12) return;
+    if (isReadOnly || chart.semesters.length >= 12) return;
     setChart((prev) => ({
       ...prev,
       semesters: [
@@ -369,7 +415,7 @@ export function ChartEditor({
 
   // Remove last semester (if empty)
   const removeLastSemester = () => {
-    if (chart.semesters.length <= 8) return;
+    if (isReadOnly || chart.semesters.length <= 8) return;
     const lastSem = chart.semesters[chart.semesters.length - 1];
     if (lastSem.courseIds.length > 0) {
       if (!confirm(`ترم ${lastSem.semesterNumber} دارای درس است. آیا از حذف آن مطمئن هستید؟`)) {
@@ -384,6 +430,7 @@ export function ChartEditor({
 
   // Open modal to load from approved curriculum list
   const handleOpenLoadApprovedModal = async () => {
+    if (isReadOnly) return;
     setLoadApprovedModalOpen(true);
     setLoadingApprovedCharts(true);
     try {
@@ -402,6 +449,7 @@ export function ChartEditor({
 
   // Apply chosen approved chart
   const handleApplyApprovedChart = (selectedChart: StudentChart) => {
+    if (isReadOnly) return;
     if (!confirm(`آیا از بارگذاری «${selectedChart.title}» مطمئن هستید؟ دروس فعلی چارت با این برنامه جایگزین خواهند شد.`)) {
       return;
     }
@@ -414,6 +462,7 @@ export function ChartEditor({
 
   // Save chart changes to backend
   const handleSaveChart = async () => {
+    if (isReadOnly) return;
     setIsSaving(true);
     setSaveSuccess(false);
     setErrorMsg(null);
@@ -469,6 +518,36 @@ export function ChartEditor({
   return (
     <div className="flex flex-col h-full overflow-hidden bg-background text-foreground select-none">
       {/* ========================================================================= */}
+      {/* 0. READ-ONLY MODE BANNER */}
+      {/* ========================================================================= */}
+      {isReadOnly && (
+        <div className="shrink-0 bg-amber-500/10 border-b border-amber-500/30 px-4 py-2 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300">
+            <Shield className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <span className="font-bold">
+              {isApprovedChart
+                ? "حالت فقط‌خواندنی (چارت مصوب رسمی دانشگاه)"
+                : "حالت فقط مشاهده چارت"}
+            </span>
+            <span className="hidden md:inline text-muted-foreground text-[11px]">
+              {isApprovedChart
+                ? "ویرایش مستقیم چارت‌های مصوب رسمی تنها توسط مدیران مجاز است. برای شخصی‌سازی، یک نسخه از آن ایجاد کنید."
+                : "شما دسترسی ویرایش مستقیم این چارت را ندارید."}
+            </span>
+          </div>
+          <Button
+            size="sm"
+            onClick={handleCloneForMe}
+            disabled={isCloning}
+            className="h-7 text-xs gap-1.5 font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-2xs"
+          >
+            <Copy className="h-3 w-3" />
+            <span>{isCloning ? "در حال ایجاد نسخه شخصی..." : "ایجاد نسخه شخصی از این چارت برای من"}</span>
+          </Button>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
       {/* 1. TOP INTERACTIVE TOOLBAR */}
       {/* ========================================================================= */}
       <div className="shrink-0 z-30 border-b border-border/70 bg-card/95 backdrop-blur px-4 py-2.5 shadow-2xs">
@@ -486,11 +565,18 @@ export function ChartEditor({
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="h-8 text-xs font-bold w-52 sm:w-64 rounded-lg border-border/70 focus:border-primary px-3 transition-colors bg-background/60 shadow-2xs"
+                disabled={isReadOnly}
+                className="h-8 text-xs font-bold w-52 sm:w-64 rounded-lg border-border/70 focus:border-primary px-3 transition-colors bg-background/60 shadow-2xs disabled:opacity-85 disabled:cursor-not-allowed"
                 placeholder="عنوان چارت تحصیلی..."
               />
-              <Badge variant="outline" className="text-[11px] h-8 px-2.5 rounded-lg text-primary border-primary/30 bg-primary/5 flex items-center shadow-2xs font-medium">
-                {activeTrack?.name || "گرایش انتخاب‌نشده"}
+              <Badge variant="outline" className="text-[11px] h-8 px-2.5 rounded-lg text-primary border-primary/30 bg-primary/5 flex items-center gap-1.5 shadow-2xs font-medium">
+                {isApprovedChart && <Sparkles className="h-3 w-3 text-amber-500 shrink-0" />}
+                <span>{activeTrack?.name || "گرایش انتخاب‌نشده"}</span>
+                {isApprovedChart && (
+                  <span className="text-[9px] bg-primary/10 text-primary px-1 py-0.2 rounded font-bold">
+                    {isAdmin ? "مصوب (مدیریت)" : "مصوب"}
+                  </span>
+                )}
               </Badge>
             </div>
           </div>
@@ -545,58 +631,74 @@ export function ChartEditor({
             </Button>
 
             {/* Load Approved Curriculum Button */}
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={handleOpenLoadApprovedModal}
-              className="h-8 gap-1.5 text-xs px-3 rounded-lg text-primary border border-primary/30 bg-primary/5 hover:bg-primary/15 transition-all shadow-2xs font-medium"
-            >
-              <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-              <span className="hidden sm:inline">بارگذاری چارت مصوب / پیشنهادی</span>
-            </Button>
-
-            {/* Add / Remove Semester */}
-            <div className="h-8 flex items-center bg-background/60 p-0.5 rounded-lg border border-border/80 shadow-2xs">
+            {!isReadOnly && (
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={addSemester}
-                disabled={chart.semesters.length >= 12}
-                className="h-7 text-xs px-2.5 rounded-md gap-1 text-foreground hover:bg-muted/80 transition-colors"
-                title="افزودن یک ترم جدید به انتها"
+                onClick={handleOpenLoadApprovedModal}
+                className="h-8 gap-1.5 text-xs px-3 rounded-lg text-primary border border-primary/30 bg-primary/5 hover:bg-primary/15 transition-all shadow-2xs font-medium"
               >
-                <Plus className="h-3.5 w-3.5 text-primary" />
-                <span>ترم {chart.semesters.length + 1}</span>
+                <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                <span className="hidden sm:inline">بارگذاری چارت مصوب / پیشنهادی</span>
               </Button>
-              {chart.semesters.length > 8 && (
+            )}
+
+            {/* Add / Remove Semester */}
+            {!isReadOnly && (
+              <div className="h-8 flex items-center bg-background/60 p-0.5 rounded-lg border border-border/80 shadow-2xs">
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={removeLastSemester}
-                  className="h-7 w-7 p-0 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                  title="حذف آخرین ترم"
+                  onClick={addSemester}
+                  disabled={chart.semesters.length >= 12}
+                  className="h-7 text-xs px-2.5 rounded-md gap-1 text-foreground hover:bg-muted/80 transition-colors"
+                  title="افزودن یک ترم جدید به انتها"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Plus className="h-3.5 w-3.5 text-primary" />
+                  <span>ترم {chart.semesters.length + 1}</span>
                 </Button>
-              )}
-            </div>
+                {chart.semesters.length > 8 && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={removeLastSemester}
+                    className="h-7 w-7 p-0 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                    title="حذف آخرین ترم"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+            )}
 
-            {/* Save Button */}
-            <Button
-              size="sm"
-              onClick={handleSaveChart}
-              disabled={isSaving}
-              className="h-8 gap-1.5 text-xs px-3.5 rounded-lg font-semibold shadow-2xs border border-primary/40 bg-primary text-primary-foreground hover:bg-primary/90 transition-all"
-            >
-              {isSaving ? (
-                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-              ) : saveSuccess ? (
-                <Check className="h-3.5 w-3.5 text-emerald-300" />
-              ) : (
-                <Save className="h-3.5 w-3.5" />
-              )}
-              {saveSuccess ? "ذخیره شد!" : "ذخیره چارت"}
-            </Button>
+            {/* Save Button OR Clone Button */}
+            {isReadOnly ? (
+              <Button
+                size="sm"
+                onClick={handleCloneForMe}
+                disabled={isCloning}
+                className="h-8 gap-1.5 text-xs px-3.5 rounded-lg font-semibold shadow-2xs border border-primary/40 bg-primary text-primary-foreground hover:bg-primary/90 transition-all"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                <span>{isCloning ? "در حال ایجاد..." : "کپی در چارت‌های من"}</span>
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                onClick={handleSaveChart}
+                disabled={isSaving}
+                className="h-8 gap-1.5 text-xs px-3.5 rounded-lg font-semibold shadow-2xs border border-primary/40 bg-primary text-primary-foreground hover:bg-primary/90 transition-all"
+              >
+                {isSaving ? (
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                ) : saveSuccess ? (
+                  <Check className="h-3.5 w-3.5 text-emerald-300" />
+                ) : (
+                  <Save className="h-3.5 w-3.5" />
+                )}
+                {saveSuccess ? "ذخیره شد!" : "ذخیره چارت"}
+              </Button>
+            )}
 
             {/* Dark / Light Mode Toggle */}
             <ThemeToggle />
@@ -693,8 +795,12 @@ export function ChartEditor({
               return (
                 <div
                   key={course.id}
-                  draggable
+                  draggable={!isReadOnly}
                   onDragStart={(e) => {
+                    if (isReadOnly) {
+                      e.preventDefault();
+                      return;
+                    }
                     e.dataTransfer.setData("text/plain", course.id);
                     setDraggedCourseId(course.id);
                   }}
@@ -706,7 +812,11 @@ export function ChartEditor({
                     borderColor: `${baseColor}38`,
                     borderRight: `4px solid ${baseColor}`,
                   }}
-                  className={`p-2.5 rounded-xl border transition-all cursor-grab active:cursor-grabbing shadow-2xs ${
+                  className={`p-2.5 rounded-xl border transition-all shadow-2xs ${
+                    isReadOnly
+                      ? "cursor-default"
+                      : "cursor-grab active:cursor-grabbing"
+                  } ${
                     isPlaced
                       ? "opacity-60 bg-muted/40 hover:opacity-100"
                       : "hover:border-primary/50 hover:shadow-xs"
@@ -715,7 +825,7 @@ export function ChartEditor({
                   <div className="flex items-start justify-between gap-1.5">
                     <div>
                       <p className="text-xs font-bold">{course.name}</p>
-                      <p className="text-[10px] text-muted-foreground font-mono">{course.code}</p>
+                      <p className="text-[10px] text-muted-foreground">{course.code}</p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <span className="rounded bg-background/80 px-1.5 py-0.5 text-[10px] font-semibold text-foreground border border-border/40">
@@ -735,7 +845,7 @@ export function ChartEditor({
                       {prereqs.map((pr) => (
                         <span
                           key={pr.id}
-                          className={`text-[9px] px-1.5 py-0.5 rounded-md font-mono ${
+                          className={`text-[9px] px-1.5 py-0.5 rounded-md ${
                             pr.type === "prerequisite"
                               ? "bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20"
                               : "bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20"
@@ -955,8 +1065,12 @@ export function ChartEditor({
                                 if (el) cardElementsRef.current.set(cId, el);
                                 else cardElementsRef.current.delete(cId);
                               }}
-                              draggable
+                              draggable={!isReadOnly}
                               onDragStart={(e) => {
+                                if (isReadOnly) {
+                                  e.preventDefault();
+                                  return;
+                                }
                                 e.dataTransfer.setData("text/plain", cId);
                                 setDraggedCourseId(cId);
                               }}
@@ -966,6 +1080,7 @@ export function ChartEditor({
                                 setDragOverSemester(null);
                               }}
                               onDragOver={(e) => {
+                                if (isReadOnly) return;
                                 e.preventDefault();
                                 e.stopPropagation();
                                 setDragOverCardId(cId);
@@ -976,6 +1091,7 @@ export function ChartEditor({
                                 if (dragOverCardId === cId) setDragOverCardId(null);
                               }}
                               onDrop={(e) => {
+                                if (isReadOnly) return;
                                 e.preventDefault();
                                 e.stopPropagation();
                                 setDragOverCardId(null);
@@ -997,7 +1113,11 @@ export function ChartEditor({
                                   : `${baseColor}38`,
                                 borderRight: `4px solid ${baseColor}`,
                               }}
-                              className={`group relative p-3 rounded-xl border transition-all cursor-grab active:cursor-grabbing shadow-2xs ${
+                              className={`group relative p-3 rounded-xl border transition-all shadow-2xs ${
+                                isReadOnly
+                                  ? "cursor-default"
+                                  : "cursor-grab active:cursor-grabbing"
+                              } ${
                                 isDragTarget
                                   ? "ring-2 ring-primary ring-offset-2 scale-[1.02] bg-primary/15"
                                   : isViolation
@@ -1028,24 +1148,26 @@ export function ChartEditor({
                                       </button>
                                     )}
                                   </div>
-                                  <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
+                                  <p className="text-[10px] text-muted-foreground mt-0.5">
                                     {course.code}
                                   </p>
                                 </div>
 
-                                {/* Remove button */}
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    removeCourseFromChart(cId);
-                                  }}
-                                  className="h-6 w-6 p-0 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors shrink-0"
-                                  title="حذف از این ترم"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
+                                {/* Remove button (Only for editors) */}
+                                {!isReadOnly && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      removeCourseFromChart(cId);
+                                    }}
+                                    className="h-6 w-6 p-0 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors shrink-0"
+                                    title="حذف از این ترم"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                )}
                               </div>
 
                               {/* Units & Category Tag */}
@@ -1157,7 +1279,7 @@ export function ChartEditor({
                       <div className="space-y-0.5 flex-1">
                         <p className="font-semibold text-xs leading-relaxed">{issue.message}</p>
                         {issue.termIndex && (
-                          <span className="inline-block text-[10px] opacity-75 font-mono">
+                          <span className="inline-block text-[10px] opacity-75">
                             مربوط به ترم {issue.termIndex}
                           </span>
                         )}
@@ -1185,7 +1307,7 @@ export function ChartEditor({
                       className="flex items-center justify-between p-2 rounded-lg bg-muted/40 text-xs"
                     >
                       <span>{catStat.categoryName}:</span>
-                      <span className="font-mono font-bold">
+                      <span className="font-bold">
                         {catStat.actualCredits} از {catStat.minCreditsRequired} واحد مجاز
                         {catStat.isSatisfied ? " ✓" : " ✗"}
                       </span>
@@ -1212,7 +1334,7 @@ export function ChartEditor({
       {/* 2. LOAD APPROVED / RECOMMENDED CURRICULUM MODAL */}
       {/* ========================================================= */}
       <Dialog open={loadApprovedModalOpen} onOpenChange={setLoadApprovedModalOpen}>
-        <DialogContent className="sm:max-w-xl max-h-[85vh] flex flex-col p-0" dir="rtl">
+        <DialogContent className="sm:max-w-xl max-h-[85vh] flex flex-col p-0 overflow-hidden" dir="rtl">
           <DialogHeader className="p-4 sm:p-5 border-b shrink-0">
             <DialogTitle className="text-sm sm:text-base font-bold flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-amber-500" />
@@ -1253,7 +1375,7 @@ export function ChartEditor({
                             <BookOpen className="h-3.5 w-3.5 text-primary" />
                             {ac.title}
                           </h4>
-                          <p className="text-[10px] text-muted-foreground mt-0.5 font-mono">
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
                             {ac.semesters.length} ترم • {totalCourses} درس • {totalCredits} واحد
                           </p>
                         </div>
@@ -1283,7 +1405,7 @@ export function ChartEditor({
                               className="p-1 rounded-md bg-muted/40 text-center text-[10px]"
                             >
                               <span className="font-bold block">ترم {sem.semesterNumber}</span>
-                              <span className="text-muted-foreground font-mono text-[9px] block">
+                              <span className="text-muted-foreground text-[9px] block">
                                 {sem.courseIds.length} درس ({semCredits}و)
                               </span>
                             </div>

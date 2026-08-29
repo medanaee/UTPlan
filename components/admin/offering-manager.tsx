@@ -181,7 +181,7 @@ export function OfferingManager({ courses, professors }: OfferingManagerProps) {
             </div>
 
             <div className="text-xs text-muted-foreground">
-              مجموع ارائه‌ها: <span className="font-bold text-foreground font-mono">{filteredOfferings.length}</span>
+              مجموع ارائه‌ها: <span className="font-bold text-foreground">{filteredOfferings.length}</span>
             </div>
           </div>
 
@@ -207,7 +207,7 @@ export function OfferingManager({ courses, professors }: OfferingManagerProps) {
                         </div>
                         <div>
                           <div className="font-bold text-foreground">{off.courseName}</div>
-                          <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono">
+                          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                             <span>{off.courseCode}</span>
                             <span>•</span>
                             <span>{off.courseUnits} واحد</span>
@@ -235,7 +235,7 @@ export function OfferingManager({ courses, professors }: OfferingManagerProps) {
 
                     {/* ID */}
                     <td className="py-2.5 px-3 text-center">
-                      <Badge variant="outline" className="font-mono text-[10px]">
+                      <Badge variant="outline" className="text-[10px]">
                         {off.id}
                       </Badge>
                     </td>
