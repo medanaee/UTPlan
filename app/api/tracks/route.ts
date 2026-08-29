@@ -1,4 +1,4 @@
-import { getTracks, createTrack, deleteTrack, updateTrackRules } from "@/lib/db";
+import { getTracks, createTrack, updateTrack, deleteTrack, updateTrackRules } from "@/lib/db";
 
 export async function GET(request: Request) {
   try {
@@ -37,17 +37,36 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { trackId, rulesTree } = body as { trackId?: string; rulesTree?: any };
+    const { id, trackId, name, code, rulesTree } = body as {
+      id?: string;
+      trackId?: string;
+      name?: string;
+      code?: string;
+      rulesTree?: any;
+    };
 
-    if (!trackId || !rulesTree) {
-      return Response.json({ success: false, message: "شناسه گرایش و درخت قوانین الزامی است." }, { status: 400 });
+    const targetId = id || trackId;
+    if (!targetId) {
+      return Response.json({ success: false, message: "شناسه گرایش الزامی است." }, { status: 400 });
     }
 
-    const success = await updateTrackRules(trackId, rulesTree);
-    return Response.json({ success });
+    if (name && code) {
+      const updated = await updateTrack(targetId, name, code, rulesTree);
+      if (!updated) {
+        return Response.json({ success: false, message: "گرایش یافت نشد." }, { status: 404 });
+      }
+      return Response.json({ success: true, data: updated });
+    }
+
+    if (rulesTree) {
+      const success = await updateTrackRules(targetId, rulesTree);
+      return Response.json({ success });
+    }
+
+    return Response.json({ success: false, message: "اطلاعات ویرایش نامعتبر است." }, { status: 400 });
   } catch (error) {
-    console.error("Update track rules error:", error);
-    return Response.json({ success: false, message: "خطا در به‌روزرسانی قوانین گرایش" }, { status: 500 });
+    console.error("Update track error:", error);
+    return Response.json({ success: false, message: "خطا در به‌روزرسانی گرایش" }, { status: 500 });
   }
 }
 

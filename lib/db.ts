@@ -37,6 +37,16 @@ let eventSlotsStore: CourseEventSlot[] = [];
 let reviewsStore: Review[] = [];
 let chartsStore: StudentChart[] = [];
 
+export function getD1(): any {
+  if (typeof globalThis !== "undefined" && (globalThis as any).ut_ece_db) {
+    return (globalThis as any).ut_ece_db;
+  }
+  if (typeof process !== "undefined" && (process.env as any)?.ut_ece_db) {
+    return (process.env as any).ut_ece_db;
+  }
+  return null;
+}
+
 let isInitialized = false;
 
 export async function initDatabase() {
@@ -150,24 +160,73 @@ export async function changeUserPassword(userId: string, newPasswordHash: string
 // ----------------------------------------------------
 export async function getFaculties(): Promise<Faculty[]> {
   await initDatabase();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      const { results } = await d1.prepare("SELECT * FROM faculties ORDER BY name ASC").all<any>();
+      return results.map((r) => ({ id: r.id, name: r.name, code: r.code, createdAt: r.created_at, deletedAt: null }));
+    } catch (err) {
+      console.error("D1 getFaculties error:", err);
+    }
+  }
   return facultiesStore.filter((f) => !f.deletedAt);
 }
 
 export async function createFaculty(name: string, code: string): Promise<Faculty> {
   await initDatabase();
+  const id = `fac_${crypto.randomUUID().slice(0, 8)}`;
+  const now = new Date().toISOString();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1.prepare("INSERT INTO faculties (id, name, code, created_at) VALUES (?, ?, ?, ?)").bind(id, name, code.toUpperCase(), now).run();
+    } catch (err) {
+      console.error("D1 createFaculty error:", err);
+    }
+  }
   const newFaculty: Faculty = {
-    id: `fac_${crypto.randomUUID().slice(0, 8)}`,
+    id,
     name,
     code: code.toUpperCase(),
-    createdAt: new Date().toISOString(),
+    createdAt: now,
     deletedAt: null,
   };
   facultiesStore.push(newFaculty);
   return newFaculty;
 }
 
+export async function updateFaculty(id: string, name: string, code: string): Promise<Faculty | null> {
+  await initDatabase();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1
+        .prepare("UPDATE faculties SET name = ?, code = ?, updated_at = ? WHERE id = ?")
+        .bind(name, code.toUpperCase(), new Date().toISOString(), id)
+        .run();
+    } catch (err) {
+      console.error("D1 updateFaculty error:", err);
+    }
+  }
+  const f = facultiesStore.find((item) => item.id === id);
+  if (f) {
+    f.name = name;
+    f.code = code.toUpperCase();
+    return f;
+  }
+  return { id, name, code: code.toUpperCase(), createdAt: new Date().toISOString(), deletedAt: null };
+}
+
 export async function deleteFaculty(id: string): Promise<boolean> {
   await initDatabase();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1.prepare("DELETE FROM faculties WHERE id = ?").bind(id).run();
+    } catch (err) {
+      console.error("D1 deleteFaculty error:", err);
+    }
+  }
   const f = facultiesStore.find((item) => item.id === id);
   if (!f) return false;
   f.deletedAt = new Date().toISOString();
@@ -179,25 +238,81 @@ export async function deleteFaculty(id: string): Promise<boolean> {
 // ----------------------------------------------------
 export async function getMajors(facultyId?: string): Promise<Major[]> {
   await initDatabase();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      let query = "SELECT * FROM majors";
+      const params = [];
+      if (facultyId) {
+        query += " WHERE faculty_id = ?";
+        params.push(facultyId);
+      }
+      query += " ORDER BY name ASC";
+      const { results } = await d1.prepare(query).bind(...params).all<any>();
+      return results.map((r) => ({ id: r.id, facultyId: r.faculty_id, name: r.name, code: r.code, createdAt: r.created_at, deletedAt: null }));
+    } catch (err) {
+      console.error("D1 getMajors error:", err);
+    }
+  }
   return majorsStore.filter((m) => !m.deletedAt && (!facultyId || m.facultyId === facultyId));
 }
 
 export async function createMajor(facultyId: string, name: string, code: string): Promise<Major> {
   await initDatabase();
+  const id = `maj_${crypto.randomUUID().slice(0, 8)}`;
+  const now = new Date().toISOString();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1.prepare("INSERT INTO majors (id, faculty_id, name, code, created_at) VALUES (?, ?, ?, ?, ?)").bind(id, facultyId, name, code.toUpperCase(), now).run();
+    } catch (err) {
+      console.error("D1 createMajor error:", err);
+    }
+  }
   const newMajor: Major = {
-    id: `maj_${crypto.randomUUID().slice(0, 8)}`,
+    id,
     facultyId,
     name,
     code: code.toUpperCase(),
-    createdAt: new Date().toISOString(),
+    createdAt: now,
     deletedAt: null,
   };
   majorsStore.push(newMajor);
   return newMajor;
 }
 
+export async function updateMajor(id: string, name: string, code: string): Promise<Major | null> {
+  await initDatabase();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1
+        .prepare("UPDATE majors SET name = ?, code = ?, updated_at = ? WHERE id = ?")
+        .bind(name, code.toUpperCase(), new Date().toISOString(), id)
+        .run();
+    } catch (err) {
+      console.error("D1 updateMajor error:", err);
+    }
+  }
+  const m = majorsStore.find((item) => item.id === id);
+  if (m) {
+    m.name = name;
+    m.code = code.toUpperCase();
+    return m;
+  }
+  return null;
+}
+
 export async function deleteMajor(id: string): Promise<boolean> {
   await initDatabase();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1.prepare("DELETE FROM majors WHERE id = ?").bind(id).run();
+    } catch (err) {
+      console.error("D1 deleteMajor error:", err);
+    }
+  }
   const m = majorsStore.find((item) => item.id === id);
   if (!m) return false;
   m.deletedAt = new Date().toISOString();
@@ -209,22 +324,83 @@ export async function deleteMajor(id: string): Promise<boolean> {
 // ----------------------------------------------------
 export async function getTracks(majorId?: string): Promise<Track[]> {
   await initDatabase();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      let query = "SELECT * FROM tracks";
+      const params = [];
+      if (majorId) {
+        query += " WHERE major_id = ?";
+        params.push(majorId);
+      }
+      query += " ORDER BY name ASC";
+      const { results } = await d1.prepare(query).bind(...params).all<any>();
+      return results.map((r) => ({
+        id: r.id,
+        majorId: r.major_id,
+        name: r.name,
+        code: r.code,
+        totalUnitsRequired: r.total_units_required,
+        isApprovedDefault: Boolean(r.is_approved_default),
+        createdAt: r.created_at,
+        deletedAt: null,
+      }));
+    } catch (err) {
+      console.error("D1 getTracks error:", err);
+    }
+  }
   return tracksStore.filter((t) => !t.deletedAt && (!majorId || t.majorId === majorId));
 }
 
 export async function createTrack(majorId: string, name: string, code: string, rulesTree?: any): Promise<Track> {
   await initDatabase();
+  const id = `trk_${crypto.randomUUID().slice(0, 8)}`;
+  const now = new Date().toISOString();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1
+        .prepare("INSERT INTO tracks (id, major_id, name, code, total_units_required, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+        .bind(id, majorId, name, code.toUpperCase(), 140, now)
+        .run();
+    } catch (err) {
+      console.error("D1 createTrack error:", err);
+    }
+  }
   const newTrack: Track = {
-    id: `trk_${crypto.randomUUID().slice(0, 8)}`,
+    id,
     majorId,
     name,
     code: code.toUpperCase(),
     rulesTree: rulesTree || { type: "AND", children: [] },
-    createdAt: new Date().toISOString(),
+    createdAt: now,
     deletedAt: null,
   };
   tracksStore.push(newTrack);
   return newTrack;
+}
+
+export async function updateTrack(id: string, name: string, code: string, rulesTree?: any): Promise<Track | null> {
+  await initDatabase();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1
+        .prepare("UPDATE tracks SET name = ?, code = ?, updated_at = ? WHERE id = ?")
+        .bind(name, code.toUpperCase(), new Date().toISOString(), id)
+        .run();
+    } catch (err) {
+      console.error("D1 updateTrack error:", err);
+    }
+  }
+  const t = tracksStore.find((item) => item.id === id);
+  if (t) {
+    t.name = name;
+    t.code = code.toUpperCase();
+    if (rulesTree !== undefined) t.rulesTree = rulesTree;
+    return t;
+  }
+  return null;
 }
 
 export async function updateTrackRules(trackId: string, rulesTree: any): Promise<boolean> {
@@ -237,6 +413,14 @@ export async function updateTrackRules(trackId: string, rulesTree: any): Promise
 
 export async function deleteTrack(id: string): Promise<boolean> {
   await initDatabase();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1.prepare("DELETE FROM tracks WHERE id = ?").bind(id).run();
+    } catch (err) {
+      console.error("D1 deleteTrack error:", err);
+    }
+  }
   const t = tracksStore.find((item) => item.id === id);
   if (!t) return false;
   t.deletedAt = new Date().toISOString();

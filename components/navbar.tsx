@@ -86,7 +86,7 @@ export function Navbar({ user: initialUser }: NavbarProps) {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/95 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2.5 sm:px-6">
+      <div className="mx-auto flex items-center justify-between px-4 py-2.5 sm:px-6">
         {/* Brand */}
         <div className="flex items-center gap-3">
           <Link href="/" className="flex items-center gap-2.5">

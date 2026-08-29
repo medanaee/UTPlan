@@ -1,4 +1,4 @@
-import { getMajors, createMajor, deleteMajor } from "@/lib/db";
+import { getMajors, createMajor, updateMajor, deleteMajor } from "@/lib/db";
 
 export async function GET(request: Request) {
   try {
@@ -26,6 +26,27 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Create major error:", error);
     return Response.json({ success: false, message: "خطا در ایجاد رشته" }, { status: 500 });
+  }
+}
+
+export async function PUT(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, name, code } = body as { id?: string; name?: string; code?: string };
+
+    if (!id || !name || !code) {
+      return Response.json({ success: false, message: "شناسه، نام و کد رشته الزامی است." }, { status: 400 });
+    }
+
+    const updated = await updateMajor(id, name, code);
+    if (!updated) {
+      return Response.json({ success: false, message: "رشته یافت نشد." }, { status: 404 });
+    }
+
+    return Response.json({ success: true, data: updated });
+  } catch (error) {
+    console.error("Update major error:", error);
+    return Response.json({ success: false, message: "خطا در ویرایش رشته" }, { status: 500 });
   }
 }
 

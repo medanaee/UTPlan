@@ -38,6 +38,11 @@ import {
   BookOpen,
   CalendarDays,
   Search,
+  Copy,
+  FolderSync,
+  Sparkles,
+  CheckCircle2,
+  CalendarRange,
 } from "lucide-react";
 
 interface EventManagerProps {
@@ -77,14 +82,26 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
   const [events, setEvents] = useState<CourseEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [selectedTerm, setSelectedTerm] = useState("all");
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Active selected semester - ALL operations & views are strictly bound to this term
+  const [activeTerm, setActiveTerm] = useState<string>("1403-1");
+
+  // Modals
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
+  const [isNewTermModalOpen, setIsNewTermModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Form state
+  // New Term Form state
+  const [newTermYear, setNewTermYear] = useState("1404");
+  const [newTermType, setNewTermType] = useState<"fall" | "spring" | "summer">("fall");
+
+  // Clone Form state
+  const [cloneSourceTerm, setCloneSourceTerm] = useState<string>("");
+  const [resetExamDates, setResetExamDates] = useState(true);
+
+  // Event Form state (Term is omitted because it's locked to activeTerm)
   const [selectedOfferingId, setSelectedOfferingId] = useState("");
-  const [academicYear, setAcademicYear] = useState("1403");
-  const [semesterType, setSemesterType] = useState<"fall" | "spring" | "summer">("fall");
   const [groupCode, setGroupCode] = useState("01");
   const [capacity, setCapacity] = useState(40);
   const [location, setLocation] = useState("دانشکده فنی - کلاس ۱۰۲");
@@ -107,7 +124,14 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
       ]);
 
       if (offRes.success) setOfferings(offRes.data);
-      if (evRes.success) setEvents(evRes.data);
+      if (evRes.success) {
+        setEvents(evRes.data);
+        // If current activeTerm has no events and there are existing terms in DB, default to the latest term
+        const existingTerms = Array.from(new Set(evRes.data.map((e: CourseEvent) => e.term).filter(Boolean)));
+        if (existingTerms.length > 0 && !existingTerms.includes(activeTerm)) {
+          setActiveTerm(existingTerms[0] as string);
+        }
+      }
     } catch (err) {
       console.error("Failed to load events data:", err);
     } finally {
@@ -146,13 +170,12 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
 
     setIsSubmitting(true);
     try {
-      const termCode = `${academicYear}-${semesterType === "fall" ? "1" : semesterType === "spring" ? "2" : "3"}`;
       const res = await fetch("/api/events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           offeringId: selectedOfferingId,
-          term: termCode,
+          term: activeTerm, // Automatically use selected active term
           groupCode,
           capacity: Number(capacity),
           location,
@@ -164,7 +187,7 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
       }).then((r) => r.json());
 
       if (res.success) {
-        setIsModalOpen(false);
+        setIsCreateModalOpen(false);
         await loadData();
       } else {
         alert(res.message || "خطا در ثبت رویداد");
@@ -174,6 +197,47 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleCloneEvents = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!cloneSourceTerm) {
+      alert("لطفاً نیمسال مبدأ را انتخاب کنید.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("/api/events/clone", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceTerm: cloneSourceTerm,
+          targetTerm: activeTerm,
+          resetExamDates,
+        }),
+      }).then((r) => r.json());
+
+      if (res.success) {
+        setIsCloneModalOpen(false);
+        alert(res.message || "رویدادها با موفقیت کپی شدند.");
+        await loadData();
+      } else {
+        alert(res.message || "خطا در کپی رویدادها");
+      }
+    } catch (err) {
+      console.error("Clone events error:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCreateNewTerm = (e: React.FormEvent) => {
+    e.preventDefault();
+    const semCode = newTermType === "fall" ? "1" : newTermType === "spring" ? "2" : "3";
+    const generatedTerm = `${newTermYear}-${semCode}`;
+    setActiveTerm(generatedTerm);
+    setIsNewTermModalOpen(false);
   };
 
   const handleDeleteEvent = async (id: string) => {
@@ -191,23 +255,26 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
     }
   };
 
-  const terms = Array.from(new Set(events.map((e) => e.term).filter(Boolean)));
-  const termOptions = [
-    { value: "all", label: "تمام نیمسال‌ها" },
-    ...terms.map((t) => ({ value: t, label: formatSemesterLabel(t) })),
-  ];
+  // Distinct terms collected from events plus defaults and activeTerm
+  const existingTerms = Array.from(new Set([...events.map((e) => e.term), activeTerm, "1403-1", "1403-2"].filter(Boolean)));
+  
+  // Filter events strictly by activeTerm
+  const termEvents = events.filter((evt) => evt.term === activeTerm);
 
-  const filteredEvents = events.filter((evt) => {
-    const matchesSearch =
+  const filteredEvents = termEvents.filter((evt) => {
+    return (
       (evt.courseName || "").toLowerCase().includes(search.toLowerCase()) ||
       (evt.courseCode || "").toLowerCase().includes(search.toLowerCase()) ||
       (evt.professorName || "").toLowerCase().includes(search.toLowerCase()) ||
       (evt.location || "").toLowerCase().includes(search.toLowerCase()) ||
-      (evt.groupCode || "").includes(search);
-
-    const matchesTerm = selectedTerm === "all" || evt.term === selectedTerm;
-    return matchesSearch && matchesTerm;
+      (evt.groupCode || "").includes(search)
+    );
   });
+
+  // Other terms that contain events (eligible for cloning)
+  const cloneableSourceTerms = Array.from(
+    new Set(events.filter((e) => e.term !== activeTerm).map((e) => e.term))
+  );
 
   const offeringOptions = offerings.map((o) => ({
     value: o.id,
@@ -220,6 +287,7 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
   }));
 
   const yearOptions = [
+    { value: "1405", label: "۱۴۰۵" },
     { value: "1404", label: "۱۴۰۴" },
     { value: "1403", label: "۱۴۰۳" },
     { value: "1402", label: "۱۴۰۲" },
@@ -233,74 +301,135 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
 
   return (
     <div className="space-y-4">
+      {/* Top Semester Active Filter Bar */}
+      <div className="rounded-2xl border border-primary/20 bg-gradient-to-l from-primary/10 via-primary/5 to-card p-4 shadow-sm">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20 shrink-0">
+              <CalendarDays className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-foreground">نیمسال تحصیلی فعال:</h3>
+                <Badge variant="default" className="text-xs px-2.5 py-0.5 font-bold shadow-xs">
+                  {formatSemesterLabel(activeTerm)} ({activeTerm})
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                تمام رویدادها، ساعات هفتگی و آزمون‌ها مربوط به این نیمسال مدیریت می‌شوند.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+            {/* Semester Select Dropdown */}
+            <div className="flex items-center gap-1.5 bg-background/80 backdrop-blur-xs rounded-xl border border-border/80 p-1">
+              <span className="text-[11px] font-semibold px-2 text-muted-foreground whitespace-nowrap">
+                تغییر نیمسال:
+              </span>
+              <Select
+                value={activeTerm}
+                onValueChange={(val) => val && setActiveTerm(val)}
+              >
+                <SelectTrigger size="sm" className="h-8 min-w-[150px] text-xs font-bold border-none bg-muted/40">
+                  <SelectValue placeholder="انتخاب نیمسال..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {existingTerms.map((t) => {
+                      const count = events.filter((e) => e.term === t).length;
+                      return (
+                        <SelectItem key={t} value={t} className="text-xs">
+                          {formatSemesterLabel(t)} ({count} رویداد)
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsNewTermModalOpen(true)}
+                className="h-8 px-2 text-xs gap-1 text-primary hover:bg-primary/10"
+                title="تعریف یا رفتن به نیمسال جدید"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">نیمسال جدید</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Events Table Card */}
       <Card className="border-border/70 shadow-xs">
         <CardHeader className="flex flex-row items-center justify-between pb-3 border-b">
           <div>
             <CardTitle className="text-base flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 text-primary" />
-              <span>رویدادها و برنامه‌ریزی کلاسی ترم (Course Events)</span>
+              <CalendarRange className="h-4 w-4 text-primary" />
+              <span>رویدادهای کلاسی {formatSemesterLabel(activeTerm)}</span>
             </CardTitle>
             <CardDescription className="text-xs">
-              مدیریت و تعریف گروه‌های کلاسی ترم، ساعات تشکیل جلسات، محل برگزاری و زمان آزمون‌ها
+              مدیریت و تعریف گروه‌های کلاسی، ساعات تشکیل، محل برگزاری و زمان آزمون‌های این نیمسال
             </CardDescription>
           </div>
-          <Button
-            size="sm"
-            onClick={() => {
-              setSelectedOfferingId(offerings[0]?.id || "");
-              setAcademicYear("1403");
-              setSemesterType("fall");
-              setGroupCode("01");
-              setCapacity(40);
-              setLocation("دانشکده فنی - کلاس ۱۰۲");
-              setIsModalOpen(true);
-            }}
-            disabled={offerings.length === 0}
-            className="h-8 gap-1.5 text-xs shadow-xs"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            تعریف رویداد کلاسی جدید
-          </Button>
+
+          <div className="flex items-center gap-2">
+            {/* Clone Button */}
+            {cloneableSourceTerms.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setCloneSourceTerm(cloneableSourceTerms[0] || "");
+                  setIsCloneModalOpen(true);
+                }}
+                className="h-8 gap-1.5 text-xs shadow-2xs border-primary/30 text-primary hover:bg-primary/10"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                <span>کپی از نیمسال دیگر</span>
+              </Button>
+            )}
+
+            {/* Create Event Button */}
+            <Button
+              size="sm"
+              onClick={() => {
+                setSelectedOfferingId(offerings[0]?.id || "");
+                setGroupCode("01");
+                setCapacity(40);
+                setLocation("دانشکده فنی - کلاس ۱۰۲");
+                setIsCreateModalOpen(true);
+              }}
+              disabled={offerings.length === 0}
+              className="h-8 gap-1.5 text-xs shadow-xs"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              تعریف رویداد کلاسی جدید
+            </Button>
+          </div>
         </CardHeader>
 
         <CardContent className="p-4 space-y-4">
-          {/* Filters Bar */}
+          {/* Search and Counts Bar */}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative">
-                <Input
-                  placeholder="جستجوی درس، استاد، کلاس یا گروه..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="h-8 w-64 text-xs pr-8"
-                />
-                <Search className="pointer-events-none absolute right-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
-              </div>
-
-              {terms.length > 0 && (
-                <Select
-                  items={termOptions}
-                  value={selectedTerm}
-                  onValueChange={(val) => val && setSelectedTerm(val)}
-                >
-                  <SelectTrigger size="sm" className="h-8 min-w-[150px] text-xs">
-                    <SelectValue placeholder="فیلتر نیمسال..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {termOptions.map((t) => (
-                        <SelectItem key={t.value} value={t.value}>
-                          {t.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              )}
+            <div className="relative">
+              <Input
+                placeholder="جستجوی درس، استاد، کلاس یا گروه..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-8 w-72 text-xs pr-8"
+              />
+              <Search className="pointer-events-none absolute right-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
             </div>
 
-            <div className="text-xs text-muted-foreground">
-              تعداد کل رویدادها: <span className="font-bold text-foreground">{filteredEvents.length}</span>
+            <div className="text-xs text-muted-foreground flex items-center gap-2">
+              <span>تعداد رویدادهای این نیمسال:</span>
+              <Badge variant="secondary" className="font-bold text-foreground">
+                {filteredEvents.length} رویداد
+              </Badge>
             </div>
           </div>
 
@@ -310,7 +439,6 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
               <thead>
                 <tr className="border-b bg-muted/40 text-muted-foreground font-semibold">
                   <th className="py-2.5 px-3 text-right">نام درس و استاد</th>
-                  <th className="py-2.5 px-3 text-center">نیمسال تحصیلی</th>
                   <th className="py-2.5 px-3 text-center">کد گروه</th>
                   <th className="py-2.5 px-3 text-center">ظرفیت</th>
                   <th className="py-2.5 px-3 text-right">جلسات هفتگی کلاس</th>
@@ -335,13 +463,6 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
                           </div>
                         </div>
                       </div>
-                    </td>
-
-                    {/* Semester */}
-                    <td className="py-2.5 px-3 text-center">
-                      <Badge variant="outline" className="text-[11px] px-2 py-0.5 font-medium">
-                        {formatSemesterLabel(evt.term)}
-                      </Badge>
                     </td>
 
                     {/* Group */}
@@ -416,10 +537,53 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
 
                 {filteredEvents.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="text-center py-8 text-xs text-muted-foreground">
-                      {loading
-                        ? "در حال دریافت برنامه کلاسی..."
-                        : "هیچ رویداد کلاسی یافت نشد."}
+                    <td colSpan={7} className="text-center py-12 text-xs text-muted-foreground">
+                      {loading ? (
+                        "در حال دریافت برنامه کلاسی..."
+                      ) : (
+                        <div className="max-w-md mx-auto space-y-3 py-4">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted mx-auto text-muted-foreground">
+                            <CalendarDays className="h-6 w-6" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-sm text-foreground">
+                              هیچ رویداد کلاسی برای نیمسال {formatSemesterLabel(activeTerm)} تعریف نشده است.
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              می‌توانید رویدادهای این نیمسال را به صورت دستی تعریف کنید یا با یک کلیک از نیمسال‌های قبلی کپی نمایید.
+                            </p>
+                          </div>
+                          <div className="flex items-center justify-center gap-2 pt-2">
+                            {cloneableSourceTerms.length > 0 && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setCloneSourceTerm(cloneableSourceTerms[0] || "");
+                                  setIsCloneModalOpen(true);
+                                }}
+                                className="h-8 gap-1.5 text-xs text-primary border-primary/30"
+                              >
+                                <Copy className="h-3.5 w-3.5" />
+                                کپی از نیمسال دیگر
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                setSelectedOfferingId(offerings[0]?.id || "");
+                                setGroupCode("01");
+                                setCapacity(40);
+                                setIsCreateModalOpen(true);
+                              }}
+                              className="h-8 gap-1.5 text-xs"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                              تعریف اولین رویداد
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 )}
@@ -429,25 +593,34 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
         </CardContent>
       </Card>
 
-      {/* Modal */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+      {/* 1. Modal: Create Event (NO semester/year asked - pre-locked to activeTerm) */}
+      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
         <DialogContent className="sm:max-w-lg" dir="rtl">
           <DialogHeader>
             <DialogTitle className="text-sm font-bold flex items-center gap-2">
               <CalendarDays className="h-4 w-4 text-primary" />
-              تعریف رویداد کلاسی ترم (Course Event)
+              تعریف رویداد کلاسی جدید
             </DialogTitle>
             <DialogDescription className="text-xs">
-              ارائه درس را انتخاب کرده و مشخصات سال، نیمسال، گروه، ظرفیت، محل و زمان‌بندی جلسات را تعیین کنید.
+              مشخصات درس، گروه، ظرفیت، محل تشکیل و زمان‌بندی جلسات هفتگی را وارد کنید.
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleCreateEvent} className="space-y-3.5 pt-2">
-            {/* 1. Select Offering */}
+          {/* Active Semester Banner */}
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs">
+              <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+              <span className="text-muted-foreground">ثبت در نیمسال تحصیلی:</span>
+              <span className="font-bold text-foreground">{formatSemesterLabel(activeTerm)} ({activeTerm})</span>
+            </div>
+            <Badge variant="outline" className="text-[10px]">تثبیت‌شده</Badge>
+          </div>
+
+          <form onSubmit={handleCreateEvent} className="space-y-3.5 pt-1">
+            {/* Select Offering */}
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">ارائه درس (درس و استاد مدرس):</Label>
               <Select
-                items={offeringOptions}
                 value={selectedOfferingId}
                 onValueChange={(val) => val && setSelectedOfferingId(val)}
               >
@@ -466,54 +639,7 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
               </Select>
             </div>
 
-            {/* 2. Academic Year & Semester Type (2 equal columns) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">سال تحصیلی:</Label>
-                <Select
-                  items={yearOptions}
-                  value={academicYear}
-                  onValueChange={(val) => val && setAcademicYear(val)}
-                >
-                  <SelectTrigger size="sm" className="w-full text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {yearOptions.map((y) => (
-                        <SelectItem key={y.value} value={y.value}>
-                          {y.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">نیمسال تحصیلی:</Label>
-                <Select
-                  items={semesterTypeOptions}
-                  value={semesterType}
-                  onValueChange={(val) => val && setSemesterType(val as any)}
-                >
-                  <SelectTrigger size="sm" className="w-full text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {semesterTypeOptions.map((s) => (
-                        <SelectItem key={s.value} value={s.value}>
-                          {s.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* 3. Group Code & Capacity (2 equal columns) */}
+            {/* Group Code & Capacity */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold">کد گروه درسی:</Label>
@@ -540,7 +666,7 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
               </div>
             </div>
 
-            {/* 4. Location */}
+            {/* Location */}
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">محل تشکیل کلاس / شماره اتاق:</Label>
               <Input
@@ -551,7 +677,7 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
               />
             </div>
 
-            {/* 5. Weekly Slots Builder */}
+            {/* Weekly Slots Builder */}
             <div className="space-y-2 rounded-xl border border-border/70 bg-muted/15 p-3">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-bold">جلسات هفتگی کلاس:</Label>
@@ -572,7 +698,6 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
                     {/* Day */}
                     <div className="w-32 shrink-0">
                       <Select
-                        items={dayOptions}
                         value={String(slot.dayOfWeek)}
                         onValueChange={(val) =>
                           handleUpdateSlot(idx, "dayOfWeek", parseInt(val))
@@ -627,7 +752,7 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
               </div>
             </div>
 
-            {/* 6. Exam Details */}
+            {/* Exam Details */}
             <div className="space-y-2 rounded-xl border border-border/70 bg-muted/15 p-3">
               <Label className="text-xs font-bold">مشخصات آزمون پایان‌ترم:</Label>
               <div className="grid grid-cols-3 gap-2">
@@ -668,7 +793,151 @@ export function EventManager({ offerings: initialOfferings }: EventManagerProps)
                 disabled={isSubmitting || !selectedOfferingId}
                 className="w-full h-8 text-xs font-semibold"
               >
-                {isSubmitting ? "در حال ثبت..." : "ذخیره رویداد کلاسی"}
+                {isSubmitting ? "در حال ثبت..." : `ذخیره رویداد در ${formatSemesterLabel(activeTerm)}`}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* 2. Modal: Clone / Copy All Events from Another Semester */}
+      <Dialog open={isCloneModalOpen} onOpenChange={setIsCloneModalOpen}>
+        <DialogContent className="sm:max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-bold flex items-center gap-2">
+              <Copy className="h-4 w-4 text-primary" />
+              کپی کامل رویدادها از نیمسال دیگر
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              تمامی دروس، اساتید، گروه‌ها، جلسات هفتگی و محل کلاس‌های یک نیمسال را به نیمسال فعلی منتقل کنید.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleCloneEvents} className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">نیمسال مبدأ (جهت کپی رویدادها):</Label>
+              <Select
+                value={cloneSourceTerm}
+                onValueChange={(val) => val && setCloneSourceTerm(val)}
+              >
+                <SelectTrigger size="sm" className="w-full text-xs font-medium">
+                  <SelectValue placeholder="-- انتخاب نیمسال مبدأ --" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {cloneableSourceTerms.map((t) => {
+                      const count = events.filter((e) => e.term === t).length;
+                      return (
+                        <SelectItem key={t} value={t} className="text-xs">
+                          {formatSemesterLabel(t)} ({count} رویداد کلاسی)
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="rounded-xl border border-border/80 bg-muted/20 p-3 space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">نیمسال مقصد (فعلی):</span>
+                <Badge variant="default" className="font-bold">
+                  {formatSemesterLabel(activeTerm)} ({activeTerm})
+                </Badge>
+              </div>
+
+              <div className="pt-2 border-t border-border/60 flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="resetExams"
+                  checked={resetExamDates}
+                  onChange={(e) => setResetExamDates(e.target.checked)}
+                  className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+                />
+                <Label htmlFor="resetExams" className="text-xs cursor-pointer font-normal">
+                  پاک کردن تاریخ امتحانات قبلی (جهت تعیین مجدد در ترم جدید)
+                </Label>
+              </div>
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button
+                type="submit"
+                size="sm"
+                disabled={isSubmitting || !cloneSourceTerm}
+                className="w-full h-8 text-xs font-semibold gap-1.5"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                {isSubmitting ? "در حال کپی رویدادها..." : `کپی همه رویدادها به ${formatSemesterLabel(activeTerm)}`}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* 3. Modal: Quick Define / Switch New Academic Term */}
+      <Dialog open={isNewTermModalOpen} onOpenChange={setIsNewTermModalOpen}>
+        <DialogContent className="sm:max-w-sm" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-bold flex items-center gap-2">
+              <CalendarRange className="h-4 w-4 text-primary" />
+              تعریف / جابجایی به نیمسال جدید
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              سال و دوره تحصیلی را انتخاب کنید تا پنل رویدادها به آن نیمسال منتقل شود.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleCreateNewTerm} className="space-y-3.5 pt-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">سال تحصیلی:</Label>
+              <Select
+                value={newTermYear}
+                onValueChange={(val) => val && setNewTermYear(val)}
+              >
+                <SelectTrigger size="sm" className="w-full text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {yearOptions.map((y) => (
+                      <SelectItem key={y.value} value={y.value}>
+                        {y.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">دوره نیمسال:</Label>
+              <Select
+                value={newTermType}
+                onValueChange={(val) => val && setNewTermType(val as any)}
+              >
+                <SelectTrigger size="sm" className="w-full text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {semesterTypeOptions.map((s) => (
+                      <SelectItem key={s.value} value={s.value}>
+                        {s.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button
+                type="submit"
+                size="sm"
+                className="w-full h-8 text-xs font-semibold"
+              >
+                تنظیم و انتقال به این نیمسال
               </Button>
             </DialogFooter>
           </form>

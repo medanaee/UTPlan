@@ -30,6 +30,7 @@ import {
   CalendarDays,
   Camera,
   Upload,
+  Pencil,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -110,8 +111,8 @@ export default function AdminDashboardPage() {
 
   // Navigation & Sidebar
   const [activeTab, setActiveTab] = useState<
-    | "courses"
     | "structure"
+    | "courses"
     | "categories"
     | "approved-charts"
     | "offerings"
@@ -119,7 +120,7 @@ export default function AdminDashboardPage() {
     | "rules"
     | "professors"
     | "users"
-  >("courses");
+  >("structure");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Search filter
@@ -134,6 +135,11 @@ export default function AdminDashboardPage() {
   const [selectedCourseForPrereq, setSelectedCourseForPrereq] = useState<Course | null>(null);
   const [vcatModalOpen, setVcatModalOpen] = useState(false);
   const [rcatModalOpen, setRcatModalOpen] = useState(false);
+
+  // Editing states for structure
+  const [editingFaculty, setEditingFaculty] = useState<Faculty | null>(null);
+  const [editingMajor, setEditingMajor] = useState<Major | null>(null);
+  const [editingTrack, setEditingTrack] = useState<Track | null>(null);
 
   // Form states
   const [facultyForm, setFacultyForm] = useState({ name: "", code: "" });
@@ -266,48 +272,132 @@ export default function AdminDashboardPage() {
     router.refresh();
   };
 
-  // Create Faculty
-  const handleCreateFaculty = async (e: React.FormEvent) => {
+  // Save Faculty (Create or Edit)
+  const handleSaveFaculty = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch("/api/faculties", {
-      method: "POST",
+    const url = "/api/faculties";
+    const method = editingFaculty ? "PUT" : "POST";
+    const payload = editingFaculty
+      ? { id: editingFaculty.id, ...facultyForm }
+      : facultyForm;
+
+    const res = await fetch(url, {
+      method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(facultyForm),
+      body: JSON.stringify(payload),
     }).then((r) => r.json());
+
     if (res.success) {
       setFacultyModalOpen(false);
+      setEditingFaculty(null);
       setFacultyForm({ name: "", code: "" });
       await loadAllData();
+    } else {
+      alert(res.message || "خطا در ثبت دانشکده");
     }
   };
 
-  // Create Major
-  const handleCreateMajor = async (e: React.FormEvent) => {
+  const handleDeleteFaculty = async (id: string, name: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm(`آیا از حذف دانشکده «${name}» مطمئن هستید؟ توجه: رشته‌ها و دروس این دانشکده نیز حذف خواهند شد.`)) {
+      return;
+    }
+
+    const res = await fetch(`/api/faculties?id=${id}`, { method: "DELETE" }).then((r) => r.json());
+    if (res.success) {
+      if (selectedFacultyId === id) {
+        setSelectedFacultyId("");
+        setSelectedMajorId("");
+        setSelectedTrackId("");
+      }
+      await loadAllData();
+    } else {
+      alert(res.message || "خطا در حذف دانشکده");
+    }
+  };
+
+  // Save Major (Create or Edit)
+  const handleSaveMajor = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch("/api/majors", {
-      method: "POST",
+    const url = "/api/majors";
+    const method = editingMajor ? "PUT" : "POST";
+    const payload = editingMajor
+      ? { id: editingMajor.id, ...majorForm }
+      : { ...majorForm, facultyId: selectedFacultyId };
+
+    const res = await fetch(url, {
+      method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...majorForm, facultyId: selectedFacultyId }),
+      body: JSON.stringify(payload),
     }).then((r) => r.json());
+
     if (res.success) {
       setMajorModalOpen(false);
+      setEditingMajor(null);
       setMajorForm({ name: "", code: "" });
       await loadAllData();
+    } else {
+      alert(res.message || "خطا در ثبت رشته");
     }
   };
 
-  // Create Track
-  const handleCreateTrack = async (e: React.FormEvent) => {
+  const handleDeleteMajor = async (id: string, name: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm(`آیا از حذف رشته «${name}» مطمئن هستید؟`)) {
+      return;
+    }
+
+    const res = await fetch(`/api/majors?id=${id}`, { method: "DELETE" }).then((r) => r.json());
+    if (res.success) {
+      if (selectedMajorId === id) {
+        setSelectedMajorId("");
+        setSelectedTrackId("");
+      }
+      await loadAllData();
+    } else {
+      alert(res.message || "خطا در حذف رشته");
+    }
+  };
+
+  // Save Track (Create or Edit)
+  const handleSaveTrack = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch("/api/tracks", {
-      method: "POST",
+    const url = "/api/tracks";
+    const method = editingTrack ? "PUT" : "POST";
+    const payload = editingTrack
+      ? { id: editingTrack.id, ...trackForm }
+      : { ...trackForm, majorId: selectedMajorId };
+
+    const res = await fetch(url, {
+      method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...trackForm, majorId: selectedMajorId }),
+      body: JSON.stringify(payload),
     }).then((r) => r.json());
+
     if (res.success) {
       setTrackModalOpen(false);
+      setEditingTrack(null);
       setTrackForm({ name: "", code: "" });
       await loadAllData();
+    } else {
+      alert(res.message || "خطا در ثبت گرایش");
+    }
+  };
+
+  const handleDeleteTrack = async (id: string, name: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm(`آیا از حذف گرایش «${name}» مطمئن هستید؟`)) {
+      return;
+    }
+
+    const res = await fetch(`/api/tracks?id=${id}`, { method: "DELETE" }).then((r) => r.json());
+    if (res.success) {
+      if (selectedTrackId === id) {
+        setSelectedTrackId("");
+      }
+      await loadAllData();
+    } else {
+      alert(res.message || "خطا در حذف گرایش");
     }
   };
 
@@ -354,13 +444,20 @@ export default function AdminDashboardPage() {
   // Create Course
   const handleCreateCourse = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedFacultyId) {
+      alert("لطفاً ابتدا یک دانشکده را انتخاب یا ایجاد کنید.");
+      return;
+    }
     const res = await fetch("/api/courses", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        ...courseForm,
-        facultyId: courseForm.facultyId || selectedFacultyId,
-        trackId: selectedTrackId || undefined,
+        name: courseForm.name,
+        code: courseForm.code,
+        units: Number(courseForm.units) || 3,
+        facultyId: selectedFacultyId,
+        offeredIn: courseForm.offeredIn,
+        description: courseForm.description || "",
       }),
     }).then((r) => r.json());
     if (res.success) {
@@ -376,6 +473,8 @@ export default function AdminDashboardPage() {
         description: "",
       });
       await loadAllData();
+    } else {
+      alert(res.message || "خطا در ثبت درس");
     }
   };
 
@@ -435,7 +534,13 @@ export default function AdminDashboardPage() {
     );
   }
 
-  const filteredCourses = courses.filter(
+  const currentFaculty = faculties.find((f) => f.id === selectedFacultyId);
+
+  const facultyCourses = courses.filter(
+    (c) => !selectedFacultyId || c.facultyId === selectedFacultyId
+  );
+
+  const filteredCourses = facultyCourses.filter(
     (c) =>
       c.name.toLowerCase().includes(courseSearch.toLowerCase()) ||
       c.code.toLowerCase().includes(courseSearch.toLowerCase())
@@ -443,14 +548,14 @@ export default function AdminDashboardPage() {
 
   const navItems = [
     {
-      id: "courses" as const,
-      label: "دروس و پیش‌نیازها",
-      icon: BookOpen,
-    },
-    {
       id: "structure" as const,
       label: "ساختار دانشگاه",
       icon: Building2,
+    },
+    {
+      id: "courses" as const,
+      label: "دروس و پیش‌نیازها",
+      icon: BookOpen,
     },
     {
       id: "categories" as const,
@@ -493,7 +598,7 @@ export default function AdminDashboardPage() {
     <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/20">
       {/* Top Header */}
       <header className="sticky top-0 z-40 border-b border-border/70 bg-background/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
+        <div className="mx-auto flex items-center justify-between px-4 py-3 sm:px-6">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-xs">
               <Shield className="h-5 w-5" />
@@ -638,49 +743,93 @@ export default function AdminDashboardPage() {
           {/* ========================================================= */}
           {activeTab === "courses" && (
             <div className="space-y-4">
-            <Card className="border-border/70 shadow-xs">
-              <CardHeader className="flex flex-row items-center justify-between border-b pb-3">
-                <div>
-                  <CardTitle className="text-base">بانک اطلاعاتی دروس و روابط پیشنیازی</CardTitle>
-                  <CardDescription className="text-xs">
-                    مدیریت تعداد واحدها، نوع ارائه و تعیین پیش‌نیازها و هم‌نیازها با کنترل آنلاین چرخه
-                  </CardDescription>
-                </div>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setCourseForm({
-                      name: "",
-                      code: "",
-                      units: 3,
-                      facultyId: selectedFacultyId,
-                      offeredIn: "both",
-                      visualCategoryId: "",
-                      ruleCategoryId: "",
-                      description: "",
-                    });
-                    setCourseModalOpen(true);
-                  }}
-                  className="h-8 gap-1 text-xs"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  افزودن درس جدید
-                </Button>
-              </CardHeader>
+              {/* Active Faculty Indicator & Switcher */}
+              <div className="rounded-2xl border border-primary/20 bg-gradient-to-l from-primary/10 via-primary/5 to-card p-4 shadow-sm">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20 shrink-0">
+                      <Building2 className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-muted-foreground">دانشکده انتخابی شما:</span>
+                        {currentFaculty ? (
+                          <Badge variant="default" className="text-xs px-2.5 py-0.5 font-bold shadow-xs">
+                            {currentFaculty.name} ({currentFaculty.code})
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs px-2.5 py-0.5 text-destructive border-destructive/40">
+                            دانشکده‌ای انتخاب نشده است
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        فقط دروس و روابط پیش‌نیازی مربوط به این دانشکده نمایش داده می‌شوند.
+                      </p>
+                    </div>
+                  </div>
 
-              <CardContent className="p-4 space-y-4">
-                {/* Search Bar */}
-                <div className="flex items-center gap-3">
-                  <Input
-                    placeholder="جستجو بر اساس نام یا کد درس..."
-                    value={courseSearch}
-                    onChange={(e) => setCourseSearch(e.target.value)}
-                    className="h-9 max-w-sm text-xs"
-                  />
-                  <span className="text-xs text-muted-foreground">
-                    نمایش {filteredCourses.length} از {courses.length} درس
-                  </span>
+                  {!currentFaculty && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setActiveTab("structure")}
+                      className="h-8 text-xs gap-1 shadow-2xs"
+                    >
+                      <Building2 className="h-3.5 w-3.5" />
+                      انتخاب در ساختار دانشگاه
+                    </Button>
+                  )}
                 </div>
+              </div>
+
+              <Card className="border-border/70 shadow-xs">
+                <CardHeader className="flex flex-row items-center justify-between border-b pb-3">
+                  <div>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <BookOpen className="h-4 w-4 text-primary" />
+                      <span>بانک اطلاعاتی دروس {currentFaculty ? `«${currentFaculty.name}»` : ""}</span>
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      مدیریت دروس، تعداد واحدها، نوع ارائه و تعیین پیش‌نیازها و هم‌نیازها
+                    </CardDescription>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setCourseForm({
+                        name: "",
+                        code: "",
+                        units: 3,
+                        facultyId: selectedFacultyId,
+                        offeredIn: "both",
+                        visualCategoryId: "",
+                        ruleCategoryId: "",
+                        description: "",
+                      });
+                      setCourseModalOpen(true);
+                    }}
+                    disabled={!selectedFacultyId}
+                    className="h-8 gap-1 text-xs"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    افزودن درس جدید
+                  </Button>
+                </CardHeader>
+
+                <CardContent className="p-4 space-y-4">
+                  {/* Search Bar */}
+                  <div className="flex items-center justify-between gap-3">
+                    <Input
+                      placeholder="جستجو بر اساس نام یا کد درس..."
+                      value={courseSearch}
+                      onChange={(e) => setCourseSearch(e.target.value)}
+                      className="h-8 max-w-sm text-xs"
+                    />
+                    <Badge variant="secondary" className="text-xs">
+                      نمایش {filteredCourses.length} از {facultyCourses.length} درس این دانشکده
+                    </Badge>
+                  </div>
 
                 {/* Courses Grid */}
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -821,7 +970,11 @@ export default function AdminDashboardPage() {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => setFacultyModalOpen(true)}
+                    onClick={() => {
+                      setEditingFaculty(null);
+                      setFacultyForm({ name: "", code: "" });
+                      setFacultyModalOpen(true);
+                    }}
                     className="h-7 text-[11px] gap-1 shadow-2xs"
                   >
                     <Plus className="h-3 w-3" /> جدید
@@ -850,11 +1003,36 @@ export default function AdminDashboardPage() {
                           </div>
                         </div>
 
-                        {isSelected && (
-                          <span className="rounded-full bg-primary p-1 text-primary-foreground shadow-2xs">
-                            <Check className="h-3 w-3" />
-                          </span>
-                        )}
+                        <div className="flex items-center gap-1 shrink-0">
+                          {isSelected && (
+                            <span className="rounded-full bg-primary p-1 text-primary-foreground shadow-2xs ml-1">
+                              <Check className="h-3 w-3" />
+                            </span>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingFaculty(f);
+                              setFacultyForm({ name: f.name, code: f.code });
+                              setFacultyModalOpen(true);
+                            }}
+                            className="h-6 w-6 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                            title="ویرایش دانشکده"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => handleDeleteFaculty(f.id, f.name, e)}
+                            className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            title="حذف دانشکده"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
                     );
                   })}
@@ -882,7 +1060,11 @@ export default function AdminDashboardPage() {
                     size="sm"
                     variant="outline"
                     disabled={!selectedFacultyId}
-                    onClick={() => setMajorModalOpen(true)}
+                    onClick={() => {
+                      setEditingMajor(null);
+                      setMajorForm({ name: "", code: "" });
+                      setMajorModalOpen(true);
+                    }}
                     className="h-7 text-[11px] gap-1 shadow-2xs"
                   >
                     <Plus className="h-3 w-3" /> جدید
@@ -913,11 +1095,36 @@ export default function AdminDashboardPage() {
                             </div>
                           </div>
 
-                          {isSelected && (
-                            <span className="rounded-full bg-violet-600 p-1 text-white shadow-2xs">
-                              <Check className="h-3 w-3" />
-                            </span>
-                          )}
+                          <div className="flex items-center gap-1 shrink-0">
+                            {isSelected && (
+                              <span className="rounded-full bg-violet-600 p-1 text-white shadow-2xs ml-1">
+                                <Check className="h-3 w-3" />
+                              </span>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingMajor(m);
+                                setMajorForm({ name: m.name, code: m.code });
+                                setMajorModalOpen(true);
+                              }}
+                              className="h-6 w-6 p-0 text-muted-foreground hover:text-violet-600 hover:bg-violet-500/10"
+                              title="ویرایش رشته"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => handleDeleteMajor(m.id, m.name, e)}
+                              className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                              title="حذف رشته"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </div>
                       );
                     })}
@@ -927,7 +1134,11 @@ export default function AdminDashboardPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => setMajorModalOpen(true)}
+                        onClick={() => {
+                          setEditingMajor(null);
+                          setMajorForm({ name: "", code: "" });
+                          setMajorModalOpen(true);
+                        }}
                         className="h-7 text-xs"
                       >
                         + ایجاد اولین رشته
@@ -958,7 +1169,11 @@ export default function AdminDashboardPage() {
                     size="sm"
                     variant="outline"
                     disabled={!selectedMajorId}
-                    onClick={() => setTrackModalOpen(true)}
+                    onClick={() => {
+                      setEditingTrack(null);
+                      setTrackForm({ name: "", code: "" });
+                      setTrackModalOpen(true);
+                    }}
                     className="h-7 text-[11px] gap-1 shadow-2xs"
                   >
                     <Plus className="h-3 w-3" /> جدید
@@ -984,11 +1199,36 @@ export default function AdminDashboardPage() {
                             <span className="text-[10px] text-muted-foreground">{t.code}</span>
                           </div>
 
-                          {isSelected && (
-                            <span className="rounded-full bg-emerald-600 p-1 text-white shadow-2xs">
-                              <Check className="h-3 w-3" />
-                            </span>
-                          )}
+                          <div className="flex items-center gap-1 shrink-0">
+                            {isSelected && (
+                              <span className="rounded-full bg-emerald-600 p-1 text-white shadow-2xs ml-1">
+                                <Check className="h-3 w-3" />
+                              </span>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingTrack(t);
+                                setTrackForm({ name: t.name, code: t.code });
+                                setTrackModalOpen(true);
+                              }}
+                              className="h-6 w-6 p-0 text-muted-foreground hover:text-emerald-600 hover:bg-emerald-500/10"
+                              title="ویرایش گرایش"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => handleDeleteTrack(t.id, t.name, e)}
+                              className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                              title="حذف گرایش"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </div>
                       );
                     })}
@@ -998,7 +1238,11 @@ export default function AdminDashboardPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => setTrackModalOpen(true)}
+                        onClick={() => {
+                          setEditingTrack(null);
+                          setTrackForm({ name: "", code: "" });
+                          setTrackModalOpen(true);
+                        }}
                         className="h-7 text-xs"
                       >
                         + ایجاد اولین گرایش
@@ -1407,10 +1651,14 @@ export default function AdminDashboardPage() {
           {/* Form */}
           <form onSubmit={handleAddPrerequisite} className="space-y-3 pt-2">
             <div className="space-y-1.5">
-              <Label className="text-xs">انتخاب درس وابسته:</Label>
+              <Label className="text-xs">انتخاب درس وابسته (از همین دانشکده):</Label>
               <Select
                 items={courses
-                  .filter((c) => c.id !== selectedCourseForPrereq?.id)
+                  .filter(
+                    (c) =>
+                      c.id !== selectedCourseForPrereq?.id &&
+                      (!selectedCourseForPrereq?.facultyId || c.facultyId === selectedCourseForPrereq.facultyId)
+                  )
                   .map((c) => ({
                     value: c.id,
                     label: `${c.name} (${c.code} - ${c.units} واحد)`,
@@ -1424,7 +1672,11 @@ export default function AdminDashboardPage() {
                 <SelectContent>
                   <SelectGroup>
                     {courses
-                      .filter((c) => c.id !== selectedCourseForPrereq?.id)
+                      .filter(
+                        (c) =>
+                          c.id !== selectedCourseForPrereq?.id &&
+                          (!selectedCourseForPrereq?.facultyId || c.facultyId === selectedCourseForPrereq.facultyId)
+                      )
                       .map((c) => (
                         <SelectItem key={c.id} value={c.id}>
                           {c.name} ({c.code} - {c.units} واحد)
@@ -1511,16 +1763,31 @@ export default function AdminDashboardPage() {
       <Dialog open={courseModalOpen} onOpenChange={setCourseModalOpen}>
         <DialogContent className="sm:max-w-md" dir="rtl">
           <DialogHeader>
-            <DialogTitle className="text-sm font-bold">تعریف درس جدید</DialogTitle>
+            <DialogTitle className="text-sm font-bold flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-primary" />
+              <span>تعریف درس جدید</span>
+            </DialogTitle>
             <DialogDescription className="text-xs">
-              مشخصات درس، تعداد واحد و دسته‌بندی آن را مشخص نمایید.
+              مشخصات درس و تعداد واحد را وارد کنید. انتساب دسته و چارت در بخش دسته‌بندی انجام می‌شود.
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleCreateCourse} className="space-y-3 pt-2">
+          {/* Target Faculty Indicator */}
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs">
+              <Building2 className="h-4 w-4 text-primary shrink-0" />
+              <span className="text-muted-foreground">دانشکده هدف:</span>
+              <span className="font-bold text-foreground">
+                {currentFaculty ? `${currentFaculty.name} (${currentFaculty.code})` : "انتخاب نشده"}
+              </span>
+            </div>
+            <Badge variant="outline" className="text-[10px]">تثبیت‌شده</Badge>
+          </div>
+
+          <form onSubmit={handleCreateCourse} className="space-y-3 pt-1">
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <Label className="text-xs">نام درس</Label>
+                <Label className="text-xs font-semibold">نام درس:</Label>
                 <Input
                   required
                   placeholder="مثلاً ریاضی عمومی ۱"
@@ -1530,7 +1797,7 @@ export default function AdminDashboardPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">کد درس</Label>
+                <Label className="text-xs font-semibold">کد درس:</Label>
                 <Input
                   required
                   placeholder="مثلاً MATH101"
@@ -1544,7 +1811,7 @@ export default function AdminDashboardPage() {
 
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <Label className="text-xs">تعداد واحد</Label>
+                <Label className="text-xs font-semibold">تعداد واحد:</Label>
                 <Input
                   type="number"
                   min={1}
@@ -1555,7 +1822,7 @@ export default function AdminDashboardPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">ترم ارائه</Label>
+                <Label className="text-xs font-semibold">ترم ارائه:</Label>
                 <Select
                   items={[
                     { value: "both", label: "هردو ترم (پاییز و بهار)" },
@@ -1585,63 +1852,45 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            {selectedTrackId && (
-              <div className="space-y-1">
-                <Label className="text-xs">دسته بصری (برای گرایش فعلی):</Label>
-                <Select
-                  items={[
-                    { value: "none", label: "-- بدون دسته بصری --" },
-                    ...visualCats.map((c) => ({ value: c.id, label: c.name })),
-                  ]}
-                  value={courseForm.visualCategoryId || "none"}
-                  onValueChange={(val) =>
-                    setCourseForm({
-                      ...courseForm,
-                      visualCategoryId: val === "none" ? "" : val,
-                    })
-                  }
-                >
-                  <SelectTrigger size="sm" className="w-full text-xs">
-                    <SelectValue placeholder="-- بدون دسته بصری --" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem value="none">-- بدون دسته بصری --</SelectItem>
-                      {visualCats.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          <div className="flex items-center gap-1.5">
-                            <span
-                              className="h-2 w-2 rounded-full"
-                              style={{ backgroundColor: c.color }}
-                            />
-                            <span>{c.name}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">توضیحات اختیاری:</Label>
+              <Input
+                placeholder="توضیحات تکمیلی یا سرفصل درس..."
+                value={courseForm.description}
+                onChange={(e) => setCourseForm({ ...courseForm, description: e.target.value })}
+                className="h-8 text-xs"
+              />
+            </div>
 
             <DialogFooter className="pt-2">
-              <Button type="submit" size="sm" className="h-8 text-xs font-semibold w-full">
-                ذخیره درس
+              <Button
+                type="submit"
+                size="sm"
+                disabled={!selectedFacultyId}
+                className="h-8 text-xs font-semibold w-full"
+              >
+                ذخیره درس در {currentFaculty ? currentFaculty.name : "دانشکده"}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* 3. Add Faculty Modal */}
-      <Dialog open={facultyModalOpen} onOpenChange={setFacultyModalOpen}>
+      {/* 3. Add / Edit Faculty Modal */}
+      <Dialog open={facultyModalOpen} onOpenChange={(open) => {
+        setFacultyModalOpen(open);
+        if (!open) setEditingFaculty(null);
+      }}>
         <DialogContent className="sm:max-w-sm" dir="rtl">
           <DialogHeader>
-            <DialogTitle className="text-sm font-bold">افزودن دانشکده جدید</DialogTitle>
+            <DialogTitle className="text-sm font-bold flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-primary" />
+              <span>{editingFaculty ? "ویرایش مشخصات دانشکده" : "افزودن دانشکده جدید"}</span>
+            </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleCreateFaculty} className="space-y-3 pt-2">
+          <form onSubmit={handleSaveFaculty} className="space-y-3 pt-2">
             <div className="space-y-1">
-              <Label className="text-xs">نام دانشکده</Label>
+              <Label className="text-xs font-semibold">نام دانشکده</Label>
               <Input
                 required
                 placeholder="مثلاً دانشکده فنی و مهندسی"
@@ -1651,7 +1900,7 @@ export default function AdminDashboardPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">کد اختصاری</Label>
+              <Label className="text-xs font-semibold">کد اختصاری</Label>
               <Input
                 required
                 placeholder="مثلاً ENG"
@@ -1661,22 +1910,28 @@ export default function AdminDashboardPage() {
                 dir="ltr"
               />
             </div>
-            <Button type="submit" size="sm" className="w-full h-8 text-xs">
-              ثبت دانشکده
+            <Button type="submit" size="sm" className="w-full h-8 text-xs font-semibold">
+              {editingFaculty ? "ذخیره تغییرات دانشکده" : "ثبت دانشکده"}
             </Button>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* 4. Add Major Modal */}
-      <Dialog open={majorModalOpen} onOpenChange={setMajorModalOpen}>
+      {/* 4. Add / Edit Major Modal */}
+      <Dialog open={majorModalOpen} onOpenChange={(open) => {
+        setMajorModalOpen(open);
+        if (!open) setEditingMajor(null);
+      }}>
         <DialogContent className="sm:max-w-sm" dir="rtl">
           <DialogHeader>
-            <DialogTitle className="text-sm font-bold">افزودن رشته جدید</DialogTitle>
+            <DialogTitle className="text-sm font-bold flex items-center gap-2">
+              <GraduationCap className="h-4 w-4 text-violet-600" />
+              <span>{editingMajor ? "ویرایش مشخصات رشته" : "افزودن رشته جدید"}</span>
+            </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleCreateMajor} className="space-y-3 pt-2">
+          <form onSubmit={handleSaveMajor} className="space-y-3 pt-2">
             <div className="space-y-1">
-              <Label className="text-xs">نام رشته</Label>
+              <Label className="text-xs font-semibold">نام رشته</Label>
               <Input
                 required
                 placeholder="مثلاً مهندسی برق"
@@ -1686,7 +1941,7 @@ export default function AdminDashboardPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">کد رشته</Label>
+              <Label className="text-xs font-semibold">کد رشته</Label>
               <Input
                 required
                 placeholder="مثلاً EE"
@@ -1696,22 +1951,28 @@ export default function AdminDashboardPage() {
                 dir="ltr"
               />
             </div>
-            <Button type="submit" size="sm" className="w-full h-8 text-xs">
-              ثبت رشته
+            <Button type="submit" size="sm" className="w-full h-8 text-xs font-semibold bg-violet-600 hover:bg-violet-700 text-white">
+              {editingMajor ? "ذخیره تغییرات رشته" : "ثبت رشته"}
             </Button>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* 5. Add Track Modal */}
-      <Dialog open={trackModalOpen} onOpenChange={setTrackModalOpen}>
+      {/* 5. Add / Edit Track Modal */}
+      <Dialog open={trackModalOpen} onOpenChange={(open) => {
+        setTrackModalOpen(open);
+        if (!open) setEditingTrack(null);
+      }}>
         <DialogContent className="sm:max-w-sm" dir="rtl">
           <DialogHeader>
-            <DialogTitle className="text-sm font-bold">افزودن گرایش جدید</DialogTitle>
+            <DialogTitle className="text-sm font-bold flex items-center gap-2">
+              <Layers className="h-4 w-4 text-emerald-600" />
+              <span>{editingTrack ? "ویرایش مشخصات گرایش" : "افزودن گرایش جدید"}</span>
+            </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleCreateTrack} className="space-y-3 pt-2">
+          <form onSubmit={handleSaveTrack} className="space-y-3 pt-2">
             <div className="space-y-1">
-              <Label className="text-xs">نام گرایش</Label>
+              <Label className="text-xs font-semibold">نام گرایش</Label>
               <Input
                 required
                 placeholder="مثلاً هوش مصنوعی و رباتیک"
@@ -1721,7 +1982,7 @@ export default function AdminDashboardPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">کد گرایش</Label>
+              <Label className="text-xs font-semibold">کد گرایش</Label>
               <Input
                 required
                 placeholder="مثلاً AI"
@@ -1731,8 +1992,8 @@ export default function AdminDashboardPage() {
                 dir="ltr"
               />
             </div>
-            <Button type="submit" size="sm" className="w-full h-8 text-xs">
-              ثبت گرایش
+            <Button type="submit" size="sm" className="w-full h-8 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white">
+              {editingTrack ? "ذخیره تغییرات گرایش" : "ثبت گرایش"}
             </Button>
           </form>
         </DialogContent>
