@@ -67,9 +67,10 @@ export function ApprovedChartsManager({
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   const currentTrack = tracks.find((t) => t.id === selectedTrackId);
-  const currentApprovedChart = allApprovedCharts.find(
+  const trackApprovedCharts = allApprovedCharts.filter(
     (c) => c.trackId === selectedTrackId && c.isApprovedDefault
   );
+  const currentApprovedChart = trackApprovedCharts[0];
 
   // Load all approved charts
   const loadApprovedCharts = async () => {
@@ -233,7 +234,7 @@ export function ApprovedChartsManager({
         </Card>
       )}
 
-      {/* Current Selected Track Status Card */}
+      {/* Current Selected Track Approved Charts Section */}
       {selectedTrackId && (
         <Card className="border-border/70 shadow-xs">
           <CardHeader className="p-4 sm:p-5 border-b pb-3">
@@ -244,152 +245,151 @@ export function ApprovedChartsManager({
                 </div>
                 <div>
                   <h3 className="text-sm font-bold flex items-center gap-2">
-                    <span>گرایش: {currentTrack?.name}</span>
+                    <span>چارت‌های مصوب و پیشنهادی گرایش: {currentTrack?.name}</span>
                     <Badge variant="outline" className="text-[10px] h-5 font-mono">
                       {currentTrack?.code}
                     </Badge>
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    وضعیت چارت مصوب رسمی این گرایش در سامانه
+                    تعریف و ویرایش نسخه‌های مختلف چارت مصوب یا برنامه‌های پیشنهادی برای این گرایش ({trackApprovedCharts.length} چارت)
                   </p>
                 </div>
               </div>
 
-              {/* Action buttons if chart does or doesn't exist */}
-              {currentApprovedChart ? (
-                <div className="flex items-center gap-2">
-                  <Link href={`/charts/${currentApprovedChart.id}`} target="_blank">
-                    <Button size="sm" className="h-8 gap-1.5 text-xs font-semibold shadow-xs">
-                      <Edit className="h-3.5 w-3.5" />
-                      ویرایش بصری چارت در ویرایشگر چارت
-                      <ExternalLink className="h-3 w-3 opacity-60" />
-                    </Button>
-                  </Link>
+              {/* Actions to add new approved charts for this track */}
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setNewTitle(`چارت مصوب ${currentTrack?.name || ""} - ورودی ۱۴۰۲`);
+                    setCreateModalOpen(true);
+                  }}
+                  className="h-8 gap-1.5 text-xs font-semibold shadow-xs"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  افزودن چارت مصوب / پیشنهادی جدید
+                </Button>
+
+                {allApprovedCharts.length > 0 && (
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleDeleteChart(currentApprovedChart.id)}
-                    className="h-8 gap-1 text-xs text-destructive hover:bg-destructive/10 border-destructive/30"
-                    title="حذف چارت مصوب"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
                     onClick={() => {
-                      setNewTitle(`چارت مصوب ${currentTrack?.name || ""}`);
-                      setCreateModalOpen(true);
+                      setNewTitle(`چارت پیشنهادی ${currentTrack?.name || ""}`);
+                      setCloneModalOpen(true);
                     }}
-                    className="h-8 gap-1.5 text-xs font-semibold shadow-xs"
+                    className="h-8 gap-1.5 text-xs text-primary border-primary/30 hover:bg-primary/5"
                   >
-                    <Plus className="h-3.5 w-3.5" />
-                    ساخت چارت مصوب جدید
+                    <Copy className="h-3.5 w-3.5" />
+                    کپی از چارت دیگر
                   </Button>
-
-                  {allApprovedCharts.length > 0 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setNewTitle(`چارت مصوب ${currentTrack?.name || ""}`);
-                        setCloneModalOpen(true);
-                      }}
-                      className="h-8 gap-1.5 text-xs text-primary border-primary/30 hover:bg-primary/5"
-                    >
-                      <Copy className="h-3.5 w-3.5" />
-                      کپی از چارت مصوب دیگر
-                    </Button>
-                  )}
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </CardHeader>
 
-          <CardContent className="p-4 sm:p-6">
-            {currentApprovedChart ? (
+          <CardContent className="p-4 sm:p-6 space-y-4">
+            {trackApprovedCharts.length > 0 ? (
               <div className="space-y-4">
-                <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 flex flex-wrap items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                      <span className="text-xs font-bold text-foreground">
-                        {currentApprovedChart.title}
-                      </span>
-                      <Badge className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 text-[10px] h-5">
-                        چارت مصوب رسمی
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      شناسه چارت: <span className="font-mono">{currentApprovedChart.id}</span> | آخرین ویرایش:{" "}
-                      {new Date(currentApprovedChart.updatedAt).toLocaleDateString("fa-IR")}
-                    </p>
-                  </div>
+                {trackApprovedCharts.map((chart) => {
+                  const stats = getChartStats(chart);
 
-                  {/* Stats grid */}
-                  {(() => {
-                    const stats = getChartStats(currentApprovedChart);
-                    return (
-                      <div className="flex items-center gap-3 text-center">
-                        <div className="px-3 py-1.5 rounded-lg bg-background border border-border/60">
-                          <p className="text-[10px] text-muted-foreground">تعداد ترم‌ها</p>
-                          <p className="text-xs font-bold text-foreground font-mono">
-                            {stats.semestersCount} ترم
+                  return (
+                    <div
+                      key={chart.id}
+                      className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 space-y-3 transition-all hover:border-emerald-500/50"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                            <span className="text-xs font-bold text-foreground">
+                              {chart.title}
+                            </span>
+                            <Badge className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 text-[10px] h-5">
+                              چارت مصوب دانشگاه
+                            </Badge>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">
+                            شناسه: <span className="font-mono">{chart.id}</span> | آخرین ویرایش:{" "}
+                            {new Date(chart.updatedAt).toLocaleDateString("fa-IR")}
                           </p>
                         </div>
-                        <div className="px-3 py-1.5 rounded-lg bg-background border border-border/60">
-                          <p className="text-[10px] text-muted-foreground">تعداد دروس</p>
-                          <p className="text-xs font-bold text-foreground font-mono">
-                            {stats.totalCourses} درس
-                          </p>
-                        </div>
-                        <div className="px-3 py-1.5 rounded-lg bg-background border border-border/60">
-                          <p className="text-[10px] text-muted-foreground">مجموع واحدها</p>
-                          <p className="text-xs font-bold text-primary font-mono">
-                            {stats.totalCredits} واحد
-                          </p>
+
+                        {/* Action buttons */}
+                        <div className="flex items-center gap-2">
+                          <Link href={`/charts/${chart.id}`} target="_blank">
+                            <Button size="sm" className="h-8 gap-1.5 text-xs font-semibold shadow-xs">
+                              <Edit className="h-3.5 w-3.5" />
+                              ویرایش بصری چارت در ادیتور
+                              <ExternalLink className="h-3 w-3 opacity-60" />
+                            </Button>
+                          </Link>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteChart(chart.id)}
+                            className="h-8 gap-1 text-xs text-destructive hover:bg-destructive/10 border-destructive/30"
+                            title="حذف چارت مصوب"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
                       </div>
-                    );
-                  })()}
-                </div>
 
-                {/* Term breakdown preview */}
-                <div className="space-y-2">
-                  <p className="text-xs font-bold text-muted-foreground">چیدمان ترم‌ها در چارت مصوب:</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
-                    {currentApprovedChart.semesters.map((sem) => {
-                      let semCredits = 0;
-                      sem.courseIds.forEach((cId) => {
-                        const c = courses.find((course) => course.id === cId);
-                        if (c) semCredits += c.units;
-                      });
-
-                      return (
-                        <div
-                          key={sem.semesterNumber}
-                          className="p-2 rounded-xl border bg-muted/20 text-center space-y-1"
-                        >
-                          <span className="text-[11px] font-bold text-foreground block">
-                            ترم {sem.semesterNumber}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground block font-mono">
-                            {sem.courseIds.length} درس ({semCredits} واحد)
-                          </span>
+                      {/* Stats & terms breakdown */}
+                      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 items-center pt-2 border-t border-emerald-500/20">
+                        {/* Stats Summary */}
+                        <div className="flex items-center gap-2 text-center">
+                          <div className="flex-1 px-2.5 py-1 rounded-lg bg-background border border-border/60">
+                            <p className="text-[9px] text-muted-foreground">ترم‌ها</p>
+                            <p className="text-xs font-bold font-mono">{stats.semestersCount} ترم</p>
+                          </div>
+                          <div className="flex-1 px-2.5 py-1 rounded-lg bg-background border border-border/60">
+                            <p className="text-[9px] text-muted-foreground">دروس</p>
+                            <p className="text-xs font-bold font-mono">{stats.totalCourses} درس</p>
+                          </div>
+                          <div className="flex-1 px-2.5 py-1 rounded-lg bg-background border border-border/60">
+                            <p className="text-[9px] text-muted-foreground">مجموع واحد</p>
+                            <p className="text-xs font-bold text-primary font-mono">{stats.totalCredits} واحد</p>
+                          </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
+
+                        {/* Semester Pills */}
+                        <div className="lg:col-span-3 grid grid-cols-4 sm:grid-cols-8 gap-1.5">
+                          {chart.semesters.map((sem) => {
+                            let semCredits = 0;
+                            sem.courseIds.forEach((cId) => {
+                              const c = courses.find((course) => course.id === cId);
+                              if (c) semCredits += c.units;
+                            });
+
+                            return (
+                              <div
+                                key={sem.semesterNumber}
+                                className="p-1.5 rounded-lg bg-background/80 border border-border/60 text-center"
+                              >
+                                <span className="text-[10px] font-bold text-foreground block">
+                                  ترم {sem.semesterNumber}
+                                </span>
+                                <span className="text-[9px] text-muted-foreground block font-mono">
+                                  {sem.courseIds.length} درس ({semCredits}و)
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <div className="p-8 rounded-2xl border-2 border-dashed border-border/70 text-center space-y-3">
                 <AlertTriangle className="h-8 w-8 text-amber-500 mx-auto opacity-75" />
-                <h4 className="text-xs font-bold">برای این گرایش هنوز چارت مصوب تعریف نشده است</h4>
+                <h4 className="text-xs font-bold">برای این گرایش هنوز چارت مصوبی تعریف نشده است</h4>
                 <p className="text-xs text-muted-foreground max-w-md mx-auto">
-                  با ایجاد چارت مصوب رسمی، دانشجویان می‌توانند با یک کلیک چیدمان دروس استاندارد این گرایش را در چارت شخصی خود بارگذاری کنند.
+                  با ایجاد چارت‌های مصوب یا پیشنهادی، دانشجویان می‌توانند در هنگام ساخت چارت تحصیلی، الگوی مناسب ورودی خود را انتخاب و بارگذاری کنند.
                 </p>
                 <Button
                   size="sm"
@@ -400,7 +400,7 @@ export function ApprovedChartsManager({
                   className="h-8 gap-1.5 text-xs font-semibold"
                 >
                   <Plus className="h-3.5 w-3.5" />
-                  ایجاد چارت مصوب برای این گرایش
+                  ایجاد اولین چارت مصوب برای این گرایش
                 </Button>
               </div>
             )}

@@ -55,6 +55,7 @@ export default function ChartsPage() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [selectedTrackId, setSelectedTrackId] = useState("");
+  const [selectedTemplateChartId, setSelectedTemplateChartId] = useState("empty");
   const [isCreating, setIsCreating] = useState(false);
 
   const loadData = async () => {
@@ -109,12 +110,14 @@ export default function ChartsPage() {
         body: JSON.stringify({
           title: newTitle.trim() || "چارت تحصیلی جدید",
           trackId: selectedTrackId,
+          cloneFromId: selectedTemplateChartId !== "empty" ? selectedTemplateChartId : undefined,
         }),
       }).then((r) => r.json());
 
       if (res.success && res.data) {
         setCreateModalOpen(false);
         setNewTitle("");
+        setSelectedTemplateChartId("empty");
         router.push(`/charts/${res.data.id}`);
       } else {
         alert(res.message || "خطا در ایجاد چارت");
@@ -423,6 +426,34 @@ export default function ChartsPage() {
                   </SelectGroup>
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Template Selection */}
+            <div className="space-y-1">
+              <Label className="text-xs">الگوی اولیه چارت (اختیاری)</Label>
+              <Select
+                value={selectedTemplateChartId}
+                onValueChange={(val) => setSelectedTemplateChartId(val || "empty")}
+              >
+                <SelectTrigger size="sm" className="w-full text-xs">
+                  <SelectValue placeholder="انتخاب الگو..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="empty">-- چارت خام (بدون درس) --</SelectItem>
+                    {approvedCharts
+                      .filter((c) => !selectedTrackId || c.trackId === selectedTrackId)
+                      .map((ac) => (
+                        <SelectItem key={ac.id} value={ac.id}>
+                          ✨ {ac.title} ({ac.semesters.length} ترم)
+                        </SelectItem>
+                      ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground">
+                می‌توانید با چارت مصوب یا پیشنهادی دانشکده شروع کنید یا یک چارت خالی بسازید.
+              </p>
             </div>
 
             <DialogFooter className="pt-2">

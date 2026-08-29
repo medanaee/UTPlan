@@ -7,6 +7,7 @@ import {
   updateChart,
   deleteChart,
   getApprovedTrackChart,
+  getApprovedTrackCharts,
 } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
@@ -26,9 +27,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: true, data: chart });
     }
 
-    if (trackId && approved === "true") {
-      const approvedChart = await getApprovedTrackChart(trackId);
-      return NextResponse.json({ success: true, data: approvedChart });
+    if (approved === "true") {
+      const approvedCharts = await getApprovedTrackCharts(trackId || undefined);
+      return NextResponse.json({ success: true, data: approvedCharts });
     }
 
     const userId = session?.id;

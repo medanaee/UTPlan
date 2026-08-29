@@ -100,6 +100,11 @@ export function ChartEditor({
   // Issues & Validation Details Modal
   const [issuesModalOpen, setIssuesModalOpen] = useState(false);
 
+  // Approved Curriculum Selection Modal
+  const [loadApprovedModalOpen, setLoadApprovedModalOpen] = useState(false);
+  const [approvedChartsList, setApprovedChartsList] = useState<StudentChart[]>([]);
+  const [loadingApprovedCharts, setLoadingApprovedCharts] = useState(false);
+
   // Hovered Course for SVG Arrow Highlighting
   const [hoveredCourseId, setHoveredCourseId] = useState<string | null>(null);
 
@@ -377,25 +382,34 @@ export function ChartEditor({
     }));
   };
 
-  // Load official approved default curriculum
-  const handleLoadApprovedCurriculum = async () => {
-    if (!confirm("آیا از بارگذاری چارت مصوب مطمئن هستید؟ دروس فعلی چارت با چارت استاندارد جایگزین خواهند شد.")) {
-      return;
-    }
-
+  // Open modal to load from approved curriculum list
+  const handleOpenLoadApprovedModal = async () => {
+    setLoadApprovedModalOpen(true);
+    setLoadingApprovedCharts(true);
     try {
       const res = await fetch(`/api/charts?trackId=${selectedTrackId}&approved=true`).then((r) => r.json());
-      if (res.success && res.data) {
-        setChart((prev) => ({
-          ...prev,
-          semesters: res.data.semesters,
-        }));
+      if (res.success && Array.isArray(res.data)) {
+        setApprovedChartsList(res.data);
       } else {
-        alert("چارت مصوب رسمی برای این گرایش هنوز تعریف نشده است.");
+        setApprovedChartsList([]);
       }
     } catch {
-      alert("خطا در دریافت چارت مصوب");
+      setApprovedChartsList([]);
+    } finally {
+      setLoadingApprovedCharts(false);
     }
+  };
+
+  // Apply chosen approved chart
+  const handleApplyApprovedChart = (selectedChart: StudentChart) => {
+    if (!confirm(`آیا از بارگذاری «${selectedChart.title}» مطمئن هستید؟ دروس فعلی چارت با این برنامه جایگزین خواهند شد.`)) {
+      return;
+    }
+    setChart((prev) => ({
+      ...prev,
+      semesters: selectedChart.semesters,
+    }));
+    setLoadApprovedModalOpen(false);
   };
 
   // Save chart changes to backend
@@ -534,11 +548,11 @@ export function ChartEditor({
             <Button
               size="sm"
               variant="ghost"
-              onClick={handleLoadApprovedCurriculum}
+              onClick={handleOpenLoadApprovedModal}
               className="h-8 gap-1.5 text-xs px-3 rounded-lg text-primary border border-primary/30 bg-primary/5 hover:bg-primary/15 transition-all shadow-2xs font-medium"
             >
               <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-              <span className="hidden sm:inline">بارگذاری چارت مصوب</span>
+              <span className="hidden sm:inline">بارگذاری چارت مصوب / پیشنهادی</span>
             </Button>
 
             {/* Add / Remove Semester */}
@@ -1189,6 +1203,114 @@ export function ChartEditor({
               className="w-full h-8 text-xs font-semibold"
             >
               متوجه شدم و بستن
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ========================================================= */}
+      {/* 2. LOAD APPROVED / RECOMMENDED CURRICULUM MODAL */}
+      {/* ========================================================= */}
+      <Dialog open={loadApprovedModalOpen} onOpenChange={setLoadApprovedModalOpen}>
+        <DialogContent className="sm:max-w-xl max-h-[85vh] flex flex-col p-0" dir="rtl">
+          <DialogHeader className="p-4 sm:p-5 border-b shrink-0">
+            <DialogTitle className="text-sm sm:text-base font-bold flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-amber-500" />
+              انتخاب چارت مصوب یا پیشنهادی ({activeTrack?.name || "گرایش"})
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              یکی از چارت‌های استاندارد زیر را انتخاب کنید تا چیدمان ترمی دروس در چارت شما بارگذاری شود.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-3">
+            {loadingApprovedCharts ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-2 text-xs text-muted-foreground">
+                <RefreshCw className="h-5 w-5 animate-spin text-primary" />
+                <span>در حال دریافت لیست چارت‌های مصوب و پیشنهادی...</span>
+              </div>
+            ) : approvedChartsList.length > 0 ? (
+              <div className="space-y-3">
+                {approvedChartsList.map((ac) => {
+                  let totalCredits = 0;
+                  let totalCourses = 0;
+                  ac.semesters.forEach((sem) => {
+                    totalCourses += sem.courseIds.length;
+                    sem.courseIds.forEach((cId) => {
+                      const c = allCourses.find((course) => course.id === cId);
+                      if (c) totalCredits += c.units;
+                    });
+                  });
+
+                  return (
+                    <div
+                      key={ac.id}
+                      className="p-3.5 rounded-xl border border-border/80 bg-card hover:border-primary/50 transition-all space-y-3 shadow-2xs"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
+                            <BookOpen className="h-3.5 w-3.5 text-primary" />
+                            {ac.title}
+                          </h4>
+                          <p className="text-[10px] text-muted-foreground mt-0.5 font-mono">
+                            {ac.semesters.length} ترم • {totalCourses} درس • {totalCredits} واحد
+                          </p>
+                        </div>
+
+                        <Button
+                          size="sm"
+                          onClick={() => handleApplyApprovedChart(ac)}
+                          className="h-7 text-xs font-semibold gap-1"
+                        >
+                          <CheckCircle2 className="h-3 w-3" />
+                          بارگذاری این چارت
+                        </Button>
+                      </div>
+
+                      {/* Term breakdown */}
+                      <div className="grid grid-cols-4 sm:grid-cols-8 gap-1 pt-1 border-t border-border/50">
+                        {ac.semesters.map((sem) => {
+                          let semCredits = 0;
+                          sem.courseIds.forEach((cId) => {
+                            const c = allCourses.find((course) => course.id === cId);
+                            if (c) semCredits += c.units;
+                          });
+
+                          return (
+                            <div
+                              key={sem.semesterNumber}
+                              className="p-1 rounded-md bg-muted/40 text-center text-[10px]"
+                            >
+                              <span className="font-bold block">ترم {sem.semesterNumber}</span>
+                              <span className="text-muted-foreground font-mono text-[9px] block">
+                                {sem.courseIds.length} درس ({semCredits}و)
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="p-8 text-center text-xs text-muted-foreground space-y-2 border-2 border-dashed rounded-xl">
+                <AlertTriangle className="h-6 w-6 text-amber-500 mx-auto opacity-75" />
+                <p className="font-bold text-foreground">هنوز چارت مصوبی برای این گرایش تعریف نشده است.</p>
+                <p>می‌توانید دروس را به صورت دستی از سایدبار در ترم‌ها قرار دهید.</p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="p-3 border-t bg-muted/20 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setLoadApprovedModalOpen(false)}
+              className="h-8 text-xs w-full sm:w-auto"
+            >
+              انصراف
             </Button>
           </DialogFooter>
         </DialogContent>
