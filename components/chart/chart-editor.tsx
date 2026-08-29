@@ -32,6 +32,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { validateFullChart } from "@/lib/rules-engine";
 import { ThemeToggle } from "@/components/theme-toggle";
 import type {
@@ -87,6 +95,9 @@ export function ChartEditor({
   // Drag & Drop State
   const [draggedCourseId, setDraggedCourseId] = useState<string | null>(null);
   const [dragOverSemester, setDragOverSemester] = useState<number | null>(null);
+
+  // Issues & Validation Details Modal
+  const [issuesModalOpen, setIssuesModalOpen] = useState(false);
 
   // Hovered Course for SVG Arrow Highlighting
   const [hoveredCourseId, setHoveredCourseId] = useState<string | null>(null);
@@ -419,7 +430,9 @@ export function ChartEditor({
 
       // 2. Category filter
       if (selectedCategoryFilter !== "all") {
-        const assignment = course.trackAssignments?.find((a) => a.trackId === selectedTrackId);
+        const assignment =
+          course.trackAssignments?.find((a) => a.trackId === selectedTrackId) ||
+          course.trackAssignments?.[0];
         if (assignment?.visualCategoryId !== selectedCategoryFilter) return false;
       }
 
@@ -456,24 +469,38 @@ export function ChartEditor({
             </div>
           </div>
 
-          {/* Real-time Validation Status & Stats */}
+          {/* Real-time Validation Status & Stats (Clickable to open detailed report) */}
           <div className="flex items-center gap-2">
-            {validation.hasErrors ? (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-destructive/10 text-destructive text-xs font-medium border border-destructive/20 shadow-2xs">
-                <AlertTriangle className="h-3.5 w-3.5" />
-                <span>{validation.issues.filter((i) => i.type === "error").length} خطای پیش‌نیاز</span>
-              </div>
-            ) : validation.isGraduationReady ? (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-medium border border-emerald-500/20 shadow-2xs">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                <span>چارت آماده فارغ‌التحصیلی ({totalChartCredits} واحد)</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-medium border border-amber-500/20 shadow-2xs">
-                <Info className="h-3.5 w-3.5" />
-                <span>{totalChartCredits} واحد چیده شده (پیش‌نیازها رعایت شده)</span>
-              </div>
-            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setIssuesModalOpen(true)}
+              className={`h-8 gap-1.5 text-xs font-semibold px-2.5 rounded-lg transition-all cursor-pointer ${
+                validation.hasErrors
+                  ? "bg-destructive/15 text-destructive hover:bg-destructive/25 border border-destructive/30 shadow-2xs"
+                  : validation.isGraduationReady
+                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25 border border-emerald-500/30"
+                  : "bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25 border border-amber-500/30"
+              }`}
+              title="کلیک جهت مشاهده گزارش کامل خطاها و قوانین"
+            >
+              {validation.hasErrors ? (
+                <>
+                  <AlertTriangle className="h-3.5 w-3.5 animate-pulse text-destructive shrink-0" />
+                  <span>{validation.issues.filter((i) => i.type === "error").length} خطا (مشاهده گزارش)</span>
+                </>
+              ) : validation.isGraduationReady ? (
+                <>
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                  <span>آماده فارغ‌التحصیلی ({totalChartCredits} واحد)</span>
+                </>
+              ) : (
+                <>
+                  <Info className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                  <span>{totalChartCredits} واحد (مشاهده وضعیت)</span>
+                </>
+              )}
+            </Button>
 
             {/* Toggle Arrow Layer */}
             <Button
@@ -624,7 +651,9 @@ export function ChartEditor({
           {/* Drawer Course List (Draggable Cards) */}
           <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2">
             {filteredDrawerCourses.map((course) => {
-              const assignment = course.trackAssignments?.find((a) => a.trackId === selectedTrackId);
+              const assignment =
+                course.trackAssignments?.find((a) => a.trackId === selectedTrackId) ||
+                course.trackAssignments?.[0];
               const vcat = visualCategories.find((vc) => vc.id === assignment?.visualCategoryId);
               const placedSem = placedCourseIdMap.get(course.id);
               const isPlaced = placedSem !== undefined;
@@ -711,10 +740,10 @@ export function ChartEditor({
           ref={canvasRef}
           className="flex-1 min-h-0 h-full relative overflow-y-auto p-4 sm:p-6 lg:p-8 bg-muted/20"
         >
-          {/* Dynamic SVG Connections Overlay */}
+          {/* Dynamic SVG Connections Overlay (z-30 so it flies ABOVE semester and course card backgrounds) */}
           {showArrows && (
             <svg
-              className="absolute inset-0 pointer-events-none z-10 w-full h-full"
+              className="absolute inset-0 pointer-events-none z-30 w-full h-full"
               style={{ minHeight: "100%" }}
             >
               <defs>
@@ -772,8 +801,8 @@ export function ChartEditor({
                       : curve.isHighlighted
                       ? 1
                       : curve.isViolation
-                      ? 0.85
-                      : 0.22
+                      ? 0.9
+                      : 0.35
                   }
                   strokeDasharray={curve.type === "corequisite" ? "4 3" : undefined}
                   markerEnd={
@@ -789,8 +818,8 @@ export function ChartEditor({
             </svg>
           )}
 
-          {/* Semesters Stacked Vertically */}
-          <div className="space-y-4 max-w-5xl mx-auto relative z-20 pb-16">
+          {/* Semesters Stacked Vertically (z-10) */}
+          <div className="space-y-4 max-w-5xl mx-auto relative z-10 pb-16">
             {chart.semesters.map((sem) => {
               const semStats = validation.semesterCredits.find(
                 (sc) => sc.semesterNumber === sem.semesterNumber
@@ -869,9 +898,9 @@ export function ChartEditor({
                           const course = allCourses.find((c) => c.id === cId);
                           if (!course) return null;
 
-                          const assignment = course.trackAssignments?.find(
-                            (a) => a.trackId === selectedTrackId
-                          );
+                          const assignment =
+                            course.trackAssignments?.find((a) => a.trackId === selectedTrackId) ||
+                            course.trackAssignments?.[0];
                           const vcat = visualCategories.find(
                             (vc) => vc.id === assignment?.visualCategoryId
                           );
@@ -911,10 +940,19 @@ export function ChartEditor({
                                   <div className="flex items-center gap-1.5">
                                     <p className="text-xs font-bold">{course.name}</p>
                                     {isViolation && (
-                                      <AlertTriangle
-                                        className="h-3.5 w-3.5 text-destructive shrink-0 animate-pulse"
-                                        title="خطای پیش‌نیاز یا عدم تطابق قوانین"
-                                      />
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setIssuesModalOpen(true);
+                                        }}
+                                        className="inline-flex items-center text-destructive hover:scale-110 transition-transform cursor-pointer"
+                                        title="کلیک جهت مشاهده متن دقیق خطا"
+                                      >
+                                        <AlertTriangle
+                                          className="h-3.5 w-3.5 text-destructive shrink-0 animate-pulse"
+                                        />
+                                      </button>
                                     )}
                                   </div>
                                   <p className="text-[10px] text-muted-foreground font-mono">
@@ -964,8 +1002,134 @@ export function ChartEditor({
               );
             })}
           </div>
+
+          {/* Floating Issues Banner at bottom */}
+          {validation.issues.length > 0 && (
+            <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40">
+              <button
+                type="button"
+                onClick={() => setIssuesModalOpen(true)}
+                className="flex items-center gap-2.5 px-4 py-2 rounded-full bg-background/95 backdrop-blur border border-destructive/40 text-destructive text-xs font-bold shadow-lg hover:bg-destructive/10 transition-all cursor-pointer"
+              >
+                <AlertTriangle className="h-4 w-4 animate-pulse shrink-0" />
+                <span>
+                  {validation.issues.filter((i) => i.type === "error").length} خطا و {validation.issues.filter((i) => i.type === "warning").length} هشدار در چارت — کلیک جهت مشاهده جزئیات
+                </span>
+                <ArrowRight className="h-3 w-3 rotate-180 shrink-0" />
+              </button>
+            </div>
+          )}
         </main>
       </div>
+
+      {/* ========================================================= */}
+      {/* VALIDATION REPORT DIALOG (MODAL) */}
+      {/* ========================================================= */}
+      <Dialog open={issuesModalOpen} onOpenChange={setIssuesModalOpen}>
+        <DialogContent className="sm:max-w-xl max-h-[85vh] flex flex-col p-0 overflow-hidden" dir="rtl">
+          <DialogHeader className="p-4 sm:p-5 border-b shrink-0">
+            <DialogTitle className="text-sm font-bold flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-primary" />
+              گزارش جامع اعتبارسنجی قوانین و پیش‌نیازهای چارت
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              بررسی انطباق پیش‌نیازها، هم‌نیازها، سقف/کف واحدهای هر ترم و شروط فارغ‌التحصیلی گرایش
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-4 text-xs">
+            {/* Summary Chips */}
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="p-2.5 rounded-xl border border-destructive/20 bg-destructive/5">
+                <p className="text-[10px] text-muted-foreground">خطاهای پیش‌نیاز</p>
+                <p className="text-sm font-bold text-destructive">
+                  {validation.issues.filter((i) => i.type === "error").length} مورد
+                </p>
+              </div>
+              <div className="p-2.5 rounded-xl border border-amber-500/20 bg-amber-500/5">
+                <p className="text-[10px] text-muted-foreground">هشدارهای ترم‌ها</p>
+                <p className="text-sm font-bold text-amber-600 dark:text-amber-400">
+                  {validation.issues.filter((i) => i.type === "warning").length} مورد
+                </p>
+              </div>
+              <div className="p-2.5 rounded-xl border border-primary/20 bg-primary/5">
+                <p className="text-[10px] text-muted-foreground">مجموع کل واحدها</p>
+                <p className="text-sm font-bold text-primary">{totalChartCredits} واحد</p>
+              </div>
+            </div>
+
+            {/* Issues List */}
+            {validation.issues.length > 0 ? (
+              <div className="space-y-2">
+                <p className="font-bold text-foreground">لیست خطاها و هشدارهای شناسایی‌شده:</p>
+                <div className="space-y-2">
+                  {validation.issues.map((issue, idx) => (
+                    <div
+                      key={issue.id || idx}
+                      className={`p-3 rounded-xl border flex items-start gap-2.5 ${
+                        issue.type === "error"
+                          ? "border-destructive/30 bg-destructive/10 text-destructive dark:text-red-300"
+                          : "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300"
+                      }`}
+                    >
+                      {issue.type === "error" ? (
+                        <XCircle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
+                      ) : (
+                        <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500 mt-0.5" />
+                      )}
+                      <div className="space-y-0.5 flex-1">
+                        <p className="font-semibold text-xs leading-relaxed">{issue.message}</p>
+                        {issue.termIndex && (
+                          <span className="inline-block text-[10px] opacity-75 font-mono">
+                            مربوط به ترم {issue.termIndex}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="p-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-center space-y-2 text-emerald-700 dark:text-emerald-300">
+                <CheckCircle2 className="h-8 w-8 mx-auto text-emerald-500" />
+                <p className="font-bold">تمام پیش‌نیازها و هم‌نیازها کاملاً رعایت شده‌اند!</p>
+                <p className="text-xs opacity-80">هیچ تداخل ترتیبی یا خطای واحدی در چارت شما وجود ندارد.</p>
+              </div>
+            )}
+
+            {/* Track Graduation Requirements Status */}
+            {validation.ruleEval && (
+              <div className="pt-2 border-t space-y-2">
+                <p className="font-bold text-foreground">وضعیت شروط مصوب گرایش ({activeTrack?.name}):</p>
+                <div className="space-y-1.5">
+                  {validation.ruleEval.categoryStats.map((catStat) => (
+                    <div
+                      key={catStat.categoryId}
+                      className="flex items-center justify-between p-2 rounded-lg bg-muted/40 text-xs"
+                    >
+                      <span>{catStat.categoryName}:</span>
+                      <span className="font-mono font-bold">
+                        {catStat.actualCredits} از {catStat.minCreditsRequired} واحد مجاز
+                        {catStat.isSatisfied ? " ✓" : " ✗"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="p-3 border-t bg-muted/20 shrink-0">
+            <Button
+              size="sm"
+              onClick={() => setIssuesModalOpen(false)}
+              className="w-full h-8 text-xs font-semibold"
+            >
+              متوجه شدم و بستن
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

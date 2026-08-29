@@ -31,7 +31,9 @@ export async function GET(request: Request) {
       success: true,
       data: {
         visual: visualCats,
+        visualCategories: visualCats,
         rule: ruleCats,
+        ruleCategories: ruleCats,
       },
     });
   } catch (error) {

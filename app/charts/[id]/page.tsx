@@ -65,8 +65,8 @@ export default function ChartEditorPage() {
         if (loadedChart.trackId) {
           const catsRes = await fetch(`/api/categories?trackId=${loadedChart.trackId}`).then((r) => r.json());
           if (catsRes.success && catsRes.data) {
-            setVisualCategories(catsRes.data.visualCategories || []);
-            setRuleCategories(catsRes.data.ruleCategories || []);
+            setVisualCategories(catsRes.data.visualCategories || catsRes.data.visual || []);
+            setRuleCategories(catsRes.data.ruleCategories || catsRes.data.rule || []);
           }
         }
       } catch (err: any) {
