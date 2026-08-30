@@ -149,9 +149,39 @@ export interface CourseOffering {
   courseName?: string;
   courseCode?: string;
   courseUnits?: number;
+  courseDescription?: string;
+  facultyId?: string;
+  facultyName?: string;
   professorName?: string;
   professorTitle?: string;
   professorAvatarUrl?: string;
+  professorEmail?: string;
+  events?: CourseEvent[];
+  reviewsCount?: number;
+  averageRating?: number;
+}
+
+export interface ReviewCriteria {
+  teaching?: number; // تدریس (1-10)
+  grading?: number; // نمره‌دهی (1-10)
+  content?: number; // کیفیت محتوا / منابع (1-10)
+  difficulty?: number; // سطح دشواری / فشار درسی (1-10)
+  behavior?: number; // اخلاق و پاسخگویی (1-10)
+  mastery?: number; // تسلط علمی (1-10)
+}
+
+export interface ReviewItem {
+  id: string;
+  userId?: string | null;
+  authorName?: string;
+  targetType: "professor" | "offering";
+  targetId: string;
+  isAnonymous: boolean;
+  comment: string;
+  overallRating: number; // 1-10
+  criteriaRatings?: ReviewCriteria;
+  createdAt: string;
+  deletedAt?: string | null;
 }
 
 export interface CourseEvent {

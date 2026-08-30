@@ -2100,6 +2100,92 @@ export async function getOfferings(filter?: {
   return list;
 }
 
+export async function getOfferingById(id: string): Promise<CourseOffering | null> {
+  const d1 = getD1();
+  if (d1) {
+    try {
+      const query = `
+        SELECT o.id, o.course_id, o.professor_id, o.created_at, o.deleted_at,
+               c.name AS course_name, c.code AS course_code, c.units AS course_units, c.description AS course_description, c.faculty_id AS course_faculty_id,
+               f.name AS faculty_name,
+               p.name AS professor_name, p.title AS professor_title, p.avatar_url AS professor_avatar_url, p.email AS professor_email
+        FROM course_offerings o
+        JOIN courses c ON o.course_id = c.id
+        LEFT JOIN faculties f ON c.faculty_id = f.id
+        JOIN professors p ON o.professor_id = p.id
+        WHERE o.id = ? AND o.deleted_at IS NULL
+      `;
+      const row = await d1.prepare(query).bind(id).first();
+      if (!row) return null;
+
+      const events = await getEvents({ offeringId: id });
+
+      // Review stats
+      const { results: reviewRows } = await d1
+        .prepare("SELECT overall_rating FROM reviews WHERE target_type = 'offering' AND target_id = ? AND deleted_at IS NULL")
+        .bind(id)
+        .all();
+
+      const revCount = reviewRows?.length || 0;
+      const avgRating =
+        revCount > 0
+          ? (reviewRows || []).reduce((sum: number, r: any) => sum + Number(r.overall_rating), 0) / revCount
+          : 0;
+
+      return {
+        id: (row as any).id,
+        courseId: (row as any).course_id,
+        professorId: (row as any).professor_id,
+        createdAt: (row as any).created_at,
+        deletedAt: (row as any).deleted_at || null,
+        courseName: (row as any).course_name,
+        courseCode: (row as any).course_code,
+        courseUnits: Number((row as any).course_units) || 3,
+        courseDescription: (row as any).course_description || "",
+        facultyId: (row as any).course_faculty_id,
+        facultyName: (row as any).faculty_name || "دانشکده مهندسی برق و کامپیوتر",
+        professorName: (row as any).professor_name,
+        professorTitle: (row as any).professor_title,
+        professorAvatarUrl: (row as any).professor_avatar_url,
+        professorEmail: (row as any).professor_email,
+        events,
+        reviewsCount: revCount,
+        averageRating: Number(avgRating.toFixed(1)),
+      };
+    } catch (err) {
+      console.error("D1 getOfferingById error:", err);
+    }
+  }
+
+  await initFallbackDevData();
+  const o = offeringsStore.find((item) => item.id === id && !item.deletedAt);
+  if (!o) return null;
+
+  const crs = coursesStore.find((c) => c.id === o.courseId);
+  const prof = professorsStore.find((p) => p.id === o.professorId);
+  const fac = facultiesStore.find((f) => f.id === crs?.facultyId);
+  const events = eventsStore.filter((e) => e.offeringId === id && !e.isUserCustom);
+  const revs = reviewsStore.filter((r) => r.targetType === "offering" && r.targetId === id && !r.deletedAt);
+  const avg = revs.length > 0 ? revs.reduce((sum, r) => sum + r.overallRating, 0) / revs.length : 0;
+
+  return {
+    ...o,
+    courseName: crs?.name,
+    courseCode: crs?.code,
+    courseUnits: crs?.units,
+    courseDescription: crs?.description,
+    facultyId: crs?.facultyId,
+    facultyName: fac?.name || "دانشکده مهندسی برق و کامپیوتر",
+    professorName: prof?.name,
+    professorTitle: prof?.title,
+    professorAvatarUrl: prof?.avatarUrl,
+    professorEmail: prof?.email,
+    events,
+    reviewsCount: revs.length,
+    averageRating: Number(avg.toFixed(1)),
+  };
+}
+
 export async function createOffering(
   courseIdOrData: string | { courseId: string; professorId: string },
   professorIdArg?: string
@@ -3032,4 +3118,24 @@ export async function createReview(data: {
   };
   reviewsStore.push(newRev);
   return newRev;
+}
+
+export async function deleteReview(id: string): Promise<boolean> {
+  const now = new Date().toISOString();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1.prepare("UPDATE reviews SET deleted_at = ? WHERE id = ?").bind(now, id).run();
+      return true;
+    } catch (err) {
+      console.error("D1 deleteReview error:", err);
+      return false;
+    }
+  }
+
+  await initFallbackDevData();
+  const r = reviewsStore.find((item) => item.id === id);
+  if (!r) return false;
+  r.deletedAt = now;
+  return true;
 }
