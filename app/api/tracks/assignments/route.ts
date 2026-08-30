@@ -1,3 +1,4 @@
+import { requireAdminSession } from "@/lib/auth";
 import { getTrackAssignments, assignCourseToCategories, bulkAssignTrackCourses } from "@/lib/db";
 
 export async function GET(request: Request) {
@@ -19,6 +20,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const auth = await requireAdminSession(request);
+    if (!auth.authorized) return auth.response!;
     const body = await request.json();
     const { trackId, assignments, courseId, visualCategoryId, ruleCategoryId } = body;
 

@@ -1,17 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getEvents, createEvent } from "@/lib/db";
-import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
+import { requireAdminSession } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
   try {
-    const token = getAuthTokenFromRequest(request);
-    const session = token ? await verifySessionToken(token) : null;
-    if (!session || (session.role !== "admin" && session.role !== "super_admin")) {
-      return NextResponse.json(
-        { success: false, message: "دسترسی غیرمجاز. فقط مدیران می‌توانند رویدادها را کپی کنند." },
-        { status: 403 }
-      );
-    }
+    const auth = await requireAdminSession(request);
+    if (!auth.authorized) return auth.response! as NextResponse;
 
     const body = await request.json();
     const { sourceTerm, targetTerm, resetExamDates = false } = body;

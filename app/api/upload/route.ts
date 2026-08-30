@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
+import { requireAdminSession } from "@/lib/auth";
 import crypto from "node:crypto";
 
 /**
@@ -9,14 +9,8 @@ import crypto from "node:crypto";
  */
 export async function POST(request: NextRequest) {
   try {
-    const token = getAuthTokenFromRequest(request);
-    const session = token ? await verifySessionToken(token) : null;
-    if (!session || (session.role !== "admin" && session.role !== "super_admin")) {
-      return NextResponse.json(
-        { success: false, message: "عدم دسترسی کافی برای آپلود فایل" },
-        { status: 403 }
-      );
-    }
+    const auth = await requireAdminSession(request);
+    if (!auth.authorized) return auth.response! as NextResponse;
 
     const formData = await request.formData();
     const file = formData.get("file") as File | null;

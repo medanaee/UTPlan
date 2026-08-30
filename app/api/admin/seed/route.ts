@@ -1,7 +1,11 @@
 import { seedDatabase } from "@/lib/db";
+import { requireAdminSession } from "@/lib/auth";
 
 export async function POST(request: Request) {
   try {
+    const auth = await requireAdminSession(request);
+    if (!auth.authorized) return auth.response!;
+
     if (process.env.NODE_ENV === "production") {
       return Response.json(
         {

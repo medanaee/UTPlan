@@ -1,3 +1,4 @@
+import { requireAdminSession } from "@/lib/auth";
 import {
   getVisualCategories,
   createVisualCategory,
@@ -44,6 +45,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const auth = await requireAdminSession(request);
+    if (!auth.authorized) return auth.response!;
     const body = await request.json();
     const { type, trackId, name, color, sortOrder, minCredits, parentId } = body as {
       type: "visual" | "rule";
@@ -74,6 +77,8 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const auth = await requireAdminSession(request);
+    if (!auth.authorized) return auth.response!;
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     const type = searchParams.get("type"); // 'visual' | 'rule'

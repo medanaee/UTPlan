@@ -1,3 +1,4 @@
+import { requireAdminSession } from "@/lib/auth";
 import { getFaculties, createFaculty, updateFaculty, deleteFaculty } from "@/lib/db";
 
 export async function GET() {
@@ -12,6 +13,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const auth = await requireAdminSession(request);
+    if (!auth.authorized) return auth.response!;
     const body = await request.json();
     const { name, code } = body as { name?: string; code?: string };
 
@@ -29,6 +32,8 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
+    const auth = await requireAdminSession(request);
+    if (!auth.authorized) return auth.response!;
     const body = await request.json();
     const { id, name, code } = body as { id?: string; name?: string; code?: string };
 
@@ -50,6 +55,8 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const auth = await requireAdminSession(request);
+    if (!auth.authorized) return auth.response!;
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     if (!id) {

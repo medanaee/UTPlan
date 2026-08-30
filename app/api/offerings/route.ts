@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOfferings, createOffering, updateOffering, deleteOffering } from "@/lib/db";
-import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
+import { requireAdminSession } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,14 +22,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const token = getAuthTokenFromRequest(request);
-    const session = token ? await verifySessionToken(token) : null;
-    if (!session || (session.role !== "admin" && session.role !== "super_admin")) {
-      return NextResponse.json(
-        { success: false, message: "عدم دسترسی کافی" },
-        { status: 403 }
-      );
-    }
+    const auth = await requireAdminSession(request);
+    if (!auth.authorized) return auth.response! as NextResponse;
 
     const body = await request.json();
     const { courseId, professorId } = body;
@@ -62,14 +56,8 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const token = getAuthTokenFromRequest(request);
-    const session = token ? await verifySessionToken(token) : null;
-    if (!session || (session.role !== "admin" && session.role !== "super_admin")) {
-      return NextResponse.json(
-        { success: false, message: "عدم دسترسی کافی" },
-        { status: 403 }
-      );
-    }
+    const auth = await requireAdminSession(request);
+    if (!auth.authorized) return auth.response! as NextResponse;
 
     const body = await request.json();
     const { id, courseId, professorId } = body;
@@ -105,14 +93,8 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const token = getAuthTokenFromRequest(request);
-    const session = token ? await verifySessionToken(token) : null;
-    if (!session || (session.role !== "admin" && session.role !== "super_admin")) {
-      return NextResponse.json(
-        { success: false, message: "عدم دسترسی کافی" },
-        { status: 403 }
-      );
-    }
+    const auth = await requireAdminSession(request);
+    if (!auth.authorized) return auth.response! as NextResponse;
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");

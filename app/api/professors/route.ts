@@ -1,3 +1,4 @@
+import { requireAdminSession } from "@/lib/auth";
 import { getProfessors, createProfessor, updateProfessor, deleteProfessor } from "@/lib/db";
 
 export async function GET(request: Request) {
@@ -14,6 +15,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const auth = await requireAdminSession(request);
+    if (!auth.authorized) return auth.response!;
     const body = await request.json();
     const { facultyId, firstName, lastName, name, title, email, avatarUrl, links } = body;
 
@@ -41,6 +44,8 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
+    const auth = await requireAdminSession(request);
+    if (!auth.authorized) return auth.response!;
     const body = await request.json();
     const { id, facultyId, firstName, lastName, name, title, email, avatarUrl, links } = body;
 
@@ -72,6 +77,8 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const auth = await requireAdminSession(request);
+    if (!auth.authorized) return auth.response!;
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     if (!id) {

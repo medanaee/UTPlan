@@ -147,3 +147,57 @@ export function createAuthCookieHeader(token: string, maxAge = 60 * 60 * 24 * 7)
 export function createClearAuthCookieHeader(): string {
   return `${TOKEN_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`;
 }
+
+/**
+ * Require valid Admin or Super Admin session with Live Database Check
+ */
+export async function requireAdminSession(request: Request): Promise<{
+  authorized: boolean;
+  user?: UserSession;
+  response?: Response;
+}> {
+  const token = getAuthTokenFromRequest(request);
+  if (!token) {
+    return {
+      authorized: false,
+      response: Response.json(
+        { success: false, message: "احراز هویت نشده‌اید." },
+        { status: 401 }
+      ),
+    };
+  }
+
+  const session = await verifySessionToken(token);
+  if (!session) {
+    return {
+      authorized: false,
+      response: Response.json(
+        { success: false, message: "نشست کاربری نامعتبر است." },
+        { status: 401 }
+      ),
+    };
+  }
+
+  // Dynamic import to avoid circular dependencies if any
+  const { findUserById } = await import("./db");
+  const liveUser = await findUserById(session.id);
+  if (!liveUser || (liveUser.role !== "admin" && liveUser.role !== "super_admin")) {
+    return {
+      authorized: false,
+      response: Response.json(
+        { success: false, message: "دسترسی غیرمجاز. فقط مدیران مجاز هستند." },
+        { status: 403 }
+      ),
+    };
+  }
+
+  return {
+    authorized: true,
+    user: {
+      id: liveUser.id,
+      name: liveUser.name,
+      email: liveUser.email,
+      role: liveUser.role,
+    },
+  };
+}
