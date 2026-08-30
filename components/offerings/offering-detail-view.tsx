@@ -24,6 +24,7 @@ import {
   ShieldAlert,
   Sparkles,
   Info,
+  ArrowLeft,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -681,27 +682,31 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-4 space-y-3">
-              <div className="space-y-1">
-                <span className="font-bold text-sm block text-foreground">{offering.courseName}</span>
-                <span className="font-mono text-xs text-muted-foreground block">{offering.courseCode}</span>
-              </div>
+              <Link
+                href={`/courses/${offering.courseId}`}
+                className="group flex items-center justify-between p-3.5 rounded-2xl border border-border/80 bg-card hover:border-primary/50 hover:shadow-xs transition-all text-xs"
+              >
+                <div className="space-y-1 truncate flex-1 min-w-0 pr-1">
+                  <span className="font-bold text-sm block truncate group-hover:text-primary transition-colors text-foreground">
+                    {offering.courseName}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="font-mono text-[10px]">
+                      {offering.courseCode || "---"}
+                    </Badge>
+                    <span className="text-[11px] text-muted-foreground">
+                      {offering.courseUnits || 3} واحد تحصیلی
+                    </span>
+                  </div>
+                </div>
+                <ArrowLeft className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:-translate-x-1 transition-all shrink-0 mr-2" />
+              </Link>
 
               {offering.courseDescription && (
-                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">
+                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3 bg-muted/20 p-2.5 rounded-xl border border-border/50">
                   {offering.courseDescription}
                 </p>
               )}
-
-              <Button
-                variant="outline"
-                size="sm"
-                asChild
-                className="w-full text-xs font-semibold h-8"
-              >
-                <Link href={`/courses/${offering.courseId}`}>
-                  مشاهده صفحه کامل درس و پیش‌نیازها
-                </Link>
-              </Button>
             </CardContent>
           </Card>
 
@@ -714,32 +719,31 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-4 space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0">
-                  {offering.professorName?.[0] || "ا"}
+              <Link
+                href={`/professors/${offering.professorId}`}
+                className="group flex items-center justify-between p-3.5 rounded-2xl border border-border/80 bg-card hover:border-primary/50 hover:shadow-xs transition-all text-xs"
+              >
+                <div className="flex items-center gap-3 truncate flex-1 min-w-0 pr-1">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0">
+                    {offering.professorName?.[0] || "ا"}
+                  </div>
+                  <div className="truncate">
+                    <span className="font-bold text-sm block truncate group-hover:text-primary transition-colors text-foreground">
+                      {offering.professorName}
+                    </span>
+                    <span className="text-xs text-muted-foreground block truncate">
+                      {offering.professorTitle || "استاد تمام"}
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <span className="font-bold text-sm block text-foreground">{offering.professorName}</span>
-                  <span className="text-xs text-muted-foreground block">{offering.professorTitle || "استاد تمام"}</span>
-                </div>
-              </div>
+                <ArrowLeft className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:-translate-x-1 transition-all shrink-0 mr-2" />
+              </Link>
 
               {offering.professorEmail && (
-                <div className="text-xs text-muted-foreground font-mono">
+                <div className="text-xs text-muted-foreground font-mono bg-muted/20 p-2.5 rounded-xl border border-border/50">
                   ایمیل: {offering.professorEmail}
                 </div>
               )}
-
-              <Button
-                variant="outline"
-                size="sm"
-                asChild
-                className="w-full text-xs font-semibold h-8"
-              >
-                <Link href={`/professors/${offering.professorId}`}>
-                  مشاهده پروفایل و سایر ارائه‌های استاد
-                </Link>
-              </Button>
             </CardContent>
           </Card>
 

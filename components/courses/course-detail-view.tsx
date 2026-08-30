@@ -327,16 +327,17 @@ export function CourseDetailView({ course }: CourseDetailViewProps) {
             <CardContent className="pt-4 space-y-3">
               {offerings.length > 0 ? (
                 offerings.map((off) => (
-                  <div
+                  <Link
                     key={off.id}
-                    className="flex items-center justify-between p-3 rounded-2xl border border-border/80 bg-card shadow-2xs"
+                    href={`/offerings/${off.id}`}
+                    className="group flex items-center justify-between p-3 rounded-2xl border border-border/80 bg-card hover:border-primary/50 hover:shadow-xs transition-all text-xs"
                   >
-                    <div className="flex items-center gap-3 truncate">
+                    <div className="flex items-center gap-3 truncate flex-1 min-w-0 pr-1">
                       <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0">
                         {off.professorName?.[0] || "ا"}
                       </div>
                       <div className="truncate">
-                        <span className="font-bold text-xs block truncate text-foreground">
+                        <span className="font-bold text-xs block truncate group-hover:text-primary transition-colors text-foreground">
                           {off.professorName}
                         </span>
                         {off.professorTitle && (
@@ -346,7 +347,8 @@ export function CourseDetailView({ course }: CourseDetailViewProps) {
                         )}
                       </div>
                     </div>
-                  </div>
+                    <ArrowLeft className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary group-hover:-translate-x-1 transition-all shrink-0 mr-2" />
+                  </Link>
                 ))
               ) : (
                 <div className="py-8 text-center text-xs text-muted-foreground/70 bg-muted/20 rounded-xl border border-dashed">
