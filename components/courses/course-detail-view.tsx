@@ -116,7 +116,7 @@ export function CourseDetailView({ course }: CourseDetailViewProps) {
           <div className="space-y-3 max-w-3xl">
             {/* Badges Bar */}
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline" className="font-mono text-xs font-bold px-3 py-1 bg-background/80">
+              <Badge variant="outline" className=" text-xs font-bold px-3 py-1 bg-background/80">
                 کد درس: {course.code}
               </Badge>
               <Badge variant="secondary" className="text-xs font-bold px-2.5 py-1">
@@ -209,7 +209,7 @@ export function CourseDetailView({ course }: CourseDetailViewProps) {
                         <span className="font-bold block truncate group-hover:text-primary transition-colors">
                           {p.requiredCourseName}
                         </span>
-                        <span className="font-mono text-[10px] text-muted-foreground">
+                        <span className=" text-[10px] text-muted-foreground">
                           {p.requiredCourseCode}
                         </span>
                       </div>
@@ -249,7 +249,7 @@ export function CourseDetailView({ course }: CourseDetailViewProps) {
                         <span className="font-bold block truncate group-hover:text-primary transition-colors">
                           {c.requiredCourseName}
                         </span>
-                        <span className="font-mono text-[10px] text-muted-foreground">
+                        <span className=" text-[10px] text-muted-foreground">
                           {c.requiredCourseCode}
                         </span>
                       </div>
@@ -290,7 +290,7 @@ export function CourseDetailView({ course }: CourseDetailViewProps) {
                           {d.courseName}
                         </span>
                         <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="font-mono text-[10px]">
+                          <Badge variant="outline" className=" text-[10px]">
                             {d.courseCode}
                           </Badge>
                           <span className="text-[10px] text-purple-600 font-semibold">

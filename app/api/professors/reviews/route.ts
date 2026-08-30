@@ -5,21 +5,21 @@ import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const offeringId = searchParams.get("offeringId");
+    const professorId = searchParams.get("professorId");
 
-    if (!offeringId) {
+    if (!professorId) {
       return NextResponse.json(
-        { success: false, message: "شناسه ارائه الزامی است." },
+        { success: false, message: "شناسه استاد الزامی است." },
         { status: 400 }
       );
     }
 
-    const reviews = await getReviews("offering", offeringId);
+    const reviews = await getReviews("professor", professorId);
     return NextResponse.json({ success: true, data: reviews });
   } catch (error) {
-    console.error("GET offering reviews error:", error);
+    console.error("GET professor reviews error:", error);
     return NextResponse.json(
-      { success: false, message: "خطا در دریافت نظرات ارائه" },
+      { success: false, message: "خطا در دریافت نظرات استاد" },
       { status: 500 }
     );
   }
@@ -31,11 +31,11 @@ export async function POST(request: NextRequest) {
     const session = token ? await verifySessionToken(token) : null;
 
     const body = await request.json();
-    const { offeringId, comment, isAnonymous, criteriaRatings } = body;
+    const { professorId, comment, isAnonymous, criteriaRatings } = body;
 
-    if (!offeringId || !comment || !comment.trim()) {
+    if (!professorId || !comment || !comment.trim()) {
       return NextResponse.json(
-        { success: false, message: "شناسه ارائه و متن نظر الزامی است." },
+        { success: false, message: "شناسه استاد و متن نظر الزامی است." },
         { status: 400 }
       );
     }
@@ -57,8 +57,8 @@ export async function POST(request: NextRequest) {
 
     const newRev = await createReview({
       userId: session?.id || null,
-      targetType: "offering",
-      targetId: offeringId,
+      targetType: "professor",
+      targetId: professorId,
       comment: comment.trim(),
       isAnonymous: Boolean(isAnonymous),
       overallRating,
@@ -67,13 +67,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "نظر شما با موفقیت ثبت شد.",
+      message: "نظر شما با موفقیت برای این استاد ثبت شد.",
       data: newRev,
     });
   } catch (error) {
-    console.error("POST offering review error:", error);
+    console.error("POST professor review error:", error);
     return NextResponse.json(
-      { success: false, message: "خطا در ثبت نظر" },
+      { success: false, message: "خطا در ثبت نظر استاد" },
       { status: 500 }
     );
   }
@@ -148,7 +148,7 @@ export async function PUT(request: NextRequest) {
       data: updated,
     });
   } catch (error) {
-    console.error("PUT offering review error:", error);
+    console.error("PUT professor review error:", error);
     return NextResponse.json(
       { success: false, message: "خطا در ویرایش نظر" },
       { status: 500 }
@@ -210,7 +210,7 @@ export async function DELETE(request: NextRequest) {
       message: "نظر با موفقیت حذف شد.",
     });
   } catch (error) {
-    console.error("DELETE offering review error:", error);
+    console.error("DELETE professor review error:", error);
     return NextResponse.json(
       { success: false, message: "خطا در حذف نظر" },
       { status: 500 }

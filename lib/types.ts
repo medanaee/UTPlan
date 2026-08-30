@@ -128,6 +128,7 @@ export interface ProfessorLinks {
 export interface Professor {
   id: string;
   facultyId: string;
+  facultyName?: string;
   firstName?: string;
   lastName?: string;
   name: string;
@@ -137,6 +138,10 @@ export interface Professor {
   links?: ProfessorLinks;
   createdAt: string;
   deletedAt?: string | null;
+  // Joined / Computed
+  offerings?: CourseOffering[];
+  reviewsCount?: number;
+  averageRating?: number;
 }
 
 export interface CourseOffering {

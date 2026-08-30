@@ -4,12 +4,11 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Layers,
+  Users,
   BookOpen,
-  User,
-  Calendar,
-  Clock,
-  MapPin,
+  Building2,
+  Mail,
+  Globe,
   Star,
   MessageSquare,
   Trash2,
@@ -25,6 +24,7 @@ import {
   Loader2,
   Sparkles,
   Info,
+  ExternalLink,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,23 +40,13 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import type { CourseOffering, ReviewItem, UserSession } from "@/lib/types";
+import type { Professor, ReviewItem, UserSession } from "@/lib/types";
 
-const DAYS_NAMES: Record<number, string> = {
-  0: "شنبه",
-  1: "یکشنبه",
-  2: "دوشنبه",
-  3: "سه‌شنبه",
-  4: "چهارشنبه",
-  5: "پنج‌شنبه",
-  6: "جمعه",
-};
-
-interface OfferingDetailViewProps {
-  offering: CourseOffering;
+interface ProfessorDetailViewProps {
+  professor: Professor;
 }
 
-export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
+export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
 
@@ -70,8 +60,8 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
   const [scores, setScores] = useState<{
     teaching?: number;
     grading?: number;
-    content?: number;
-    difficulty?: number;
+    behavior?: number;
+    mastery?: number;
   }>({});
 
   const [submitting, setSubmitting] = useState(false);
@@ -86,13 +76,13 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
   const [editScores, setEditScores] = useState<{
     teaching?: number;
     grading?: number;
-    content?: number;
-    difficulty?: number;
+    behavior?: number;
+    mastery?: number;
   }>({});
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
-  // Load current user
+  // Load current user session
   useEffect(() => {
     fetch("/api/auth/me")
       .then((r) => r.json())
@@ -104,16 +94,16 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
       .catch(() => {});
   }, []);
 
-  // Load reviews for this offering
+  // Load reviews for this professor
   const loadReviews = async () => {
     try {
       setLoadingReviews(true);
-      const res = await fetch(`/api/offerings/reviews?offeringId=${offering.id}`).then((r) => r.json());
+      const res = await fetch(`/api/professors/reviews?professorId=${professor.id}`).then((r) => r.json());
       if (res.success && Array.isArray(res.data)) {
         setReviews(res.data);
       }
     } catch (err) {
-      console.error("Error loading offering reviews:", err);
+      console.error("Error loading professor reviews:", err);
     } finally {
       setLoadingReviews(false);
     }
@@ -121,16 +111,16 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
 
   useEffect(() => {
     loadReviews();
-  }, [offering.id]);
+  }, [professor.id]);
 
-  const handleScoreChange = (field: "teaching" | "grading" | "content" | "difficulty", val: number) => {
+  const handleScoreChange = (field: "teaching" | "grading" | "behavior" | "mastery", val: number) => {
     setScores((prev) => ({
       ...prev,
       [field]: prev[field] === val ? undefined : val,
     }));
   };
 
-  const handleEditScoreChange = (field: "teaching" | "grading" | "content" | "difficulty", val: number) => {
+  const handleEditScoreChange = (field: "teaching" | "grading" | "behavior" | "mastery", val: number) => {
     setEditScores((prev) => ({
       ...prev,
       [field]: prev[field] === val ? undefined : val,
@@ -144,17 +134,17 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
     setSubmitSuccess(null);
 
     if (!commentText.trim()) {
-      setSubmitError("لطفاً متن نظر یا تجربه خود را بنویسید.");
+      setSubmitError("لطفاً متن نظر یا تجربه خود درباره این استاد را بنویسید.");
       return;
     }
 
     try {
       setSubmitting(true);
-      const res = await fetch("/api/offerings/reviews", {
+      const res = await fetch("/api/professors/reviews", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          offeringId: offering.id,
+          professorId: professor.id,
           comment: commentText.trim(),
           isAnonymous,
           criteriaRatings: scores,
@@ -162,7 +152,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
       }).then((r) => r.json());
 
       if (res.success) {
-        setSubmitSuccess("نظر شما با موفقیت ثبت شد و در دسترس دانشجویان قرار گرفت.");
+        setSubmitSuccess("نظر شما با موفقیت برای این استاد ثبت شد.");
         setCommentText("");
         setIsAnonymous(false);
         setScores({});
@@ -200,7 +190,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
 
     try {
       setSavingEdit(true);
-      const res = await fetch("/api/offerings/reviews", {
+      const res = await fetch("/api/professors/reviews", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -230,7 +220,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
     if (!confirm("آیا از حذف این نظر اطمینان دارید؟")) return;
 
     try {
-      const res = await fetch(`/api/offerings/reviews?id=${reviewId}`, {
+      const res = await fetch(`/api/professors/reviews?id=${reviewId}`, {
         method: "DELETE",
       }).then((r) => r.json());
 
@@ -263,47 +253,47 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
   const criteriaAverages = React.useMemo(() => {
     const t: number[] = [];
     const g: number[] = [];
-    const c: number[] = [];
-    const d: number[] = [];
+    const b: number[] = [];
+    const m: number[] = [];
 
     reviews.forEach((r) => {
       if (r.criteriaRatings?.teaching) t.push(r.criteriaRatings.teaching);
       if (r.criteriaRatings?.grading) g.push(r.criteriaRatings.grading);
-      if (r.criteriaRatings?.content) c.push(r.criteriaRatings.content);
-      if (r.criteriaRatings?.difficulty) d.push(r.criteriaRatings.difficulty);
+      if (r.criteriaRatings?.behavior) b.push(r.criteriaRatings.behavior);
+      if (r.criteriaRatings?.mastery) m.push(r.criteriaRatings.mastery);
     });
 
     const calc = (arr: number[]) => (arr.length > 0 ? (arr.reduce((x, y) => x + y, 0) / arr.length).toFixed(1) : null);
     const teaching = calc(t);
     const grading = calc(g);
-    const content = calc(c);
-    const difficulty = calc(d);
+    const behavior = calc(b);
+    const mastery = calc(m);
 
     return {
       teaching,
       grading,
-      content,
-      difficulty,
-      hasAny: Boolean(teaching || grading || content || difficulty),
+      behavior,
+      mastery,
+      hasAny: Boolean(teaching || grading || behavior || mastery),
     };
   }, [reviews]);
 
+  const offerings = professor.offerings || [];
+
   return (
     <div className="space-y-6">
-      {/* Breadcrumb & Top Actions */}
+      {/* Breadcrumb & Navigation */}
       <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
         <div className="flex items-center gap-1.5 font-medium">
           <Link href="/" className="hover:text-foreground transition-colors">
             خانه
           </Link>
           <ChevronRight className="h-3.5 w-3.5 rotate-180 opacity-50" />
-          <Link href="/offerings" className="hover:text-foreground transition-colors">
-            ارائه‌های درسی
+          <Link href="/professors" className="hover:text-foreground transition-colors">
+            جستجوی اساتید
           </Link>
           <ChevronRight className="h-3.5 w-3.5 rotate-180 opacity-50" />
-          <span className="text-foreground font-bold">
-            {offering.courseName} — {offering.professorName}
-          </span>
+          <span className="text-foreground font-bold">{professor.name}</span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -329,11 +319,11 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push("/offerings")}
+            onClick={() => router.push("/professors")}
             className="h-8 gap-1 text-xs text-muted-foreground hover:text-foreground"
           >
             <ArrowRight className="h-3.5 w-3.5" />
-            <span>بازگشت به ارائه‌ها</span>
+            <span>بازگشت به لیست اساتید</span>
           </Button>
         </div>
       </div>
@@ -341,36 +331,30 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
       {/* Hero Header Card - Flat & Minimal */}
       <div className="relative overflow-hidden rounded-3xl border border-primary/20 bg-linear-to-b from-primary/10 via-background to-background p-6 sm:p-8 shadow-xs">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-          <div className="space-y-4 max-w-3xl">
-            {/* Badges Bar */}
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline" className=" text-xs font-bold px-3 py-1 bg-background/80">
-                {offering.courseCode || "کد درس"}
-              </Badge>
-              <Badge variant="secondary" className="text-xs font-bold px-2.5 py-1">
-                {offering.courseUnits || 3} واحد تحصیلی
-              </Badge>
-              <span className="text-xs font-semibold px-3 py-1 rounded-full border bg-primary/10 text-primary border-primary/30">
-                ارائه فعال در دانشکده
-              </span>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 max-w-3xl">
+            {/* Avatar */}
+            <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-primary/10 text-primary flex items-center justify-center font-black text-2xl sm:text-3xl shrink-0 border-2 border-primary/30 shadow-xs">
+              {professor.name[0] || "ا"}
             </div>
 
-            {/* Course & Professor Title */}
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
-                {offering.courseName}
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className="text-xs font-bold bg-background/80">
+                  {professor.title || "استاد تمام"}
+                </Badge>
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Building2 className="h-3.5 w-3.5 text-primary shrink-0 opacity-80" />
+                  <span>{professor.facultyName || "دانشکده مهندسی برق و کامپیوتر"}</span>
+                </span>
+              </div>
+
+              <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-foreground">
+                {professor.name}
               </h1>
-              <p className="text-sm sm:text-base text-muted-foreground font-semibold mt-1 flex items-center gap-2">
-                <span>مدرس:</span>
-                <span className="text-foreground">{offering.professorName}</span>
-                {offering.professorTitle && (
-                  <span className="text-xs font-normal opacity-80">({offering.professorTitle})</span>
-                )}
-              </p>
             </div>
           </div>
 
-          {/* Quick Score Box */}
+          {/* Quick Stats Box */}
           <div className="flex items-center gap-3 shrink-0 self-start lg:self-center">
             <div className="rounded-2xl border border-primary/30 bg-card p-4 text-center min-w-[110px] shadow-2xs">
               <div className="flex items-center justify-center gap-1 text-primary">
@@ -385,96 +369,70 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
             <div className="rounded-2xl border border-border/80 bg-card p-4 text-center min-w-[90px] shadow-2xs">
               <span className="text-2xl font-black text-foreground block">{reviews.length}</span>
               <span className="text-[10px] text-muted-foreground font-medium mt-1 block">
-                نظر و تجربه
+                نظر و ارزیابی
               </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main Grid Content */}
+      {/* Main Content Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Right 2 Columns: Classes/Schedule + Reviews Feed */}
+        {/* Right 2 Columns: Offered Courses & Reviews Section */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Class Schedule & Events Card */}
+          {/* Courses Taught by this Professor */}
           <Card className="border-border/80 shadow-xs">
             <CardHeader className="pb-3 border-b border-border/50">
               <CardTitle className="text-sm font-bold flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-primary" />
-                زمان‌بندی کلاس‌ها و تاریخ امتحانات ثبت‌شده
+                <BookOpen className="h-4 w-4 text-primary" />
+                دروس و ارائه‌های فعال این استاد ({offerings.length})
               </CardTitle>
               <CardDescription className="text-xs">
-                رویدادهای رسمی این ارائه در نیمسال‌های تحصیلی
+                دروسی که توسط این استاد در دانشکده ارائه و تدریس می‌شوند.
               </CardDescription>
             </CardHeader>
-            <CardContent className="pt-4 space-y-3">
-              {offering.events && offering.events.length > 0 ? (
-                offering.events.map((evt) => (
-                  <div
-                    key={evt.id}
-                    className="p-3.5 rounded-2xl border border-border/80 bg-card/60 space-y-2.5 shadow-2xs"
+            <CardContent className="pt-4 space-y-2.5">
+              {offerings.length > 0 ? (
+                offerings.map((off) => (
+                  <Link
+                    key={off.id}
+                    href={`/offerings/${off.id}`}
+                    className="group flex items-center justify-between p-3.5 rounded-2xl border border-border/80 bg-card hover:border-primary/50 hover:shadow-xs transition-all text-xs"
                   >
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-2">
+                    <div className="space-y-1 truncate flex-1 min-w-0 pr-1">
+                      <span className="font-bold text-sm block truncate group-hover:text-primary transition-colors text-foreground">
+                        {off.courseName}
+                      </span>
                       <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-xs font-bold">
-                          نیمسال {evt.term}
+                        <Badge variant="outline" className=" text-[10px]">
+                          {off.courseCode || "---"}
                         </Badge>
-                        {evt.groupCode && (
-                          <Badge variant="outline" className="text-xs ">
-                            گروه {evt.groupCode}
-                          </Badge>
-                        )}
-                      </div>
-                      {evt.location && (
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <MapPin className="h-3 w-3 text-primary shrink-0" />
-                          <span>{evt.location}</span>
+                        <span className="text-[11px] text-muted-foreground">
+                          {off.courseUnits || 3} واحد تحصیلی
                         </span>
-                      )}
-                    </div>
-
-                    {/* Weekly Class Slots */}
-                    <div className="flex flex-wrap items-center gap-2 pt-1">
-                      <span className="text-xs font-semibold text-muted-foreground">جلسات هفتگی:</span>
-                      {evt.slots && evt.slots.length > 0 ? (
-                        evt.slots.map((s, idx) => (
-                          <span
-                            key={idx}
-                            className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg bg-primary/5 text-primary border border-primary/20"
-                          >
-                            <Clock className="h-3 w-3" />
-                            <span>{DAYS_NAMES[s.dayOfWeek] || "روز"}: {s.startTime} تا {s.endTime}</span>
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-xs text-muted-foreground">تعیین نشده</span>
-                      )}
-                    </div>
-
-                    {/* Exam Time */}
-                    {evt.examDate && (
-                      <div className="text-xs text-amber-700 dark:text-amber-400 bg-amber-500/10 p-2 rounded-lg border border-amber-500/20 flex items-center justify-between">
-                        <span className="font-semibold">امتحان پایان‌ترم: {evt.examDate}</span>
-                        <span>ساعت: {evt.examStartTime || "۰۸:۳۰"} تا {evt.examEndTime || "۱۱:۰۰"}</span>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                    <div className="flex items-center gap-1 text-[11px] text-muted-foreground group-hover:text-primary font-semibold shrink-0">
+                      <span>مشاهده صفحه ارائه و نظرات</span>
+                      <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-1" />
+                    </div>
+                  </Link>
                 ))
               ) : (
                 <div className="py-8 text-center text-xs text-muted-foreground/70 bg-muted/20 rounded-xl border border-dashed">
-                  هنوز رویداد کلاسی فعالی برای این ارائه در سامانه ثبت نشده است.
+                  درسی برای این استاد در سامانه ثبت نشده است.
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Student Reviews & Discussions Section */}
+          {/* Student Reviews & Ratings Section */}
           <Card className="border-border/80 shadow-xs">
             <CardHeader className="pb-3 border-b border-border/50">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-bold flex items-center gap-2">
                   <MessageSquare className="h-4 w-4 text-primary" />
-                  نظرات و تجربیات دانشجویان در این ارائه ({reviews.length})
+                  ارزیابی و نظرات دانشجویان درباره استاد ({reviews.length})
                 </CardTitle>
                 {isAdmin && (
                   <Badge variant="outline" className="text-[10px] text-destructive border-destructive/30">
@@ -483,7 +441,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                 )}
               </div>
               <CardDescription className="text-xs">
-                نظرات و تجربیات دانشجویانی که قبلاً این درس را با این استاد گذرانده‌اند.
+                دیدگاه‌ها، نقدها و تجربیات ثبت‌شده توسط دانشجویان درباره نحوه تدریس و اخلاق استاد
               </CardDescription>
             </CardHeader>
 
@@ -495,7 +453,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
               >
                 <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
                   <Sparkles className="h-4 w-4 text-primary" />
-                  ثبت نظر و امتیاز شما برای این ارائه درس:
+                  ثبت ارزیابی و نظر شما برای این استاد:
                 </span>
 
                 {submitError && (
@@ -515,14 +473,14 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                 {/* 4 Optional Criteria Sliders/Rating 1 to 10 */}
                 <div className="space-y-2 pt-1 border-t border-border/40">
                   <span className="text-[11px] text-muted-foreground font-medium block">
-                    امتیاز به معیارهای ارائه (از ۱۰ - اختیاری):
+                    امتیاز به معیارهای استاد (از ۱۰ - اختیاری):
                   </span>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                     {/* Teaching */}
                     <div className="space-y-1 bg-card p-2 rounded-xl border border-border/70">
                       <div className="flex justify-between items-center text-[11px]">
-                        <span className="font-semibold">کیفیت تدریس در ارائه:</span>
+                        <span className="font-semibold">کیفیت و شیوه تدریس:</span>
                         <span className=" font-bold text-primary">
                           {scores.teaching ? `${scores.teaching} / 10` : "ثبت‌نشده"}
                         </span>
@@ -571,12 +529,12 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                       </div>
                     </div>
 
-                    {/* Content */}
+                    {/* Behavior */}
                     <div className="space-y-1 bg-card p-2 rounded-xl border border-border/70">
                       <div className="flex justify-between items-center text-[11px]">
-                        <span className="font-semibold">کیفیت اسلایدها و محتوا:</span>
+                        <span className="font-semibold">اخلاق و تعامل با دانشجو:</span>
                         <span className=" font-bold text-primary">
-                          {scores.content ? `${scores.content} / 10` : "ثبت‌نشده"}
+                          {scores.behavior ? `${scores.behavior} / 10` : "ثبت‌نشده"}
                         </span>
                       </div>
                       <div className="flex items-center gap-1 pt-1 overflow-x-auto">
@@ -584,9 +542,9 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                           <button
                             key={num}
                             type="button"
-                            onClick={() => handleScoreChange("content", num)}
+                            onClick={() => handleScoreChange("behavior", num)}
                             className={`flex-1 h-6 rounded text-[10px] font-bold transition-all ${
-                              scores.content === num
+                              scores.behavior === num
                                 ? "bg-primary text-primary-foreground shadow-xs"
                                 : "bg-muted hover:bg-muted/80 text-foreground"
                             }`}
@@ -597,12 +555,12 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                       </div>
                     </div>
 
-                    {/* Difficulty */}
+                    {/* Mastery */}
                     <div className="space-y-1 bg-card p-2 rounded-xl border border-border/70">
                       <div className="flex justify-between items-center text-[11px]">
-                        <span className="font-semibold">سطح دشواری و فشار تکالیف:</span>
+                        <span className="font-semibold">تسلط علمی و پاسخگویی:</span>
                         <span className=" font-bold text-primary">
-                          {scores.difficulty ? `${scores.difficulty} / 10` : "ثبت‌نشده"}
+                          {scores.mastery ? `${scores.mastery} / 10` : "ثبت‌نشده"}
                         </span>
                       </div>
                       <div className="flex items-center gap-1 pt-1 overflow-x-auto">
@@ -610,9 +568,9 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                           <button
                             key={num}
                             type="button"
-                            onClick={() => handleScoreChange("difficulty", num)}
+                            onClick={() => handleScoreChange("mastery", num)}
                             className={`flex-1 h-6 rounded text-[10px] font-bold transition-all ${
-                              scores.difficulty === num
+                              scores.mastery === num
                                 ? "bg-primary text-primary-foreground shadow-xs"
                                 : "bg-muted hover:bg-muted/80 text-foreground"
                             }`}
@@ -631,7 +589,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                   <Textarea
                     value={commentText}
                     onChange={(e) => setCommentText(e.target.value)}
-                    placeholder="تجربه خود از حضور در کلاس، نوع آزمون‌ها، پروژه‌ها و رفتار کلاسی استاد را به اشتراک بگذارید..."
+                    placeholder="دیدگاه خود درباره شیوه تدریس استاد، نحوه برخورد، امتحانات و تکالیف را بنویسید..."
                     rows={3}
                     className="text-xs bg-background resize-none"
                     required
@@ -646,7 +604,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                       onCheckedChange={(c) => setIsAnonymous(Boolean(c))}
                     />
                     <span className="text-xs font-medium text-foreground">
-                      ارسال به صورت ناشناس (نام شما نمایش داده نمی‌شود)
+                      ارسال به صورت ناشناس (نام شما مخفی خواهد ماند)
                     </span>
                   </label>
 
@@ -680,7 +638,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
               ) : reviews.length === 0 ? (
                 <div className="py-12 text-center text-xs text-muted-foreground/80 bg-muted/20 rounded-2xl border border-dashed p-6 space-y-2">
                   <MessageSquare className="h-8 w-8 mx-auto text-muted-foreground/40" />
-                  <p className="font-bold text-foreground">هنوز نظری برای این ارائه ثبت نشده است.</p>
+                  <p className="font-bold text-foreground">هنوز نظری برای این استاد ثبت نشده است.</p>
                   <p className="text-[11px]">اولین نفری باشید که تجربه خود را با سایر دانشجویان به اشتراک می‌گذارد.</p>
                 </div>
               ) : (
@@ -691,7 +649,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
                           <Star className="h-4 w-4 fill-primary text-primary" />
-                          میانگین نمرات معیارها در این ارائه:
+                          میانگین نمرات معیارها بر اساس تجربیات دانشجویان:
                         </span>
                         <Badge variant="outline" className="text-[10px] font-bold border-primary/30 text-primary">
                           برآیند کلی
@@ -733,35 +691,35 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                           </div>
                         )}
 
-                        {criteriaAverages.content && (
+                        {criteriaAverages.behavior && (
                           <div className="space-y-1 bg-card/80 p-2.5 rounded-xl border">
                             <div className="flex items-center justify-between text-xs">
-                              <span className="text-muted-foreground font-medium">کیفیت محتوا و اسلایدها</span>
+                              <span className="text-muted-foreground font-medium">اخلاق و پاسخگویی</span>
                               <span className=" font-bold text-foreground">
-                                {criteriaAverages.content} <span className="text-[10px] text-muted-foreground font-normal">/ ۱۰</span>
+                                {criteriaAverages.behavior} <span className="text-[10px] text-muted-foreground font-normal">/ ۱۰</span>
                               </span>
                             </div>
                             <div className="h-2.5 w-full rounded-full bg-muted/80 overflow-hidden">
                               <div
                                 className="h-full rounded-full bg-linear-to-r from-purple-500 to-pink-400 transition-all duration-700"
-                                style={{ width: `${(Number(criteriaAverages.content) / 10) * 100}%` }}
+                                style={{ width: `${(Number(criteriaAverages.behavior) / 10) * 100}%` }}
                               />
                             </div>
                           </div>
                         )}
 
-                        {criteriaAverages.difficulty && (
+                        {criteriaAverages.mastery && (
                           <div className="space-y-1 bg-card/80 p-2.5 rounded-xl border">
                             <div className="flex items-center justify-between text-xs">
-                              <span className="text-muted-foreground font-medium">سطح دشواری و تکالیف</span>
+                              <span className="text-muted-foreground font-medium">تسلط علمی</span>
                               <span className=" font-bold text-foreground">
-                                {criteriaAverages.difficulty} <span className="text-[10px] text-muted-foreground font-normal">/ ۱۰</span>
+                                {criteriaAverages.mastery} <span className="text-[10px] text-muted-foreground font-normal">/ ۱۰</span>
                               </span>
                             </div>
                             <div className="h-2.5 w-full rounded-full bg-muted/80 overflow-hidden">
                               <div
                                 className="h-full rounded-full bg-linear-to-r from-amber-500 to-yellow-400 transition-all duration-700"
-                                style={{ width: `${(Number(criteriaAverages.difficulty) / 10) * 100}%` }}
+                                style={{ width: `${(Number(criteriaAverages.mastery) / 10) * 100}%` }}
                               />
                             </div>
                           </div>
@@ -806,7 +764,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                           </div>
 
                           <div className="flex items-center gap-2">
-                            {/* Score badge */}
+                            {/* Overall score badge */}
                             <Badge
                               variant="outline"
                               className="text-xs font-bold gap-1 px-2.5 py-0.5 border-primary/30 text-primary bg-primary/5"
@@ -844,12 +802,12 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                         </div>
 
                         {/* Criteria Score Progress Bars */}
-                        {(cRatings.teaching || cRatings.grading || cRatings.content || cRatings.difficulty) && (
+                        {(cRatings.teaching || cRatings.grading || cRatings.behavior || cRatings.mastery) && (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-3 rounded-2xl bg-muted/20 border border-border/60">
                             {cRatings.teaching && (
                               <div className="space-y-1">
                                 <div className="flex items-center justify-between text-[11px]">
-                                  <span className="text-muted-foreground font-medium">کیفیت تدریس در ارائه</span>
+                                  <span className="text-muted-foreground font-medium">شیوه و کیفیت تدریس</span>
                                   <span className=" font-bold text-foreground">
                                     {cRatings.teaching} <span className="text-[9px] text-muted-foreground font-normal">/ ۱۰</span>
                                   </span>
@@ -892,47 +850,47 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                               </div>
                             )}
 
-                            {cRatings.content && (
+                            {cRatings.behavior && (
                               <div className="space-y-1">
                                 <div className="flex items-center justify-between text-[11px]">
-                                  <span className="text-muted-foreground font-medium">کیفیت اسلایدها و محتوا</span>
+                                  <span className="text-muted-foreground font-medium">اخلاق و تعامل با دانشجو</span>
                                   <span className=" font-bold text-foreground">
-                                    {cRatings.content} <span className="text-[9px] text-muted-foreground font-normal">/ ۱۰</span>
+                                    {cRatings.behavior} <span className="text-[9px] text-muted-foreground font-normal">/ ۱۰</span>
                                   </span>
                                 </div>
                                 <div className="h-2 w-full rounded-full bg-muted/70 overflow-hidden">
                                   <div
                                     className={`h-full rounded-full transition-all duration-500 ${
-                                      cRatings.content >= 8
+                                      cRatings.behavior >= 8
                                         ? "bg-linear-to-r from-emerald-500 to-teal-400"
-                                        : cRatings.content >= 5
+                                        : cRatings.behavior >= 5
                                         ? "bg-linear-to-r from-amber-500 to-yellow-400"
                                         : "bg-linear-to-r from-rose-500 to-red-400"
                                     }`}
-                                    style={{ width: `${(cRatings.content / 10) * 100}%` }}
+                                    style={{ width: `${(cRatings.behavior / 10) * 100}%` }}
                                   />
                                 </div>
                               </div>
                             )}
 
-                            {cRatings.difficulty && (
+                            {cRatings.mastery && (
                               <div className="space-y-1">
                                 <div className="flex items-center justify-between text-[11px]">
-                                  <span className="text-muted-foreground font-medium">سطح دشواری و تکالیف</span>
+                                  <span className="text-muted-foreground font-medium">تسلط علمی و پاسخگویی</span>
                                   <span className=" font-bold text-foreground">
-                                    {cRatings.difficulty} <span className="text-[9px] text-muted-foreground font-normal">/ ۱۰</span>
+                                    {cRatings.mastery} <span className="text-[9px] text-muted-foreground font-normal">/ ۱۰</span>
                                   </span>
                                 </div>
                                 <div className="h-2 w-full rounded-full bg-muted/70 overflow-hidden">
                                   <div
                                     className={`h-full rounded-full transition-all duration-500 ${
-                                      cRatings.difficulty >= 8
+                                      cRatings.mastery >= 8
                                         ? "bg-linear-to-r from-emerald-500 to-teal-400"
-                                        : cRatings.difficulty >= 5
+                                        : cRatings.mastery >= 5
                                         ? "bg-linear-to-r from-amber-500 to-yellow-400"
                                         : "bg-linear-to-r from-rose-500 to-red-400"
                                     }`}
-                                    style={{ width: `${(cRatings.difficulty / 10) * 100}%` }}
+                                    style={{ width: `${(cRatings.mastery / 10) * 100}%` }}
                                   />
                                 </div>
                               </div>
@@ -953,77 +911,58 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
           </Card>
         </div>
 
-        {/* Left 1 Column: Linked Course & Professor Details */}
+        {/* Left 1 Column: Contact & Links & Guide */}
         <div className="space-y-6">
-          {/* Linked Course Card */}
+          {/* Contact and Academic Profile Card */}
           <Card className="border-border/80 shadow-xs">
             <CardHeader className="pb-3 border-b border-border/50">
               <CardTitle className="text-sm font-bold flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-primary" />
-                شناسنامه درس مربوطه
+                <Globe className="h-4 w-4 text-primary" />
+                راه‌های ارتباطی و پروفایل علمی
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-4 space-y-3">
-              <Link
-                href={`/courses/${offering.courseId}`}
-                className="group flex items-center justify-between p-3.5 rounded-2xl border border-border/80 bg-card hover:border-primary/50 hover:shadow-xs transition-all text-xs"
-              >
-                <div className="space-y-1 truncate flex-1 min-w-0 pr-1">
-                  <span className="font-bold text-sm block truncate group-hover:text-primary transition-colors text-foreground">
-                    {offering.courseName}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className=" text-[10px]">
-                      {offering.courseCode || "---"}
-                    </Badge>
-                    <span className="text-[11px] text-muted-foreground">
-                      {offering.courseUnits || 3} واحد تحصیلی
-                    </span>
-                  </div>
+              {professor.email ? (
+                <div className="p-3 rounded-2xl border border-border/80 bg-muted/20 space-y-1">
+                  <span className="text-[11px] text-muted-foreground block">آدرس پست الکترونیکی:</span>
+                  <a
+                    href={`mailto:${professor.email}`}
+                    className=" text-xs text-primary font-bold hover:underline block truncate"
+                  >
+                    {professor.email}
+                  </a>
                 </div>
-                <ArrowLeft className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:-translate-x-1 transition-all shrink-0 mr-2" />
-              </Link>
-
-              {offering.courseDescription && (
-                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3 bg-muted/20 p-2.5 rounded-xl border border-border/50">
-                  {offering.courseDescription}
-                </p>
+              ) : (
+                <div className="text-xs text-muted-foreground/70 p-3 rounded-2xl border border-dashed bg-muted/10 text-center">
+                  ایمیلی ثبت نشده است.
+                </div>
               )}
-            </CardContent>
-          </Card>
 
-          {/* Professor Card */}
-          <Card className="border-border/80 shadow-xs">
-            <CardHeader className="pb-3 border-b border-border/50">
-              <CardTitle className="text-sm font-bold flex items-center gap-2">
-                <User className="h-4 w-4 text-primary" />
-                مشخصات استاد مدرس
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-4 space-y-3">
-              <Link
-                href={`/professors/${offering.professorId}`}
-                className="group flex items-center justify-between p-3.5 rounded-2xl border border-border/80 bg-card hover:border-primary/50 hover:shadow-xs transition-all text-xs"
-              >
-                <div className="flex items-center gap-3 truncate flex-1 min-w-0 pr-1">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0">
-                    {offering.professorName?.[0] || "ا"}
-                  </div>
-                  <div className="truncate">
-                    <span className="font-bold text-sm block truncate group-hover:text-primary transition-colors text-foreground">
-                      {offering.professorName}
-                    </span>
-                    <span className="text-xs text-muted-foreground block truncate">
-                      {offering.professorTitle || "استاد تمام"}
-                    </span>
-                  </div>
-                </div>
-                <ArrowLeft className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:-translate-x-1 transition-all shrink-0 mr-2" />
-              </Link>
-
-              {offering.professorEmail && (
-                <div className="text-xs text-muted-foreground  bg-muted/20 p-2.5 rounded-xl border border-border/50">
-                  ایمیل: {offering.professorEmail}
+              {professor.links && Object.keys(professor.links).length > 0 && (
+                <div className="space-y-2 pt-1">
+                  <span className="text-xs font-semibold text-foreground block">صفحات و پیوندهای علمی:</span>
+                  {professor.links.website && (
+                    <a
+                      href={professor.links.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group flex items-center justify-between p-2.5 rounded-xl border border-border/70 bg-card hover:border-primary/50 text-xs transition-colors"
+                    >
+                      <span className="truncate">وب‌سایت شخصی / دانشگاهی</span>
+                      <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary shrink-0" />
+                    </a>
+                  )}
+                  {professor.links.scholar && (
+                    <a
+                      href={professor.links.scholar}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group flex items-center justify-between p-2.5 rounded-xl border border-border/70 bg-card hover:border-primary/50 text-xs transition-colors"
+                    >
+                      <span className="truncate">صفحه Google Scholar</span>
+                      <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary shrink-0" />
+                    </a>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -1033,10 +972,10 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
           <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 space-y-2 text-xs">
             <div className="flex items-center gap-2 font-bold text-primary">
               <Info className="h-4 w-4 shrink-0" />
-              <span>قوانین ارسال نظر</span>
+              <span>قوانین ثبت نظر استاد</span>
             </div>
             <p className="text-muted-foreground leading-relaxed text-[11px]">
-              شما می‌توانید هر زمان مایل بودید نظر خود را ویرایش کرده یا حذف نمایید.
+              شما می‌توانید در هر زمان نظر و ارزیابی خود را ویرایش نمایید یا آن را حذف کنید.
             </p>
           </div>
         </div>
@@ -1048,10 +987,10 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2">
               <Pencil className="h-4 w-4 text-primary" />
-              ویرایش نظر شما
+              ویرایش نظر شما درباره استاد
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              تغییرات مورد نظر را اعمال کرده و دکمه ذخیره را بزنید.
+              تغییرات مورد نظر در متن یا امتیازات را اعمال کرده و ذخیره نمایید.
             </DialogDescription>
           </DialogHeader>
 
@@ -1067,7 +1006,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
               {/* Criteria Scores */}
               <div className="space-y-2">
                 <span className="text-[11px] text-muted-foreground font-medium block">
-                  ویرایش امتیازات معیارها (از ۱۰ - اختیاری):
+                  ویرایش امتیاز به معیارها (از ۱۰ - اختیاری):
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                   {/* Teaching */}
@@ -1114,20 +1053,20 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                     </div>
                   </div>
 
-                  {/* Content */}
+                  {/* Behavior */}
                   <div className="space-y-1 bg-muted/30 p-2 rounded-xl border">
                     <div className="flex justify-between items-center text-[11px]">
-                      <span>کیفیت محتوا:</span>
-                      <span className=" font-bold text-primary">{editScores.content || "---"}</span>
+                      <span>اخلاق و تعامل:</span>
+                      <span className=" font-bold text-primary">{editScores.behavior || "---"}</span>
                     </div>
                     <div className="flex items-center gap-1 pt-1 overflow-x-auto">
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                         <button
                           key={num}
                           type="button"
-                          onClick={() => handleEditScoreChange("content", num)}
+                          onClick={() => handleEditScoreChange("behavior", num)}
                           className={`flex-1 h-6 rounded text-[10px] font-bold ${
-                            editScores.content === num ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+                            editScores.behavior === num ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
                           }`}
                         >
                           {num}
@@ -1136,20 +1075,20 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                     </div>
                   </div>
 
-                  {/* Difficulty */}
+                  {/* Mastery */}
                   <div className="space-y-1 bg-muted/30 p-2 rounded-xl border">
                     <div className="flex justify-between items-center text-[11px]">
-                      <span>سطح دشواری:</span>
-                      <span className=" font-bold text-primary">{editScores.difficulty || "---"}</span>
+                      <span>تسلط علمی:</span>
+                      <span className=" font-bold text-primary">{editScores.mastery || "---"}</span>
                     </div>
                     <div className="flex items-center gap-1 pt-1 overflow-x-auto">
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                         <button
                           key={num}
                           type="button"
-                          onClick={() => handleEditScoreChange("difficulty", num)}
+                          onClick={() => handleEditScoreChange("mastery", num)}
                           className={`flex-1 h-6 rounded text-[10px] font-bold ${
-                            editScores.difficulty === num ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+                            editScores.mastery === num ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
                           }`}
                         >
                           {num}

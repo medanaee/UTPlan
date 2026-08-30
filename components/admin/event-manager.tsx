@@ -806,7 +806,7 @@ export function EventManager({
               <div>
                 <DialogTitle className="text-base font-bold flex items-center gap-2">
                   <span>{editingEvent ? "ویرایش رویداد کلاسی" : "تعریف رویداد کلاسی جدید"}</span>
-                  <Badge variant="secondary" className="text-[10px] font-mono">
+                  <Badge variant="secondary" className="text-[10px] ">
                     {activeTerm}
                   </Badge>
                 </DialogTitle>

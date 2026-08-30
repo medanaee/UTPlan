@@ -314,7 +314,7 @@ export function TermSchedulePlanner({
             <div>
               <h1 className="text-sm font-bold text-foreground flex items-center gap-2">
                 برنامه‌ریزی زمانی ترم {termIndex}
-                <Badge variant="secondary" className="text-[10px] font-mono">
+                <Badge variant="secondary" className="text-[10px] ">
                   {activeTerm}
                 </Badge>
               </h1>
@@ -400,7 +400,7 @@ export function TermSchedulePlanner({
               <span className="text-xs font-bold text-foreground">
                 دروس انتخابی این ترم
               </span>
-              <span className="text-[11px] text-muted-foreground font-mono">
+              <span className="text-[11px] text-muted-foreground ">
                 {selectedCount} از {termCourses.length} درس دارای ارائه ({totalUnits} واحد)
               </span>
             </div>
@@ -469,7 +469,7 @@ export function TermSchedulePlanner({
                             <span className="font-bold text-xs text-foreground truncate">
                               {course.name}
                             </span>
-                            <span className="text-[10px] text-muted-foreground font-mono shrink-0">
+                            <span className="text-[10px] text-muted-foreground  shrink-0">
                               ({course.units} واحد)
                             </span>
                           </div>
@@ -557,7 +557,7 @@ export function TermSchedulePlanner({
                                       {evt.groupCode && (
                                         <Badge
                                           variant="outline"
-                                          className="text-[9px] font-mono px-1 py-0"
+                                          className="text-[9px]  px-1 py-0"
                                         >
                                           گروه {evt.groupCode}
                                         </Badge>
@@ -627,7 +627,7 @@ export function TermSchedulePlanner({
                                       evt.slots.map((s, idx) => (
                                         <div
                                           key={idx}
-                                          className="flex items-center gap-1.5 font-mono"
+                                          className="flex items-center gap-1.5 "
                                         >
                                           <Clock className="h-3 w-3 text-muted-foreground/70 shrink-0" />
                                           <span>
@@ -728,7 +728,7 @@ export function TermSchedulePlanner({
           <div className="flex-1 overflow-auto p-4 sm:p-6 flex flex-col min-w-[700px]">
             <div className="flex-1 rounded-2xl border bg-card shadow-xs flex flex-col overflow-hidden">
               {/* Hours Header Row */}
-              <div className="h-10 border-b bg-muted/30 flex items-center text-xs font-mono text-muted-foreground select-none">
+              <div className="h-10 border-b bg-muted/30 flex items-center text-xs  text-muted-foreground select-none">
                 <div className="w-20 border-l h-full flex items-center justify-center font-sans font-bold text-foreground text-[11px]">
                   روز / ساعت
                 </div>
@@ -736,7 +736,7 @@ export function TermSchedulePlanner({
                   {TIME_COLUMNS.map((col, idx) => (
                     <div
                       key={idx}
-                      className="flex-1 border-l last:border-l-0 h-full flex items-center justify-center text-[10px] sm:text-[11px] font-mono"
+                      className="flex-1 border-l last:border-l-0 h-full flex items-center justify-center text-[10px] sm:text-[11px] "
                     >
                       {col.start}
                     </div>
@@ -830,7 +830,7 @@ export function TermSchedulePlanner({
                                     </span>
                                     <Badge
                                       variant="outline"
-                                      className="text-[9px] font-mono px-1 py-0 shrink-0 bg-background/80"
+                                      className="text-[9px]  px-1 py-0 shrink-0 bg-background/80"
                                     >
                                       {course.code}
                                     </Badge>
@@ -841,7 +841,7 @@ export function TermSchedulePlanner({
                                   </div>
                                 </div>
 
-                                <div className="relative z-10 flex items-center justify-between text-[10px] text-muted-foreground font-mono pt-1 border-t border-border/30">
+                                <div className="relative z-10 flex items-center justify-between text-[10px] text-muted-foreground  pt-1 border-t border-border/30">
                                   <span className="flex items-center gap-0.5">
                                     <Clock className="h-2.5 w-2.5" />
                                     {slot.startTime} - {slot.endTime}
@@ -900,7 +900,7 @@ export function TermSchedulePlanner({
                                     {hEvt.professorName}
                                   </div>
                                 </div>
-                                <div className="text-[10px] font-mono">
+                                <div className="text-[10px] ">
                                   {slot.startTime} - {slot.endTime}
                                 </div>
                               </div>
@@ -1191,7 +1191,7 @@ function CustomEventDialog({
             <div>
               <DialogTitle className="text-base font-bold flex items-center gap-2">
                 <span>{eventToEdit ? `ویرایش ارائه شخصی برای ${course.name}` : `تعریف ارائه شخصی برای ${course.name}`}</span>
-                <Badge variant="outline" className="text-[10px] font-mono">
+                <Badge variant="outline" className="text-[10px] ">
                   {course.code}
                 </Badge>
               </DialogTitle>

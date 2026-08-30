@@ -145,7 +145,7 @@ export function ExamScheduleModal({
                 </DialogDescription>
               </div>
             </div>
-            <Badge variant="outline" className="text-xs font-mono">
+            <Badge variant="outline" className="text-xs ">
               {examItems.length} امتحان ثبت‌شده
             </Badge>
           </div>
@@ -251,7 +251,7 @@ export function ExamScheduleModal({
                           </span>
                           <Badge
                             variant="outline"
-                            className="text-[10px] font-mono"
+                            className="text-[10px] "
                           >
                             {item.courseCode}
                           </Badge>
@@ -279,7 +279,7 @@ export function ExamScheduleModal({
                         <CalendarDays className="h-3.5 w-3.5" />
                         <span>{item.examDate}</span>
                       </div>
-                      <div className="flex items-center gap-1 text-[11px] text-muted-foreground font-mono">
+                      <div className="flex items-center gap-1 text-[11px] text-muted-foreground ">
                         <Clock className="h-3 w-3" />
                         <span>
                           {item.examStartTime} تا {item.examEndTime}

@@ -169,7 +169,7 @@ export function TimePicker({
           variant="outline"
           disabled={disabled}
           className={cn(
-            "justify-between font-mono font-normal transition-all text-xs border-input/80 hover:border-primary/40 shadow-2xs",
+            "justify-between  font-normal transition-all text-xs border-input/80 hover:border-primary/40 shadow-2xs",
             size === "sm" ? "h-6 px-2.5" : "h-7 px-3",
             !value && "text-muted-foreground",
             className
@@ -229,7 +229,7 @@ export function TimePicker({
                     setOpen(false);
                   }
                 }}
-                className="w-11 text-center text-base font-bold font-mono text-primary bg-background/80 focus:bg-background border border-border/50 focus:border-primary focus:ring-1 focus:ring-primary rounded-lg py-0.5 outline-none transition-all shadow-2xs"
+                className="w-11 text-center text-base font-bold  text-primary bg-background/80 focus:bg-background border border-border/50 focus:border-primary focus:ring-1 focus:ring-primary rounded-lg py-0.5 outline-none transition-all shadow-2xs"
                 title="برای تایپ کلیک کنید یا با کلیدهای بالا/پایین تغییر دهید"
               />
 
@@ -243,7 +243,7 @@ export function TimePicker({
               </button>
             </div>
 
-            <span className="text-xl font-bold font-mono text-muted-foreground -mt-1 select-none">
+            <span className="text-xl font-bold  text-muted-foreground -mt-1 select-none">
               :
             </span>
 
@@ -284,7 +284,7 @@ export function TimePicker({
                     setOpen(false);
                   }
                 }}
-                className="w-11 text-center text-base font-bold font-mono text-primary bg-background/80 focus:bg-background border border-border/50 focus:border-primary focus:ring-1 focus:ring-primary rounded-lg py-0.5 outline-none transition-all shadow-2xs"
+                className="w-11 text-center text-base font-bold  text-primary bg-background/80 focus:bg-background border border-border/50 focus:border-primary focus:ring-1 focus:ring-primary rounded-lg py-0.5 outline-none transition-all shadow-2xs"
                 title="برای تایپ کلیک کنید یا با کلیدهای بالا/پایین تغییر دهید"
               />
 
@@ -313,7 +313,7 @@ export function TimePicker({
                   type="button"
                   onClick={() => handlePresetSelect(p)}
                   className={cn(
-                    "text-[11px] font-mono py-1 rounded-md border transition-all select-none text-center",
+                    "text-[11px]  py-1 rounded-md border transition-all select-none text-center",
                     isSelected
                       ? "bg-primary text-primary-foreground border-primary font-bold shadow-2xs"
                       : "bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border-border/60"

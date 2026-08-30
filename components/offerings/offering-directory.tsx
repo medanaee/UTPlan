@@ -199,7 +199,7 @@ export function OfferingDirectory({
               <div className="space-y-3.5">
                 {/* Header: Course Code & Units */}
                 <div className="flex items-center justify-between gap-2">
-                  <Badge variant="outline" className="font-mono text-xs font-bold px-2 py-0.5 bg-muted/60">
+                  <Badge variant="outline" className=" text-xs font-bold px-2 py-0.5 bg-muted/60">
                     {off.courseCode || "---"}
                   </Badge>
                   <Badge variant="secondary" className="text-[10px] font-bold">

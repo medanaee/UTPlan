@@ -272,7 +272,7 @@ export function CourseDirectory({
                 <div className="space-y-3">
                   {/* Card Header: Code & Badges */}
                   <div className="flex items-center justify-between gap-2">
-                    <Badge variant="outline" className="font-mono text-xs font-bold px-2 py-0.5 bg-muted/60">
+                    <Badge variant="outline" className=" text-xs font-bold px-2 py-0.5 bg-muted/60">
                       {course.code}
                     </Badge>
                     <div className="flex items-center gap-1.5">

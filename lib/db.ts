@@ -1857,17 +1857,52 @@ export async function getProfessorById(id: string): Promise<Professor | null> {
   const d1 = getD1();
   if (d1) {
     try {
-      const p = await d1.prepare("SELECT * FROM professors WHERE id = ? AND deleted_at IS NULL").bind(id).first();
+      const p = await d1
+        .prepare(
+          `SELECT p.*, f.name AS faculty_name
+           FROM professors p
+           LEFT JOIN faculties f ON p.faculty_id = f.id
+           WHERE p.id = ? AND p.deleted_at IS NULL`
+        )
+        .bind(id)
+        .first();
       if (!p) return null;
+
       let links: any = undefined;
       if ((p as any).links) {
         try {
           links = typeof (p as any).links === "string" ? JSON.parse((p as any).links) : (p as any).links;
         } catch {}
       }
+
+      // Offerings taught by this professor
+      const { results: offRows } = await d1
+        .prepare(
+          `SELECT o.id, o.course_id, o.professor_id, o.created_at,
+                  c.name AS course_name, c.code AS course_code, c.units AS course_units
+           FROM course_offerings o
+           JOIN courses c ON o.course_id = c.id
+           WHERE o.professor_id = ? AND o.deleted_at IS NULL`
+        )
+        .bind(id)
+        .all();
+
+      // Review stats
+      const { results: revRows } = await d1
+        .prepare("SELECT overall_rating FROM reviews WHERE target_type = 'professor' AND target_id = ? AND deleted_at IS NULL")
+        .bind(id)
+        .all();
+
+      const revCount = revRows?.length || 0;
+      const avg =
+        revCount > 0
+          ? (revRows || []).reduce((sum: number, r: any) => sum + Number(r.overall_rating), 0) / revCount
+          : 10;
+
       return {
         id: (p as any).id,
         facultyId: (p as any).faculty_id,
+        facultyName: (p as any).faculty_name || "دانشکده مهندسی برق و کامپیوتر",
         firstName: (p as any).first_name || undefined,
         lastName: (p as any).last_name || undefined,
         name: (p as any).name,
@@ -1875,6 +1910,18 @@ export async function getProfessorById(id: string): Promise<Professor | null> {
         title: (p as any).title || "استاد تمام",
         email: (p as any).email || "",
         links,
+        offerings: (offRows || []).map((o: any) => ({
+          id: o.id,
+          courseId: o.course_id,
+          professorId: o.professor_id,
+          courseName: o.course_name,
+          courseCode: o.course_code,
+          courseUnits: Number(o.course_units) || 3,
+          createdAt: o.created_at,
+          deletedAt: null,
+        })),
+        reviewsCount: revCount,
+        averageRating: Number(avg.toFixed(1)),
         createdAt: (p as any).created_at,
         deletedAt: (p as any).deleted_at || null,
       };
@@ -1884,7 +1931,32 @@ export async function getProfessorById(id: string): Promise<Professor | null> {
   }
 
   await initFallbackDevData();
-  return professorsStore.find((p) => p.id === id && !p.deletedAt) || null;
+  const p = professorsStore.find((item) => item.id === id && !item.deletedAt);
+  if (!p) return null;
+
+  const fac = facultiesStore.find((f) => f.id === p.facultyId);
+  const offs = offeringsStore
+    .filter((o) => o.professorId === id && !o.deletedAt)
+    .map((o) => {
+      const c = coursesStore.find((crs) => crs.id === o.courseId);
+      return {
+        ...o,
+        courseName: c?.name,
+        courseCode: c?.code,
+        courseUnits: c?.units,
+      };
+    });
+
+  const revs = reviewsStore.filter((r) => r.targetType === "professor" && r.targetId === id && !r.deletedAt);
+  const avg = revs.length > 0 ? revs.reduce((sum, r) => sum + r.overallRating, 0) / revs.length : 10;
+
+  return {
+    ...p,
+    facultyName: fac?.name || "دانشکده مهندسی برق و کامپیوتر",
+    offerings: offs,
+    reviewsCount: revs.length,
+    averageRating: Number(avg.toFixed(1)),
+  };
 }
 
 export async function createProfessor(data: {
@@ -3138,4 +3210,101 @@ export async function deleteReview(id: string): Promise<boolean> {
   if (!r) return false;
   r.deletedAt = now;
   return true;
+}
+
+export async function getReviewById(id: string): Promise<Review | null> {
+  const d1 = getD1();
+  if (d1) {
+    try {
+      const r = await d1
+        .prepare(
+          `SELECT r.*, u.name AS author_name 
+           FROM reviews r
+           LEFT JOIN users u ON r.user_id = u.id
+           WHERE r.id = ? AND r.deleted_at IS NULL`
+        )
+        .bind(id)
+        .first();
+      if (!r) return null;
+
+      let criteriaRatings: any = undefined;
+      if ((r as any).criteria_ratings) {
+        try {
+          criteriaRatings =
+            typeof (r as any).criteria_ratings === "string"
+              ? JSON.parse((r as any).criteria_ratings)
+              : (r as any).criteria_ratings;
+        } catch {}
+      }
+
+      return {
+        id: (r as any).id,
+        userId: (r as any).user_id || null,
+        targetType: (r as any).target_type as any,
+        targetId: (r as any).target_id,
+        isAnonymous: Boolean((r as any).is_anonymous),
+        comment: (r as any).comment,
+        authorName: (r as any).is_anonymous ? "دانشجوی دانشگاه تهران" : ((r as any).author_name || "کاربر سامانه"),
+        overallRating: Number((r as any).overall_rating) || 10,
+        criteriaRatings,
+        createdAt: (r as any).created_at,
+        deletedAt: (r as any).deleted_at || null,
+      };
+    } catch (err) {
+      console.error("D1 getReviewById error:", err);
+    }
+  }
+
+  await initFallbackDevData();
+  return reviewsStore.find((r) => r.id === id && !r.deletedAt) || null;
+}
+
+export async function updateReview(
+  id: string,
+  data: {
+    comment?: string;
+    isAnonymous?: boolean;
+    criteriaRatings?: Record<string, number>;
+    overallRating?: number;
+  }
+): Promise<Review | null> {
+  const d1 = getD1();
+  if (d1) {
+    try {
+      const existing = await getReviewById(id);
+      if (!existing) return null;
+
+      const comment = data.comment !== undefined ? data.comment.trim() : existing.comment;
+      const isAnon = data.isAnonymous !== undefined ? (data.isAnonymous ? 1 : 0) : existing.isAnonymous ? 1 : 0;
+      const criteriaJson =
+        data.criteriaRatings !== undefined
+          ? JSON.stringify(data.criteriaRatings)
+          : existing.criteriaRatings
+          ? JSON.stringify(existing.criteriaRatings)
+          : null;
+      const overallRating = data.overallRating !== undefined ? data.overallRating : existing.overallRating;
+
+      await d1
+        .prepare(
+          `UPDATE reviews 
+           SET comment = ?, is_anonymous = ?, criteria_ratings = ?, overall_rating = ?
+           WHERE id = ?`
+        )
+        .bind(comment, isAnon, criteriaJson, overallRating, id)
+        .run();
+
+      return await getReviewById(id);
+    } catch (err) {
+      console.error("D1 updateReview error:", err);
+    }
+  }
+
+  await initFallbackDevData();
+  const r = reviewsStore.find((item) => item.id === id && !item.deletedAt);
+  if (!r) return null;
+  if (data.comment !== undefined) r.comment = data.comment.trim();
+  if (data.isAnonymous !== undefined) r.isAnonymous = data.isAnonymous;
+  if (data.criteriaRatings !== undefined) r.criteriaRatings = data.criteriaRatings;
+  if (data.overallRating !== undefined) r.overallRating = data.overallRating;
+  return r;
 }
