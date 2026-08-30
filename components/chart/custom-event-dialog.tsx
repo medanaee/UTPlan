@@ -311,22 +311,7 @@ export function CustomEventDialog({
                           </SelectContent>
                         </Select>
                       </div>
-                      <Select>
-      <SelectTrigger className="w-full max-w-48">
-        <SelectValue placeholder="Select a fruit" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectGroup>
-          <SelectLabel>Fruits</SelectLabel>
-          <SelectItem value="apple">Apple</SelectItem>
-          <SelectItem value="banana">Banana</SelectItem>
-          <SelectItem value="blueberry">Blueberry</SelectItem>
-          <SelectItem value="grapes">Grapes</SelectItem>
-          <SelectItem value="pineapple">Pineapple</SelectItem>
-        </SelectGroup>
-      </SelectContent>
-    </Select>
-                                
+
                       <div className="flex items-center gap-1.5 flex-1 min-w-[200px]">
                         <span className="text-[11px] text-muted-foreground">از</span>
                         <TimePicker

@@ -23,7 +23,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Course, Faculty, UserSession } from "@/lib/types";
-import { CourseImportDialog } from "@/components/courses/course-import-dialog";
 import { Download, Upload } from "lucide-react";
 
 interface CourseDirectoryProps {
@@ -127,29 +126,7 @@ export function CourseDirectory({
           </p>
         </div>
 
-        {/* Top Import/Export Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2 pt-4 border-t border-border/40 justify-end">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => window.open("/api/courses/export", "_blank")}
-            className="h-8 gap-1.5 text-xs shadow-2xs"
-          >
-            <Download className="h-3.5 w-3.5 text-primary" />
-            <span>خروجی گرفتن از دروس (Export JSON)</span>
-          </Button>
 
-          {(currentUser?.role === "admin" || currentUser?.role === "super_admin") && (
-            <Button
-              size="sm"
-              onClick={() => setImportModalOpen(true)}
-              className="h-8 gap-1.5 text-xs font-bold"
-            >
-              <Upload className="h-3.5 w-3.5" />
-              <span>ورود دسته‌ای دروس (Import JSON)</span>
-            </Button>
-          )}
-        </div>
       </div>
 
       {/* Search & Filters Card */}
@@ -351,19 +328,7 @@ export function CourseDirectory({
           })}
         </div>
       )}
-      {/* Course Import Dialog */}
-      <CourseImportDialog
-        open={importModalOpen}
-        onOpenChange={setImportModalOpen}
-        defaultFacultyId={selectedFaculty !== "all" ? selectedFaculty : faculties[0]?.id}
-        onSuccess={() => {
-          fetch("/api/courses")
-            .then((r) => r.json())
-            .then((d) => {
-              if (d.success) setCourses(d.data);
-            });
-        }}
-      />
+
     </div>
   );
 }

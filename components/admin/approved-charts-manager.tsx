@@ -656,11 +656,13 @@ export function ApprovedChartsManager({
                   <SelectValue placeholder="چارت مصوب مبدا را انتخاب کنید..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {cloneOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value} className="text-xs">
-                      {opt.label}
-                    </SelectItem>
-                  ))}
+                  <SelectGroup>
+                    {cloneOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </div>

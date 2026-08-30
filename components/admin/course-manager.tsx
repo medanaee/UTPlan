@@ -271,7 +271,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
       </div>
 
       <Card className="border-border/70 shadow-xs">
-        <CardHeader className="flex flex-row items-center justify-between border-b pb-3">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
           <div>
             <CardTitle className="text-base flex items-center gap-2">
               <BookOpen className="h-4 w-4 text-primary" />
@@ -281,28 +281,59 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
               مدیریت دروس، تعداد واحدها، نوع ارائه و تعیین پیش‌نیازها و هم‌نیازها
             </CardDescription>
           </div>
-          <Button
-            size="sm"
-            onClick={() => {
-              setEditingCourse(null);
-              setCourseForm({
-                name: "",
-                code: "",
-                units: 3,
-                facultyId: selectedFacultyId,
-                offeredIn: "both",
-                visualCategoryId: "",
-                ruleCategoryId: "",
-                description: "",
-              });
-              setCourseModalOpen(true);
-            }}
-            disabled={!selectedFacultyId}
-            className="h-8 gap-1 text-xs"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            افزودن درس جدید
-          </Button>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const url = selectedFacultyId
+                  ? `/api/courses/export?facultyId=${selectedFacultyId}`
+                  : "/api/courses/export";
+                window.open(url, "_blank");
+              }}
+              className="h-8 gap-1.5 text-xs shadow-2xs"
+            >
+              <Download className="h-3.5 w-3.5 text-primary" />
+              <span>خروجی دروس (Export JSON)</span>
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setImportModalOpen(true)}
+              className="h-8 gap-1.5 text-xs shadow-2xs font-semibold"
+            >
+              <Upload className="h-3.5 w-3.5 text-primary" />
+              <span>ورود دسته‌ای (Import JSON)</span>
+            </Button>
+
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                setEditingCourse(null);
+                setCourseForm({
+                  name: "",
+                  code: "",
+                  units: 3,
+                  facultyId: selectedFacultyId,
+                  offeredIn: "both",
+                  visualCategoryId: "",
+                  ruleCategoryId: "",
+                  description: "",
+                });
+                setCourseModalOpen(true);
+              }}
+              disabled={!selectedFacultyId}
+              className="h-8 gap-1.5 text-xs font-bold"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              افزودن درس جدید
+            </Button>
+          </div>
         </CardHeader>
 
         <CardContent className="px-4 space-y-4">

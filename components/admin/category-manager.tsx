@@ -31,6 +31,8 @@ import {
 import { CategoryPicker } from "./category-picker";
 import { useAdminStore } from "@/lib/stores/admin-store";
 import { CourseCategoryManager } from "./course-category-manager";
+import { TrackCloneDialog } from "./track-clone-dialog";
+import { Copy } from "lucide-react";
 
 const COLOR_PRESETS = [
   { name: "آبی", hex: "#3b82f6" },
@@ -67,6 +69,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
 
   const [vcatModalOpen, setVcatModalOpen] = useState(false);
   const [rcatModalOpen, setRcatModalOpen] = useState(false);
+  const [cloneModalOpen, setCloneModalOpen] = useState(false);
 
   const [vcatForm, setVcatForm] = useState({ name: "", color: "#3b82f6", sortOrder: 1 });
   const [rcatForm, setRcatForm] = useState<{ name: string; parentId: string | null }>({
@@ -153,17 +156,30 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
             </div>
           </div>
 
-          {!currentTrack && onNavigateToStructure && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={onNavigateToStructure}
-              className="h-8 text-xs gap-1 shadow-2xs"
-            >
-              <Building2 className="h-3.5 w-3.5" />
-              انتخاب در ساختار دانشگاه
-            </Button>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {currentTrack && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setCloneModalOpen(true)}
+                className="h-8 text-xs gap-1.5 shadow-2xs"
+              >
+                <Copy className="h-3.5 w-3.5 text-primary" />
+                کپی ساختار از گرایش دیگر
+              </Button>
+            )}
+            {!currentTrack && onNavigateToStructure && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onNavigateToStructure}
+                className="h-8 text-xs gap-1 shadow-2xs"
+              >
+                <Building2 className="h-3.5 w-3.5" />
+                انتخاب در ساختار دانشگاه
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -516,6 +532,20 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Track Structure Clone Dialog */}
+      <TrackCloneDialog
+        open={cloneModalOpen}
+        onOpenChange={setCloneModalOpen}
+        targetTrack={currentTrack || null}
+        allTracks={tracks}
+        allMajors={majors}
+        onSuccess={() => {
+          if (selectedTrackId) {
+            loadTrackDetails(selectedTrackId);
+          }
+        }}
+      />
     </div>
   );
 }

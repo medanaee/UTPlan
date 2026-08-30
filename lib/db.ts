@@ -899,6 +899,39 @@ export async function getTracks(majorId?: string): Promise<Track[]> {
   return tracksStore.filter((t) => !t.deletedAt && (!majorId || t.majorId === majorId));
 }
 
+export async function getTrackById(id: string): Promise<Track | null> {
+  const d1 = getD1();
+  if (d1) {
+    try {
+      const r = await d1.prepare("SELECT * FROM tracks WHERE id = ? AND deleted_at IS NULL").bind(id).first();
+      if (r) {
+        let parsedRules: any = undefined;
+        if ((r as any).rules_tree) {
+          try {
+            parsedRules = typeof (r as any).rules_tree === "string" ? JSON.parse((r as any).rules_tree) : (r as any).rules_tree;
+          } catch {
+            parsedRules = undefined;
+          }
+        }
+        return {
+          id: (r as any).id,
+          majorId: (r as any).major_id,
+          name: (r as any).name,
+          code: (r as any).code,
+          rulesTree: parsedRules,
+          createdAt: (r as any).created_at,
+          deletedAt: (r as any).deleted_at || null,
+        };
+      }
+    } catch (err) {
+      console.error("D1 getTrackById error:", err);
+    }
+  }
+
+  await initFallbackDevData();
+  return tracksStore.find((t) => t.id === id && !t.deletedAt) || null;
+}
+
 export async function createTrack(
   majorId: string,
   name: string,
@@ -3316,4 +3349,193 @@ export async function updateReview(
   if (data.overallRating !== undefined) r.overallRating = data.overallRating;
   if (data.studentGrade !== undefined) r.studentGrade = data.studentGrade;
   return r;
+}
+
+// ----------------------------------------------------
+// 15. TRACK STRUCTURE & RULES DEEP CLONER
+// ----------------------------------------------------
+export async function cloneTrackStructure(
+  sourceTrackId: string,
+  targetTrackId: string,
+  options: {
+    cloneVisualCategories?: boolean;
+    cloneRuleCategories?: boolean;
+    cloneRulesTree?: boolean;
+    cloneAssignments?: boolean;
+  } = {
+    cloneVisualCategories: true,
+    cloneRuleCategories: true,
+    cloneRulesTree: true,
+    cloneAssignments: true,
+  }
+): Promise<{
+  success: boolean;
+  message: string;
+  stats: {
+    visualCategoriesCloned: number;
+    ruleCategoriesCloned: number;
+    assignmentsCloned: number;
+    rulesTreeCloned: boolean;
+  };
+}> {
+  try {
+    const stats = {
+      visualCategoriesCloned: 0,
+      ruleCategoriesCloned: 0,
+      assignmentsCloned: 0,
+      rulesTreeCloned: false,
+    };
+
+    const visualCatMap = new Map<string, string>(); // oldVcatId -> newVcatId
+    const ruleCatMap = new Map<string, string>(); // oldRcatId -> newRcatId
+
+    // 1. Clone Visual Categories
+    if (options.cloneVisualCategories) {
+      const sourceVCats = await getVisualCategories(sourceTrackId);
+      for (const vcat of sourceVCats) {
+        const newVCat = await createVisualCategory(
+          targetTrackId,
+          vcat.name,
+          vcat.color,
+          vcat.sortOrder
+        );
+        visualCatMap.set(vcat.id, newVCat.id);
+        stats.visualCategoriesCloned++;
+      }
+    }
+
+    // 2. Clone Rule Categories (preserves hierarchy)
+    if (options.cloneRuleCategories) {
+      const sourceRCats = await getRuleCategories(sourceTrackId);
+      
+      // Multi-pass creation to ensure parent IDs exist in map
+      const remaining = [...sourceRCats];
+      let iterations = 0;
+      while (remaining.length > 0 && iterations < 20) {
+        iterations++;
+        const toRemove: number[] = [];
+
+        for (let i = 0; i < remaining.length; i++) {
+          const rcat = remaining[i];
+          if (!rcat.parentId) {
+            // Root category
+            const newRCat = await createRuleCategory(
+              targetTrackId,
+              rcat.name,
+              rcat.minCredits,
+              null
+            );
+            ruleCatMap.set(rcat.id, newRCat.id);
+            toRemove.push(i);
+            stats.ruleCategoriesCloned++;
+          } else if (ruleCatMap.has(rcat.parentId)) {
+            // Child category whose parent is already created
+            const newParentId = ruleCatMap.get(rcat.parentId)!;
+            const newRCat = await createRuleCategory(
+              targetTrackId,
+              rcat.name,
+              rcat.minCredits,
+              newParentId
+            );
+            ruleCatMap.set(rcat.id, newRCat.id);
+            toRemove.push(i);
+            stats.ruleCategoriesCloned++;
+          }
+        }
+
+        // Remove processed in reverse
+        for (let j = toRemove.length - 1; j >= 0; j--) {
+          remaining.splice(toRemove[j], 1);
+        }
+      }
+
+      // Any remaining orphaned categories
+      for (const rcat of remaining) {
+        const newRCat = await createRuleCategory(
+          targetTrackId,
+          rcat.name,
+          rcat.minCredits,
+          null
+        );
+        ruleCatMap.set(rcat.id, newRCat.id);
+        stats.ruleCategoriesCloned++;
+      }
+    }
+
+    // 3. Clone Rules Tree AST with Deep ID Re-mapping
+    if (options.cloneRulesTree) {
+      const sourceTrack = await getTrackById(sourceTrackId);
+      if (sourceTrack?.rulesTree) {
+        const remapNode = (node: any): any => {
+          if (!node || typeof node !== "object") return node;
+
+          if (Array.isArray(node)) {
+            return node.map(remapNode);
+          }
+
+          const cloned = { ...node };
+
+          // Replace Rule Category ID if present
+          if (cloned.categoryId && ruleCatMap.has(cloned.categoryId)) {
+            cloned.categoryId = ruleCatMap.get(cloned.categoryId);
+          }
+          if (cloned.ruleCategoryId && ruleCatMap.has(cloned.ruleCategoryId)) {
+            cloned.ruleCategoryId = ruleCatMap.get(cloned.ruleCategoryId);
+          }
+
+          // Replace Visual Category ID if present
+          if (cloned.visualCategoryId && visualCatMap.has(cloned.visualCategoryId)) {
+            cloned.visualCategoryId = visualCatMap.get(cloned.visualCategoryId);
+          }
+
+          // Recursive children / sub-rules
+          if (Array.isArray(cloned.children)) {
+            cloned.children = cloned.children.map(remapNode);
+          }
+          if (Array.isArray(cloned.rules)) {
+            cloned.rules = cloned.rules.map(remapNode);
+          }
+          if (Array.isArray(cloned.items)) {
+            cloned.items = cloned.items.map(remapNode);
+          }
+
+          return cloned;
+        };
+
+        const remappedTree = remapNode(sourceTrack.rulesTree);
+        await updateTrackRules(targetTrackId, remappedTree);
+        stats.rulesTreeCloned = true;
+      }
+    }
+
+    // 4. Clone Course Assignments
+    if (options.cloneAssignments) {
+      const sourceAssignments = await getTrackAssignments(sourceTrackId);
+      for (const a of sourceAssignments) {
+        const newVisualId = a.visualCategoryId ? visualCatMap.get(a.visualCategoryId) || null : null;
+        const newRuleId = a.ruleCategoryId ? ruleCatMap.get(a.ruleCategoryId) || null : null;
+
+        await assignCourseToCategories(targetTrackId, a.courseId, newVisualId, newRuleId);
+        stats.assignmentsCloned++;
+      }
+    }
+
+    return {
+      success: true,
+      message: `ساختار با موفقیت کپی و با شناسه‌های جدید همگام شد.`,
+      stats,
+    };
+  } catch (error: any) {
+    console.error("cloneTrackStructure error:", error);
+    return {
+      success: false,
+      message: error?.message || "خطا در کپی ساختار گرایش",
+      stats: {
+        visualCategoriesCloned: 0,
+        ruleCategoriesCloned: 0,
+        assignmentsCloned: 0,
+        rulesTreeCloned: false,
+      },
+    };
+  }
 }
