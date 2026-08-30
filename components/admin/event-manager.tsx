@@ -312,6 +312,8 @@ export function EventManager({
     setIsNewTermModalOpen(false);
   };
 
+  const [customFilter, setCustomFilter] = useState<"all" | "official" | "custom">("all");
+
   const handleDeleteEvent = async (id: string) => {
     if (!confirm("آیا از حذف این رویداد کلاسی مطمئن هستید؟")) return;
 
@@ -327,6 +329,32 @@ export function EventManager({
     }
   };
 
+  const handlePromoteEvent = async (id: string) => {
+    if (
+      !confirm(
+        "آیا مایل به تأیید این رویداد شخصی و تبدیل آن به ارائه رسمی و سراسری برای تمام کاربران سامانه هستید؟"
+      )
+    )
+      return;
+
+    try {
+      const res = await fetch("/api/admin/events/promote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventId: id }),
+      }).then((r) => r.json());
+
+      if (res.success) {
+        alert(res.message || "رویداد با موفقیت به عنوان ارائه رسمی ثبت شد.");
+        await loadData();
+      } else {
+        alert(res.message || "خطا در تایید رویداد");
+      }
+    } catch (err) {
+      console.error("Promote event error:", err);
+    }
+  };
+
   // Distinct terms collected from events plus defaults and activeTerm
   const existingTerms = Array.from(new Set([...events.map((e) => e.term), activeTerm, "1403-1", "1403-2"].filter(Boolean)));
   
@@ -334,6 +362,9 @@ export function EventManager({
   const termEvents = events.filter((evt) => evt.term === activeTerm);
 
   const filteredEvents = termEvents.filter((evt) => {
+    if (customFilter === "official" && evt.isUserCustom) return false;
+    if (customFilter === "custom" && !evt.isUserCustom) return false;
+
     return (
       (evt.courseName || "").toLowerCase().includes(search.toLowerCase()) ||
       (evt.courseCode || "").toLowerCase().includes(search.toLowerCase()) ||
@@ -490,20 +521,54 @@ export function EventManager({
         </CardHeader>
 
         <CardContent className="px-4 space-y-4">
-          {/* Search and Counts Bar */}
+          {/* Search and Counts Bar + Filter Tabs */}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="relative">
-              <Input
-                placeholder="جستجوی درس، استاد، کلاس یا گروه..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="h-8 w-72 text-xs pr-8"
-              />
-              <Search className="pointer-events-none absolute right-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="relative">
+                <Input
+                  placeholder="جستجوی درس، استاد، کلاس یا گروه..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="h-8 w-64 text-xs pr-8"
+                />
+                <Search className="pointer-events-none absolute right-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+              </div>
+
+              {/* Custom / Official Filter Pills */}
+              <div className="flex items-center gap-1 bg-muted/40 p-0.5 rounded-lg border border-border/50">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={customFilter === "all" ? "secondary" : "ghost"}
+                  onClick={() => setCustomFilter("all")}
+                  className="h-7 text-[11px] px-2.5"
+                >
+                  همه ({termEvents.length})
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={customFilter === "official" ? "secondary" : "ghost"}
+                  onClick={() => setCustomFilter("official")}
+                  className="h-7 text-[11px] px-2.5"
+                >
+                  رسمی ({termEvents.filter((e) => !e.isUserCustom).length})
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={customFilter === "custom" ? "secondary" : "ghost"}
+                  onClick={() => setCustomFilter("custom")}
+                  className="h-7 text-[11px] px-2.5 text-purple-600 dark:text-purple-400 gap-1"
+                >
+                  <Sparkles className="h-3 w-3" />
+                  رویدادهای کاربران ({termEvents.filter((e) => e.isUserCustom).length})
+                </Button>
+              </div>
             </div>
 
             <div className="text-xs text-muted-foreground flex items-center gap-2">
-              <span>تعداد رویدادهای این نیمسال:</span>
+              <span>نمایش:</span>
               <Badge variant="secondary" className="font-bold text-foreground">
                 {filteredEvents.length} رویداد
               </Badge>
@@ -533,7 +598,17 @@ export function EventManager({
                           <BookOpen className="h-3.5 w-3.5" />
                         </div>
                         <div>
-                          <div className="font-bold text-foreground">{evt.courseName}</div>
+                          <div className="flex items-center gap-1.5 font-bold text-foreground">
+                            <span>{evt.courseName}</span>
+                            {evt.isUserCustom && (
+                              <Badge
+                                variant="secondary"
+                                className="text-[9px] px-1.5 py-0 bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30"
+                              >
+                                ثبت کاربر
+                              </Badge>
+                            )}
+                          </div>
                           <div className="text-[10px] text-muted-foreground">
                             {evt.professorName} ({evt.professorTitle || "استاد"})
                           </div>
@@ -595,6 +670,19 @@ export function EventManager({
                     {/* Actions */}
                     <td className="py-2.5 px-3 text-center">
                       <div className="flex items-center justify-center gap-1">
+                        {evt.isUserCustom && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePromoteEvent(evt.id)}
+                            className="h-7 px-2 text-[11px] text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 gap-1"
+                            title="تأیید و تبدیل به رویداد رسمی سراسری"
+                          >
+                            <Sparkles className="h-3 w-3" />
+                            <span>تأیید سراسری</span>
+                          </Button>
+                        )}
+
                         <Button
                           variant="ghost"
                           size="sm"

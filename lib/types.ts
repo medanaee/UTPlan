@@ -254,6 +254,7 @@ export interface ValidationResult {
 export interface ChartSemester {
   semesterNumber: number;
   courseIds: string[];
+  courseEventsMap?: Record<string, string>; // courseId -> selectedEventId
 }
 
 export interface StudentChart {

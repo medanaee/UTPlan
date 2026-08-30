@@ -201,10 +201,49 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    await deleteChart(id, session.id);
+    await deleteChart(id);
     return NextResponse.json({ success: true, message: "چارت با موفقیت حذف شد." });
   } catch (err: any) {
     console.error("DELETE /api/charts error:", err);
     return NextResponse.json({ success: false, message: "خطا در حذف چارت" }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const token = getAuthTokenFromRequest(req);
+    const session = token ? await verifySessionToken(token) : null;
+    if (!session) {
+      return NextResponse.json({ success: false, message: "عدم احراز هویت" }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const { chartId, termIndex, courseId, selectedEventId } = body;
+
+    if (!chartId || termIndex === undefined || !courseId) {
+      return NextResponse.json({ success: false, message: "اطلاعات ارسالی ناقص است." }, { status: 400 });
+    }
+
+    const chart = await getChartById(chartId);
+    if (!chart) {
+      return NextResponse.json({ success: false, message: "چارت یافت نشد." }, { status: 404 });
+    }
+
+    const isAdmin = session.role === "super_admin" || session.role === "admin";
+    if (!chart.isApprovedDefault && chart.userId !== session.id && !isAdmin) {
+      return NextResponse.json({ success: false, message: "دسترسی غیرمجاز" }, { status: 403 });
+    }
+
+    await updateChartCourseEvent(chartId, Number(termIndex), courseId, selectedEventId || null);
+    const updated = await getChartById(chartId);
+
+    return NextResponse.json({
+      success: true,
+      message: "رویداد درسی برای این ترم با موفقیت ذخیره شد.",
+      data: updated,
+    });
+  } catch (err: any) {
+    console.error("PATCH /api/charts error:", err);
+    return NextResponse.json({ success: false, message: "خطا در ثبت رویداد درس" }, { status: 500 });
   }
 }

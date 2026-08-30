@@ -211,28 +211,32 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={async () => {
-                if (
-                  confirm(
-                    "آیا مایل به بازنشانی و بارگذاری کامل داده‌های نمونه دولوپ (شامل دروس، اساتید، ارائه‌ها و چارت نمونه) هستید؟"
-                  )
-                ) {
-                  const res = await fetch("/api/admin/seed", { method: "POST" }).then((r) => r.json());
-                  if (res.success) {
-                    await loadAllData();
-                    alert("داده‌های نمونه دانشگاهی با موفقیت در محیط دولوپ بارگذاری شدند.");
+            {process.env.NODE_ENV !== "production" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  if (
+                    confirm(
+                      "آیا مایل به بازنشانی و بارگذاری کامل داده‌های نمونه دولوپ (شامل دروس، اساتید، ارائه‌ها و چارت نمونه) هستید؟"
+                    )
+                  ) {
+                    const res = await fetch("/api/admin/seed", { method: "POST" }).then((r) => r.json());
+                    if (res.success) {
+                      await loadAllData();
+                      alert("داده‌های نمونه دانشگاهی با موفقیت در محیط دولوپ بارگذاری شدند.");
+                    } else {
+                      alert(res.message || "خطا در بارگذاری دیتای نمونه");
+                    }
                   }
-                }
-              }}
-              className="h-8 gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/10 shadow-2xs"
-              title="بارگذاری مجدد دیتای نمونه دولوپ"
-            >
-              <Database className="h-3.5 w-3.5" />
-              <span className="hidden xl:inline">دیتای نمونه</span>
-            </Button>
+                }}
+                className="h-8 gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/10 shadow-2xs"
+                title="بارگذاری مجدد دیتای نمونه دولوپ"
+              >
+                <Database className="h-3.5 w-3.5" />
+                <span className="hidden xl:inline">دیتای نمونه (Dev)</span>
+              </Button>
+            )}
 
             <ThemeToggle />
 

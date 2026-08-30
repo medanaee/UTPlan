@@ -1,3 +1,4 @@
+import { env } from "cloudflare:workers";
 import type {
   User,
   Faculty,
@@ -15,12 +16,42 @@ import type {
   Review,
   StudentChart,
   ChartSemester,
+  RuleGroupNode,
 } from "./types";
 import { hashPassword } from "./auth";
 
+let isD1LogShown = false;
+
 /**
- * In-memory stores for fallback and development
+ * Access Cloudflare D1 database binding
  */
+export function getD1(): any {
+  let db: any = null;
+
+  try {
+    if (typeof env !== "undefined" && (env as any)?.ut_ece_db) {
+      db = (env as any).ut_ece_db;
+    }
+  } catch {}
+
+  if (!db && typeof globalThis !== "undefined" && (globalThis as any).ut_ece_db) {
+    db = (globalThis as any).ut_ece_db;
+  }
+  if (!db && typeof process !== "undefined" && (process.env as any)?.ut_ece_db) {
+    db = (process.env as any).ut_ece_db;
+  }
+
+  if (db && !isD1LogShown) {
+    console.log("\x1b[32m✔ [Cloudflare D1]\x1b[0m بایندینگ پایگاه‌داده ut_ece_db با موفقیت متصل شد.");
+    isD1LogShown = true;
+  }
+
+  return db;
+}
+
+// =========================================================================
+// IN-MEMORY FALLBACK STORES (For offline dev testing if D1 binding is absent)
+// =========================================================================
 let usersStore: User[] = [];
 let facultiesStore: Faculty[] = [];
 let majorsStore: Major[] = [];
@@ -36,20 +67,10 @@ let eventsStore: CourseEvent[] = [];
 let eventSlotsStore: CourseEventSlot[] = [];
 let reviewsStore: Review[] = [];
 let chartsStore: StudentChart[] = [];
+let isFallbackInitialized = false;
 
-export function getD1(): any {
-  if (typeof globalThis !== "undefined" && (globalThis as any).ut_ece_db) {
-    return (globalThis as any).ut_ece_db;
-  }
-  if (typeof process !== "undefined" && (process.env as any)?.ut_ece_db) {
-    return (process.env as any).ut_ece_db;
-  }
-  return null;
-}
-
-let isInitialized = false;
-
-export async function seedDevData() {
+export async function initFallbackDevData() {
+  if (isFallbackInitialized) return;
   const adminHash = await hashPassword("admin123");
   const studentHash = await hashPassword("student123");
 
@@ -66,7 +87,7 @@ export async function seedDevData() {
       id: "usr_student",
       name: "دانشجو نمونه",
       email: "student@example.com",
-      role: "student",
+      role: "user",
       passwordHash: studentHash,
       facultyId: "fac_ece",
       majorId: "maj_ce",
@@ -77,651 +98,382 @@ export async function seedDevData() {
   ];
 
   facultiesStore = [
-    {
-      id: "fac_ece",
-      name: "دانشکده مهندسی برق و کامپیوتر",
-      code: "ECE",
-      createdAt: new Date().toISOString(),
-      deletedAt: null,
-    },
-    {
-      id: "fac_mech",
-      name: "دانشکده مهندسی مکانیک",
-      code: "MECH",
-      createdAt: new Date().toISOString(),
-      deletedAt: null,
-    },
+    { id: "fac_ece", name: "دانشکده مهندسی برق و کامپیوتر", code: "ECE", createdAt: new Date().toISOString() },
   ];
 
   majorsStore = [
-    {
-      id: "maj_ce",
-      facultyId: "fac_ece",
-      name: "مهندسی کامپیوتر",
-      code: "CE",
-      createdAt: new Date().toISOString(),
-      deletedAt: null,
-    },
-    {
-      id: "maj_ee",
-      facultyId: "fac_ece",
-      name: "مهندسی برق",
-      code: "EE",
-      createdAt: new Date().toISOString(),
-      deletedAt: null,
-    },
+    { id: "maj_ce", facultyId: "fac_ece", name: "مهندسی کامپیوتر", code: "CE", createdAt: new Date().toISOString() },
+    { id: "maj_ee", facultyId: "fac_ece", name: "مهندسی برق", code: "EE", createdAt: new Date().toISOString() },
   ];
 
   tracksStore = [
     {
       id: "trk_software",
       majorId: "maj_ce",
-      name: "نرم‌افزار و هوش مصنوعی",
-      code: "CE_SW",
-      rulesTree: {
-        id: "root_and",
-        type: "AND",
-        title: "قوانین فارغ‌التحصیلی نرم‌افزار",
-        children: [
-          {
-            id: "rule_total",
-            type: "MIN_UNITS",
-            title: "حداقل کل واحدهای دوره",
-            minUnits: 140,
-          },
-          {
-            id: "rule_core",
-            type: "MIN_UNITS",
-            title: "حداقل واحدهای تخصصی و اصلی",
-            categoryId: "rcat_core",
-            minUnits: 60,
-          },
-          {
-            id: "rule_base",
-            type: "MIN_UNITS",
-            title: "حداقل واحدهای پایه",
-            categoryId: "rcat_base",
-            minUnits: 20,
-          },
-          {
-            id: "rule_gen",
-            type: "MIN_UNITS",
-            title: "حداقل واحدهای عمومی",
-            categoryId: "rcat_gen",
-            minUnits: 22,
-          },
-        ],
-      },
-      createdAt: new Date().toISOString(),
-      deletedAt: null,
-    },
-    {
-      id: "trk_hardware",
-      majorId: "maj_ce",
-      name: "سخت‌افزار و سیستم‌های دیجیتال",
-      code: "CE_HW",
-      createdAt: new Date().toISOString(),
-      deletedAt: null,
-    },
-  ];
-
-  visualCategoriesStore = [
-    {
-      id: "vcat_gen",
-      trackId: "trk_software",
-      name: "دروس عمومی",
-      color: "#f59e0b",
-      sortOrder: 0,
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "vcat_base",
-      trackId: "trk_software",
-      name: "دروس پایه",
-      color: "#3b82f6",
-      sortOrder: 1,
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "vcat_core",
-      trackId: "trk_software",
-      name: "دروس اصلی و تخصصی",
-      color: "#8b5cf6",
-      sortOrder: 2,
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "vcat_elective",
-      trackId: "trk_software",
-      name: "دروس اختیاری و کارگاه‌ها",
-      color: "#10b981",
-      sortOrder: 3,
+      name: "نرم‌افزار",
+      code: "SWE",
+      rulesTree: { id: "grp_root", type: "GROUP", operator: "AND", children: [] },
       createdAt: new Date().toISOString(),
     },
   ];
 
-  ruleCategoriesStore = [
-    {
-      id: "rcat_total",
-      trackId: "trk_software",
-      name: "کل دروس دوره کارشناسی",
-      minCredits: 140,
-      parentId: null,
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "rcat_gen",
-      trackId: "trk_software",
-      name: "دروس عمومی",
-      minCredits: 22,
-      parentId: "rcat_total",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "rcat_base",
-      trackId: "trk_software",
-      name: "دروس پایه",
-      minCredits: 20,
-      parentId: "rcat_total",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "rcat_core",
-      trackId: "trk_software",
-      name: "دروس اصلی و تخصصی",
-      minCredits: 60,
-      parentId: "rcat_total",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "rcat_elective",
-      trackId: "trk_software",
-      name: "دروس اختیاری تخصصی",
-      minCredits: 16,
-      parentId: "rcat_total",
-      createdAt: new Date().toISOString(),
-    },
-  ];
-
-  coursesStore = [
-    {
-      id: "crs_math1",
-      facultyId: "fac_ece",
-      name: "ریاضی عمومی ۱",
-      code: "MATH101",
-      units: 3,
-      offeredIn: "both",
-      description: "حساب دیفرانسیل و انتگرال توابع یک‌متغیره",
-      createdAt: new Date().toISOString(),
-      deletedAt: null,
-    },
-    {
-      id: "crs_math2",
-      facultyId: "fac_ece",
-      name: "ریاضی عمومی ۲",
-      code: "MATH102",
-      units: 3,
-      offeredIn: "both",
-      description: "حساب دیفرانسیل و انتگرال توابع چندمتغیره و برداری",
-      createdAt: new Date().toISOString(),
-      deletedAt: null,
-    },
-    {
-      id: "crs_phys1",
-      facultyId: "fac_ece",
-      name: "فیزیک ۱ (مکانیک)",
-      code: "PHYS101",
-      units: 3,
-      offeredIn: "both",
-      description: "مکانیک کلاسیک و دینامیک نیوتنی",
-      createdAt: new Date().toISOString(),
-      deletedAt: null,
-    },
-    {
-      id: "crs_phys2",
-      facultyId: "fac_ece",
-      name: "فیزیک ۲ (الکتریسیته و مغناطیس)",
-      code: "PHYS102",
-      units: 3,
-      offeredIn: "both",
-      description: "میدان‌های الکتریکی و مغناطیسی و امواج الکترومغناطیس",
-      createdAt: new Date().toISOString(),
-      deletedAt: null,
-    },
-    {
-      id: "crs_prog",
-      facultyId: "fac_ece",
-      name: "مبانی برنامه‌سازی",
-      code: "CS101",
-      units: 3,
-      offeredIn: "both",
-      description: "آشنایی با الگوریتم‌ها و برنامه‌نویسی به زبان C/C++",
-      createdAt: new Date().toISOString(),
-      deletedAt: null,
-    },
-    {
-      id: "crs_ap",
-      facultyId: "fac_ece",
-      name: "برنامه‌سازی پیشرفته",
-      code: "CS102",
-      units: 3,
-      offeredIn: "both",
-      description: "برنامه‌نویسی شیءگرا و طراحی الگوها با Java/C++",
-      createdAt: new Date().toISOString(),
-      deletedAt: null,
-    },
-    {
-      id: "crs_ds",
-      facultyId: "fac_ece",
-      name: "ساختمان داده‌ها و الگوریتم‌ها",
-      code: "CS201",
-      units: 3,
-      offeredIn: "both",
-      description: "آرایه، لیست پیوندی، درخت، گراف و تحلیل مرتبه پیچیدگی",
-      createdAt: new Date().toISOString(),
-      deletedAt: null,
-    },
-    {
-      id: "crs_algo",
-      facultyId: "fac_ece",
-      name: "طراحی الگوریتم‌ها",
-      code: "CS301",
-      units: 3,
-      offeredIn: "both",
-      description: "الگوریتم‌های حریصانه، برنامه‌ریزی پویا و تقسیم و حل",
-      createdAt: new Date().toISOString(),
-      deletedAt: null,
-    },
-    {
-      id: "crs_logic",
-      facultyId: "fac_ece",
-      name: "مدارهای منطقی",
-      code: "CE201",
-      units: 3,
-      offeredIn: "both",
-      description: "جبر بولی، گیت‌ها، مدارهای ترکیبی و ترتیبی",
-      createdAt: new Date().toISOString(),
-      deletedAt: null,
-    },
-    {
-      id: "crs_arch",
-      facultyId: "fac_ece",
-      name: "معماری کامپیوتر",
-      code: "CE301",
-      units: 3,
-      offeredIn: "both",
-      description: "ساختار پردازنده، حافظه، گذرگاه‌ها و دستورالعمل‌های اسمبلی",
-      createdAt: new Date().toISOString(),
-      deletedAt: null,
-    },
-    {
-      id: "crs_os",
-      facultyId: "fac_ece",
-      name: "سیستم‌های عامل",
-      code: "CS302",
-      units: 3,
-      offeredIn: "both",
-      description: "مدیریت پردازه‌ها، حافظه، ریسمان‌ها، قفل‌ها و سیستم فایل",
-      createdAt: new Date().toISOString(),
-      deletedAt: null,
-    },
-    {
-      id: "crs_net",
-      facultyId: "fac_ece",
-      name: "شبکه‌های کامپیوتری",
-      code: "CS303",
-      units: 3,
-      offeredIn: "both",
-      description: "مدل OSI، پروتکل‌های اینترنت TCP/IP و مسیریابی",
-      createdAt: new Date().toISOString(),
-      deletedAt: null,
-    },
-    {
-      id: "crs_db",
-      facultyId: "fac_ece",
-      name: "پایگاه داده‌ها",
-      code: "CS304",
-      units: 3,
-      offeredIn: "both",
-      description: "مدل رابطه‌ای، SQL، نرمال‌سازی و تراکنش‌ها",
-      createdAt: new Date().toISOString(),
-      deletedAt: null,
-    },
-    {
-      id: "crs_ai",
-      facultyId: "fac_ece",
-      name: "هوش مصنوعی",
-      code: "CS401",
-      units: 3,
-      offeredIn: "both",
-      description: "جستجو در فضای حالت، منطق، یادگیری و سیستم‌های خبره",
-      createdAt: new Date().toISOString(),
-      deletedAt: null,
-    },
-    {
-      id: "crs_ml",
-      facultyId: "fac_ece",
-      name: "یادگیری ماشین",
-      code: "CS402",
-      units: 3,
-      offeredIn: "both",
-      description: "رگرسیون، دسته‌بندی، خوشه‌بندی و شبکه‌های عصبی عمیق",
-      createdAt: new Date().toISOString(),
-      deletedAt: null,
-    },
-    {
-      id: "crs_se",
-      facultyId: "fac_ece",
-      name: "مهندسی نرم‌افزار",
-      code: "CS403",
-      units: 3,
-      offeredIn: "both",
-      description: "متدولوژی‌های چابک، معماری نرم‌افزار و تست سیستم",
-      createdAt: new Date().toISOString(),
-      deletedAt: null,
-    },
-    {
-      id: "crs_persian",
-      facultyId: "fac_ece",
-      name: "فارسی عمومی",
-      code: "GEN101",
-      units: 2,
-      offeredIn: "both",
-      description: "نگارش و ادبیات فارسی",
-      createdAt: new Date().toISOString(),
-      deletedAt: null,
-    },
-    {
-      id: "crs_english",
-      facultyId: "fac_ece",
-      name: "زبان انگلیسی عمومی",
-      code: "GEN102",
-      units: 2,
-      offeredIn: "both",
-      description: "گرامر و درک مطلب زبان انگلیسی",
-      createdAt: new Date().toISOString(),
-      deletedAt: null,
-    },
-    {
-      id: "crs_islam1",
-      facultyId: "fac_ece",
-      name: "اندیشه اسلامی ۱",
-      code: "GEN103",
-      units: 2,
-      offeredIn: "both",
-      description: "مبانی معرفتی و اندیشه اسلامی",
-      createdAt: new Date().toISOString(),
-      deletedAt: null,
-    },
-    {
-      id: "crs_pe1",
-      facultyId: "fac_ece",
-      name: "تربیت بدنی ۱",
-      code: "GEN104",
-      units: 1,
-      offeredIn: "both",
-      description: "آمادگی جسمانی و ورزش عمومی",
-      createdAt: new Date().toISOString(),
-      deletedAt: null,
-    },
-  ];
-
-  prerequisitesStore = [
-    { id: "pr_1", courseId: "crs_math2", requiredCourseId: "crs_math1", type: "prerequisite" },
-    { id: "pr_2", courseId: "crs_phys2", requiredCourseId: "crs_phys1", type: "prerequisite" },
-    { id: "pr_3", courseId: "crs_ap", requiredCourseId: "crs_prog", type: "prerequisite" },
-    { id: "pr_4", courseId: "crs_ds", requiredCourseId: "crs_ap", type: "prerequisite" },
-    { id: "pr_5", courseId: "crs_algo", requiredCourseId: "crs_ds", type: "prerequisite" },
-    { id: "pr_6", courseId: "crs_arch", requiredCourseId: "crs_logic", type: "prerequisite" },
-    { id: "pr_7", courseId: "crs_os", requiredCourseId: "crs_ds", type: "prerequisite" },
-    { id: "pr_8", courseId: "crs_os", requiredCourseId: "crs_arch", type: "prerequisite" },
-    { id: "pr_9", courseId: "crs_net", requiredCourseId: "crs_os", type: "prerequisite" },
-    { id: "pr_10", courseId: "crs_db", requiredCourseId: "crs_ds", type: "prerequisite" },
-    { id: "pr_11", courseId: "crs_ai", requiredCourseId: "crs_algo", type: "prerequisite" },
-    { id: "pr_12", courseId: "crs_ml", requiredCourseId: "crs_ai", type: "prerequisite" },
-    { id: "pr_13", courseId: "crs_se", requiredCourseId: "crs_db", type: "corequisite" },
-  ];
-
-  trackAssignmentsStore = [
-    { id: "as_1", trackId: "trk_software", courseId: "crs_math1", visualCategoryId: "vcat_base", ruleCategoryId: "rcat_base" },
-    { id: "as_2", trackId: "trk_software", courseId: "crs_math2", visualCategoryId: "vcat_base", ruleCategoryId: "rcat_base" },
-    { id: "as_3", trackId: "trk_software", courseId: "crs_phys1", visualCategoryId: "vcat_base", ruleCategoryId: "rcat_base" },
-    { id: "as_4", trackId: "trk_software", courseId: "crs_phys2", visualCategoryId: "vcat_base", ruleCategoryId: "rcat_base" },
-    { id: "as_5", trackId: "trk_software", courseId: "crs_prog", visualCategoryId: "vcat_core", ruleCategoryId: "rcat_core" },
-    { id: "as_6", trackId: "trk_software", courseId: "crs_ap", visualCategoryId: "vcat_core", ruleCategoryId: "rcat_core" },
-    { id: "as_7", trackId: "trk_software", courseId: "crs_ds", visualCategoryId: "vcat_core", ruleCategoryId: "rcat_core" },
-    { id: "as_8", trackId: "trk_software", courseId: "crs_algo", visualCategoryId: "vcat_core", ruleCategoryId: "rcat_core" },
-    { id: "as_9", trackId: "trk_software", courseId: "crs_logic", visualCategoryId: "vcat_core", ruleCategoryId: "rcat_core" },
-    { id: "as_10", trackId: "trk_software", courseId: "crs_arch", visualCategoryId: "vcat_core", ruleCategoryId: "rcat_core" },
-    { id: "as_11", trackId: "trk_software", courseId: "crs_os", visualCategoryId: "vcat_core", ruleCategoryId: "rcat_core" },
-    { id: "as_12", trackId: "trk_software", courseId: "crs_net", visualCategoryId: "vcat_core", ruleCategoryId: "rcat_core" },
-    { id: "as_13", trackId: "trk_software", courseId: "crs_db", visualCategoryId: "vcat_core", ruleCategoryId: "rcat_core" },
-    { id: "as_14", trackId: "trk_software", courseId: "crs_ai", visualCategoryId: "vcat_core", ruleCategoryId: "rcat_core" },
-    { id: "as_15", trackId: "trk_software", courseId: "crs_ml", visualCategoryId: "vcat_elective", ruleCategoryId: "rcat_elective" },
-    { id: "as_16", trackId: "trk_software", courseId: "crs_se", visualCategoryId: "vcat_core", ruleCategoryId: "rcat_core" },
-    { id: "as_17", trackId: "trk_software", courseId: "crs_persian", visualCategoryId: "vcat_gen", ruleCategoryId: "rcat_gen" },
-    { id: "as_18", trackId: "trk_software", courseId: "crs_english", visualCategoryId: "vcat_gen", ruleCategoryId: "rcat_gen" },
-    { id: "as_19", trackId: "trk_software", courseId: "crs_islam1", visualCategoryId: "vcat_gen", ruleCategoryId: "rcat_gen" },
-    { id: "as_20", trackId: "trk_software", courseId: "crs_pe1", visualCategoryId: "vcat_gen", ruleCategoryId: "rcat_gen" },
-  ];
-
-  professorsStore = [
-    {
-      id: "prf_rezvani",
-      facultyId: "fac_ece",
-      firstName: "سارا",
-      lastName: "رضوانی",
-      name: "دکتر سارا رضوانی",
-      title: "استاد تمام",
-      email: "s.rezvani@ut.ac.ir",
-      links: {
-        website: "https://profile.ut.ac.ir/~s.rezvani",
-        scholar: "https://scholar.google.com/citations?user=s_rezvani",
-      },
-      createdAt: new Date().toISOString(),
-      deletedAt: null,
-    },
-    {
-      id: "prf_mohammadi",
-      facultyId: "fac_ece",
-      firstName: "علی",
-      lastName: "محمدی",
-      name: "دکتر علی محمدی",
-      title: "دانشیار",
-      email: "a.mohammadi@ut.ac.ir",
-      links: {
-        website: "https://profile.ut.ac.ir/~a.mohammadi",
-        scholar: "https://scholar.google.com/citations?user=a_mohammadi",
-      },
-      createdAt: new Date().toISOString(),
-      deletedAt: null,
-    },
-    {
-      id: "prf_hosseini",
-      facultyId: "fac_ece",
-      firstName: "مریم",
-      lastName: "حسینی",
-      name: "دکتر مریم حسینی",
-      title: "استادیار",
-      email: "m.hosseini@ut.ac.ir",
-      links: {
-        website: "https://profile.ut.ac.ir/~m.hosseini",
-      },
-      createdAt: new Date().toISOString(),
-      deletedAt: null,
-    },
-    {
-      id: "prf_kazemi",
-      facultyId: "fac_ece",
-      firstName: "بهزاد",
-      lastName: "کاظمی",
-      name: "دکتر بهزاد کاظمی",
-      title: "استادیار",
-      email: "b.kazemi@ut.ac.ir",
-      links: {
-        scholar: "https://scholar.google.com/citations?user=b_kazemi",
-      },
-      createdAt: new Date().toISOString(),
-      deletedAt: null,
-    },
-  ];
-
-  offeringsStore = [
-    { id: "off_1", courseId: "crs_ds", professorId: "prf_rezvani", createdAt: new Date().toISOString(), deletedAt: null },
-    { id: "off_2", courseId: "crs_prog", professorId: "prf_mohammadi", createdAt: new Date().toISOString(), deletedAt: null },
-    { id: "off_3", courseId: "crs_os", professorId: "prf_hosseini", createdAt: new Date().toISOString(), deletedAt: null },
-    { id: "off_4", courseId: "crs_ai", professorId: "prf_kazemi", createdAt: new Date().toISOString(), deletedAt: null },
-    { id: "off_5", courseId: "crs_db", professorId: "prf_rezvani", createdAt: new Date().toISOString(), deletedAt: null },
-    { id: "off_6", courseId: "crs_math1", professorId: "prf_mohammadi", createdAt: new Date().toISOString(), deletedAt: null },
-  ];
-
-  eventsStore = [
-    {
-      id: "evt_1",
-      offeringId: "off_1",
-      term: "1403-1",
-      groupCode: "01",
-      capacity: 45,
-      location: "دانشکده برق و کامپیوتر - کلاس ۱۰۱",
-      examDate: "1403/10/22",
-      examStartTime: "08:30",
-      examEndTime: "11:00",
-      isUserCustom: false,
-      slots: [
-        { id: "slt_1_1", eventId: "evt_1", dayOfWeek: 0, startTime: "10:30", endTime: "12:00" },
-        { id: "slt_1_2", eventId: "evt_1", dayOfWeek: 2, startTime: "10:30", endTime: "12:00" },
-      ],
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "evt_2",
-      offeringId: "off_2",
-      term: "1403-1",
-      groupCode: "01",
-      capacity: 50,
-      location: "دانشکده برق و کامپیوتر - سایت محاسبات",
-      examDate: "1403/10/25",
-      examStartTime: "13:30",
-      examEndTime: "16:00",
-      isUserCustom: false,
-      slots: [
-        { id: "slt_2_1", eventId: "evt_2", dayOfWeek: 1, startTime: "08:00", endTime: "09:30" },
-        { id: "slt_2_2", eventId: "evt_2", dayOfWeek: 3, startTime: "08:00", endTime: "09:30" },
-      ],
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "evt_3",
-      offeringId: "off_3",
-      term: "1403-1",
-      groupCode: "01",
-      capacity: 40,
-      location: "دانشکده برق و کامپیوتر - کلاس ۱۰۳",
-      examDate: "1403/10/28",
-      examStartTime: "08:30",
-      examEndTime: "11:00",
-      isUserCustom: false,
-      slots: [
-        { id: "slt_3_1", eventId: "evt_3", dayOfWeek: 0, startTime: "13:30", endTime: "15:00" },
-        { id: "slt_3_2", eventId: "evt_3", dayOfWeek: 4, startTime: "13:30", endTime: "15:00" },
-      ],
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "evt_4",
-      offeringId: "off_4",
-      term: "1403-1",
-      groupCode: "01",
-      capacity: 35,
-      location: "دانشکده برق و کامپیوتر - کلاس ۱۰۴",
-      examDate: "1403/11/01",
-      examStartTime: "08:30",
-      examEndTime: "11:00",
-      isUserCustom: false,
-      slots: [
-        { id: "slt_4_1", eventId: "evt_4", dayOfWeek: 1, startTime: "10:30", endTime: "12:00" },
-        { id: "slt_4_2", eventId: "evt_4", dayOfWeek: 3, startTime: "10:30", endTime: "12:00" },
-      ],
-      createdAt: new Date().toISOString(),
-    },
-  ];
-
-  chartsStore = [
-    {
-      id: "chart_approved_ce_sw",
-      userId: "usr_super_admin",
-      trackId: "trk_software",
-      title: "چارت مصوب کارشناسی مهندسی کامپیوتر (گرایش نرم‌افزار)",
-      isApprovedDefault: true,
-      description: "برنامه درسی مصوب شورای آموزشی دانشگاه تهران جهت هدایت تحصیلی دانشجویان ورودی جدید",
-      semesters: [
-        { semesterNumber: 1, courseIds: ["crs_math1", "crs_phys1", "crs_prog", "crs_persian", "crs_pe1"] },
-        { semesterNumber: 2, courseIds: ["crs_math2", "crs_phys2", "crs_ap", "crs_english", "crs_islam1"] },
-        { semesterNumber: 3, courseIds: ["crs_ds", "crs_logic"] },
-        { semesterNumber: 4, courseIds: ["crs_algo", "crs_arch", "crs_db"] },
-        { semesterNumber: 5, courseIds: ["crs_os", "crs_se"] },
-        { semesterNumber: 6, courseIds: ["crs_net", "crs_ai"] },
-        { semesterNumber: 7, courseIds: ["crs_ml"] },
-        { semesterNumber: 8, courseIds: [] },
-      ],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      deletedAt: null,
-    },
-  ];
+  isFallbackInitialized = true;
 }
 
-export async function initDatabase() {
-  if (isInitialized) return;
+export async function seedDatabase(fullSeed = true) {
+  const adminHash = await hashPassword("admin123");
+  const studentHash = await hashPassword("student123");
+  const now = new Date().toISOString();
+  const d1 = getD1();
 
-  const isDev = process.env.NODE_ENV !== "production" || !getD1();
-  if (isDev) {
-    await seedDevData();
-  } else {
-    const adminHash = await hashPassword("admin123");
-    usersStore = [
+  if (d1) {
+    // 1. Ensure Super Admin Exists
+    const existingAdmin = await d1
+      .prepare("SELECT id FROM users WHERE LOWER(email) = ?")
+      .bind("admin@example.com")
+      .first();
+
+    if (!existingAdmin) {
+      await d1
+        .prepare(
+          `INSERT INTO users (id, name, email, password_hash, role, created_at)
+           VALUES ('usr_super_admin', 'مدیر ارشد سامانه', 'admin@example.com', ?, 'super_admin', ?)`
+        )
+        .bind(adminHash, now)
+        .run();
+    }
+
+    if (!fullSeed) {
+      return { success: true, message: "حساب کاربری مدیر ارشد بررسی و ثبت گردید." };
+    }
+
+    // 2. Sample Faculty
+    await d1
+      .prepare(
+        `INSERT INTO faculties (id, name, code, created_at)
+         VALUES ('fac_ece', 'دانشکده مهندسی برق و کامپیوتر', 'ECE', ?)
+         ON CONFLICT(id) DO NOTHING`
+      )
+      .bind(now)
+      .run();
+
+    // 3. Sample Majors
+    await d1
+      .prepare(
+        `INSERT INTO majors (id, faculty_id, name, code, created_at)
+         VALUES ('maj_ce', 'fac_ece', 'مهندسی کامپیوتر', 'CE', ?),
+                ('maj_ee', 'fac_ece', 'مهندسی برق', 'EE', ?)
+         ON CONFLICT(id) DO NOTHING`
+      )
+      .bind(now, now)
+      .run();
+
+    // 4. Sample Tracks
+    const rulesTreeJson = JSON.stringify({ id: "grp_root", type: "GROUP", operator: "AND", children: [] });
+    await d1
+      .prepare(
+        `INSERT INTO tracks (id, major_id, name, code, rules_tree, created_at)
+         VALUES ('trk_software', 'maj_ce', 'نرم‌افزار', 'SWE', ?, ?),
+                ('trk_hardware', 'maj_ce', 'معماری سیستم‌های کامپیوتری', 'HWE', ?, ?),
+                ('trk_ai', 'maj_ce', 'هوش مصنوعی و رباتیک', 'AI', ?, ?)
+         ON CONFLICT(id) DO NOTHING`
+      )
+      .bind(rulesTreeJson, now, rulesTreeJson, now, rulesTreeJson, now)
+      .run();
+
+    // 5. Visual Categories
+    await d1
+      .prepare(
+        `INSERT INTO visual_categories (id, track_id, name, color, sort_order, created_at)
+         VALUES ('vcat_base', 'trk_software', 'دروس پایه', '#3b82f6', 1, ?),
+                ('vcat_core', 'trk_software', 'دروس اصلی', '#10b981', 2, ?),
+                ('vcat_spec', 'trk_software', 'دروس تخصصی', '#8b5cf6', 3, ?),
+                ('vcat_gen', 'trk_software', 'دروس عمومی', '#f59e0b', 4, ?)
+         ON CONFLICT(id) DO NOTHING`
+      )
+      .bind(now, now, now, now)
+      .run();
+
+    // 6. Rule Categories
+    await d1
+      .prepare(
+        `INSERT INTO rule_categories (id, track_id, parent_id, name, min_credits, created_at)
+         VALUES ('rcat_base', 'trk_software', NULL, 'دروس پایه', 20, ?),
+                ('rcat_core', 'trk_software', NULL, 'دروس اصلی', 60, ?),
+                ('rcat_spec', 'trk_software', NULL, 'دروس تخصصی', 25, ?),
+                ('rcat_gen', 'trk_software', NULL, 'دروس عمومی', 22, ?)
+         ON CONFLICT(id) DO NOTHING`
+      )
+      .bind(now, now, now, now)
+      .run();
+
+    // 7. Sample Courses
+    const courses = [
+      { id: "crs_math1", name: "ریاضی عمومی ۱", code: "MATH101", units: 3, catV: "vcat_base", catR: "rcat_base" },
+      { id: "crs_phys1", name: "فیزیک ۱", code: "PHYS101", units: 3, catV: "vcat_base", catR: "rcat_base" },
+      { id: "crs_prog", name: "مبانی برنامه‌سازی", code: "PROG101", units: 3, catV: "vcat_base", catR: "rcat_base" },
+      { id: "crs_ds", name: "ساختمان داده‌ها", code: "DS201", units: 3, catV: "vcat_core", catR: "rcat_core" },
+      { id: "crs_algo", name: "طراحی الگوریتم", code: "ALGO301", units: 3, catV: "vcat_core", catR: "rcat_core" },
+      { id: "crs_logic", name: "مدارهای منطقی", code: "LOGIC101", units: 3, catV: "vcat_core", catR: "rcat_core" },
+      { id: "crs_arch", name: "معماری کامپیوتر", code: "ARCH201", units: 3, catV: "vcat_core", catR: "rcat_core" },
+      { id: "crs_net", name: "شبکه‌های کامپیوتری", code: "NET301", units: 3, catV: "vcat_spec", catR: "rcat_spec" },
+      { id: "crs_db", name: "پایگاه داده‌ها", code: "DB201", units: 3, catV: "vcat_core", catR: "rcat_core" },
+      { id: "crs_os", name: "سیستم‌های عامل", code: "OS301", units: 3, catV: "vcat_core", catR: "rcat_core" },
+      { id: "crs_pers", name: "فارسی عمومی", code: "PERS101", units: 2, catV: "vcat_gen", catR: "rcat_gen" },
+      { id: "crs_eng", name: "زبان انگلیسی عمومی", code: "ENG101", units: 2, catV: "vcat_gen", catR: "rcat_gen" },
+    ];
+
+    for (const c of courses) {
+      await d1
+        .prepare(
+          `INSERT INTO courses (id, faculty_id, name, code, units, offered_in, description, created_at)
+           VALUES (?, 'fac_ece', ?, ?, ?, 'both', '', ?)
+           ON CONFLICT(id) DO NOTHING`
+        )
+        .bind(c.id, c.name, c.code, c.units, now)
+        .run();
+
+      await d1
+        .prepare(
+          `INSERT INTO track_course_assignments (id, track_id, course_id, visual_category_id, rule_category_id)
+           VALUES (?, 'trk_software', ?, ?, ?)
+           ON CONFLICT(track_id, course_id) DO NOTHING`
+        )
+        .bind(`assign_trk_software_${c.id}`, c.id, c.catV, c.catR)
+        .run();
+    }
+
+    // 8. Prerequisites
+    await d1
+      .prepare(
+        `INSERT INTO prerequisites (id, course_id, required_course_id, type)
+         VALUES ('pr_1', 'crs_ds', 'crs_prog', 'prerequisite'),
+                ('pr_2', 'crs_algo', 'crs_ds', 'prerequisite'),
+                ('pr_3', 'crs_arch', 'crs_logic', 'prerequisite'),
+                ('pr_4', 'crs_db', 'crs_ds', 'prerequisite'),
+                ('pr_5', 'crs_os', 'crs_arch', 'prerequisite')
+         ON CONFLICT(course_id, required_course_id, type) DO NOTHING`
+      )
+      .run();
+
+    // 9. Sample Professors
+    const profs = [
       {
-        id: "usr_super_admin",
-        name: "مدیر ارشد سامانه",
-        email: "admin@example.com",
-        role: "super_admin",
-        passwordHash: adminHash,
-        createdAt: new Date().toISOString(),
+        id: "prf_1",
+        first_name: "علی",
+        last_name: "محمدی",
+        name: "دکتر علی محمدی",
+        title: "استاد تمام",
+        email: "mohammadi@ut.ac.ir",
+        links: JSON.stringify({ website: "https://ece.ut.ac.ir/mohammadi", scholar: "https://scholar.google.com" }),
+      },
+      {
+        id: "prf_2",
+        first_name: "سارا",
+        last_name: "احمدی",
+        name: "دکتر سارا احمدی",
+        title: "دانشیار",
+        email: "s.ahmadi@ut.ac.ir",
+        links: JSON.stringify({ website: "https://ece.ut.ac.ir/ahmadi", scholar: "https://scholar.google.com" }),
+      },
+      {
+        id: "prf_3",
+        first_name: "رضا",
+        last_name: "حسینی",
+        name: "دکتر رضا حسینی",
+        title: "استادیار",
+        email: "hosseini@ut.ac.ir",
+        links: JSON.stringify({ website: "https://ece.ut.ac.ir/hosseini" }),
       },
     ];
 
-    facultiesStore = [];
-    majorsStore = [];
-    tracksStore = [];
-    visualCategoriesStore = [];
-    ruleCategoriesStore = [];
-    coursesStore = [];
-    trackAssignmentsStore = [];
-    prerequisitesStore = [];
-    professorsStore = [];
-    offeringsStore = [];
-    eventsStore = [];
-    chartsStore = [];
+    for (const p of profs) {
+      await d1
+        .prepare(
+          `INSERT INTO professors (id, faculty_id, first_name, last_name, name, title, email, links, created_at)
+           VALUES (?, 'fac_ece', ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(id) DO NOTHING`
+        )
+        .bind(p.id, p.first_name, p.last_name, p.name, p.title, p.email, p.links, now)
+        .run();
+    }
+
+    // 10. Sample Student User
+    await d1
+      .prepare(
+        `INSERT INTO users (id, name, email, password_hash, role, faculty_id, major_id, track_id, entry_semester, created_at)
+         VALUES ('usr_student', 'دانشجو نمونه', 'student@example.com', ?, 'user', 'fac_ece', 'maj_ce', 'trk_software', '1402-1', ?)
+         ON CONFLICT(id) DO NOTHING`
+      )
+      .bind(studentHash, now)
+      .run();
+
+    // 11. Sample Offerings & Events
+    await d1
+      .prepare(
+        `INSERT INTO course_offerings (id, course_id, professor_id, created_at)
+         VALUES ('off_prog_1', 'crs_prog', 'prf_1', ?),
+                ('off_ds_1', 'crs_ds', 'prf_2', ?),
+                ('off_db_1', 'crs_db', 'prf_3', ?)
+         ON CONFLICT(id) DO NOTHING`
+      )
+      .bind(now, now, now)
+      .run();
+
+    await d1
+      .prepare(
+        `INSERT INTO course_events (id, offering_id, term, location, exam_date, exam_start_time, exam_end_time, is_user_custom, created_at)
+         VALUES ('evt_prog_1', 'off_prog_1', '1403-1', 'دانشکده فنی - کلاس ۱۰۲', '1403/10/22', '08:30', '11:00', 0, ?),
+                ('evt_ds_1', 'off_ds_1', '1403-1', 'دانشکده فنی - کلاس ۲۰۴', '1403/10/25', '13:30', '16:00', 0, ?),
+                ('evt_db_1', 'off_db_1', '1403-1', 'دانشکده فنی - کلاس ۳۰۱', '1403/10/28', '08:30', '11:00', 0, ?)
+         ON CONFLICT(id) DO NOTHING`
+      )
+      .bind(now, now, now)
+      .run();
+
+    await d1
+      .prepare(
+        `INSERT INTO course_event_slots (id, event_id, day_of_week, start_time, end_time)
+         VALUES ('slot_1', 'evt_prog_1', 0, '10:30', '12:00'),
+                ('slot_2', 'evt_prog_1', 2, '10:30', '12:00'),
+                ('slot_3', 'evt_ds_1', 1, '08:30', '10:00'),
+                ('slot_4', 'evt_ds_1', 3, '08:30', '10:00'),
+                ('slot_5', 'evt_db_1', 0, '13:30', '15:00'),
+                ('slot_6', 'evt_db_1', 2, '13:30', '15:00')
+         ON CONFLICT(id) DO NOTHING`
+      )
+      .run();
+
+    // 12. Approved Default Chart
+    await d1
+      .prepare(
+        `INSERT INTO charts (id, user_id, track_id, title, is_approved_template, created_at, updated_at)
+         VALUES ('ch_approved_swe', 'usr_super_admin', 'trk_software', 'چارت مصوب کارشناسی مهندسی نرم‌افزار', 1, ?, ?)
+         ON CONFLICT(id) DO NOTHING`
+      )
+      .bind(now, now)
+      .run();
+
+    // Terms 1 and 2
+    await d1
+      .prepare(
+        `INSERT INTO chart_terms (id, chart_id, term_index)
+         VALUES ('term_ch_approved_swe_1', 'ch_approved_swe', 1),
+                ('term_ch_approved_swe_2', 'ch_approved_swe', 2)
+         ON CONFLICT(id) DO NOTHING`
+      )
+      .run();
+
+    await d1
+      .prepare(
+        `INSERT INTO chart_courses (id, term_id, course_id, sort_order)
+         VALUES ('cc_1', 'term_ch_approved_swe_1', 'crs_math1', 0),
+                ('cc_2', 'term_ch_approved_swe_1', 'crs_phys1', 1),
+                ('cc_3', 'term_ch_approved_swe_1', 'crs_prog', 2),
+                ('cc_4', 'term_ch_approved_swe_1', 'crs_pers', 3),
+                ('cc_5', 'term_ch_approved_swe_2', 'crs_ds', 0),
+                ('cc_6', 'term_ch_approved_swe_2', 'crs_logic', 1),
+                ('cc_7', 'term_ch_approved_swe_2', 'crs_eng', 2)
+         ON CONFLICT(id) DO NOTHING`
+      )
+      .run();
+
+    return { success: true, message: "داده‌های کامل دانشگاهی با موفقیت در دیتابیس D1 ذخیره شدند." };
   }
 
-  isInitialized = true;
+  await initFallbackDevData();
+  return { success: true, message: "داده‌های آزمایشی در حافظه موقت بارگذاری شدند." };
 }
 
 // ----------------------------------------------------
-// USERS CRUD
+// 1. USERS CRUD
 // ----------------------------------------------------
 export async function findUserByEmail(email: string): Promise<User | null> {
-  await initDatabase();
-  return usersStore.find((u) => u.email.toLowerCase() === email.trim().toLowerCase()) || null;
+  const cleanEmail = email.trim().toLowerCase();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      const row = await d1
+        .prepare("SELECT * FROM users WHERE LOWER(email) = ?")
+        .bind(cleanEmail)
+        .first();
+      if (!row) return null;
+      return {
+        id: (row as any).id,
+        name: (row as any).name,
+        email: (row as any).email,
+        role: (row as any).role as any,
+        passwordHash: (row as any).password_hash,
+        facultyId: (row as any).faculty_id || undefined,
+        majorId: (row as any).major_id || undefined,
+        trackId: (row as any).track_id || undefined,
+        entrySemester: (row as any).entry_semester || undefined,
+        avatarUrl: (row as any).avatar_url || undefined,
+        createdAt: (row as any).created_at,
+      };
+    } catch (err) {
+      console.error("D1 findUserByEmail error:", err);
+    }
+  }
+
+  await initFallbackDevData();
+  return usersStore.find((u) => u.email.toLowerCase() === cleanEmail) || null;
 }
 
 export async function findUserById(id: string): Promise<User | null> {
-  await initDatabase();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      const row = await d1.prepare("SELECT * FROM users WHERE id = ?").bind(id).first();
+      if (!row) return null;
+      return {
+        id: (row as any).id,
+        name: (row as any).name,
+        email: (row as any).email,
+        role: (row as any).role as any,
+        passwordHash: (row as any).password_hash,
+        facultyId: (row as any).faculty_id || undefined,
+        majorId: (row as any).major_id || undefined,
+        trackId: (row as any).track_id || undefined,
+        entrySemester: (row as any).entry_semester || undefined,
+        avatarUrl: (row as any).avatar_url || undefined,
+        createdAt: (row as any).created_at,
+      };
+    } catch (err) {
+      console.error("D1 findUserById error:", err);
+    }
+  }
+
+  await initFallbackDevData();
   return usersStore.find((u) => u.id === id) || null;
 }
 
 export async function getAllUsers(): Promise<User[]> {
-  await initDatabase();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      const { results } = await d1
+        .prepare("SELECT * FROM users ORDER BY created_at DESC")
+        .all();
+      return (results || []).map((row: any) => ({
+        id: row.id,
+        name: row.name,
+        email: row.email,
+        role: row.role as any,
+        passwordHash: row.password_hash,
+        facultyId: row.faculty_id || undefined,
+        majorId: row.major_id || undefined,
+        trackId: row.track_id || undefined,
+        entrySemester: row.entry_semester || undefined,
+        avatarUrl: row.avatar_url || undefined,
+        createdAt: row.created_at,
+      }));
+    } catch (err) {
+      console.error("D1 getAllUsers error:", err);
+    }
+  }
+
+  await initFallbackDevData();
   return usersStore;
 }
 
@@ -734,27 +486,75 @@ export async function createUser(data: {
   majorId?: string;
   trackId?: string;
   entrySemester?: string;
+  avatarUrl?: string;
 }): Promise<User> {
-  await initDatabase();
   const id = `usr_${crypto.randomUUID().slice(0, 8)}`;
+  const cleanEmail = data.email.trim().toLowerCase();
+  const role = data.role || "user";
+  const now = new Date().toISOString();
+
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1
+        .prepare(
+          `INSERT INTO users (id, name, email, password_hash, role, faculty_id, major_id, track_id, entry_semester, avatar_url, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        )
+        .bind(
+          id,
+          data.name.trim(),
+          cleanEmail,
+          data.passwordHash,
+          role,
+          data.facultyId || null,
+          data.majorId || null,
+          data.trackId || null,
+          data.entrySemester || null,
+          data.avatarUrl || null,
+          now
+        )
+        .run();
+    } catch (err) {
+      console.error("D1 createUser error:", err);
+      throw err;
+    }
+  }
+
   const newUser: User = {
     id,
-    name: data.name,
-    email: data.email.trim().toLowerCase(),
+    name: data.name.trim(),
+    email: cleanEmail,
     passwordHash: data.passwordHash,
-    role: data.role || "user",
+    role,
     facultyId: data.facultyId,
     majorId: data.majorId,
     trackId: data.trackId,
     entrySemester: data.entrySemester,
-    createdAt: new Date().toISOString(),
+    avatarUrl: data.avatarUrl,
+    createdAt: now,
   };
+
   usersStore.push(newUser);
   return newUser;
 }
 
-export async function updateUserRole(userId: string, role: "super_admin" | "admin" | "user"): Promise<boolean> {
-  await initDatabase();
+export async function updateUserRole(
+  userId: string,
+  role: "super_admin" | "admin" | "user"
+): Promise<boolean> {
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1.prepare("UPDATE users SET role = ? WHERE id = ?").bind(role, userId).run();
+      return true;
+    } catch (err) {
+      console.error("D1 updateUserRole error:", err);
+      return false;
+    }
+  }
+
+  await initFallbackDevData();
   const user = usersStore.find((u) => u.id === userId);
   if (!user) return false;
   user.role = role;
@@ -765,7 +565,43 @@ export async function updateUserProfile(
   userId: string,
   data: Partial<Pick<User, "name" | "facultyId" | "majorId" | "trackId" | "entrySemester" | "avatarUrl">>
 ): Promise<User | null> {
-  await initDatabase();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      const existing = await findUserById(userId);
+      if (!existing) return null;
+
+      const updatedName = data.name !== undefined ? data.name : existing.name;
+      const updatedFaculty = data.facultyId !== undefined ? data.facultyId : (existing.facultyId || null);
+      const updatedMajor = data.majorId !== undefined ? data.majorId : (existing.majorId || null);
+      const updatedTrack = data.trackId !== undefined ? data.trackId : (existing.trackId || null);
+      const updatedSemester = data.entrySemester !== undefined ? data.entrySemester : (existing.entrySemester || null);
+      const updatedAvatar = data.avatarUrl !== undefined ? data.avatarUrl : (existing.avatarUrl || null);
+
+      await d1
+        .prepare(
+          `UPDATE users 
+           SET name = ?, faculty_id = ?, major_id = ?, track_id = ?, entry_semester = ?, avatar_url = ?
+           WHERE id = ?`
+        )
+        .bind(
+          updatedName,
+          updatedFaculty,
+          updatedMajor,
+          updatedTrack,
+          updatedSemester,
+          updatedAvatar,
+          userId
+        )
+        .run();
+
+      return await findUserById(userId);
+    } catch (err) {
+      console.error("D1 updateUserProfile error:", err);
+    }
+  }
+
+  await initFallbackDevData();
   const user = usersStore.find((u) => u.id === userId);
   if (!user) return null;
   Object.assign(user, data);
@@ -773,7 +609,21 @@ export async function updateUserProfile(
 }
 
 export async function changeUserPassword(userId: string, newPasswordHash: string): Promise<boolean> {
-  await initDatabase();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1
+        .prepare("UPDATE users SET password_hash = ? WHERE id = ?")
+        .bind(newPasswordHash, userId)
+        .run();
+      return true;
+    } catch (err) {
+      console.error("D1 changeUserPassword error:", err);
+      return false;
+    }
+  }
+
+  await initFallbackDevData();
   const user = usersStore.find((u) => u.id === userId);
   if (!user) return false;
   user.passwordHash = newPasswordHash;
@@ -781,38 +631,53 @@ export async function changeUserPassword(userId: string, newPasswordHash: string
 }
 
 // ----------------------------------------------------
-// FACULTIES CRUD
+// 2. FACULTIES CRUD
 // ----------------------------------------------------
 export async function getFaculties(): Promise<Faculty[]> {
-  await initDatabase();
   const d1 = getD1();
   if (d1) {
     try {
-      const { results } = await d1.prepare("SELECT * FROM faculties ORDER BY name ASC").all<any>();
-      return results.map((r) => ({ id: r.id, name: r.name, code: r.code, createdAt: r.created_at, deletedAt: null }));
+      const { results } = await d1
+        .prepare("SELECT * FROM faculties WHERE deleted_at IS NULL ORDER BY name ASC")
+        .all();
+      return (results || []).map((r: any) => ({
+        id: r.id,
+        name: r.name,
+        code: r.code,
+        createdAt: r.created_at,
+        deletedAt: r.deleted_at || null,
+      }));
     } catch (err) {
       console.error("D1 getFaculties error:", err);
     }
   }
+
+  await initFallbackDevData();
   return facultiesStore.filter((f) => !f.deletedAt);
 }
 
 export async function createFaculty(name: string, code: string): Promise<Faculty> {
-  await initDatabase();
   const id = `fac_${crypto.randomUUID().slice(0, 8)}`;
   const now = new Date().toISOString();
+  const cleanCode = code.trim().toUpperCase();
+
   const d1 = getD1();
   if (d1) {
     try {
-      await d1.prepare("INSERT INTO faculties (id, name, code, created_at) VALUES (?, ?, ?, ?)").bind(id, name, code.toUpperCase(), now).run();
+      await d1
+        .prepare("INSERT INTO faculties (id, name, code, created_at) VALUES (?, ?, ?, ?)")
+        .bind(id, name.trim(), cleanCode, now)
+        .run();
     } catch (err) {
       console.error("D1 createFaculty error:", err);
+      throw err;
     }
   }
+
   const newFaculty: Faculty = {
     id,
-    name,
-    code: code.toUpperCase(),
+    name: name.trim(),
+    code: cleanCode,
     createdAt: now,
     deletedAt: null,
   };
@@ -821,84 +686,114 @@ export async function createFaculty(name: string, code: string): Promise<Faculty
 }
 
 export async function updateFaculty(id: string, name: string, code: string): Promise<Faculty | null> {
-  await initDatabase();
+  const cleanCode = code.trim().toUpperCase();
   const d1 = getD1();
   if (d1) {
     try {
       await d1
-        .prepare("UPDATE faculties SET name = ?, code = ?, updated_at = ? WHERE id = ?")
-        .bind(name, code.toUpperCase(), new Date().toISOString(), id)
+        .prepare("UPDATE faculties SET name = ?, code = ? WHERE id = ?")
+        .bind(name.trim(), cleanCode, id)
         .run();
+      const updated = await d1.prepare("SELECT * FROM faculties WHERE id = ?").bind(id).first();
+      if (updated) {
+        return {
+          id: (updated as any).id,
+          name: (updated as any).name,
+          code: (updated as any).code,
+          createdAt: (updated as any).created_at,
+          deletedAt: (updated as any).deleted_at || null,
+        };
+      }
     } catch (err) {
       console.error("D1 updateFaculty error:", err);
     }
   }
+
+  await initFallbackDevData();
   const f = facultiesStore.find((item) => item.id === id);
   if (f) {
-    f.name = name;
-    f.code = code.toUpperCase();
+    f.name = name.trim();
+    f.code = cleanCode;
     return f;
   }
-  return { id, name, code: code.toUpperCase(), createdAt: new Date().toISOString(), deletedAt: null };
+  return null;
 }
 
 export async function deleteFaculty(id: string): Promise<boolean> {
-  await initDatabase();
-  const d1 = getD1();
-  if (d1) {
-    try {
-      await d1.prepare("DELETE FROM faculties WHERE id = ?").bind(id).run();
-    } catch (err) {
-      console.error("D1 deleteFaculty error:", err);
-    }
-  }
-  const f = facultiesStore.find((item) => item.id === id);
-  if (!f) return false;
-  f.deletedAt = new Date().toISOString();
-  return true;
-}
-
-// ----------------------------------------------------
-// MAJORS CRUD
-// ----------------------------------------------------
-export async function getMajors(facultyId?: string): Promise<Major[]> {
-  await initDatabase();
-  const d1 = getD1();
-  if (d1) {
-    try {
-      let query = "SELECT * FROM majors";
-      const params = [];
-      if (facultyId) {
-        query += " WHERE faculty_id = ?";
-        params.push(facultyId);
-      }
-      query += " ORDER BY name ASC";
-      const { results } = await d1.prepare(query).bind(...params).all<any>();
-      return results.map((r) => ({ id: r.id, facultyId: r.faculty_id, name: r.name, code: r.code, createdAt: r.created_at, deletedAt: null }));
-    } catch (err) {
-      console.error("D1 getMajors error:", err);
-    }
-  }
-  return majorsStore.filter((m) => !m.deletedAt && (!facultyId || m.facultyId === facultyId));
-}
-
-export async function createMajor(facultyId: string, name: string, code: string): Promise<Major> {
-  await initDatabase();
-  const id = `maj_${crypto.randomUUID().slice(0, 8)}`;
   const now = new Date().toISOString();
   const d1 = getD1();
   if (d1) {
     try {
-      await d1.prepare("INSERT INTO majors (id, faculty_id, name, code, created_at) VALUES (?, ?, ?, ?, ?)").bind(id, facultyId, name, code.toUpperCase(), now).run();
+      await d1.prepare("UPDATE faculties SET deleted_at = ? WHERE id = ?").bind(now, id).run();
+      return true;
     } catch (err) {
-      console.error("D1 createMajor error:", err);
+      console.error("D1 deleteFaculty error:", err);
+      return false;
     }
   }
+
+  await initFallbackDevData();
+  const f = facultiesStore.find((item) => item.id === id);
+  if (!f) return false;
+  f.deletedAt = now;
+  return true;
+}
+
+// ----------------------------------------------------
+// 3. MAJORS CRUD
+// ----------------------------------------------------
+export async function getMajors(facultyId?: string): Promise<Major[]> {
+  const d1 = getD1();
+  if (d1) {
+    try {
+      let query = "SELECT * FROM majors WHERE deleted_at IS NULL";
+      const params: any[] = [];
+      if (facultyId) {
+        query += " AND faculty_id = ?";
+        params.push(facultyId);
+      }
+      query += " ORDER BY name ASC";
+      const { results } = await d1.prepare(query).bind(...params).all();
+      return (results || []).map((r: any) => ({
+        id: r.id,
+        facultyId: r.faculty_id,
+        name: r.name,
+        code: r.code,
+        createdAt: r.created_at,
+        deletedAt: r.deleted_at || null,
+      }));
+    } catch (err) {
+      console.error("D1 getMajors error:", err);
+    }
+  }
+
+  await initFallbackDevData();
+  return majorsStore.filter((m) => !m.deletedAt && (!facultyId || m.facultyId === facultyId));
+}
+
+export async function createMajor(facultyId: string, name: string, code: string): Promise<Major> {
+  const id = `maj_${crypto.randomUUID().slice(0, 8)}`;
+  const now = new Date().toISOString();
+  const cleanCode = code.trim().toUpperCase();
+
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1
+        .prepare("INSERT INTO majors (id, faculty_id, name, code, created_at) VALUES (?, ?, ?, ?, ?)")
+        .bind(id, facultyId, name.trim(), cleanCode, now)
+        .run();
+    } catch (err) {
+      console.error("D1 createMajor error:", err);
+      throw err;
+    }
+  }
+
   const newMajor: Major = {
     id,
     facultyId,
-    name,
-    code: code.toUpperCase(),
+    name: name.trim(),
+    code: cleanCode,
     createdAt: now,
     deletedAt: null,
   };
@@ -907,97 +802,133 @@ export async function createMajor(facultyId: string, name: string, code: string)
 }
 
 export async function updateMajor(id: string, name: string, code: string): Promise<Major | null> {
-  await initDatabase();
+  const cleanCode = code.trim().toUpperCase();
   const d1 = getD1();
   if (d1) {
     try {
       await d1
-        .prepare("UPDATE majors SET name = ?, code = ?, updated_at = ? WHERE id = ?")
-        .bind(name, code.toUpperCase(), new Date().toISOString(), id)
+        .prepare("UPDATE majors SET name = ?, code = ? WHERE id = ?")
+        .bind(name.trim(), cleanCode, id)
         .run();
+      const row = await d1.prepare("SELECT * FROM majors WHERE id = ?").bind(id).first();
+      if (row) {
+        return {
+          id: (row as any).id,
+          facultyId: (row as any).faculty_id,
+          name: (row as any).name,
+          code: (row as any).code,
+          createdAt: (row as any).created_at,
+          deletedAt: (row as any).deleted_at || null,
+        };
+      }
     } catch (err) {
       console.error("D1 updateMajor error:", err);
     }
   }
+
+  await initFallbackDevData();
   const m = majorsStore.find((item) => item.id === id);
   if (m) {
-    m.name = name;
-    m.code = code.toUpperCase();
+    m.name = name.trim();
+    m.code = cleanCode;
     return m;
   }
   return null;
 }
 
 export async function deleteMajor(id: string): Promise<boolean> {
-  await initDatabase();
-  const d1 = getD1();
-  if (d1) {
-    try {
-      await d1.prepare("DELETE FROM majors WHERE id = ?").bind(id).run();
-    } catch (err) {
-      console.error("D1 deleteMajor error:", err);
-    }
-  }
-  const m = majorsStore.find((item) => item.id === id);
-  if (!m) return false;
-  m.deletedAt = new Date().toISOString();
-  return true;
-}
-
-// ----------------------------------------------------
-// TRACKS CRUD
-// ----------------------------------------------------
-export async function getTracks(majorId?: string): Promise<Track[]> {
-  await initDatabase();
-  const d1 = getD1();
-  if (d1) {
-    try {
-      let query = "SELECT * FROM tracks";
-      const params = [];
-      if (majorId) {
-        query += " WHERE major_id = ?";
-        params.push(majorId);
-      }
-      query += " ORDER BY name ASC";
-      const { results } = await d1.prepare(query).bind(...params).all<any>();
-      return results.map((r) => ({
-        id: r.id,
-        majorId: r.major_id,
-        name: r.name,
-        code: r.code,
-        totalUnitsRequired: r.total_units_required,
-        isApprovedDefault: Boolean(r.is_approved_default),
-        createdAt: r.created_at,
-        deletedAt: null,
-      }));
-    } catch (err) {
-      console.error("D1 getTracks error:", err);
-    }
-  }
-  return tracksStore.filter((t) => !t.deletedAt && (!majorId || t.majorId === majorId));
-}
-
-export async function createTrack(majorId: string, name: string, code: string, rulesTree?: any): Promise<Track> {
-  await initDatabase();
-  const id = `trk_${crypto.randomUUID().slice(0, 8)}`;
   const now = new Date().toISOString();
   const d1 = getD1();
   if (d1) {
     try {
+      await d1.prepare("UPDATE majors SET deleted_at = ? WHERE id = ?").bind(now, id).run();
+      return true;
+    } catch (err) {
+      console.error("D1 deleteMajor error:", err);
+      return false;
+    }
+  }
+
+  await initFallbackDevData();
+  const m = majorsStore.find((item) => item.id === id);
+  if (!m) return false;
+  m.deletedAt = now;
+  return true;
+}
+
+// ----------------------------------------------------
+// 4. TRACKS CRUD
+// ----------------------------------------------------
+export async function getTracks(majorId?: string): Promise<Track[]> {
+  const d1 = getD1();
+  if (d1) {
+    try {
+      let query = "SELECT * FROM tracks WHERE deleted_at IS NULL";
+      const params: any[] = [];
+      if (majorId) {
+        query += " AND major_id = ?";
+        params.push(majorId);
+      }
+      query += " ORDER BY name ASC";
+      const { results } = await d1.prepare(query).bind(...params).all();
+      return (results || []).map((r: any) => {
+        let parsedRules: RuleGroupNode | undefined = undefined;
+        if (r.rules_tree) {
+          try {
+            parsedRules = typeof r.rules_tree === "string" ? JSON.parse(r.rules_tree) : r.rules_tree;
+          } catch {
+            parsedRules = undefined;
+          }
+        }
+        return {
+          id: r.id,
+          majorId: r.major_id,
+          name: r.name,
+          code: r.code,
+          rulesTree: parsedRules,
+          createdAt: r.created_at,
+          deletedAt: r.deleted_at || null,
+        };
+      });
+    } catch (err) {
+      console.error("D1 getTracks error:", err);
+    }
+  }
+
+  await initFallbackDevData();
+  return tracksStore.filter((t) => !t.deletedAt && (!majorId || t.majorId === majorId));
+}
+
+export async function createTrack(
+  majorId: string,
+  name: string,
+  code: string,
+  rulesTree?: any
+): Promise<Track> {
+  const id = `trk_${crypto.randomUUID().slice(0, 8)}`;
+  const now = new Date().toISOString();
+  const cleanCode = code.trim().toUpperCase();
+  const rulesJson = rulesTree ? JSON.stringify(rulesTree) : JSON.stringify({ id: "grp_root", type: "GROUP", operator: "AND", children: [] });
+
+  const d1 = getD1();
+  if (d1) {
+    try {
       await d1
-        .prepare("INSERT INTO tracks (id, major_id, name, code, total_units_required, created_at) VALUES (?, ?, ?, ?, ?, ?)")
-        .bind(id, majorId, name, code.toUpperCase(), 140, now)
+        .prepare("INSERT INTO tracks (id, major_id, name, code, rules_tree, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+        .bind(id, majorId, name.trim(), cleanCode, rulesJson, now)
         .run();
     } catch (err) {
       console.error("D1 createTrack error:", err);
+      throw err;
     }
   }
+
   const newTrack: Track = {
     id,
     majorId,
-    name,
-    code: code.toUpperCase(),
-    rulesTree: rulesTree || { type: "AND", children: [] },
+    name: name.trim(),
+    code: cleanCode,
+    rulesTree: rulesTree || { id: "grp_root", type: "GROUP", operator: "AND", children: [] },
     createdAt: now,
     deletedAt: null,
   };
@@ -1005,23 +936,57 @@ export async function createTrack(majorId: string, name: string, code: string, r
   return newTrack;
 }
 
-export async function updateTrack(id: string, name: string, code: string, rulesTree?: any): Promise<Track | null> {
-  await initDatabase();
+export async function updateTrack(
+  id: string,
+  name: string,
+  code: string,
+  rulesTree?: any
+): Promise<Track | null> {
+  const cleanCode = code.trim().toUpperCase();
   const d1 = getD1();
   if (d1) {
     try {
-      await d1
-        .prepare("UPDATE tracks SET name = ?, code = ?, updated_at = ? WHERE id = ?")
-        .bind(name, code.toUpperCase(), new Date().toISOString(), id)
-        .run();
+      if (rulesTree !== undefined) {
+        const rulesJson = JSON.stringify(rulesTree);
+        await d1
+          .prepare("UPDATE tracks SET name = ?, code = ?, rules_tree = ? WHERE id = ?")
+          .bind(name.trim(), cleanCode, rulesJson, id)
+          .run();
+      } else {
+        await d1
+          .prepare("UPDATE tracks SET name = ?, code = ? WHERE id = ?")
+          .bind(name.trim(), cleanCode, id)
+          .run();
+      }
+
+      const row = await d1.prepare("SELECT * FROM tracks WHERE id = ?").bind(id).first();
+      if (row) {
+        let parsedRules: any = undefined;
+        if ((row as any).rules_tree) {
+          try {
+            parsedRules = typeof (row as any).rules_tree === "string" ? JSON.parse((row as any).rules_tree) : (row as any).rules_tree;
+          } catch {}
+        }
+        return {
+          id: (row as any).id,
+          majorId: (row as any).major_id,
+          name: (row as any).name,
+          code: (row as any).code,
+          rulesTree: parsedRules,
+          createdAt: (row as any).created_at,
+          deletedAt: (row as any).deleted_at || null,
+        };
+      }
     } catch (err) {
       console.error("D1 updateTrack error:", err);
     }
   }
+
+  await initFallbackDevData();
   const t = tracksStore.find((item) => item.id === id);
   if (t) {
-    t.name = name;
-    t.code = code.toUpperCase();
+    t.name = name.trim();
+    t.code = cleanCode;
     if (rulesTree !== undefined) t.rulesTree = rulesTree;
     return t;
   }
@@ -1029,7 +994,19 @@ export async function updateTrack(id: string, name: string, code: string, rulesT
 }
 
 export async function updateTrackRules(trackId: string, rulesTree: any): Promise<boolean> {
-  await initDatabase();
+  const rulesJson = JSON.stringify(rulesTree);
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1.prepare("UPDATE tracks SET rules_tree = ? WHERE id = ?").bind(rulesJson, trackId).run();
+      return true;
+    } catch (err) {
+      console.error("D1 updateTrackRules error:", err);
+      return false;
+    }
+  }
+
+  await initFallbackDevData();
   const t = tracksStore.find((item) => item.id === trackId);
   if (!t) return false;
   t.rulesTree = rulesTree;
@@ -1037,74 +1014,187 @@ export async function updateTrackRules(trackId: string, rulesTree: any): Promise
 }
 
 export async function deleteTrack(id: string): Promise<boolean> {
-  await initDatabase();
+  const now = new Date().toISOString();
   const d1 = getD1();
   if (d1) {
     try {
-      await d1.prepare("DELETE FROM tracks WHERE id = ?").bind(id).run();
+      await d1.prepare("UPDATE tracks SET deleted_at = ? WHERE id = ?").bind(now, id).run();
+      return true;
     } catch (err) {
       console.error("D1 deleteTrack error:", err);
+      return false;
     }
   }
+
+  await initFallbackDevData();
   const t = tracksStore.find((item) => item.id === id);
   if (!t) return false;
-  t.deletedAt = new Date().toISOString();
+  t.deletedAt = now;
   return true;
 }
 
 // ----------------------------------------------------
-// CATEGORIES (VISUAL & RULE)
+// 5. VISUAL CATEGORIES (Flat color categories per track)
 // ----------------------------------------------------
 export async function getVisualCategories(trackId: string): Promise<VisualCategory[]> {
-  await initDatabase();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      const { results } = await d1
+        .prepare("SELECT * FROM visual_categories WHERE track_id = ? ORDER BY sort_order ASC")
+        .bind(trackId)
+        .all();
+      return (results || []).map((r: any) => ({
+        id: r.id,
+        trackId: r.track_id,
+        name: r.name,
+        color: r.color,
+        sortOrder: Number(r.sort_order) || 0,
+        createdAt: r.created_at,
+      }));
+    } catch (err) {
+      console.error("D1 getVisualCategories error:", err);
+    }
+  }
+
+  await initFallbackDevData();
   return visualCategoriesStore
     .filter((c) => c.trackId === trackId)
     .sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
-export async function createVisualCategory(trackId: string, name: string, color: string, sortOrder = 0): Promise<VisualCategory> {
-  await initDatabase();
+export async function createVisualCategory(
+  trackId: string,
+  name: string,
+  color: string,
+  sortOrder = 0
+): Promise<VisualCategory> {
+  const id = `vcat_${crypto.randomUUID().slice(0, 8)}`;
+  const now = new Date().toISOString();
+
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1
+        .prepare(
+          "INSERT INTO visual_categories (id, track_id, name, color, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+        )
+        .bind(id, trackId, name.trim(), color || "#3b82f6", sortOrder, now)
+        .run();
+    } catch (err) {
+      console.error("D1 createVisualCategory error:", err);
+      throw err;
+    }
+  }
+
   const newCat: VisualCategory = {
-    id: `vcat_${crypto.randomUUID().slice(0, 8)}`,
+    id,
     trackId,
-    name,
-    color,
+    name: name.trim(),
+    color: color || "#3b82f6",
     sortOrder,
-    createdAt: new Date().toISOString(),
+    createdAt: now,
   };
   visualCategoriesStore.push(newCat);
   return newCat;
 }
 
 export async function deleteVisualCategory(id: string): Promise<boolean> {
-  await initDatabase();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1.prepare("DELETE FROM visual_categories WHERE id = ?").bind(id).run();
+      return true;
+    } catch (err) {
+      console.error("D1 deleteVisualCategory error:", err);
+      return false;
+    }
+  }
+
+  await initFallbackDevData();
   const index = visualCategoriesStore.findIndex((c) => c.id === id);
   if (index === -1) return false;
   visualCategoriesStore.splice(index, 1);
   return true;
 }
 
+// ----------------------------------------------------
+// 6. RULE CATEGORIES (Requirements category tree per track)
+// ----------------------------------------------------
 export async function getRuleCategories(trackId: string): Promise<RuleCategory[]> {
-  await initDatabase();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      const { results } = await d1
+        .prepare("SELECT * FROM rule_categories WHERE track_id = ? ORDER BY name ASC")
+        .bind(trackId)
+        .all();
+      return (results || []).map((r: any) => ({
+        id: r.id,
+        trackId: r.track_id,
+        parentId: r.parent_id || null,
+        name: r.name,
+        minCredits: Number(r.min_credits) || 0,
+        createdAt: r.created_at,
+      }));
+    } catch (err) {
+      console.error("D1 getRuleCategories error:", err);
+    }
+  }
+
+  await initFallbackDevData();
   return ruleCategoriesStore.filter((c) => c.trackId === trackId);
 }
 
-export async function createRuleCategory(trackId: string, name: string, minCredits = 0, parentId?: string | null): Promise<RuleCategory> {
-  await initDatabase();
+export async function createRuleCategory(
+  trackId: string,
+  name: string,
+  minCredits = 0,
+  parentId?: string | null
+): Promise<RuleCategory> {
+  const id = `rcat_${crypto.randomUUID().slice(0, 8)}`;
+  const now = new Date().toISOString();
+
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1
+        .prepare(
+          "INSERT INTO rule_categories (id, track_id, parent_id, name, min_credits, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+        )
+        .bind(id, trackId, parentId || null, name.trim(), minCredits, now)
+        .run();
+    } catch (err) {
+      console.error("D1 createRuleCategory error:", err);
+      throw err;
+    }
+  }
+
   const newCat: RuleCategory = {
-    id: `rcat_${crypto.randomUUID().slice(0, 8)}`,
+    id,
     trackId,
     parentId: parentId || null,
-    name,
+    name: name.trim(),
     minCredits,
-    createdAt: new Date().toISOString(),
+    createdAt: now,
   };
   ruleCategoriesStore.push(newCat);
   return newCat;
 }
 
 export async function deleteRuleCategory(id: string): Promise<boolean> {
-  await initDatabase();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1.prepare("DELETE FROM rule_categories WHERE id = ?").bind(id).run();
+      return true;
+    } catch (err) {
+      console.error("D1 deleteRuleCategory error:", err);
+      return false;
+    }
+  }
+
+  await initFallbackDevData();
   const index = ruleCategoriesStore.findIndex((c) => c.id === id);
   if (index === -1) return false;
   ruleCategoriesStore.splice(index, 1);
@@ -1112,10 +1202,36 @@ export async function deleteRuleCategory(id: string): Promise<boolean> {
 }
 
 // ----------------------------------------------------
-// TRACK COURSE ASSIGNMENTS (COURSE TO CATEGORY)
+// 7. TRACK COURSE ASSIGNMENTS
 // ----------------------------------------------------
 export async function getTrackAssignments(trackId: string): Promise<TrackCourseAssignment[]> {
-  await initDatabase();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      const query = `
+        SELECT a.id, a.track_id, a.course_id, a.visual_category_id, a.rule_category_id,
+               c.name AS course_name, c.code AS course_code, c.units AS course_units
+        FROM track_course_assignments a
+        LEFT JOIN courses c ON a.course_id = c.id
+        WHERE a.track_id = ?
+      `;
+      const { results } = await d1.prepare(query).bind(trackId).all();
+      return (results || []).map((r: any) => ({
+        id: r.id,
+        trackId: r.track_id,
+        courseId: r.course_id,
+        visualCategoryId: r.visual_category_id || null,
+        ruleCategoryId: r.rule_category_id || null,
+        courseName: r.course_name || "نامشخص",
+        courseCode: r.course_code || "---",
+        units: Number(r.course_units) || 3,
+      }));
+    } catch (err) {
+      console.error("D1 getTrackAssignments error:", err);
+    }
+  }
+
+  await initFallbackDevData();
   return trackAssignmentsStore
     .filter((a) => a.trackId === trackId)
     .map((a) => {
@@ -1135,7 +1251,26 @@ export async function assignCourseToCategories(
   visualCategoryId?: string | null,
   ruleCategoryId?: string | null
 ): Promise<TrackCourseAssignment> {
-  await initDatabase();
+  const id = `assign_${trackId}_${courseId}`;
+  const d1 = getD1();
+  if (d1) {
+    try {
+      const upsertSql = `
+        INSERT INTO track_course_assignments (id, track_id, course_id, visual_category_id, rule_category_id)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(track_id, course_id) DO UPDATE SET
+          visual_category_id = excluded.visual_category_id,
+          rule_category_id = excluded.rule_category_id
+      `;
+      await d1
+        .prepare(upsertSql)
+        .bind(id, trackId, courseId, visualCategoryId || null, ruleCategoryId || null)
+        .run();
+    } catch (err) {
+      console.error("D1 assignCourseToCategories error:", err);
+    }
+  }
+
   const existing = trackAssignmentsStore.find((a) => a.trackId === trackId && a.courseId === courseId);
   if (existing) {
     if (visualCategoryId !== undefined) existing.visualCategoryId = visualCategoryId;
@@ -1144,7 +1279,7 @@ export async function assignCourseToCategories(
   }
 
   const newAssignment: TrackCourseAssignment = {
-    id: `assign_${trackId}_${courseId}`,
+    id,
     trackId,
     courseId,
     visualCategoryId: visualCategoryId || null,
@@ -1158,7 +1293,6 @@ export async function bulkAssignTrackCourses(
   trackId: string,
   assignments: { courseId: string; visualCategoryId?: string | null; ruleCategoryId?: string | null }[]
 ): Promise<boolean> {
-  await initDatabase();
   for (const item of assignments) {
     await assignCourseToCategories(trackId, item.courseId, item.visualCategoryId, item.ruleCategoryId);
   }
@@ -1166,13 +1300,88 @@ export async function bulkAssignTrackCourses(
 }
 
 // ----------------------------------------------------
-// COURSES & PREREQUISITES CRUD
+// 8. COURSES & PREREQUISITES CRUD
 // ----------------------------------------------------
 export async function getCourses(facultyId?: string, trackId?: string): Promise<Course[]> {
-  await initDatabase();
-  let result = coursesStore.filter((c) => !c.deletedAt && (!facultyId || c.facultyId === facultyId));
+  const d1 = getD1();
+  if (d1) {
+    try {
+      let query = "SELECT * FROM courses WHERE deleted_at IS NULL";
+      const params: any[] = [];
+      if (facultyId) {
+        query += " AND faculty_id = ?";
+        params.push(facultyId);
+      }
+      query += " ORDER BY name ASC";
+      const { results: courseRows } = await d1.prepare(query).bind(...params).all();
+      const coursesList = courseRows || [];
 
-  // Populate prerequisites and track assignments
+      // Fetch all prereqs
+      const prereqsQuery = `
+        SELECT p.id, p.course_id, p.required_course_id, p.type,
+               c.name AS required_course_name, c.code AS required_course_code
+        FROM prerequisites p
+        LEFT JOIN courses c ON p.required_course_id = c.id
+      `;
+      const { results: prereqRows } = await d1.prepare(prereqsQuery).all();
+      const prereqsList = prereqRows || [];
+
+      // Fetch track assignments
+      let assignmentsList: any[] = [];
+      if (trackId) {
+        const { results: assignRows } = await d1
+          .prepare("SELECT * FROM track_course_assignments WHERE track_id = ?")
+          .bind(trackId)
+          .all();
+        assignmentsList = assignRows || [];
+      } else {
+        const { results: assignRows } = await d1.prepare("SELECT * FROM track_course_assignments").all();
+        assignmentsList = assignRows || [];
+      }
+
+      return coursesList.map((c: any) => {
+        const prereqs = prereqsList
+          .filter((p: any) => p.course_id === c.id)
+          .map((p: any) => ({
+            id: p.id,
+            courseId: p.course_id,
+            requiredCourseId: p.required_course_id,
+            type: p.type as any,
+            requiredCourseName: p.required_course_name || "نامشخص",
+            requiredCourseCode: p.required_course_code || "---",
+          }));
+
+        const assignments = assignmentsList
+          .filter((a: any) => a.course_id === c.id)
+          .map((a: any) => ({
+            id: a.id,
+            trackId: a.track_id,
+            courseId: a.course_id,
+            visualCategoryId: a.visual_category_id || null,
+            ruleCategoryId: a.rule_category_id || null,
+          }));
+
+        return {
+          id: c.id,
+          facultyId: c.faculty_id,
+          name: c.name,
+          code: c.code,
+          units: Number(c.units) || 3,
+          offeredIn: c.offered_in || "both",
+          description: c.description || "",
+          createdAt: c.created_at,
+          deletedAt: c.deleted_at || null,
+          prerequisites: prereqs,
+          trackAssignments: assignments,
+        };
+      });
+    } catch (err) {
+      console.error("D1 getCourses error:", err);
+    }
+  }
+
+  await initFallbackDevData();
+  const result = coursesStore.filter((c) => !c.deletedAt && (!facultyId || c.facultyId === facultyId));
   return result.map((course) => {
     const prereqs = prerequisitesStore
       .filter((p) => p.courseId === course.id)
@@ -1198,7 +1407,60 @@ export async function getCourses(facultyId?: string, trackId?: string): Promise<
 }
 
 export async function getCourseById(id: string): Promise<Course | null> {
-  await initDatabase();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      const c = await d1.prepare("SELECT * FROM courses WHERE id = ? AND deleted_at IS NULL").bind(id).first();
+      if (!c) return null;
+
+      const { results: prereqRows } = await d1
+        .prepare(
+          `SELECT p.id, p.course_id, p.required_course_id, p.type,
+                  c.name AS required_course_name, c.code AS required_course_code
+           FROM prerequisites p
+           LEFT JOIN courses c ON p.required_course_id = c.id
+           WHERE p.course_id = ?`
+        )
+        .bind(id)
+        .all();
+
+      const { results: assignRows } = await d1
+        .prepare("SELECT * FROM track_course_assignments WHERE course_id = ?")
+        .bind(id)
+        .all();
+
+      return {
+        id: (c as any).id,
+        facultyId: (c as any).faculty_id,
+        name: (c as any).name,
+        code: (c as any).code,
+        units: Number((c as any).units) || 3,
+        offeredIn: (c as any).offered_in || "both",
+        description: (c as any).description || "",
+        createdAt: (c as any).created_at,
+        deletedAt: (c as any).deleted_at || null,
+        prerequisites: (prereqRows || []).map((p: any) => ({
+          id: p.id,
+          courseId: p.course_id,
+          requiredCourseId: p.required_course_id,
+          type: p.type as any,
+          requiredCourseName: p.required_course_name || "نامشخص",
+          requiredCourseCode: p.required_course_code || "---",
+        })),
+        trackAssignments: (assignRows || []).map((a: any) => ({
+          id: a.id,
+          trackId: a.track_id,
+          courseId: a.course_id,
+          visualCategoryId: a.visual_category_id || null,
+          ruleCategoryId: a.rule_category_id || null,
+        })),
+      };
+    } catch (err) {
+      console.error("D1 getCourseById error:", err);
+    }
+  }
+
+  await initFallbackDevData();
   const course = coursesStore.find((c) => c.id === id && !c.deletedAt);
   if (!course) return null;
 
@@ -1231,33 +1493,44 @@ export async function createCourse(data: {
   visualCategoryId?: string;
   ruleCategoryId?: string;
 }): Promise<Course> {
-  await initDatabase();
   const id = `crs_${crypto.randomUUID().slice(0, 8)}`;
+  const now = new Date().toISOString();
+  const cleanCode = data.code.trim().toUpperCase();
+  const units = Number(data.units) || 3;
+  const offeredIn = data.offeredIn || "both";
+
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1
+        .prepare(
+          `INSERT INTO courses (id, faculty_id, name, code, units, offered_in, description, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        )
+        .bind(id, data.facultyId, data.name.trim(), cleanCode, units, offeredIn, data.description || "", now)
+        .run();
+
+      if (data.trackId) {
+        await assignCourseToCategories(data.trackId, id, data.visualCategoryId, data.ruleCategoryId);
+      }
+    } catch (err) {
+      console.error("D1 createCourse error:", err);
+      throw err;
+    }
+  }
+
   const newCourse: Course = {
     id,
     facultyId: data.facultyId,
-    name: data.name,
-    code: data.code.toUpperCase(),
-    units: Number(data.units) || 3,
-    offeredIn: data.offeredIn || "both",
+    name: data.name.trim(),
+    code: cleanCode,
+    units,
+    offeredIn,
     description: data.description || "",
-    createdAt: new Date().toISOString(),
+    createdAt: now,
     deletedAt: null,
   };
-
   coursesStore.push(newCourse);
-
-  // Optional track assignment
-  if (data.trackId) {
-    trackAssignmentsStore.push({
-      id: `assign_${id}`,
-      trackId: data.trackId,
-      courseId: id,
-      visualCategoryId: data.visualCategoryId || null,
-      ruleCategoryId: data.ruleCategoryId || null,
-    });
-  }
-
   return newCourse;
 }
 
@@ -1269,55 +1542,133 @@ export async function updateCourse(
     ruleCategoryId?: string;
   }
 ): Promise<Course | null> {
-  await initDatabase();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      const existing = await getCourseById(id);
+      if (!existing) return null;
+
+      const name = data.name !== undefined ? data.name.trim() : existing.name;
+      const code = data.code !== undefined ? data.code.trim().toUpperCase() : existing.code;
+      const units = data.units !== undefined ? Number(data.units) : existing.units;
+      const offeredIn = data.offeredIn !== undefined ? data.offeredIn : existing.offeredIn;
+      const description = data.description !== undefined ? data.description : (existing.description || "");
+      const facultyId = data.facultyId !== undefined ? data.facultyId : existing.facultyId;
+
+      await d1
+        .prepare(
+          `UPDATE courses
+           SET name = ?, code = ?, units = ?, offered_in = ?, description = ?, faculty_id = ?
+           WHERE id = ?`
+        )
+        .bind(name, code, units, offeredIn, description, facultyId, id)
+        .run();
+
+      if (data.trackId) {
+        await assignCourseToCategories(data.trackId, id, data.visualCategoryId, data.ruleCategoryId);
+      }
+
+      return await getCourseById(id);
+    } catch (err) {
+      console.error("D1 updateCourse error:", err);
+    }
+  }
+
+  await initFallbackDevData();
   const course = coursesStore.find((c) => c.id === id && !c.deletedAt);
   if (!course) return null;
 
-  if (data.name) course.name = data.name;
-  if (data.code) course.code = data.code.toUpperCase();
+  if (data.name) course.name = data.name.trim();
+  if (data.code) course.code = data.code.trim().toUpperCase();
   if (data.units !== undefined) course.units = Number(data.units);
   if (data.offeredIn) course.offeredIn = data.offeredIn;
   if (data.description !== undefined) course.description = data.description;
   if (data.facultyId) course.facultyId = data.facultyId;
 
   if (data.trackId) {
-    const existing = trackAssignmentsStore.find((a) => a.courseId === id && a.trackId === data.trackId);
-    if (existing) {
-      if (data.visualCategoryId !== undefined) existing.visualCategoryId = data.visualCategoryId;
-      if (data.ruleCategoryId !== undefined) existing.ruleCategoryId = data.ruleCategoryId;
-    } else {
-      trackAssignmentsStore.push({
-        id: `assign_${id}_${data.trackId}`,
-        trackId: data.trackId,
-        courseId: id,
-        visualCategoryId: data.visualCategoryId || null,
-        ruleCategoryId: data.ruleCategoryId || null,
-      });
-    }
+    await assignCourseToCategories(data.trackId, id, data.visualCategoryId, data.ruleCategoryId);
   }
 
   return course;
 }
 
 export async function deleteCourse(id: string): Promise<boolean> {
-  await initDatabase();
+  const now = new Date().toISOString();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1.prepare("UPDATE courses SET deleted_at = ? WHERE id = ?").bind(now, id).run();
+      return true;
+    } catch (err) {
+      console.error("D1 deleteCourse error:", err);
+      return false;
+    }
+  }
+
+  await initFallbackDevData();
   const c = coursesStore.find((item) => item.id === id);
   if (!c) return false;
-  c.deletedAt = new Date().toISOString();
+  c.deletedAt = now;
   return true;
 }
 
 // ----------------------------------------------------
-// PREREQUISITES MANAGEMENT
+// 9. PREREQUISITES MANAGEMENT
 // ----------------------------------------------------
 export async function getPrerequisites(courseId?: string): Promise<PrerequisiteRelation[]> {
-  await initDatabase();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      let query = `
+        SELECT p.id, p.course_id, p.required_course_id, p.type,
+               c.name AS required_course_name, c.code AS required_course_code
+        FROM prerequisites p
+        LEFT JOIN courses c ON p.required_course_id = c.id
+      `;
+      const params: any[] = [];
+      if (courseId) {
+        query += " WHERE p.course_id = ?";
+        params.push(courseId);
+      }
+      const { results } = await d1.prepare(query).bind(...params).all();
+      return (results || []).map((p: any) => ({
+        id: p.id,
+        courseId: p.course_id,
+        requiredCourseId: p.required_course_id,
+        type: p.type as any,
+        requiredCourseName: p.required_course_name || "نامشخص",
+        requiredCourseCode: p.required_course_code || "---",
+      }));
+    } catch (err) {
+      console.error("D1 getPrerequisites error:", err);
+    }
+  }
+
+  await initFallbackDevData();
   return prerequisitesStore.filter((p) => !courseId || p.courseId === courseId);
 }
 
 export async function getAllPrerequisites(): Promise<{ courseId: string; requiredCourseId: string; type: string }[]> {
-  await initDatabase();
-  return prerequisitesStore;
+  const d1 = getD1();
+  if (d1) {
+    try {
+      const { results } = await d1.prepare("SELECT course_id, required_course_id, type FROM prerequisites").all();
+      return (results || []).map((r: any) => ({
+        courseId: r.course_id,
+        requiredCourseId: r.required_course_id,
+        type: r.type,
+      }));
+    } catch (err) {
+      console.error("D1 getAllPrerequisites error:", err);
+    }
+  }
+
+  await initFallbackDevData();
+  return prerequisitesStore.map((p) => ({
+    courseId: p.courseId,
+    requiredCourseId: p.requiredCourseId,
+    type: p.type,
+  }));
 }
 
 export async function addPrerequisite(
@@ -1325,9 +1676,23 @@ export async function addPrerequisite(
   requiredCourseId: string,
   type: "prerequisite" | "corequisite" = "prerequisite"
 ): Promise<PrerequisiteRelation> {
-  await initDatabase();
+  const id = `pr_${crypto.randomUUID().slice(0, 8)}`;
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1
+        .prepare(
+          `INSERT INTO prerequisites (id, course_id, required_course_id, type)
+           VALUES (?, ?, ?, ?)
+           ON CONFLICT(course_id, required_course_id, type) DO NOTHING`
+        )
+        .bind(id, courseId, requiredCourseId, type)
+        .run();
+    } catch (err) {
+      console.error("D1 addPrerequisite error:", err);
+    }
+  }
 
-  // Check if exists
   const existing = prerequisitesStore.find(
     (p) => p.courseId === courseId && p.requiredCourseId === requiredCourseId
   );
@@ -1337,7 +1702,7 @@ export async function addPrerequisite(
   }
 
   const newPrereq: PrerequisiteRelation = {
-    id: `pr_${crypto.randomUUID().slice(0, 8)}`,
+    id,
     courseId,
     requiredCourseId,
     type,
@@ -1347,7 +1712,18 @@ export async function addPrerequisite(
 }
 
 export async function removePrerequisite(id: string): Promise<boolean> {
-  await initDatabase();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1.prepare("DELETE FROM prerequisites WHERE id = ?").bind(id).run();
+      return true;
+    } catch (err) {
+      console.error("D1 removePrerequisite error:", err);
+      return false;
+    }
+  }
+
+  await initFallbackDevData();
   const idx = prerequisitesStore.findIndex((p) => p.id === id);
   if (idx === -1) return false;
   prerequisitesStore.splice(idx, 1);
@@ -1355,11 +1731,84 @@ export async function removePrerequisite(id: string): Promise<boolean> {
 }
 
 // ----------------------------------------------------
-// PROFESSORS CRUD
+// 10. PROFESSORS CRUD
 // ----------------------------------------------------
 export async function getProfessors(facultyId?: string): Promise<Professor[]> {
-  await initDatabase();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      let query = "SELECT * FROM professors WHERE deleted_at IS NULL";
+      const params: any[] = [];
+      if (facultyId) {
+        query += " AND faculty_id = ?";
+        params.push(facultyId);
+      }
+      query += " ORDER BY name ASC";
+      const { results } = await d1.prepare(query).bind(...params).all();
+      return (results || []).map((p: any) => {
+        let links: any = undefined;
+        if (p.links) {
+          try {
+            links = typeof p.links === "string" ? JSON.parse(p.links) : p.links;
+          } catch {
+            links = undefined;
+          }
+        }
+        return {
+          id: p.id,
+          facultyId: p.faculty_id,
+          firstName: p.first_name || undefined,
+          lastName: p.last_name || undefined,
+          name: p.name,
+          avatarUrl: p.avatar_url || "",
+          title: p.title || "استاد تمام",
+          email: p.email || "",
+          links,
+          createdAt: p.created_at,
+          deletedAt: p.deleted_at || null,
+        };
+      });
+    } catch (err) {
+      console.error("D1 getProfessors error:", err);
+    }
+  }
+
+  await initFallbackDevData();
   return professorsStore.filter((p) => !p.deletedAt && (!facultyId || p.facultyId === facultyId));
+}
+
+export async function getProfessorById(id: string): Promise<Professor | null> {
+  const d1 = getD1();
+  if (d1) {
+    try {
+      const p = await d1.prepare("SELECT * FROM professors WHERE id = ? AND deleted_at IS NULL").bind(id).first();
+      if (!p) return null;
+      let links: any = undefined;
+      if ((p as any).links) {
+        try {
+          links = typeof (p as any).links === "string" ? JSON.parse((p as any).links) : (p as any).links;
+        } catch {}
+      }
+      return {
+        id: (p as any).id,
+        facultyId: (p as any).faculty_id,
+        firstName: (p as any).first_name || undefined,
+        lastName: (p as any).last_name || undefined,
+        name: (p as any).name,
+        avatarUrl: (p as any).avatar_url || "",
+        title: (p as any).title || "استاد تمام",
+        email: (p as any).email || "",
+        links,
+        createdAt: (p as any).created_at,
+        deletedAt: (p as any).deleted_at || null,
+      };
+    } catch (err) {
+      console.error("D1 getProfessorById error:", err);
+    }
+  }
+
+  await initFallbackDevData();
+  return professorsStore.find((p) => p.id === id && !p.deletedAt) || null;
 }
 
 export async function createProfessor(data: {
@@ -1372,13 +1821,42 @@ export async function createProfessor(data: {
   avatarUrl?: string;
   links?: Professor["links"];
 }): Promise<Professor> {
-  await initDatabase();
+  const id = `prf_${crypto.randomUUID().slice(0, 8)}`;
+  const now = new Date().toISOString();
   const firstName = data.firstName?.trim() || "";
   const lastName = data.lastName?.trim() || "";
   const fullName = data.name?.trim() || [firstName, lastName].filter(Boolean).join(" ") || "استاد";
+  const linksJson = data.links ? JSON.stringify(data.links) : null;
+
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1
+        .prepare(
+          `INSERT INTO professors (id, faculty_id, first_name, last_name, name, title, email, avatar_url, links, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        )
+        .bind(
+          id,
+          data.facultyId,
+          firstName || null,
+          lastName || null,
+          fullName,
+          data.title || "استاد تمام",
+          data.email || "",
+          data.avatarUrl || "",
+          linksJson,
+          now
+        )
+        .run();
+    } catch (err) {
+      console.error("D1 createProfessor error:", err);
+      throw err;
+    }
+  }
 
   const newProf: Professor = {
-    id: `prf_${crypto.randomUUID().slice(0, 8)}`,
+    id,
     facultyId: data.facultyId,
     firstName: firstName || undefined,
     lastName: lastName || undefined,
@@ -1387,7 +1865,7 @@ export async function createProfessor(data: {
     email: data.email || "",
     avatarUrl: data.avatarUrl || "",
     links: data.links,
-    createdAt: new Date().toISOString(),
+    createdAt: now,
     deletedAt: null,
   };
   professorsStore.push(newProf);
@@ -1398,7 +1876,51 @@ export async function updateProfessor(
   id: string,
   data: Partial<Pick<Professor, "firstName" | "lastName" | "name" | "title" | "email" | "avatarUrl" | "facultyId" | "links">>
 ): Promise<Professor | null> {
-  await initDatabase();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      const existing = await getProfessorById(id);
+      if (!existing) return null;
+
+      const firstName = data.firstName !== undefined ? data.firstName.trim() : (existing.firstName || "");
+      const lastName = data.lastName !== undefined ? data.lastName.trim() : (existing.lastName || "");
+      let name = data.name !== undefined ? data.name.trim() : existing.name;
+      if (data.name === undefined && (data.firstName !== undefined || data.lastName !== undefined)) {
+        name = [firstName, lastName].filter(Boolean).join(" ") || name;
+      }
+      const title = data.title !== undefined ? data.title : existing.title;
+      const email = data.email !== undefined ? data.email : existing.email;
+      const avatarUrl = data.avatarUrl !== undefined ? data.avatarUrl : existing.avatarUrl;
+      const facultyId = data.facultyId !== undefined ? data.facultyId : existing.facultyId;
+      const links = data.links !== undefined ? data.links : existing.links;
+      const linksJson = links ? JSON.stringify(links) : null;
+
+      await d1
+        .prepare(
+          `UPDATE professors
+           SET first_name = ?, last_name = ?, name = ?, title = ?, email = ?, avatar_url = ?, faculty_id = ?, links = ?
+           WHERE id = ?`
+        )
+        .bind(
+          firstName || null,
+          lastName || null,
+          name,
+          title || "استاد تمام",
+          email || "",
+          avatarUrl || "",
+          facultyId,
+          linksJson,
+          id
+        )
+        .run();
+
+      return await getProfessorById(id);
+    } catch (err) {
+      console.error("D1 updateProfessor error:", err);
+    }
+  }
+
+  await initFallbackDevData();
   const p = professorsStore.find((item) => item.id === id && !item.deletedAt);
   if (!p) return null;
 
@@ -1422,186 +1944,329 @@ export async function updateProfessor(
 }
 
 export async function deleteProfessor(id: string): Promise<boolean> {
-  await initDatabase();
+  const now = new Date().toISOString();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1.prepare("UPDATE professors SET deleted_at = ? WHERE id = ?").bind(now, id).run();
+      return true;
+    } catch (err) {
+      console.error("D1 deleteProfessor error:", err);
+      return false;
+    }
+  }
+
+  await initFallbackDevData();
   const p = professorsStore.find((item) => item.id === id);
   if (!p) return false;
-  p.deletedAt = new Date().toISOString();
+  p.deletedAt = now;
   return true;
 }
 
 // ----------------------------------------------------
-// COURSE OFFERINGS CRUD (اتصال درس و استاد)
+// 11. COURSE OFFERINGS CRUD (Course + Professor)
 // ----------------------------------------------------
 export async function getOfferings(filter?: {
   courseId?: string;
   professorId?: string;
   facultyId?: string;
 }): Promise<CourseOffering[]> {
-  await initDatabase();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      let query = `
+        SELECT o.id, o.course_id, o.professor_id, o.created_at, o.deleted_at,
+               c.name AS course_name, c.code AS course_code, c.units AS course_units, c.faculty_id AS course_faculty_id,
+               p.name AS professor_name, p.title AS professor_title, p.avatar_url AS professor_avatar_url
+        FROM course_offerings o
+        JOIN courses c ON o.course_id = c.id
+        JOIN professors p ON o.professor_id = p.id
+        WHERE o.deleted_at IS NULL
+      `;
+      const params: any[] = [];
+      if (filter?.courseId) {
+        query += " AND o.course_id = ?";
+        params.push(filter.courseId);
+      }
+      if (filter?.professorId) {
+        query += " AND o.professor_id = ?";
+        params.push(filter.professorId);
+      }
+      if (filter?.facultyId) {
+        query += " AND c.faculty_id = ?";
+        params.push(filter.facultyId);
+      }
+      query += " ORDER BY c.name ASC";
+
+      const { results } = await d1.prepare(query).bind(...params).all();
+      return (results || []).map((r: any) => ({
+        id: r.id,
+        courseId: r.course_id,
+        professorId: r.professor_id,
+        createdAt: r.created_at,
+        deletedAt: r.deleted_at || null,
+        courseName: r.course_name,
+        courseCode: r.course_code,
+        courseUnits: Number(r.course_units) || 3,
+        professorName: r.professor_name,
+        professorTitle: r.professor_title,
+        professorAvatarUrl: r.professor_avatar_url,
+      }));
+    } catch (err) {
+      console.error("D1 getOfferings error:", err);
+    }
+  }
+
+  await initFallbackDevData();
   let list = offeringsStore.filter((o) => !o.deletedAt);
-
-  if (filter?.courseId) {
-    list = list.filter((o) => o.courseId === filter.courseId);
-  }
-  if (filter?.professorId) {
-    list = list.filter((o) => o.professorId === filter.professorId);
-  }
-  if (filter?.facultyId) {
-    list = list.filter((o) => {
-      const course = coursesStore.find((c) => c.id === o.courseId);
-      return !course || course.facultyId === filter.facultyId;
-    });
-  }
-
-  return list.map((off) => {
-    const course = coursesStore.find((c) => c.id === off.courseId);
-    const prof = professorsStore.find((p) => p.id === off.professorId);
-    return {
-      ...off,
-      courseName: course?.name || "نامشخص",
-      courseCode: course?.code || "",
-      courseUnits: course?.units || 3,
-      professorName: prof?.name || "نامشخص",
-      professorTitle: prof?.title || "استاد",
-      professorAvatarUrl: prof?.avatarUrl,
-    };
-  });
+  if (filter?.courseId) list = list.filter((o) => o.courseId === filter.courseId);
+  if (filter?.professorId) list = list.filter((o) => o.professorId === filter.professorId);
+  return list;
 }
 
-export async function createOffering(data: {
-  courseId: string;
-  professorId: string;
-}): Promise<CourseOffering> {
-  await initDatabase();
-  const existing = offeringsStore.find(
-    (o) => o.courseId === data.courseId && o.professorId === data.professorId && !o.deletedAt
-  );
-  if (existing) {
-    const course = coursesStore.find((c) => c.id === existing.courseId);
-    const prof = professorsStore.find((p) => p.id === existing.professorId);
-    return {
-      ...existing,
-      courseName: course?.name || "",
-      courseCode: course?.code || "",
-      courseUnits: course?.units || 3,
-      professorName: prof?.name || "",
-      professorTitle: prof?.title || "",
-      professorAvatarUrl: prof?.avatarUrl,
-    };
+export async function createOffering(
+  courseIdOrData: string | { courseId: string; professorId: string },
+  professorIdArg?: string
+): Promise<CourseOffering> {
+  const courseId = typeof courseIdOrData === "object" ? courseIdOrData.courseId : courseIdOrData;
+  const professorId = typeof courseIdOrData === "object" ? courseIdOrData.professorId : professorIdArg!;
+  const id = `off_${crypto.randomUUID().slice(0, 8)}`;
+  const now = new Date().toISOString();
+
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1
+        .prepare("INSERT INTO course_offerings (id, course_id, professor_id, created_at) VALUES (?, ?, ?, ?)")
+        .bind(id, courseId, professorId, now)
+        .run();
+    } catch (err) {
+      console.error("D1 createOffering error:", err);
+    }
   }
 
   const newOffering: CourseOffering = {
-    id: `off_${crypto.randomUUID().slice(0, 8)}`,
-    courseId: data.courseId,
-    professorId: data.professorId,
-    createdAt: new Date().toISOString(),
+    id,
+    courseId,
+    professorId,
+    createdAt: now,
     deletedAt: null,
   };
   offeringsStore.push(newOffering);
-  const course = coursesStore.find((c) => c.id === newOffering.courseId);
-  const prof = professorsStore.find((p) => p.id === newOffering.professorId);
-  return {
-    ...newOffering,
-    courseName: course?.name || "",
-    courseCode: course?.code || "",
-    courseUnits: course?.units || 3,
-    professorName: prof?.name || "",
-    professorTitle: prof?.title || "",
-    professorAvatarUrl: prof?.avatarUrl,
-  };
+  return newOffering;
 }
 
 export async function updateOffering(
   id: string,
   data: { courseId?: string; professorId?: string }
 ): Promise<CourseOffering | null> {
-  await initDatabase();
-  const off = offeringsStore.find((o) => o.id === id && !o.deletedAt);
-  if (!off) return null;
-  if (data.courseId) off.courseId = data.courseId;
-  if (data.professorId) off.professorId = data.professorId;
-  const course = coursesStore.find((c) => c.id === off.courseId);
-  const prof = professorsStore.find((p) => p.id === off.professorId);
-  return {
-    ...off,
-    courseName: course?.name || "",
-    courseCode: course?.code || "",
-    courseUnits: course?.units || 3,
-    professorName: prof?.name || "",
-    professorTitle: prof?.title || "",
-    professorAvatarUrl: prof?.avatarUrl,
-  };
+  const d1 = getD1();
+  if (d1) {
+    try {
+      if (data.courseId && data.professorId) {
+        await d1
+          .prepare("UPDATE course_offerings SET course_id = ?, professor_id = ? WHERE id = ?")
+          .bind(data.courseId, data.professorId, id)
+          .run();
+      }
+    } catch (err) {
+      console.error("D1 updateOffering error:", err);
+    }
+  }
+
+  await initFallbackDevData();
+  const o = offeringsStore.find((item) => item.id === id);
+  if (!o) return null;
+  if (data.courseId) o.courseId = data.courseId;
+  if (data.professorId) o.professorId = data.professorId;
+  return o;
 }
 
 export async function deleteOffering(id: string): Promise<boolean> {
-  await initDatabase();
-  const off = offeringsStore.find((o) => o.id === id);
-  if (!off) return false;
-  off.deletedAt = new Date().toISOString();
+  const now = new Date().toISOString();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1.prepare("UPDATE course_offerings SET deleted_at = ? WHERE id = ?").bind(now, id).run();
+      return true;
+    } catch (err) {
+      console.error("D1 deleteOffering error:", err);
+      return false;
+    }
+  }
+
+  await initFallbackDevData();
+  const o = offeringsStore.find((item) => item.id === id);
+  if (!o) return false;
+  o.deletedAt = now;
   return true;
 }
 
 // ----------------------------------------------------
-// COURSE EVENTS & SLOTS CRUD (رویداد کلاسی ترم، گروه، زمان‌بندی و امتحان)
+// 12. COURSE EVENTS & SLOTS (Weekly schedule & exam dates)
 // ----------------------------------------------------
-export async function getEvents(filter?: {
-  offeringId?: string;
-  term?: string;
-  userId?: string | null;
-  facultyId?: string;
-}): Promise<CourseEvent[]> {
-  await initDatabase();
+export async function getEvents(
+  filterOrTerm?: string | {
+    offeringId?: string;
+    term?: string;
+    facultyId?: string;
+    courseId?: string;
+    userId?: string;
+    customOnly?: boolean;
+  }
+): Promise<CourseEvent[]> {
+  const term = typeof filterOrTerm === "string" ? filterOrTerm : filterOrTerm?.term;
+  const offeringId = typeof filterOrTerm === "object" ? filterOrTerm?.offeringId : undefined;
+  const facultyId = typeof filterOrTerm === "object" ? filterOrTerm?.facultyId : undefined;
+  const courseId = typeof filterOrTerm === "object" ? filterOrTerm?.courseId : undefined;
+  const userId = typeof filterOrTerm === "object" ? filterOrTerm?.userId : undefined;
+  const customOnly = typeof filterOrTerm === "object" ? Boolean(filterOrTerm?.customOnly) : false;
+
+  const d1 = getD1();
+  if (d1) {
+    try {
+      let query = `
+        SELECT e.id, e.offering_id, e.term, e.location, e.exam_date, e.exam_start_time, e.exam_end_time,
+               e.is_user_custom, e.user_id, e.global_event_id, e.created_at,
+               c.id AS course_id, c.name AS course_name, c.code AS course_code, c.units AS course_units,
+               p.id AS professor_id, p.name AS professor_name, p.title AS professor_title, p.avatar_url AS professor_avatar_url
+        FROM course_events e
+        JOIN course_offerings o ON e.offering_id = o.id
+        JOIN courses c ON o.course_id = c.id
+        JOIN professors p ON o.professor_id = p.id
+        WHERE o.deleted_at IS NULL
+      `;
+      const params: any[] = [];
+      if (term) {
+        query += " AND e.term = ?";
+        params.push(term);
+      }
+      if (offeringId) {
+        query += " AND e.offering_id = ?";
+        params.push(offeringId);
+      }
+      if (courseId) {
+        query += " AND o.course_id = ?";
+        params.push(courseId);
+      }
+      if (facultyId) {
+        query += " AND c.faculty_id = ?";
+        params.push(facultyId);
+      }
+
+      if (customOnly) {
+        query += " AND e.is_user_custom = 1";
+      } else if (userId) {
+        query += " AND (e.is_user_custom = 0 OR e.user_id = ?)";
+        params.push(userId);
+      } else {
+        query += " AND e.is_user_custom = 0";
+      }
+
+      const { results: eventRows } = await d1.prepare(query).bind(...params).all();
+      const eventsList = eventRows || [];
+
+      // Fetch event slots
+      const { results: slotRows } = await d1.prepare("SELECT * FROM course_event_slots").all();
+      const slotsList = slotRows || [];
+
+      return eventsList.map((e: any) => {
+        const slots = slotsList
+          .filter((s: any) => s.event_id === e.id)
+          .map((s: any) => ({
+            id: s.id,
+            eventId: s.event_id,
+            dayOfWeek: Number(s.day_of_week),
+            startTime: s.start_time,
+            endTime: s.end_time,
+          }));
+
+        return {
+          id: e.id,
+          offeringId: e.offering_id,
+          term: e.term,
+          location: e.location || "",
+          examDate: e.exam_date || "",
+          examStartTime: e.exam_start_time || "",
+          examEndTime: e.exam_end_time || "",
+          isUserCustom: Boolean(e.is_user_custom),
+          userId: e.user_id || null,
+          globalEventId: e.global_event_id || null,
+          createdAt: e.created_at,
+          courseId: e.course_id,
+          courseName: e.course_name,
+          courseCode: e.course_code,
+          courseUnits: Number(e.course_units) || 3,
+          professorId: e.professor_id,
+          professorName: e.professor_name,
+          professorTitle: e.professor_title,
+          professorAvatarUrl: e.professor_avatar_url,
+          slots,
+        };
+      });
+    } catch (err) {
+      console.error("D1 getEvents error:", err);
+    }
+  }
+
+  await initFallbackDevData();
   let list = eventsStore;
-
-  if (filter?.offeringId) {
-    list = list.filter((e) => e.offeringId === filter.offeringId);
-  }
-  if (filter?.term) {
-    list = list.filter((e) => e.term === filter.term);
-  }
-  if (filter?.userId !== undefined) {
-    list = list.filter((e) => e.userId === filter.userId);
-  }
-  if (filter?.facultyId) {
-    list = list.filter((e) => {
-      const offering = offeringsStore.find((o) => o.id === e.offeringId);
-      const course = offering ? coursesStore.find((c) => c.id === offering.courseId) : null;
-      return !course || course.facultyId === filter.facultyId;
-    });
-  }
-
-  return list.map((evt) => {
-    const offering = offeringsStore.find((o) => o.id === evt.offeringId);
-    const course = offering ? coursesStore.find((c) => c.id === offering.courseId) : null;
-    const prof = offering ? professorsStore.find((p) => p.id === offering.professorId) : null;
-    return {
-      ...evt,
-      courseName: course?.name,
-      courseCode: course?.code,
-      courseUnits: course?.units,
-      professorName: prof?.name,
-      professorTitle: prof?.title,
-    };
-  });
+  if (term) list = list.filter((e) => e.term === term);
+  if (offeringId) list = list.filter((e) => e.offeringId === offeringId);
+  return list;
 }
 
 export async function createEvent(data: {
   offeringId: string;
   term: string;
-  groupCode?: string;
-  capacity?: number;
   location?: string;
   examDate?: string;
   examStartTime?: string;
   examEndTime?: string;
   isUserCustom?: boolean;
   userId?: string | null;
-  slots?: { dayOfWeek: number; startTime: string; endTime: string }[];
+  slots: { dayOfWeek: number; startTime: string; endTime: string }[];
 }): Promise<CourseEvent> {
-  await initDatabase();
   const eventId = `evt_${crypto.randomUUID().slice(0, 8)}`;
-  const slots: CourseEventSlot[] = (data.slots || []).map((s) => ({
-    id: `slt_${crypto.randomUUID().slice(0, 8)}`,
+  const now = new Date().toISOString();
+
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1
+        .prepare(
+          `INSERT INTO course_events (id, offering_id, term, location, exam_date, exam_start_time, exam_end_time, is_user_custom, user_id, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        )
+        .bind(
+          eventId,
+          data.offeringId,
+          data.term,
+          data.location || "",
+          data.examDate || "",
+          data.examStartTime || "",
+          data.examEndTime || "",
+          data.isUserCustom ? 1 : 0,
+          data.userId || null,
+          now
+        )
+        .run();
+
+      for (const slot of data.slots || []) {
+        const slotId = `slot_${crypto.randomUUID().slice(0, 8)}`;
+        await d1
+          .prepare("INSERT INTO course_event_slots (id, event_id, day_of_week, start_time, end_time) VALUES (?, ?, ?, ?, ?)")
+          .bind(slotId, eventId, slot.dayOfWeek, slot.startTime, slot.endTime)
+          .run();
+      }
+    } catch (err) {
+      console.error("D1 createEvent error:", err);
+      throw err;
+    }
+  }
+
+  const createdSlots: CourseEventSlot[] = (data.slots || []).map((s) => ({
+    id: `slot_${crypto.randomUUID().slice(0, 8)}`,
     eventId,
     dayOfWeek: s.dayOfWeek,
     startTime: s.startTime,
@@ -1611,76 +2276,194 @@ export async function createEvent(data: {
   const newEvent: CourseEvent = {
     id: eventId,
     offeringId: data.offeringId,
-    term: data.term || "1403-1",
-    groupCode: data.groupCode || "01",
-    capacity: data.capacity !== undefined ? data.capacity : 40,
+    term: data.term,
     location: data.location || "",
     examDate: data.examDate || "",
     examStartTime: data.examStartTime || "",
     examEndTime: data.examEndTime || "",
-    isUserCustom: data.isUserCustom || false,
+    isUserCustom: Boolean(data.isUserCustom),
     userId: data.userId || null,
-    globalEventId: null,
-    createdAt: new Date().toISOString(),
-    slots,
+    createdAt: now,
+    slots: createdSlots,
   };
-
   eventsStore.push(newEvent);
-  const offering = offeringsStore.find((o) => o.id === newEvent.offeringId);
-  const course = offering ? coursesStore.find((c) => c.id === offering.courseId) : null;
-  const prof = offering ? professorsStore.find((p) => p.id === offering.professorId) : null;
-  return {
-    ...newEvent,
-    courseName: course?.name,
-    courseCode: course?.code,
-    courseUnits: course?.units,
-    professorName: prof?.name,
-    professorTitle: prof?.title,
-  };
+  return newEvent;
+}
+
+export async function createCustomUserEvent(data: {
+  userId: string;
+  courseId: string;
+  professorName: string;
+  term: string;
+  location?: string;
+  examDate?: string;
+  examStartTime?: string;
+  examEndTime?: string;
+  slots: { dayOfWeek: number; startTime: string; endTime: string }[];
+}): Promise<CourseEvent> {
+  const d1 = getD1();
+  const now = new Date().toISOString();
+
+  // Find or create professor
+  let profId: string = "";
+  if (d1) {
+    const existingProf = await d1
+      .prepare("SELECT id FROM professors WHERE name LIKE ?")
+      .bind(`%${data.professorName.trim()}%`)
+      .first();
+
+    if (existingProf) {
+      profId = (existingProf as any).id;
+    } else {
+      profId = `prf_${crypto.randomUUID().slice(0, 8)}`;
+      // Find default faculty for course
+      const crs = await d1.prepare("SELECT faculty_id FROM courses WHERE id = ?").bind(data.courseId).first();
+      const facId = (crs as any)?.faculty_id || "fac_ece";
+
+      await d1
+        .prepare("INSERT INTO professors (id, faculty_id, name, created_at) VALUES (?, ?, ?, ?)")
+        .bind(profId, facId, data.professorName.trim(), now)
+        .run();
+    }
+
+    // Find or create offering
+    let offeringId: string = "";
+    const existingOff = await d1
+      .prepare("SELECT id FROM course_offerings WHERE course_id = ? AND professor_id = ? AND deleted_at IS NULL")
+      .bind(data.courseId, profId)
+      .first();
+
+    if (existingOff) {
+      offeringId = (existingOff as any).id;
+    } else {
+      offeringId = `off_${crypto.randomUUID().slice(0, 8)}`;
+      await d1
+        .prepare("INSERT INTO course_offerings (id, course_id, professor_id, created_at) VALUES (?, ?, ?, ?)")
+        .bind(offeringId, data.courseId, profId, now)
+        .run();
+    }
+
+    return await createEvent({
+      offeringId,
+      term: data.term,
+      location: data.location || "",
+      examDate: data.examDate || "",
+      examStartTime: data.examStartTime || "",
+      examEndTime: data.examEndTime || "",
+      isUserCustom: true,
+      userId: data.userId,
+      slots: data.slots,
+    });
+  }
+
+  // Fallback
+  profId = `prf_${crypto.randomUUID().slice(0, 8)}`;
+  const offId = `off_${crypto.randomUUID().slice(0, 8)}`;
+  return await createEvent({
+    offeringId: offId,
+    term: data.term,
+    location: data.location || "",
+    examDate: data.examDate || "",
+    examStartTime: data.examStartTime || "",
+    examEndTime: data.examEndTime || "",
+    isUserCustom: true,
+    userId: data.userId,
+    slots: data.slots,
+  });
+}
+
+export async function promoteCustomEventToGlobal(eventId: string): Promise<boolean> {
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1
+        .prepare("UPDATE course_events SET is_user_custom = 0, user_id = NULL WHERE id = ?")
+        .bind(eventId)
+        .run();
+      return true;
+    } catch (err) {
+      console.error("D1 promoteCustomEventToGlobal error:", err);
+      return false;
+    }
+  }
+
+  await initFallbackDevData();
+  const evt = eventsStore.find((e) => e.id === eventId);
+  if (!evt) return false;
+  evt.isUserCustom = false;
+  evt.userId = null;
+  return true;
 }
 
 export async function updateEvent(
   id: string,
   data: Partial<CourseEvent> & { slots?: { dayOfWeek: number; startTime: string; endTime: string }[] }
 ): Promise<CourseEvent | null> {
-  await initDatabase();
-  const evt = eventsStore.find((e) => e.id === id);
-  if (!evt) return null;
+  const d1 = getD1();
+  if (d1) {
+    try {
+      if (data.location !== undefined || data.examDate !== undefined || data.examStartTime !== undefined || data.examEndTime !== undefined) {
+        await d1
+          .prepare(
+            `UPDATE course_events
+             SET location = COALESCE(?, location),
+                 exam_date = COALESCE(?, exam_date),
+                 exam_start_time = COALESCE(?, exam_start_time),
+                 exam_end_time = COALESCE(?, exam_end_time)
+             WHERE id = ?`
+          )
+          .bind(data.location || null, data.examDate || null, data.examStartTime || null, data.examEndTime || null, id)
+          .run();
+      }
 
-  if (data.offeringId !== undefined) evt.offeringId = data.offeringId;
-  if (data.groupCode !== undefined) evt.groupCode = data.groupCode;
-  if (data.capacity !== undefined) evt.capacity = data.capacity;
+      if (data.slots) {
+        await d1.prepare("DELETE FROM course_event_slots WHERE event_id = ?").bind(id).run();
+        for (const slot of data.slots) {
+          const slotId = `slot_${crypto.randomUUID().slice(0, 8)}`;
+          await d1
+            .prepare("INSERT INTO course_event_slots (id, event_id, day_of_week, start_time, end_time) VALUES (?, ?, ?, ?, ?)")
+            .bind(slotId, id, slot.dayOfWeek, slot.startTime, slot.endTime)
+            .run();
+        }
+      }
+    } catch (err) {
+      console.error("D1 updateEvent error:", err);
+    }
+  }
+
+  await initFallbackDevData();
+  const evt = eventsStore.find((item) => item.id === id);
+  if (!evt) return null;
   if (data.location !== undefined) evt.location = data.location;
-  if (data.term !== undefined) evt.term = data.term;
   if (data.examDate !== undefined) evt.examDate = data.examDate;
   if (data.examStartTime !== undefined) evt.examStartTime = data.examStartTime;
   if (data.examEndTime !== undefined) evt.examEndTime = data.examEndTime;
-
-  if (data.slots !== undefined) {
+  if (data.slots) {
     evt.slots = data.slots.map((s) => ({
-      id: `slt_${crypto.randomUUID().slice(0, 8)}`,
+      id: `slot_${crypto.randomUUID().slice(0, 8)}`,
       eventId: id,
       dayOfWeek: s.dayOfWeek,
       startTime: s.startTime,
       endTime: s.endTime,
     }));
   }
-
-  const offering = offeringsStore.find((o) => o.id === evt.offeringId);
-  const course = offering ? coursesStore.find((c) => c.id === offering.courseId) : null;
-  const prof = offering ? professorsStore.find((p) => p.id === offering.professorId) : null;
-  return {
-    ...evt,
-    courseName: course?.name,
-    courseCode: course?.code,
-    courseUnits: course?.units,
-    professorName: prof?.name,
-    professorTitle: prof?.title,
-  };
+  return evt;
 }
 
 export async function deleteEvent(id: string): Promise<boolean> {
-  await initDatabase();
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1.prepare("DELETE FROM course_event_slots WHERE event_id = ?").bind(id).run();
+      await d1.prepare("DELETE FROM course_events WHERE id = ?").bind(id).run();
+      return true;
+    } catch (err) {
+      console.error("D1 deleteEvent error:", err);
+      return false;
+    }
+  }
+
+  await initFallbackDevData();
   const idx = eventsStore.findIndex((e) => e.id === id);
   if (idx === -1) return false;
   eventsStore.splice(idx, 1);
@@ -1688,100 +2471,244 @@ export async function deleteEvent(id: string): Promise<boolean> {
 }
 
 // ----------------------------------------------------
-// STUDENT CHARTS CRUD
+// 13. CHARTS & SEMESTERS (Student Plans & Approved Templates)
 // ----------------------------------------------------
+export async function getCharts(userId?: string, trackId?: string): Promise<StudentChart[]> {
+  const d1 = getD1();
+  if (d1) {
+    try {
+      let query = "SELECT * FROM charts WHERE 1=1";
+      const params: any[] = [];
+      if (userId) {
+        query += " AND (user_id = ? OR is_approved_template = 1)";
+        params.push(userId);
+      }
+      if (trackId) {
+        query += " AND track_id = ?";
+        params.push(trackId);
+      }
+      query += " ORDER BY created_at DESC";
 
-export async function getCharts(userId?: string): Promise<StudentChart[]> {
-  await initDatabase();
-  if (!userId) {
-    return chartsStore;
+      const { results: chartRows } = await d1.prepare(query).bind(...params).all();
+      const chartsList = chartRows || [];
+
+      // Fetch all terms and courses for these charts
+      const { results: termRows } = await d1.prepare("SELECT * FROM chart_terms ORDER BY term_index ASC").all();
+      const { results: courseRows } = await d1.prepare("SELECT * FROM chart_courses ORDER BY sort_order ASC").all();
+
+      const termsList = termRows || [];
+      const chartCoursesList = courseRows || [];
+
+      return chartsList.map((c: any) => {
+        const terms = termsList.filter((t: any) => t.chart_id === c.id);
+        const semesters: ChartSemester[] = terms.map((t: any) => {
+          const courseEventsMap: Record<string, string> = {};
+          const coursesInTerm = chartCoursesList
+            .filter((cc: any) => cc.term_id === t.id)
+            .map((cc: any) => {
+              if (cc.selected_event_id) {
+                courseEventsMap[cc.course_id] = cc.selected_event_id;
+              }
+              return cc.course_id;
+            });
+
+          return {
+            semesterNumber: Number(t.term_index) || 1,
+            courseIds: coursesInTerm,
+            courseEventsMap,
+          };
+        });
+
+        return {
+          id: c.id,
+          userId: c.user_id,
+          trackId: c.track_id,
+          title: c.title,
+          isApprovedDefault: Boolean(c.is_approved_template),
+          semesters,
+          createdAt: c.created_at,
+          updatedAt: c.updated_at,
+        };
+      });
+    } catch (err) {
+      console.error("D1 getCharts error:", err);
+    }
   }
-  // Return user's private charts + official approved default charts
-  return chartsStore.filter((c) => c.userId === userId || c.isApprovedDefault);
-}
 
-export async function getChartById(id: string): Promise<StudentChart | null> {
-  await initDatabase();
-  const chart = chartsStore.find((c) => c.id === id);
-  return chart ? JSON.parse(JSON.stringify(chart)) : null;
-}
-
-export async function getApprovedTrackChart(trackId: string): Promise<StudentChart | null> {
-  await initDatabase();
-  const primary = chartsStore.find((c) => c.trackId === trackId && c.isApprovedDefault && c.isPrimaryApproved);
-  if (primary) return JSON.parse(JSON.stringify(primary));
-  const fallback = chartsStore.find((c) => c.trackId === trackId && c.isApprovedDefault);
-  return fallback ? JSON.parse(JSON.stringify(fallback)) : null;
+  await initFallbackDevData();
+  let list = chartsStore;
+  if (userId) list = list.filter((c) => c.userId === userId || c.isApprovedDefault);
+  if (trackId) list = list.filter((c) => c.trackId === trackId);
+  return list;
 }
 
 export async function getApprovedTrackCharts(trackId?: string): Promise<StudentChart[]> {
-  await initDatabase();
-  const list = chartsStore.filter((c) => c.isApprovedDefault && (!trackId || c.trackId === trackId));
-  list.sort((a, b) => (b.isPrimaryApproved ? 1 : 0) - (a.isPrimaryApproved ? 1 : 0));
-  return JSON.parse(JSON.stringify(list));
+  const charts = await getCharts(undefined, trackId);
+  return charts.filter((c) => c.isApprovedDefault);
 }
 
-export async function setPrimaryApprovedChart(trackId: string, chartId: string): Promise<boolean> {
-  await initDatabase();
-  let found = false;
-  chartsStore.forEach((c) => {
-    if (c.trackId === trackId && c.isApprovedDefault) {
-      if (c.id === chartId) {
-        c.isPrimaryApproved = true;
-        c.updatedAt = new Date().toISOString();
-        found = true;
-      } else {
-        c.isPrimaryApproved = false;
+export async function getApprovedTrackChart(trackId: string): Promise<StudentChart | null> {
+  const approved = await getApprovedTrackCharts(trackId);
+  return approved[0] || null;
+}
+
+export async function setPrimaryApprovedChart(chartId: string, trackId?: string): Promise<boolean> {
+  const d1 = getD1();
+  if (d1) {
+    try {
+      if (trackId) {
+        await d1.prepare("UPDATE charts SET is_approved_template = 0 WHERE track_id = ?").bind(trackId).run();
       }
+      await d1.prepare("UPDATE charts SET is_approved_template = 1 WHERE id = ?").bind(chartId).run();
+      return true;
+    } catch (err) {
+      console.error("D1 setPrimaryApprovedChart error:", err);
+      return false;
+    }
+  }
+
+  await initFallbackDevData();
+  chartsStore.forEach((c) => {
+    if (!trackId || c.trackId === trackId) {
+      c.isApprovedDefault = c.id === chartId;
     }
   });
-  return found;
+  return true;
+}
+
+export async function cloneChart(chartId: string, newUserId: string, title?: string): Promise<StudentChart | null> {
+  const source = await getChartById(chartId);
+  if (!source) return null;
+
+  return await createChart({
+    userId: newUserId,
+    trackId: source.trackId,
+    title: title || `${source.title} (کپی)`,
+    isApprovedDefault: false,
+    semesters: source.semesters,
+  });
+}
+
+export async function getChartById(id: string): Promise<StudentChart | null> {
+  const d1 = getD1();
+  if (d1) {
+    try {
+      const c = await d1.prepare("SELECT * FROM charts WHERE id = ?").bind(id).first();
+      if (!c) return null;
+
+      const { results: termRows } = await d1
+        .prepare("SELECT * FROM chart_terms WHERE chart_id = ? ORDER BY term_index ASC")
+        .bind(id)
+        .all();
+
+      const { results: courseRows } = await d1
+        .prepare(
+          `SELECT cc.* FROM chart_courses cc
+           JOIN chart_terms ct ON cc.term_id = ct.id
+           WHERE ct.chart_id = ?
+           ORDER BY cc.sort_order ASC`
+        )
+        .bind(id)
+        .all();
+
+      const terms = termRows || [];
+      const courses = courseRows || [];
+
+      const semesters: ChartSemester[] = terms.map((t: any) => {
+        const courseEventsMap: Record<string, string> = {};
+        const courseIds = courses
+          .filter((cc: any) => cc.term_id === t.id)
+          .map((cc: any) => {
+            if (cc.selected_event_id) {
+              courseEventsMap[cc.course_id] = cc.selected_event_id;
+            }
+            return cc.course_id;
+          });
+
+        return {
+          semesterNumber: Number(t.term_index) || 1,
+          courseIds,
+          courseEventsMap,
+        };
+      });
+
+      return {
+        id: (c as any).id,
+        userId: (c as any).user_id,
+        trackId: (c as any).track_id,
+        title: (c as any).title,
+        isApprovedDefault: Boolean((c as any).is_approved_template),
+        semesters,
+        createdAt: (c as any).created_at,
+        updatedAt: (c as any).updated_at,
+      };
+    } catch (err) {
+      console.error("D1 getChartById error:", err);
+    }
+  }
+
+  await initFallbackDevData();
+  return chartsStore.find((c) => c.id === id) || null;
 }
 
 export async function createChart(data: {
   userId: string;
   trackId: string;
   title: string;
-  semesters?: ChartSemester[];
   isApprovedDefault?: boolean;
-  isPrimaryApproved?: boolean;
+  semesters?: ChartSemester[];
 }): Promise<StudentChart> {
-  await initDatabase();
-  const id = `chart_${crypto.randomUUID().slice(0, 8)}`;
+  const chartId = `ch_${crypto.randomUUID().slice(0, 8)}`;
+  const now = new Date().toISOString();
+  const isApproved = data.isApprovedDefault ? 1 : 0;
 
-  // Default 8 empty semesters if not provided
-  const defaultSemesters: ChartSemester[] = Array.from({ length: 8 }, (_, i) => ({
-    semesterNumber: i + 1,
-    courseIds: [],
-  }));
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1
+        .prepare(
+          `INSERT INTO charts (id, user_id, track_id, title, is_approved_template, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`
+        )
+        .bind(chartId, data.userId, data.trackId, data.title, isApproved, now, now)
+        .run();
 
-  const existingApprovedForTrack = chartsStore.some(
-    (c) => c.trackId === data.trackId && c.isApprovedDefault
-  );
-  const isPrimary = data.isApprovedDefault
-    ? data.isPrimaryApproved ?? !existingApprovedForTrack
-    : false;
+      const semesters = data.semesters || [];
+      for (const s of semesters) {
+        const termId = `term_${chartId}_${s.semesterNumber}`;
+        await d1
+          .prepare("INSERT INTO chart_terms (id, chart_id, term_index) VALUES (?, ?, ?)")
+          .bind(termId, chartId, s.semesterNumber)
+          .run();
 
-  if (isPrimary && data.isApprovedDefault) {
-    chartsStore.forEach((c) => {
-      if (c.trackId === data.trackId && c.isApprovedDefault) {
-        c.isPrimaryApproved = false;
+        let order = 0;
+        for (const courseId of s.courseIds || []) {
+          const ccId = `cc_${crypto.randomUUID().slice(0, 8)}`;
+          const selectedEventId = s.courseEventsMap?.[courseId] || null;
+          await d1
+            .prepare(
+              "INSERT INTO chart_courses (id, term_id, course_id, selected_event_id, sort_order) VALUES (?, ?, ?, ?, ?)"
+            )
+            .bind(ccId, termId, courseId, selectedEventId, order++)
+            .run();
+        }
       }
-    });
+    } catch (err) {
+      console.error("D1 createChart error:", err);
+      throw err;
+    }
   }
 
   const newChart: StudentChart = {
-    id,
+    id: chartId,
     userId: data.userId,
     trackId: data.trackId,
-    title: data.title.trim() || "چارت تحصیلی من",
-    isApprovedDefault: data.isApprovedDefault || false,
-    isPrimaryApproved: isPrimary,
-    semesters: data.semesters && data.semesters.length > 0 ? data.semesters : defaultSemesters,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    title: data.title,
+    isApprovedDefault: Boolean(data.isApprovedDefault),
+    semesters: data.semesters || [],
+    createdAt: now,
+    updatedAt: now,
   };
-
   chartsStore.push(newChart);
   return newChart;
 }
@@ -1790,40 +2717,248 @@ export async function updateChart(
   id: string,
   data: Partial<StudentChart>
 ): Promise<StudentChart | null> {
-  await initDatabase();
-  const chart = chartsStore.find((c) => c.id === id);
-  if (!chart) return null;
+  const now = new Date().toISOString();
+  const d1 = getD1();
 
-  if (data.title !== undefined) chart.title = data.title;
-  if (data.trackId !== undefined) chart.trackId = data.trackId;
-  if (data.semesters !== undefined) chart.semesters = data.semesters;
-  if (data.isApprovedDefault !== undefined) chart.isApprovedDefault = data.isApprovedDefault;
-
-  if (data.isPrimaryApproved && chart.isApprovedDefault) {
-    chartsStore.forEach((c) => {
-      if (c.trackId === chart.trackId && c.isApprovedDefault) {
-        c.isPrimaryApproved = c.id === id;
+  if (d1) {
+    try {
+      if (data.title !== undefined || data.trackId !== undefined || data.isApprovedDefault !== undefined) {
+        await d1
+          .prepare(
+            `UPDATE charts
+             SET title = COALESCE(?, title),
+                 track_id = COALESCE(?, track_id),
+                 is_approved_template = COALESCE(?, is_approved_template),
+                 updated_at = ?
+             WHERE id = ?`
+          )
+          .bind(
+            data.title || null,
+            data.trackId || null,
+            data.isApprovedDefault !== undefined ? (data.isApprovedDefault ? 1 : 0) : null,
+            now,
+            id
+          )
+          .run();
       }
-    });
-  } else if (data.isPrimaryApproved !== undefined) {
-    chart.isPrimaryApproved = data.isPrimaryApproved;
+
+      if (data.semesters) {
+        // Clear old terms and chart courses
+        const { results: existingTerms } = await d1
+          .prepare("SELECT id FROM chart_terms WHERE chart_id = ?")
+          .bind(id)
+          .all();
+
+        for (const t of existingTerms || []) {
+          await d1.prepare("DELETE FROM chart_courses WHERE term_id = ?").bind((t as any).id).run();
+        }
+        await d1.prepare("DELETE FROM chart_terms WHERE chart_id = ?").bind(id).run();
+
+        // Re-insert terms
+        for (const s of data.semesters) {
+          const termId = `term_${id}_${s.semesterNumber}`;
+          await d1
+            .prepare("INSERT INTO chart_terms (id, chart_id, term_index) VALUES (?, ?, ?)")
+            .bind(termId, id, s.semesterNumber)
+            .run();
+
+          let order = 0;
+          for (const courseId of s.courseIds || []) {
+            const ccId = `cc_${crypto.randomUUID().slice(0, 8)}`;
+            const selectedEventId = s.courseEventsMap?.[courseId] || null;
+            await d1
+              .prepare(
+                "INSERT INTO chart_courses (id, term_id, course_id, selected_event_id, sort_order) VALUES (?, ?, ?, ?, ?)"
+              )
+              .bind(ccId, termId, courseId, selectedEventId, order++)
+              .run();
+          }
+        }
+      }
+
+      return await getChartById(id);
+    } catch (err) {
+      console.error("D1 updateChart error:", err);
+    }
   }
 
-  chart.updatedAt = new Date().toISOString();
-
-  return JSON.parse(JSON.stringify(chart));
+  await initFallbackDevData();
+  const ch = chartsStore.find((item) => item.id === id);
+  if (!ch) return null;
+  if (data.title !== undefined) ch.title = data.title.trim();
+  if (data.isApprovedDefault !== undefined) ch.isApprovedDefault = data.isApprovedDefault;
+  if (data.semesters !== undefined) ch.semesters = data.semesters;
+  ch.updatedAt = now;
+  return ch;
 }
 
-export async function deleteChart(id: string, userId?: string): Promise<boolean> {
-  await initDatabase();
-  const idx = chartsStore.findIndex((c) => {
-    if (c.id !== id) return false;
-    if (userId && c.userId !== userId && !c.isApprovedDefault) return false;
-    return true;
-  });
+export async function updateChartCourseEvent(
+  chartId: string,
+  termIndex: number,
+  courseId: string,
+  selectedEventId: string | null
+): Promise<boolean> {
+  const d1 = getD1();
+  if (d1) {
+    try {
+      const term = await d1
+        .prepare("SELECT id FROM chart_terms WHERE chart_id = ? AND term_index = ?")
+        .bind(chartId, termIndex)
+        .first();
 
+      if (!term) return false;
+
+      await d1
+        .prepare("UPDATE chart_courses SET selected_event_id = ? WHERE term_id = ? AND course_id = ?")
+        .bind(selectedEventId, (term as any).id, courseId)
+        .run();
+
+      await d1.prepare("UPDATE charts SET updated_at = ? WHERE id = ?").bind(new Date().toISOString(), chartId).run();
+      return true;
+    } catch (err) {
+      console.error("D1 updateChartCourseEvent error:", err);
+      return false;
+    }
+  }
+
+  await initFallbackDevData();
+  const c = chartsStore.find((item) => item.id === chartId);
+  if (!c) return false;
+  const s = c.semesters.find((sem) => sem.semesterNumber === termIndex);
+  if (!s) return false;
+  if (!s.courseEventsMap) s.courseEventsMap = {};
+  if (selectedEventId) {
+    s.courseEventsMap[courseId] = selectedEventId;
+  } else {
+    delete s.courseEventsMap[courseId];
+  }
+  return true;
+}
+
+export async function deleteChart(id: string): Promise<boolean> {
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1
+        .prepare("DELETE FROM chart_courses WHERE term_id IN (SELECT id FROM chart_terms WHERE chart_id = ?)")
+        .bind(id)
+        .run();
+      await d1.prepare("DELETE FROM chart_terms WHERE chart_id = ?").bind(id).run();
+      await d1.prepare("DELETE FROM charts WHERE id = ?").bind(id).run();
+      return true;
+    } catch (err) {
+      console.error("D1 deleteChart error:", err);
+      return false;
+    }
+  }
+
+  await initFallbackDevData();
+  const idx = chartsStore.findIndex((c) => c.id === id);
   if (idx === -1) return false;
   chartsStore.splice(idx, 1);
   return true;
 }
 
+// ----------------------------------------------------
+// 14. REVIEWS CRUD
+// ----------------------------------------------------
+export async function getReviews(targetType: "professor" | "offering", targetId: string): Promise<Review[]> {
+  const d1 = getD1();
+  if (d1) {
+    try {
+      const { results } = await d1
+        .prepare(
+          `SELECT r.*, u.name AS author_name 
+           FROM reviews r
+           LEFT JOIN users u ON r.user_id = u.id
+           WHERE r.target_type = ? AND r.target_id = ? AND r.deleted_at IS NULL
+           ORDER BY r.created_at DESC`
+        )
+        .bind(targetType, targetId)
+        .all();
+
+      return (results || []).map((r: any) => {
+        let criteriaRatings: any = undefined;
+        if (r.criteria_ratings) {
+          try {
+            criteriaRatings = typeof r.criteria_ratings === "string" ? JSON.parse(r.criteria_ratings) : r.criteria_ratings;
+          } catch {}
+        }
+        return {
+          id: r.id,
+          userId: r.user_id || null,
+          targetType: r.target_type as any,
+          targetId: r.target_id,
+          isAnonymous: Boolean(r.is_anonymous),
+          comment: r.comment,
+          authorName: r.is_anonymous ? "دانشجوی دانشگاه تهران" : (r.author_name || "کاربر سامانه"),
+          overallRating: Number(r.overall_rating) || 10,
+          criteriaRatings,
+          createdAt: r.created_at,
+          deletedAt: r.deleted_at || null,
+        };
+      });
+    } catch (err) {
+      console.error("D1 getReviews error:", err);
+    }
+  }
+
+  await initFallbackDevData();
+  return reviewsStore.filter((r) => r.targetType === targetType && r.targetId === targetId && !r.deletedAt);
+}
+
+export async function createReview(data: {
+  userId?: string | null;
+  targetType: "professor" | "offering";
+  targetId: string;
+  isAnonymous?: boolean;
+  comment: string;
+  overallRating: number;
+  criteriaRatings?: Record<string, number>;
+}): Promise<Review> {
+  const id = `rev_${crypto.randomUUID().slice(0, 8)}`;
+  const now = new Date().toISOString();
+  const criteriaJson = data.criteriaRatings ? JSON.stringify(data.criteriaRatings) : null;
+  const isAnon = data.isAnonymous ? 1 : 0;
+
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1
+        .prepare(
+          `INSERT INTO reviews (id, user_id, target_type, target_id, is_anonymous, comment, overall_rating, criteria_ratings, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        )
+        .bind(
+          id,
+          data.userId || null,
+          data.targetType,
+          data.targetId,
+          isAnon,
+          data.comment.trim(),
+          data.overallRating,
+          criteriaJson,
+          now
+        )
+        .run();
+    } catch (err) {
+      console.error("D1 createReview error:", err);
+      throw err;
+    }
+  }
+
+  const newRev: Review = {
+    id,
+    userId: data.userId || null,
+    targetType: data.targetType,
+    targetId: data.targetId,
+    isAnonymous: Boolean(data.isAnonymous),
+    comment: data.comment.trim(),
+    overallRating: data.overallRating,
+    criteriaRatings: data.criteriaRatings,
+    createdAt: now,
+    deletedAt: null,
+  };
+  reviewsStore.push(newRev);
+  return newRev;
+}

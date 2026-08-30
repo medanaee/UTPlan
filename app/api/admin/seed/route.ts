@@ -1,16 +1,29 @@
-import { seedDevData } from "@/lib/db";
+import { seedDatabase } from "@/lib/db";
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
-    await seedDevData();
-    return Response.json({
-      success: true,
-      message: "داده‌های نمونه جامع دانشگاهی (دانشکده‌ها، رشته‌ها، گرایش‌ها، دروس، اساتید، ارائه‌ها و رویدادها) در محیط دولوپ بارگذاری شدند.",
-    });
+    if (process.env.NODE_ENV === "production") {
+      return Response.json(
+        {
+          success: false,
+          message: "عملیات بارگذاری داده‌های نمونه به دلایل امنیتی در محیط پروداکشن مسدود است.",
+        },
+        { status: 403 }
+      );
+    }
+
+    let full = true;
+    try {
+      const body = await request.json();
+      if (body?.full !== undefined) full = Boolean(body.full);
+    } catch {}
+
+    const result = await seedDatabase(full);
+    return Response.json(result);
   } catch (error) {
     console.error("Seed error:", error);
     return Response.json(
-      { success: false, message: "خطا در بارگذاری داده‌های نمونه" },
+      { success: false, message: "خطا در بارگذاری داده‌های اولیه" },
       { status: 500 }
     );
   }

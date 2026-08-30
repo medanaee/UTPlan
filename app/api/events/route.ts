@@ -1,15 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getEvents, createEvent, updateEvent, deleteEvent } from "@/lib/db";
+import { getEvents, createEvent, createCustomUserEvent, updateEvent, deleteEvent } from "@/lib/db";
 import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   try {
+    const token = getAuthTokenFromRequest(request);
+    const session = token ? await verifySessionToken(token) : null;
+
     const { searchParams } = new URL(request.url);
     const offeringId = searchParams.get("offeringId") || undefined;
     const term = searchParams.get("term") || undefined;
     const facultyId = searchParams.get("facultyId") || undefined;
+    const courseId = searchParams.get("courseId") || undefined;
+    const customOnly = searchParams.get("customOnly") === "true";
 
-    const data = await getEvents({ offeringId, term, facultyId });
+    const data = await getEvents({
+      offeringId,
+      term,
+      facultyId,
+      courseId,
+      userId: session?.id,
+      customOnly: customOnly && (session?.role === "admin" || session?.role === "super_admin"),
+    });
+
     return NextResponse.json({ success: true, data });
   } catch (error) {
     console.error("GET events error:", error);
@@ -34,6 +47,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       offeringId,
+      courseId,
+      professorName,
       term,
       groupCode,
       capacity,
@@ -45,6 +60,35 @@ export async function POST(request: NextRequest) {
       isUserCustom,
     } = body;
 
+    // Student custom event creation
+    if (isUserCustom || (!offeringId && courseId && professorName)) {
+      if (!courseId || !professorName) {
+        return NextResponse.json(
+          { success: false, message: "انتخاب درس و نام استاد الزامی است." },
+          { status: 400 }
+        );
+      }
+
+      const newCustomEvent = await createCustomUserEvent({
+        userId: session.id,
+        courseId,
+        professorName,
+        term: term || "1403-1",
+        location: location || "",
+        examDate: examDate || "",
+        examStartTime: examStartTime || "",
+        examEndTime: examEndTime || "",
+        slots: slots || [],
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: "ارائه شخصی شما با موفقیت ثبت شد.",
+        data: newCustomEvent,
+      });
+    }
+
+    // Official admin event creation
     if (!offeringId) {
       return NextResponse.json(
         { success: false, message: "شناسه ارائه الزامی است." },
@@ -52,17 +96,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (session.role !== "admin" && session.role !== "super_admin") {
+      return NextResponse.json(
+        { success: false, message: "تنها مدیران می‌توانند رویداد رسمی ثبت کنند." },
+        { status: 403 }
+      );
+    }
+
     const newEvent = await createEvent({
       offeringId,
       term: term || "1403-1",
-      groupCode: groupCode || "01",
-      capacity: capacity ? Number(capacity) : 40,
       location: location || "",
       examDate: examDate || "",
       examStartTime: examStartTime || "",
       examEndTime: examEndTime || "",
-      isUserCustom: isUserCustom || false,
-      userId: isUserCustom ? session.id : null,
+      isUserCustom: false,
       slots: slots || [],
     });
 

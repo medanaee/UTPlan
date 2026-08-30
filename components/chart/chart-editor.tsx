@@ -48,6 +48,7 @@ import {
 } from "@/components/ui/dialog";
 import { validateFullChart } from "@/lib/rules-engine";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { TermSchedulePlanner } from "./term-schedule-planner";
 import type {
   StudentChart,
   ChartSemester,
@@ -120,6 +121,41 @@ export function ChartEditor({
   const [loadApprovedModalOpen, setLoadApprovedModalOpen] = useState(false);
   const [approvedChartsList, setApprovedChartsList] = useState<StudentChart[]>([]);
   const [loadingApprovedCharts, setLoadingApprovedCharts] = useState(false);
+
+  // Term Weekly Schedule Planner Modal State
+  const [activePlannerSemester, setActivePlannerSemester] = useState<number | null>(null);
+
+  const handlePlannerEventSelect = async (courseId: string, eventId: string | null) => {
+    if (activePlannerSemester === null) return;
+    setChart((prev) => {
+      const nextSemesters = prev.semesters.map((s) => {
+        if (s.semesterNumber !== activePlannerSemester) return s;
+        const nextMap = { ...(s.courseEventsMap || {}) };
+        if (eventId) {
+          nextMap[courseId] = eventId;
+        } else {
+          delete nextMap[courseId];
+        }
+        return { ...s, courseEventsMap: nextMap };
+      });
+      return { ...prev, semesters: nextSemesters };
+    });
+
+    try {
+      await fetch("/api/charts", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chartId: chart.id,
+          termIndex: activePlannerSemester,
+          courseId,
+          selectedEventId: eventId,
+        }),
+      });
+    } catch (err) {
+      console.error("Error persisting selected event:", err);
+    }
+  };
 
   // Hovered Course for SVG Arrow Highlighting
   const [hoveredCourseId, setHoveredCourseId] = useState<string | null>(null);
@@ -1105,14 +1141,19 @@ export function ChartEditor({
 
                     {/* Quick Link to Semester Weekly Schedule Planner */}
                     <div className="flex items-center">
-                      <Link
-                        href={`/schedule?chartId=${chart.id}&term=${sem.semesterNumber}`}
-                        className="text-[11px] text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 font-medium bg-muted/40 hover:bg-muted px-2.5 py-1 rounded-lg border border-border/60"
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setActivePlannerSemester(sem.semesterNumber)}
+                        className="text-[11px] text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5 font-medium bg-muted/40 hover:bg-muted px-2.5 py-1 rounded-lg border border-border/60 h-7"
                       >
                         <Clock className="h-3 w-3 text-primary" />
                         <span>برنامه زمانی هفتگی</span>
-                        <ExternalLink className="h-2.5 w-2.5 opacity-60" />
-                      </Link>
+                        {sem.courseEventsMap && Object.keys(sem.courseEventsMap).length > 0 && (
+                          <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                        )}
+                      </Button>
                     </div>
                   </div>
 
@@ -1451,6 +1492,28 @@ export function ChartEditor({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Term Weekly Schedule Planner Modal */}
+      {activePlannerSemester !== null && (
+        <TermSchedulePlanner
+          chartId={chart.id}
+          termIndex={activePlannerSemester}
+          termCourses={(() => {
+            const sem = chart.semesters.find((s) => s.semesterNumber === activePlannerSemester);
+            if (!sem) return [];
+            return sem.courseIds
+              .map((cId) => allCourses.find((c) => c.id === cId))
+              .filter(Boolean) as Course[];
+          })()}
+          allVisualCategories={visualCategories}
+          selectedEventsMap={
+            chart.semesters.find((s) => s.semesterNumber === activePlannerSemester)?.courseEventsMap || {}
+          }
+          onEventSelect={handlePlannerEventSelect}
+          onClose={() => setActivePlannerSemester(null)}
+          user={user}
+        />
+      )}
     </div>
   );
 }
