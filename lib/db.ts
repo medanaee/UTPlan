@@ -509,36 +509,58 @@ export async function seedDevData() {
     {
       id: "prf_rezvani",
       facultyId: "fac_ece",
+      firstName: "سارا",
+      lastName: "رضوانی",
       name: "دکتر سارا رضوانی",
       title: "استاد تمام",
       email: "s.rezvani@ut.ac.ir",
+      links: {
+        website: "https://profile.ut.ac.ir/~s.rezvani",
+        scholar: "https://scholar.google.com/citations?user=s_rezvani",
+      },
       createdAt: new Date().toISOString(),
       deletedAt: null,
     },
     {
       id: "prf_mohammadi",
       facultyId: "fac_ece",
+      firstName: "علی",
+      lastName: "محمدی",
       name: "دکتر علی محمدی",
       title: "دانشیار",
       email: "a.mohammadi@ut.ac.ir",
+      links: {
+        website: "https://profile.ut.ac.ir/~a.mohammadi",
+        scholar: "https://scholar.google.com/citations?user=a_mohammadi",
+      },
       createdAt: new Date().toISOString(),
       deletedAt: null,
     },
     {
       id: "prf_hosseini",
       facultyId: "fac_ece",
+      firstName: "مریم",
+      lastName: "حسینی",
       name: "دکتر مریم حسینی",
       title: "استادیار",
       email: "m.hosseini@ut.ac.ir",
+      links: {
+        website: "https://profile.ut.ac.ir/~m.hosseini",
+      },
       createdAt: new Date().toISOString(),
       deletedAt: null,
     },
     {
       id: "prf_kazemi",
       facultyId: "fac_ece",
+      firstName: "بهزاد",
+      lastName: "کاظمی",
       name: "دکتر بهزاد کاظمی",
       title: "استادیار",
       email: "b.kazemi@ut.ac.ir",
+      links: {
+        scholar: "https://scholar.google.com/citations?user=b_kazemi",
+      },
       createdAt: new Date().toISOString(),
       deletedAt: null,
     },
@@ -1342,19 +1364,29 @@ export async function getProfessors(facultyId?: string): Promise<Professor[]> {
 
 export async function createProfessor(data: {
   facultyId: string;
-  name: string;
+  firstName?: string;
+  lastName?: string;
+  name?: string;
   title?: string;
   email?: string;
   avatarUrl?: string;
+  links?: Professor["links"];
 }): Promise<Professor> {
   await initDatabase();
+  const firstName = data.firstName?.trim() || "";
+  const lastName = data.lastName?.trim() || "";
+  const fullName = data.name?.trim() || [firstName, lastName].filter(Boolean).join(" ") || "استاد";
+
   const newProf: Professor = {
     id: `prf_${crypto.randomUUID().slice(0, 8)}`,
     facultyId: data.facultyId,
-    name: data.name,
-    title: data.title || "استاد",
+    firstName: firstName || undefined,
+    lastName: lastName || undefined,
+    name: fullName,
+    title: data.title || "استاد تمام",
     email: data.email || "",
     avatarUrl: data.avatarUrl || "",
+    links: data.links,
     createdAt: new Date().toISOString(),
     deletedAt: null,
   };
@@ -1364,16 +1396,28 @@ export async function createProfessor(data: {
 
 export async function updateProfessor(
   id: string,
-  data: Partial<Pick<Professor, "name" | "title" | "email" | "avatarUrl" | "facultyId">>
+  data: Partial<Pick<Professor, "firstName" | "lastName" | "name" | "title" | "email" | "avatarUrl" | "facultyId" | "links">>
 ): Promise<Professor | null> {
   await initDatabase();
   const p = professorsStore.find((item) => item.id === id && !item.deletedAt);
   if (!p) return null;
-  if (data.name) p.name = data.name;
+
+  if (data.firstName !== undefined) p.firstName = data.firstName.trim();
+  if (data.lastName !== undefined) p.lastName = data.lastName.trim();
+
+  if (data.name !== undefined) {
+    p.name = data.name.trim();
+  } else if (data.firstName !== undefined || data.lastName !== undefined) {
+    const f = p.firstName || "";
+    const l = p.lastName || "";
+    p.name = [f, l].filter(Boolean).join(" ") || p.name;
+  }
+
   if (data.title !== undefined) p.title = data.title;
   if (data.email !== undefined) p.email = data.email;
   if (data.avatarUrl !== undefined) p.avatarUrl = data.avatarUrl;
   if (data.facultyId) p.facultyId = data.facultyId;
+  if (data.links !== undefined) p.links = data.links;
   return p;
 }
 

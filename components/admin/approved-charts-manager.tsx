@@ -240,7 +240,7 @@ export function ApprovedChartsManager({
       )}
 
       {/* Standard Active Track Header Banner */}
-      <div className="rounded-2xl border border-primary/20 bg-gradient-to-l from-primary/10 via-primary/5 to-card p-4 shadow-sm">
+      <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-sm">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20 shrink-0">
@@ -248,22 +248,12 @@ export function ApprovedChartsManager({
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-semibold text-muted-foreground">گرایش انتخابی شما:</span>
+                <span className="text-xs font-semibold text-muted-foreground">گرایش انتخابی:</span>
                 {currentTrack ? (
                   <div className="flex flex-wrap items-center gap-1.5">
                     <Badge variant="default" className="text-xs px-2.5 py-0.5 font-bold shadow-xs">
-                      {currentTrack.name} ({currentTrack.code})
-                    </Badge>
-                    {(() => {
-                      const maj = majors.find((m) => m.id === currentTrack.majorId);
-                      const fac = faculties.find((f) => f.id === maj?.facultyId);
-                      return (
-                        <>
-                          {maj && <Badge variant="secondary" className="text-xs px-2 py-0.5">رشته: {maj.name}</Badge>}
-                          {fac && <Badge variant="outline" className="text-xs px-2 py-0.5">دانشکده: {fac.name}</Badge>}
-                        </>
-                      );
-                    })()}
+                      {currentTrack.name}
+                    </Badge>  
                   </div>
                 ) : (
                   <Badge variant="outline" className="text-xs px-2.5 py-0.5 text-destructive border-destructive/40">

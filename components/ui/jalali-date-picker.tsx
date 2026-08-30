@@ -581,7 +581,6 @@ export function JalaliDatePicker({
                 value={dayInput}
                 disabled={disabled}
                 placeholder="روز"
-                sizeVariant="sm"
                 className="text-center"
                 onChange={(val) => setDayInput(String(val))}
                 onStep={(day) => commitDraft({ ...draft, day })}
@@ -596,7 +595,6 @@ export function JalaliDatePicker({
                 value={monthInput}
                 disabled={disabled}
                 placeholder="ماه"
-                sizeVariant="sm"
                 className="text-center"
                 onChange={(val) => setMonthInput(String(val))}
                 onStep={(month) => commitDraft({ ...draft, month })}
@@ -611,7 +609,6 @@ export function JalaliDatePicker({
                 value={yearInput}
                 disabled={disabled}
                 placeholder="سال"
-                sizeVariant="sm"
                 className="text-center"
                 onChange={(val) => setYearInput(String(val))}
                 onStep={(year) => commitDraft({ ...draft, year })}
@@ -667,9 +664,9 @@ export function JalaliDatePicker({
         disabled={disabled}
         onClick={() => setOpen((prev) => !prev)}
         className={cn(
-          "flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-input bg-transparent px-3 text-start text-sm outline-none transition-colors",
+          "flex h-7 w-full items-center justify-between gap-2 rounded-lg border border-input bg-transparent px-3 text-start text-xs outline-none transition-colors",
           "hover:bg-muted/30 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
-          "disabled:cursor-not-allowed disabled:opacity-50",
+          "disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30 dark:disabled:bg-input/80",
           !selected && "text-muted-foreground",
         )}
       >

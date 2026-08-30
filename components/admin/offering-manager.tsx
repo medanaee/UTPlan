@@ -39,6 +39,7 @@ import {
   Layers,
   Sparkles,
   Building2,
+  BookUser,
 } from "lucide-react";
 
 const items = [
@@ -204,7 +205,7 @@ export function OfferingManager({
   return (
     <div className="space-y-4">
       {/* Standard Active Faculty Header Banner */}
-      <div className="rounded-2xl border border-primary/20 bg-gradient-to-l from-primary/10 via-primary/5 to-card p-4 shadow-sm">
+      <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-sm">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20 shrink-0">
@@ -235,7 +236,7 @@ export function OfferingManager({
         <CardHeader className="flex flex-row items-center justify-between pb-3 border-b">
           <div>
             <CardTitle className="text-base flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" />
+              <BookUser className="h-4 w-4 text-primary" />
               <span>ارائه‌های درسی (اتصال درس به استاد)</span>
             </CardTitle>
             <CardDescription className="text-xs">
@@ -252,7 +253,7 @@ export function OfferingManager({
           </Button>
         </CardHeader>
 
-        <CardContent className="p-4 space-y-4">
+        <CardContent className="px-4 space-y-4">
           {/* Filters Bar */}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="relative">
@@ -399,12 +400,11 @@ export function OfferingManager({
                 {currentFaculty ? `${currentFaculty.name} (${currentFaculty.code})` : "انتخاب نشده"}
               </span>
             </div>
-            <Badge variant="outline" className="text-[10px]">تثبیت‌شده</Badge>
           </div>
 
-          <form onSubmit={handleSaveOffering} className="space-y-4 pt-2">
+          <form onSubmit={handleSaveOffering} className="space-y-4">
             {/* Course Select */}
-            <div className="space-y-2">
+            <div className="space-y-1">
               <Label className="text-xs font-semibold">انتخاب درس:</Label>
               <Select
                 items={courseOptions}
@@ -427,8 +427,8 @@ export function OfferingManager({
             </div>
 
             {/* Professor Select */}
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold">استاد مدرس:</Label>
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">استاد مدرس:</Label>
               <Select
                 items={professorOptions}
                 value={form.professorId}
@@ -452,6 +452,7 @@ export function OfferingManager({
             <DialogFooter className="pt-2">
               <Button
                 type="submit"
+                size="sm"
                 disabled={isSubmitting || !form.courseId || !form.professorId}
                 className="w-full font-semibold"
               >

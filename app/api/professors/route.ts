@@ -15,18 +15,21 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { facultyId, name, title, email, avatarUrl } = body;
+    const { facultyId, firstName, lastName, name, title, email, avatarUrl, links } = body;
 
-    if (!facultyId || !name) {
+    if (!facultyId || (!name && !firstName && !lastName)) {
       return Response.json({ success: false, message: "دانشکده و نام استاد الزامی است." }, { status: 400 });
     }
 
     const newProf = await createProfessor({
       facultyId,
+      firstName,
+      lastName,
       name,
       title,
       email,
       avatarUrl,
+      links,
     });
 
     return Response.json({ success: true, data: newProf }, { status: 201 });
@@ -39,7 +42,7 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { id, facultyId, name, title, email, avatarUrl } = body;
+    const { id, facultyId, firstName, lastName, name, title, email, avatarUrl, links } = body;
 
     if (!id) {
       return Response.json({ success: false, message: "شناسه استاد الزامی است." }, { status: 400 });
@@ -47,10 +50,13 @@ export async function PUT(request: Request) {
 
     const updated = await updateProfessor(id, {
       facultyId,
+      firstName,
+      lastName,
       name,
       title,
       email,
       avatarUrl,
+      links,
     });
 
     if (!updated) {

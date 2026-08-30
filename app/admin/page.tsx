@@ -20,6 +20,7 @@ import {
   CalendarDays,
   Database,
   Check,
+  BookUser,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -129,8 +130,8 @@ export default function AdminDashboardPage() {
     },
     {
       id: "offerings" as const,
-      label: "ارائه‌های درسی (درس + استاد)",
-      icon: Sparkles,
+      label: "ارائه‌های درسی",
+      icon: BookUser,
     },
     {
       id: "events" as const,
@@ -167,7 +168,7 @@ export default function AdminDashboardPage() {
   return (
     <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/20">
       {/* Top Header */}
-      <header className="sticky top-0 z-40 border-b border-border/70 bg-background/95 backdrop-blur">
+      <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
         <div className="mx-auto flex items-center justify-between px-4 py-2.5 sm:px-6">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2.5">
@@ -259,10 +260,10 @@ export default function AdminDashboardPage() {
       </header>
 
       {/* Main Admin Layout with Collapsible Right Sidebar */}
-      <div className="flex min-h-[calc(100vh-61px)] bg-background">
+      <div className="flex min-h-[calc(100vh-59px)] bg-background">
         {/* Right Minimal Flat Collapsible Sidebar */}
         <aside
-          className={`sticky top-[61px] h-[calc(100vh-61px)] shrink-0 border-l border-border/40 bg-background transition-all duration-200 flex flex-col justify-between z-30 ${
+          className={`sticky top-[59px] h-[calc(100vh-59px)] shrink-0 border-l border-border bg-background transition-all duration-200 flex flex-col justify-between z-30 ${
             isSidebarCollapsed ? "w-14" : "w-56"
           }`}
         >
@@ -327,7 +328,7 @@ export default function AdminDashboardPage() {
           </div>
 
           {/* Minimal Sidebar Footer */}
-          <div className="p-2.5 border-t border-border/30">
+          <div className="p-2.5 border-t border-border">
             {!isSidebarCollapsed ? (
               <div className="flex items-center justify-between px-2 text-[11px] text-muted-foreground/70">
                 <span className="truncate">دانشکده فنی</span>
@@ -346,7 +347,7 @@ export default function AdminDashboardPage() {
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-x-hidden p-4 sm:p-6 lg:p-8">
-          <div className="mx-auto max-w-7xl space-y-5">
+          <div className="mx-auto space-y-5">
             {/* Banner notification */}
             {actionMessage && (
               <div className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-700 dark:text-emerald-300">
@@ -411,7 +412,7 @@ export default function AdminDashboardPage() {
             {activeTab === "rules" && (
               <div className="space-y-6">
                 {/* Active Track Banner */}
-                <div className="rounded-2xl border border-primary/20 bg-gradient-to-l from-primary/10 via-primary/5 to-card p-4 shadow-sm">
+                <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-sm">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20 shrink-0">
@@ -419,22 +420,12 @@ export default function AdminDashboardPage() {
                       </div>
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-xs font-semibold text-muted-foreground">گرایش فعال شما:</span>
+                          <span className="text-xs font-semibold text-muted-foreground">گرایش انتخابی:</span>
                           {currentTrack ? (
                             <div className="flex flex-wrap items-center gap-1.5">
                               <Badge variant="default" className="text-xs px-2.5 py-0.5 font-bold shadow-xs">
-                                {currentTrack.name} ({currentTrack.code})
+                                {currentTrack.name}
                               </Badge>
-                              {currentMajor && (
-                                <Badge variant="secondary" className="text-xs px-2 py-0.5">
-                                  رشته: {currentMajor.name}
-                                </Badge>
-                              )}
-                              {currentFaculty && (
-                                <Badge variant="outline" className="text-xs px-2 py-0.5">
-                                  دانشکده: {currentFaculty.name}
-                                </Badge>
-                              )}
                             </div>
                           ) : (
                             <Badge variant="outline" className="text-xs px-2.5 py-0.5 text-destructive border-destructive/40">

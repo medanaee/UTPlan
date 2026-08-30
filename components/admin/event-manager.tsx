@@ -374,7 +374,7 @@ export function EventManager({
   return (
     <div className="space-y-4">
       {/* Top Semester & Faculty Active Filter Bar */}
-      <div className="rounded-2xl border border-primary/20 bg-gradient-to-l from-primary/10 via-primary/5 to-card p-4 shadow-sm">
+      <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-sm">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20 shrink-0">
@@ -395,7 +395,7 @@ export function EventManager({
                 <span className="text-muted-foreground font-bold">|</span>
                 <span className="text-xs font-semibold text-muted-foreground">نیمسال فعال:</span>
                 <Badge variant="secondary" className="text-xs px-2.5 py-0.5 font-bold shadow-xs bg-primary/15 text-primary border-primary/20">
-                  {formatSemesterLabel(activeTerm)} ({activeTerm})
+                  {formatSemesterLabel(activeTerm)}
                 </Badge>
               </div>
               <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -406,19 +406,15 @@ export function EventManager({
 
           <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
             {/* Semester Select Dropdown */}
-            <div className="flex items-center gap-1.5 bg-background/80 backdrop-blur-xs rounded-xl border border-border/80 p-1">
-              <span className="text-[11px] font-semibold px-2 text-muted-foreground whitespace-nowrap">
+            <div className="flex items-center gap-1.5 rounded-xl p-1">
+              <span className="text-[11px] font-semibold text-muted-foreground whitespace-nowrap">
                 تغییر نیمسال:
               </span>
               <Select
-                items={existingTerms.map((t) => ({
-                  value: t,
-                  label: `${formatSemesterLabel(t)} (${events.filter((e) => e.term === t).length} رویداد)`,
-                }))}
                 value={activeTerm}
                 onValueChange={(val) => val && setActiveTerm(val)}
               >
-                <SelectTrigger size="sm" className="h-8 min-w-[150px] text-xs font-bold border-none bg-muted/40">
+                <SelectTrigger className="min-w-25 text-xs font-bold border-none">
                   <SelectValue placeholder="انتخاب نیمسال..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -427,7 +423,7 @@ export function EventManager({
                       const count = events.filter((e) => e.term === t).length;
                       return (
                         <SelectItem key={t} value={t} className="text-xs">
-                          {formatSemesterLabel(t)} ({count} رویداد)
+                          {formatSemesterLabel(t)}
                         </SelectItem>
                       );
                     })}
@@ -493,7 +489,7 @@ export function EventManager({
           </div>
         </CardHeader>
 
-        <CardContent className="p-4 space-y-4">
+        <CardContent className="px-4 space-y-4">
           {/* Search and Counts Bar */}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="relative">
@@ -704,7 +700,6 @@ export function EventManager({
               <span className="text-muted-foreground">ثبت در نیمسال تحصیلی:</span>
               <span className="font-bold text-foreground">{formatSemesterLabel(activeTerm)} ({activeTerm})</span>
             </div>
-            <Badge variant="outline" className="text-[10px]">تثبیت‌شده</Badge>
           </div>
 
           <form onSubmit={handleSaveEvent} className="space-y-4 pt-1">

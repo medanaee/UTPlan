@@ -131,9 +131,9 @@ export function CategoryPicker({
           type="button"
           disabled={disabled}
           className={cn(
-            "flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-input bg-transparent px-3 py-1.5 text-sm outline-none transition-colors",
+            "flex h-7 w-full items-center justify-between gap-2 rounded-lg border border-input bg-transparent px-3 py-1.5 text-xs outline-none transition-colors",
             "hover:bg-muted/30 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
-            "disabled:cursor-not-allowed disabled:opacity-50",
+            "disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30 dark:disabled:bg-input/80",
             !selectedCategory && "text-muted-foreground",
             triggerClassName,
             className

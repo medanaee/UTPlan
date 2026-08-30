@@ -110,13 +110,22 @@ export interface TrackCourseAssignment {
   units?: number;
 }
 
+export interface ProfessorLinks {
+  website?: string;
+  scholar?: string;
+  [key: string]: string | undefined;
+}
+
 export interface Professor {
   id: string;
   facultyId: string;
+  firstName?: string;
+  lastName?: string;
   name: string;
   avatarUrl?: string;
   title?: string; // e.g. استاد تمام، دانشیار، استادیار
   email?: string;
+  links?: ProfessorLinks;
   createdAt: string;
   deletedAt?: string | null;
 }

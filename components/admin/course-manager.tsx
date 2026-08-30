@@ -216,7 +216,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
     )
     .map((c) => ({
       value: c.id,
-      label: `${c.name} (${c.code} - ${c.units} واحد)`,
+      label: `${c.name} (${c.units} واحد)`,
     }));
 
   const prereqTypeSelectItems = [
@@ -227,7 +227,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
   return (
     <div className="space-y-4">
       {/* Active Faculty Indicator & Switcher */}
-      <div className="rounded-2xl border border-primary/20 bg-gradient-to-l from-primary/10 via-primary/5 to-card p-4 shadow-sm">
+      <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-sm">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20 shrink-0">
@@ -271,7 +271,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
           <div>
             <CardTitle className="text-base flex items-center gap-2">
               <BookOpen className="h-4 w-4 text-primary" />
-              <span>بانک اطلاعاتی دروس {currentFaculty ? `«${currentFaculty.name}»` : ""}</span>
+              <span> دروس {currentFaculty ? `«${currentFaculty.name}»` : ""}</span>
             </CardTitle>
             <CardDescription className="text-xs">
               مدیریت دروس، تعداد واحدها، نوع ارائه و تعیین پیش‌نیازها و هم‌نیازها
@@ -301,7 +301,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
           </Button>
         </CardHeader>
 
-        <CardContent className="p-4 space-y-4">
+        <CardContent className="px-4 space-y-4">
           {/* Search Bar */}
           <div className="flex items-center justify-between gap-3">
             <Input
@@ -316,7 +316,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
           </div>
 
           {/* Courses Grid */}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {filteredCourses.map((course) => (
               <div
                 key={course.id}
@@ -329,25 +329,24 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                       <h3 className="text-xs font-bold text-foreground">{course.name}</h3>
                       <span className="text-[11px] text-muted-foreground">{course.code}</span>
                     </div>
-                    <Badge variant="outline" className="text-[11px] font-semibold">
-                      {course.units} واحد
-                    </Badge>
-                  </div>
+                    <div className="flex items-center gap-1">
+                      <Badge variant="outline" className="text-[11px] font-semibold">
+                        {course.units} واحد
+                      </Badge>
+                      <Badge variant="outline" className="text-[11px] font-semibold">
+                        ارائه:{" "}
+                        {course.offeredIn === "fall"
+                          ? "فقط پاییز"
+                          : course.offeredIn === "spring"
+                            ? "فقط بهار"
+                            : "پاییز و بهار"}
+                      </Badge>
+                    </div>
 
-                  {/* Badges */}
-                  <div className="flex flex-wrap items-center gap-1 text-[10px]">
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                      ارائه:{" "}
-                      {course.offeredIn === "fall"
-                        ? "فقط پاییز"
-                        : course.offeredIn === "spring"
-                        ? "فقط بهار"
-                        : "پاییز و بهار"}
-                    </Badge>
                   </div>
 
                   {/* Prerequisites & Corequisites */}
-                  <div className="space-y-1 pt-1 border-t border-border/50">
+                  <div className="space-y-1 pt-3 border-t border-border/50">
                     <p className="text-[10px] font-semibold text-muted-foreground">وابستگی‌ها:</p>
                     {!course.prerequisites || course.prerequisites.length === 0 ? (
                       <span className="text-[10px] text-muted-foreground/70 italic">بدون پیش‌نیاز</span>
@@ -356,13 +355,12 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                         {course.prerequisites.map((p) => (
                           <span
                             key={p.id}
-                            className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                              p.type === "prerequisite"
+                            className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium ${p.type === "prerequisite"
                                 ? "bg-amber-500/10 text-amber-700 dark:text-amber-300"
                                 : "bg-sky-500/10 text-sky-700 dark:text-sky-300"
-                            }`}
+                              }`}
                           >
-                            {p.type === "prerequisite" ? "پیش:" : "هم:"} {p.requiredCourseName}
+                            {p.type === "prerequisite" ? "پیش‌نیاز:" : "هم‌نیاز:"} {p.requiredCourseName}
                           </span>
                         ))}
                       </div>
@@ -371,7 +369,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                 </div>
 
                 {/* Card Actions */}
-                <div className="mt-3 flex items-center justify-between pt-2 border-t border-border/40">
+                <div className="mt-3 flex items-center justify-between">
                   <Button
                     variant="outline"
                     size="sm"
@@ -459,15 +457,14 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
 
           {/* Form */}
           <form onSubmit={handleAddPrerequisite} className="space-y-3 pt-2">
-            <div className="space-y-1.5">
-              <Label className="text-sm">انتخاب درس وابسته (از همین دانشکده):</Label>
+            <div className="space-y-1">
+              <Label className="text-xs">انتخاب درس وابسته (از همین دانشکده):</Label>
               <Select
-                items={prereqCourseSelectItems}
                 value={prereqForm.requiredCourseId}
                 onValueChange={(val) => val && setPrereqForm({ ...prereqForm, requiredCourseId: val })}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="-- یک درس را انتخاب کنید --" />
+                  <SelectValue placeholder="یک درس را انتخاب کنید" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
@@ -481,10 +478,9 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
               </Select>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-sm">نوع وابستگی:</Label>
+            <div className="space-y-1">
+              <Label className="text-xs">نوع وابستگی:</Label>
               <Select
-                items={prereqTypeSelectItems}
                 value={prereqForm.type}
                 onValueChange={(val) =>
                   val &&
@@ -531,9 +527,8 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                       <span className="font-semibold">{rel.requiredCourseName}</span>
                       <Badge
                         variant="outline"
-                        className={`mr-2 text-[10px] ${
-                          rel.type === "prerequisite" ? "text-amber-600" : "text-sky-600"
-                        }`}
+                        className={`mr-2 text-[10px] ${rel.type === "prerequisite" ? "text-amber-600" : "text-sky-600"
+                          }`}
                       >
                         {rel.type === "prerequisite" ? "پیش‌نیاز" : "هم‌نیاز"}
                       </Badge>
@@ -593,7 +588,6 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                 {currentFaculty ? `${currentFaculty.name} (${currentFaculty.code})` : "انتخاب نشده"}
               </span>
             </div>
-            <Badge variant="outline" className="text-[10px]">تثبیت‌شده</Badge>
           </div>
 
           <form onSubmit={handleSaveCourse} className="space-y-3 pt-1">

@@ -126,7 +126,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
   return (
     <div className="space-y-4">
       {/* Active Track Banner */}
-      <div className="rounded-2xl border border-primary/20 bg-gradient-to-l from-primary/10 via-primary/5 to-card p-4 shadow-sm">
+      <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-sm">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20 shrink-0">
@@ -134,22 +134,12 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-semibold text-muted-foreground">گرایش انتخابی شما:</span>
+                <span className="text-xs font-semibold text-muted-foreground">گرایش انتخابی:</span>
                 {currentTrack ? (
                   <div className="flex flex-wrap items-center gap-1.5">
                     <Badge variant="default" className="text-xs px-2.5 py-0.5 font-bold shadow-xs">
-                      {currentTrack.name} ({currentTrack.code})
+                      {currentTrack.name}
                     </Badge>
-                    {currentMajor && (
-                      <Badge variant="secondary" className="text-xs px-2 py-0.5">
-                        رشته: {currentMajor.name}
-                      </Badge>
-                    )}
-                    {currentFaculty && (
-                      <Badge variant="outline" className="text-xs px-2 py-0.5">
-                        دانشکده: {currentFaculty.name}
-                      </Badge>
-                    )}
                   </div>
                 ) : (
                   <Badge variant="outline" className="text-xs px-2.5 py-0.5 text-destructive border-destructive/40">
@@ -517,7 +507,6 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                 placeholder="مثلاً شبکه‌های کامپیوتری"
                 value={rcatForm.name}
                 onChange={(e) => setRcatForm({ ...rcatForm, name: e.target.value })}
-                className="h-9 text-sm"
               />
             </div>
 

@@ -40,6 +40,10 @@ import {
   RefreshCw,
   Mail,
   Building2,
+  Globe,
+  GraduationCap,
+  ExternalLink,
+  UsersRound,
 } from "lucide-react";
 
 interface ProfessorManagerProps {
@@ -64,20 +68,26 @@ export function ProfessorManager({
 
   // Form State
   const [form, setForm] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
     title: "استاد تمام",
     email: "",
     avatarUrl: "",
+    websiteLink: "",
+    scholarLink: "",
     facultyId: selectedFacultyId || faculties[0]?.id || "",
   });
 
   const handleOpenCreateModal = () => {
     setEditingProfessor(null);
     setForm({
-      name: "",
+      firstName: "",
+      lastName: "",
       title: "استاد تمام",
       email: "",
       avatarUrl: "",
+      websiteLink: "",
+      scholarLink: "",
       facultyId: selectedFacultyId || faculties[0]?.id || "",
     });
     setIsModalOpen(true);
@@ -85,11 +95,15 @@ export function ProfessorManager({
 
   const handleOpenEditModal = (prof: Professor) => {
     setEditingProfessor(prof);
+    const splitted = prof.name ? prof.name.split(" ") : [];
     setForm({
-      name: prof.name,
+      firstName: prof.firstName || (splitted.length > 1 ? splitted[0] : prof.name || ""),
+      lastName: prof.lastName || (splitted.length > 1 ? splitted.slice(1).join(" ") : ""),
       title: prof.title || "استاد تمام",
       email: prof.email || "",
       avatarUrl: prof.avatarUrl || "",
+      websiteLink: prof.links?.website || "",
+      scholarLink: prof.links?.scholar || "",
       facultyId: prof.facultyId || selectedFacultyId || faculties[0]?.id || "",
     });
     setIsModalOpen(true);
@@ -124,10 +138,27 @@ export function ProfessorManager({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim()) return;
+    const fullName = [form.firstName.trim(), form.lastName.trim()].filter(Boolean).join(" ");
+    if (!fullName) return;
 
     setIsSubmitting(true);
     try {
+      const linksPayload = {
+        website: form.websiteLink.trim() || undefined,
+        scholar: form.scholarLink.trim() || undefined,
+      };
+
+      const payload = {
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        name: fullName,
+        title: form.title,
+        email: form.email,
+        avatarUrl: form.avatarUrl,
+        facultyId: form.facultyId,
+        links: linksPayload,
+      };
+
       if (editingProfessor) {
         // Edit existing
         const res = await fetch("/api/professors", {
@@ -135,7 +166,7 @@ export function ProfessorManager({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             id: editingProfessor.id,
-            ...form,
+            ...payload,
           }),
         }).then((r) => r.json());
 
@@ -150,7 +181,7 @@ export function ProfessorManager({
         const res = await fetch("/api/professors", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
+          body: JSON.stringify(payload),
         }).then((r) => r.json());
 
         if (res.success) {
@@ -162,6 +193,7 @@ export function ProfessorManager({
       }
     } catch (err) {
       console.error("Save professor error:", err);
+      alert("خطا در برقراری ارتباط با سرور");
     } finally {
       setIsSubmitting(false);
     }
@@ -190,10 +222,14 @@ export function ProfessorManager({
   );
 
   const filteredProfessors = facultyProfessors.filter((p) => {
+    const q = search.toLowerCase().trim();
+    if (!q) return true;
     const matchesSearch =
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      (p.email || "").toLowerCase().includes(search.toLowerCase()) ||
-      (p.title || "").toLowerCase().includes(search.toLowerCase());
+      (p.name || "").toLowerCase().includes(q) ||
+      (p.firstName || "").toLowerCase().includes(q) ||
+      (p.lastName || "").toLowerCase().includes(q) ||
+      (p.email || "").toLowerCase().includes(q) ||
+      (p.title || "").toLowerCase().includes(q);
 
     return matchesSearch;
   });
@@ -213,7 +249,7 @@ export function ProfessorManager({
   return (
     <div className="space-y-4">
       {/* Standard Active Faculty Header Banner */}
-      <div className="rounded-2xl border border-primary/20 bg-gradient-to-l from-primary/10 via-primary/5 to-card p-4 shadow-sm">
+      <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-sm">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20 shrink-0">
@@ -227,26 +263,35 @@ export function ProfessorManager({
                     {currentFaculty.name} ({currentFaculty.code})
                   </Badge>
                 ) : (
-                  <Badge variant="outline" className="text-xs px-2.5 py-0.5 text-destructive border-destructive/40">
-                    دانشکده‌ای در بخش ساختار دانشگاه انتخاب نشده است
+                  <Badge variant="outline" className="text-xs text-muted-foreground">
+                    انتخاب نشده
                   </Badge>
                 )}
               </div>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                فقط اساتید و اعضای هیئت علمی این دانشکده نمایش داده می‌شوند و استاد جدید نیز به این دانشکده منتسب می‌شود.
+              <p className="text-xs text-muted-foreground mt-0.5">
+                اساتید تعریف‌شده در این بخش به صورت مستقیم در ارائه‌های درسی دانشکده قابل انتساب هستند.
               </p>
             </div>
           </div>
+          <Button
+            size="sm"
+            onClick={handleOpenCreateModal}
+            className="h-8 gap-1.5 text-xs shadow-xs"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            افزودن استاد جدید
+          </Button>
         </div>
       </div>
 
-      <Card className="border-border/70 shadow-xs">
-        <CardHeader className="flex flex-row items-center justify-between pb-3 border-b">
+      {/* Main Professors List Card */}
+      <Card className="rounded-2xl border-border/80 shadow-xs">
+        <CardHeader className="border-b border-border/60 flex flex-row items-center justify-between">
           <div>
             <CardTitle className="text-base flex items-center gap-2">
-              <Users className="h-4 w-4 text-primary" />
-              <span>لیست اساتید و اعضای هیئت علمی</span>
-            </CardTitle>
+              <UsersRound className="h-4 w-4 text-primary"/>
+              لیست اساتید و اعضای هیئت علمی
+              </CardTitle>
             <CardDescription className="text-xs">
               مدیریت، ویرایش و آپلود تصاویر اساتید جهت انتساب به ارائه‌های درسی و ارزشیابی دانشجویان
             </CardDescription>
@@ -261,18 +306,18 @@ export function ProfessorManager({
           </Button>
         </CardHeader>
 
-        <CardContent className="p-4 space-y-4">
+        <CardContent className="px-4 space-y-4">
           {/* Filters Bar */}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
-              <div className="relative">
+              <div>
                 <Input
                   placeholder="جستجوی نام، مرتبه علمی یا ایمیل استاد..."
+                  icon={<Search />}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="h-8 w-64 text-xs pr-8"
+                  className="h-7 w-64 text-xs pr-8"
                 />
-                <Search className="pointer-events-none absolute right-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
               </div>
             </div>
 
@@ -285,6 +330,7 @@ export function ProfessorManager({
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {filteredProfessors.map((p) => {
               const faculty = faculties.find((f) => f.id === p.facultyId);
+              const displayName = p.firstName && p.lastName ? `${p.firstName} ${p.lastName}` : p.name;
               return (
                 <div
                   key={p.id}
@@ -295,15 +341,15 @@ export function ProfessorManager({
                       {p.avatarUrl ? (
                         <img
                           src={p.avatarUrl}
-                          alt={p.name}
+                          alt={displayName}
                           className="h-full w-full object-cover"
                         />
                       ) : (
-                        <span>{p.name.charAt(0)}</span>
+                        <span>{displayName.charAt(0)}</span>
                       )}
                     </div>
                     <div className="min-w-0 space-y-0.5">
-                      <p className="text-xs font-bold truncate text-foreground">{p.name}</p>
+                      <p className="text-xs font-bold truncate text-foreground">{displayName}</p>
                       <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                         <span>{p.title || "استاد تمام"}</span>
                         {faculty && (
@@ -317,6 +363,38 @@ export function ProfessorManager({
                         <p className="text-[10px] text-muted-foreground/80 truncate dir-ltr text-right">
                           {p.email}
                         </p>
+                      )}
+
+                      {/* External Links */}
+                      {p.links && (p.links.website || p.links.scholar) && (
+                        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                          {p.links.website && (
+                            <a
+                              href={p.links.website}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 rounded-md bg-primary/10 hover:bg-primary/20 text-primary px-1.5 py-0.5 text-[10px] font-medium transition-colors"
+                              title="صفحه رسمی دانشگاه تهران"
+                            >
+                              <Globe className="h-3 w-3" />
+                              <span>صفحه دانشگاه</span>
+                              <ExternalLink className="h-2.5 w-2.5 opacity-70" />
+                            </a>
+                          )}
+                          {p.links.scholar && (
+                            <a
+                              href={p.links.scholar}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 text-[10px] font-medium transition-colors"
+                              title="گوگل اسکولار (Google Scholar)"
+                            >
+                              <GraduationCap className="h-3 w-3" />
+                              <span>اسکولار</span>
+                              <ExternalLink className="h-2.5 w-2.5 opacity-70" />
+                            </a>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -373,7 +451,7 @@ export function ProfessorManager({
               )}
             </DialogTitle>
             <DialogDescription className="text-xs">
-              اطلاعات استاد و تصویر پرسنلی (آپلود خودکار در Cloudflare) را وارد یا ویرایش نمایید.
+              اطلاعات استاد، تصویر پرسنلی و لینک‌های علمی را وارد یا ویرایش نمایید.
             </DialogDescription>
           </DialogHeader>
 
@@ -387,7 +465,6 @@ export function ProfessorManager({
                   {currentFaculty ? `${currentFaculty.name} (${currentFaculty.code})` : "انتخاب نشده"}
                 </span>
               </div>
-              <Badge variant="outline" className="text-[10px]">تثبیت‌شده</Badge>
             </div>
 
             {/* Photo Upload Area */}
@@ -440,16 +517,27 @@ export function ProfessorManager({
               </div>
             </div>
 
-            {/* Name */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">نام و نام خانوادگی استاد:</Label>
-              <Input
-                required
-                placeholder="مثلاً دکتر علی محمدی"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="h-9 text-sm"
-              />
+            {/* First Name & Last Name (Separated) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">نام استاد:</Label>
+                <Input
+                  required
+                  placeholder="مثلاً علی"
+                  value={form.firstName}
+                  onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">نام خانوادگی استاد:</Label>
+                <Input
+                  required
+                  placeholder="مثلاً محمدی"
+                  value={form.lastName}
+                  onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                />
+              </div>
             </div>
 
             {/* Title / Rank */}
@@ -483,7 +571,36 @@ export function ProfessorManager({
                 placeholder="mohammadi@ut.ac.ir"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="h-9 text-sm"
+                dir="ltr"
+              />
+            </div>
+
+            {/* UT Profile Link */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold flex items-center gap-1.5">
+                <Globe className="h-3.5 w-3.5 text-primary" />
+                <span>لینک صفحه دانشگاه تهران (اختیاری):</span>
+              </Label>
+              <Input
+                type="url"
+                placeholder="https://profile.ut.ac.ir/~mohammadi"
+                value={form.websiteLink}
+                onChange={(e) => setForm({ ...form, websiteLink: e.target.value })}
+                dir="ltr"
+              />
+            </div>
+
+            {/* Google Scholar Link */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold flex items-center gap-1.5">
+                <GraduationCap className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                <span>لینک گوگل اسکولار (Google Scholar) (اختیاری):</span>
+              </Label>
+              <Input
+                type="url"
+                placeholder="https://scholar.google.com/citations?user=..."
+                value={form.scholarLink}
+                onChange={(e) => setForm({ ...form, scholarLink: e.target.value })}
                 dir="ltr"
               />
             </div>
@@ -491,7 +608,11 @@ export function ProfessorManager({
             <DialogFooter className="pt-2">
               <Button
                 type="submit"
-                disabled={isSubmitting || uploadingImage || !form.name.trim()}
+                disabled={
+                  isSubmitting ||
+                  uploadingImage ||
+                  (!form.firstName.trim() && !form.lastName.trim())
+                }
                 className="w-full font-semibold"
               >
                 {isSubmitting

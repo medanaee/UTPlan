@@ -239,13 +239,13 @@ export function CourseCategoryManager({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             {/* Search */}
-            <div className="relative w-48 sm:w-60">
-              <Search className="absolute right-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+            <div className="w-48 sm:w-60">
               <Input
                 placeholder="جستجوی درس..."
+                icon={<Search />}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-8 pr-8 text-xs"
+                className="h-7 pr-8 text-xs"
               />
             </div>
 
@@ -255,7 +255,7 @@ export function CourseCategoryManager({
               value={filterVcat}
               onValueChange={(val) => val && setFilterVcat(val)}
             >
-              <SelectTrigger size="sm" className="h-8 text-xs min-w-[130px]">
+              <SelectTrigger className="min-w-[130px]">
                 <SelectValue placeholder="فیلتر دسته بصری..." />
               </SelectTrigger>
               <SelectContent>
@@ -366,17 +366,7 @@ export function CourseCategoryManager({
                     {/* Visual Category Select */}
                     <td className="py-2.5 px-3">
                       <div className="flex items-center gap-2">
-                        {currentVcat && (
-                          <span
-                            className="h-3 w-3 rounded-full border shadow-2xs shrink-0"
-                            style={{ backgroundColor: currentVcat.color }}
-                          />
-                        )}
                         <Select
-                          items={[
-                            { value: "none", label: "-- بدون دسته بصری --" },
-                            ...visualCategories.map((vc) => ({ value: vc.id, label: vc.name })),
-                          ]}
                           value={currentVcatId}
                           onValueChange={(val) =>
                             val && handleUpdateCourseAssignment(course.id, "vcatId", val)
@@ -387,7 +377,7 @@ export function CourseCategoryManager({
                           </SelectTrigger>
                           <SelectContent>
                             <SelectGroup>
-                              <SelectItem value="none">-- بدون دسته بصری --</SelectItem>
+                              <SelectItem value="none">بدون دسته بصری</SelectItem>
                               {visualCategories.map((vc) => (
                                 <SelectItem key={vc.id} value={vc.id}>
                                   <div className="flex items-center gap-1.5">
@@ -414,7 +404,7 @@ export function CourseCategoryManager({
                           handleUpdateCourseAssignment(course.id, "rcatId", val || "none")
                         }
                         placeholder="-- بدون دسته قوانین --"
-                        triggerClassName="h-8 w-full max-w-[220px] text-xs"
+                        triggerClassName="w-full max-w-[220px]"
                       />
                     </td>
                   </tr>

@@ -3,6 +3,7 @@ import "./globals.css";
 import { Inter, Vazirmatn } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
+import { DirectionProvider } from "@/components/ui/direction"
 
 const vazirmatn = Vazirmatn({
   subsets: ["arabic", "latin"],
@@ -31,7 +32,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     >
       <body className="min-h-screen bg-background text-foreground antialiased font-sans">
         <ThemeProvider defaultTheme="system">
-          {children}
+          <DirectionProvider direction="rtl">{children}</DirectionProvider>
         </ThemeProvider>
       </body>
     </html>

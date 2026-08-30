@@ -116,7 +116,7 @@ export function UserManager({ currentUser }: UserManagerProps) {
       {/* Header and Stats */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="border-border/70 shadow-xs">
-          <CardContent className="p-3.5 flex items-center justify-between">
+          <CardContent className="flex items-center justify-between">
             <div className="space-y-0.5">
               <p className="text-[11px] text-muted-foreground">کل کاربران ثبت‌شده</p>
               <p className="text-xl font-bold text-foreground">{totalUsers}</p>
@@ -128,7 +128,7 @@ export function UserManager({ currentUser }: UserManagerProps) {
         </Card>
 
         <Card className="border-border/70 shadow-xs">
-          <CardContent className="p-3.5 flex items-center justify-between">
+          <CardContent className="flex items-center justify-between">
             <div className="space-y-0.5">
               <p className="text-[11px] text-muted-foreground">مدیران ارشد (Super Admin)</p>
               <p className="text-xl font-bold text-purple-600 dark:text-purple-400">
@@ -142,7 +142,7 @@ export function UserManager({ currentUser }: UserManagerProps) {
         </Card>
 
         <Card className="border-border/70 shadow-xs">
-          <CardContent className="p-3.5 flex items-center justify-between">
+          <CardContent className="flex items-center justify-between">
             <div className="space-y-0.5">
               <p className="text-[11px] text-muted-foreground">مدیران سامانه (Admin)</p>
               <p className="text-xl font-bold text-sky-600 dark:text-sky-400">
@@ -156,7 +156,7 @@ export function UserManager({ currentUser }: UserManagerProps) {
         </Card>
 
         <Card className="border-border/70 shadow-xs">
-          <CardContent className="p-3.5 flex items-center justify-between">
+          <CardContent className="flex items-center justify-between">
             <div className="space-y-0.5">
               <p className="text-[11px] text-muted-foreground">دانشجویان و کاربران عادی</p>
               <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
@@ -197,7 +197,7 @@ export function UserManager({ currentUser }: UserManagerProps) {
           </div>
         </CardHeader>
 
-        <CardContent className="p-4 space-y-4">
+        <CardContent className="px-4 space-y-4">
           {/* Feedback Alert */}
           {feedback && (
             <div
