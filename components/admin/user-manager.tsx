@@ -268,8 +268,7 @@ export function UserManager({ currentUser }: UserManagerProps) {
                 {filteredUsers.map((user) => {
                   const isCurrentLoggedUser = user.id === currentUser.id;
                   const canModifyThisUser =
-                    currentUser.role === "super_admin" ||
-                    (currentUser.role === "admin" && user.role === "user");
+                    !isCurrentLoggedUser && currentUser.role === "super_admin";
 
                   return (
                     <tr key={user.id} className="hover:bg-muted/20 transition-colors">

@@ -34,6 +34,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Course } from "@/lib/types";
+import { CourseImportDialog } from "@/components/courses/course-import-dialog";
+import { Download, Upload } from "lucide-react";
 import { useAdminStore } from "@/lib/stores/admin-store";
 
 interface CourseManagerProps {
@@ -53,6 +55,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
   const [courseModalOpen, setCourseModalOpen] = useState(false);
   const [prereqModalOpen, setPrereqModalOpen] = useState(false);
   const [selectedCourseForPrereq, setSelectedCourseForPrereq] = useState<Course | null>(null);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
 
   const [courseForm, setCourseForm] = useState({
@@ -675,6 +678,13 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
           </form>
         </DialogContent>
       </Dialog>
+      {/* Course Import Dialog */}
+      <CourseImportDialog
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
+        defaultFacultyId={selectedFacultyId}
+        onSuccess={() => loadAllData()}
+      />
     </div>
   );
 }

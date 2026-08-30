@@ -185,6 +185,7 @@ export interface ReviewItem {
   comment: string;
   overallRating: number; // 1-10
   criteriaRatings?: ReviewCriteria;
+  studentGrade?: number | null; // e.g. 18.5 out of 20
   createdAt: string;
   deletedAt?: string | null;
 }
@@ -231,6 +232,7 @@ export interface Review {
   authorName?: string;
   overallRating: number; // 1-10
   criteriaRatings?: Record<string, number>; // e.g. { teaching: 8, grading: 7, workload: 6 }
+  studentGrade?: number | null; // e.g. 18.5 out of 20
   createdAt: string;
   deletedAt?: string | null;
 }

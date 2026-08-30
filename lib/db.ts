@@ -3123,6 +3123,7 @@ export async function getReviews(targetType: "professor" | "offering", targetId:
           authorName: r.is_anonymous ? "دانشجوی دانشگاه تهران" : (r.author_name || "کاربر سامانه"),
           overallRating: Number(r.overall_rating) || 10,
           criteriaRatings,
+          studentGrade: r.student_grade !== null && r.student_grade !== undefined ? Number(r.student_grade) : null,
           createdAt: r.created_at,
           deletedAt: r.deleted_at || null,
         };
@@ -3144,19 +3145,21 @@ export async function createReview(data: {
   comment: string;
   overallRating: number;
   criteriaRatings?: Record<string, number>;
+  studentGrade?: number | null;
 }): Promise<Review> {
   const id = `rev_${crypto.randomUUID().slice(0, 8)}`;
   const now = new Date().toISOString();
   const criteriaJson = data.criteriaRatings ? JSON.stringify(data.criteriaRatings) : null;
   const isAnon = data.isAnonymous ? 1 : 0;
+  const grade = data.studentGrade !== undefined && data.studentGrade !== null ? Number(data.studentGrade) : null;
 
   const d1 = getD1();
   if (d1) {
     try {
       await d1
         .prepare(
-          `INSERT INTO reviews (id, user_id, target_type, target_id, is_anonymous, comment, overall_rating, criteria_ratings, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          `INSERT INTO reviews (id, user_id, target_type, target_id, is_anonymous, comment, overall_rating, criteria_ratings, student_grade, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
         .bind(
           id,
@@ -3167,6 +3170,7 @@ export async function createReview(data: {
           data.comment.trim(),
           data.overallRating,
           criteriaJson,
+          grade,
           now
         )
         .run();
@@ -3185,6 +3189,7 @@ export async function createReview(data: {
     comment: data.comment.trim(),
     overallRating: data.overallRating,
     criteriaRatings: data.criteriaRatings,
+    studentGrade: grade,
     createdAt: now,
     deletedAt: null,
   };
@@ -3247,6 +3252,7 @@ export async function getReviewById(id: string): Promise<Review | null> {
         authorName: (r as any).is_anonymous ? "دانشجوی دانشگاه تهران" : ((r as any).author_name || "کاربر سامانه"),
         overallRating: Number((r as any).overall_rating) || 10,
         criteriaRatings,
+        studentGrade: (r as any).student_grade !== null && (r as any).student_grade !== undefined ? Number((r as any).student_grade) : null,
         createdAt: (r as any).created_at,
         deletedAt: (r as any).deleted_at || null,
       };
@@ -3266,6 +3272,7 @@ export async function updateReview(
     isAnonymous?: boolean;
     criteriaRatings?: Record<string, number>;
     overallRating?: number;
+    studentGrade?: number | null;
   }
 ): Promise<Review | null> {
   const d1 = getD1();
@@ -3283,14 +3290,15 @@ export async function updateReview(
           ? JSON.stringify(existing.criteriaRatings)
           : null;
       const overallRating = data.overallRating !== undefined ? data.overallRating : existing.overallRating;
+      const grade = data.studentGrade !== undefined ? (data.studentGrade !== null ? Number(data.studentGrade) : null) : existing.studentGrade ?? null;
 
       await d1
         .prepare(
           `UPDATE reviews 
-           SET comment = ?, is_anonymous = ?, criteria_ratings = ?, overall_rating = ?
+           SET comment = ?, is_anonymous = ?, criteria_ratings = ?, overall_rating = ?, student_grade = ?
            WHERE id = ?`
         )
-        .bind(comment, isAnon, criteriaJson, overallRating, id)
+        .bind(comment, isAnon, criteriaJson, overallRating, grade, id)
         .run();
 
       return await getReviewById(id);
@@ -3306,5 +3314,6 @@ export async function updateReview(
   if (data.isAnonymous !== undefined) r.isAnonymous = data.isAnonymous;
   if (data.criteriaRatings !== undefined) r.criteriaRatings = data.criteriaRatings;
   if (data.overallRating !== undefined) r.overallRating = data.overallRating;
+  if (data.studentGrade !== undefined) r.studentGrade = data.studentGrade;
   return r;
 }

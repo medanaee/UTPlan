@@ -217,6 +217,7 @@ CREATE TABLE IF NOT EXISTS reviews (
   comment TEXT NOT NULL,
   overall_rating REAL NOT NULL DEFAULT 10,
   criteria_ratings TEXT, -- JSON
+  student_grade REAL, -- optional student grade (0 to 20) for offerings
   created_at TEXT NOT NULL,
   deleted_at TEXT
 );

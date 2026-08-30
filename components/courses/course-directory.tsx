@@ -22,7 +22,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Course, Faculty } from "@/lib/types";
+import type { Course, Faculty, UserSession } from "@/lib/types";
+import { CourseImportDialog } from "@/components/courses/course-import-dialog";
+import { Download, Upload } from "lucide-react";
 
 interface CourseDirectoryProps {
   initialCourses?: Course[];
@@ -39,6 +41,8 @@ export function CourseDirectory({
 
   const [search, setSearch] = useState("");
   const [selectedFaculty, setSelectedFaculty] = useState<string>("all");
+  const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [selectedOfferedIn, setSelectedOfferedIn] = useState<string>("all");
   const [selectedUnits, setSelectedUnits] = useState<string>("all");
 
@@ -59,6 +63,13 @@ export function CourseDirectory({
         setLoading(false);
       }
     }
+
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.authenticated) setCurrentUser(d.user);
+      })
+      .catch(() => {});
 
     if (initialCourses.length === 0) {
       loadData();
@@ -114,6 +125,30 @@ export function CourseDirectory({
           <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
             در این بخش می‌توانید مشخصات دروس، زنجیره پیش‌نیازها و هم‌نیازها، دروسی که وابسته به این درس هستند و اساتید ارائه‌دهنده هر درس را مشاهده و بررسی کنید.
           </p>
+        </div>
+
+        {/* Top Import/Export Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2 pt-4 border-t border-border/40 justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.open("/api/courses/export", "_blank")}
+            className="h-8 gap-1.5 text-xs shadow-2xs"
+          >
+            <Download className="h-3.5 w-3.5 text-primary" />
+            <span>خروجی گرفتن از دروس (Export JSON)</span>
+          </Button>
+
+          {(currentUser?.role === "admin" || currentUser?.role === "super_admin") && (
+            <Button
+              size="sm"
+              onClick={() => setImportModalOpen(true)}
+              className="h-8 gap-1.5 text-xs font-bold"
+            >
+              <Upload className="h-3.5 w-3.5" />
+              <span>ورود دسته‌ای دروس (Import JSON)</span>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -316,6 +351,19 @@ export function CourseDirectory({
           })}
         </div>
       )}
+      {/* Course Import Dialog */}
+      <CourseImportDialog
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
+        defaultFacultyId={selectedFaculty !== "all" ? selectedFaculty : faculties[0]?.id}
+        onSuccess={() => {
+          fetch("/api/courses")
+            .then((r) => r.json())
+            .then((d) => {
+              if (d.success) setCourses(d.data);
+            });
+        }}
+      />
     </div>
   );
 }

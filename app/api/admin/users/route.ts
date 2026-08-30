@@ -9,7 +9,13 @@ export async function GET(request: Request) {
     }
 
     const session = await verifySessionToken(token);
-    if (!session || (session.role !== "admin" && session.role !== "super_admin")) {
+    if (!session) {
+      return Response.json({ success: false, message: "دسترسی غیرمجاز." }, { status: 403 });
+    }
+
+    // Live DB validation of requester role
+    const currentUser = await findUserById(session.id);
+    if (!currentUser || (currentUser.role !== "admin" && currentUser.role !== "super_admin")) {
       return Response.json({ success: false, message: "دسترسی غیرمجاز." }, { status: 403 });
     }
 
@@ -45,8 +51,17 @@ export async function PATCH(request: Request) {
     }
 
     const session = await verifySessionToken(token);
-    if (!session || (session.role !== "admin" && session.role !== "super_admin")) {
+    if (!session) {
       return Response.json({ success: false, message: "دسترسی غیرمجاز." }, { status: 403 });
+    }
+
+    // 1. Live DB check of requester's current role
+    const currentUser = await findUserById(session.id);
+    if (!currentUser || currentUser.role !== "super_admin") {
+      return Response.json(
+        { success: false, message: "تنها مدیر ارشد سامانه مجاز به تغییر نقش کاربران است." },
+        { status: 403 }
+      );
     }
 
     const body = await request.json();
@@ -60,17 +75,29 @@ export async function PATCH(request: Request) {
       return Response.json({ success: false, message: "نقش نامعتبر است." }, { status: 400 });
     }
 
-    // Only super_admin can create another super_admin or demote a super_admin
+    // 2. Self-Role Modification Prevention
+    if (currentUser.id === userId) {
+      return Response.json(
+        { success: false, message: "شما نمی‌توانید نقش حساب کاربری خودتان را تغییر دهید." },
+        { status: 400 }
+      );
+    }
+
     const targetUser = await findUserById(userId);
     if (!targetUser) {
       return Response.json({ success: false, message: "کاربر یافت نشد." }, { status: 404 });
     }
 
-    if (session.role !== "super_admin" && (role === "super_admin" || targetUser.role === "super_admin")) {
-      return Response.json(
-        { success: false, message: "تنها مدیر ارشد (Super Admin) می‌تواند نقش مدیر ارشد را تغییر دهد." },
-        { status: 403 }
-      );
+    // 3. Last Super Admin Protection
+    if (targetUser.role === "super_admin" && role !== "super_admin") {
+      const allUsers = await getAllUsers();
+      const superAdminsCount = allUsers.filter((u) => u.role === "super_admin").length;
+      if (superAdminsCount <= 1) {
+        return Response.json(
+          { success: false, message: "حداقل یک مدیر ارشد باید در سامانه فعال باقی بماند." },
+          { status: 400 }
+        );
+      }
     }
 
     const ok = await updateUserRole(userId, role);
@@ -81,7 +108,7 @@ export async function PATCH(request: Request) {
     return Response.json({
       success: true,
       message: `نقش کاربر «${targetUser.name}» با موفقیت به «${
-        role === "super_admin" ? "مدیر ارشد" : role === "admin" ? "مدیر" : "دانشجو / کاربر عادی"
+        role === "super_admin" ? "مدیر ارشد" : role === "admin" ? "مدیر سامانه" : "دانشجو / کاربر عادی"
       }» تغییر یافت.`,
     });
   } catch (error) {

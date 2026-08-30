@@ -9,6 +9,7 @@ import {
   User,
   Calendar,
   Clock,
+  GraduationCap,
   MapPin,
   Star,
   MessageSquare,
@@ -67,6 +68,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
   // New Form state
   const [commentText, setCommentText] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(false);
+  const [studentGrade, setStudentGrade] = useState<string>("");
   const [scores, setScores] = useState<{
     teaching?: number;
     grading?: number;
@@ -83,6 +85,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
   const [editingReview, setEditingReview] = useState<ReviewItem | null>(null);
   const [editComment, setEditComment] = useState("");
   const [editIsAnonymous, setEditIsAnonymous] = useState(false);
+  const [editStudentGrade, setEditStudentGrade] = useState<string>("");
   const [editScores, setEditScores] = useState<{
     teaching?: number;
     grading?: number;
@@ -158,6 +161,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
           comment: commentText.trim(),
           isAnonymous,
           criteriaRatings: scores,
+          studentGrade: studentGrade ? Number(studentGrade) : null,
         }),
       }).then((r) => r.json());
 
@@ -165,6 +169,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
         setSubmitSuccess("نظر شما با موفقیت ثبت شد و در دسترس دانشجویان قرار گرفت.");
         setCommentText("");
         setIsAnonymous(false);
+        setStudentGrade("");
         setScores({});
         await loadReviews();
       } else {
@@ -184,6 +189,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
     setEditComment(rev.comment);
     setEditIsAnonymous(rev.isAnonymous);
     setEditScores(rev.criteriaRatings || {});
+    setEditStudentGrade(rev.studentGrade !== null && rev.studentGrade !== undefined ? String(rev.studentGrade) : "");
     setEditError(null);
   };
 
@@ -208,6 +214,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
           comment: editComment.trim(),
           isAnonymous: editIsAnonymous,
           criteriaRatings: editScores,
+          studentGrade: editStudentGrade ? Number(editStudentGrade) : null,
         }),
       }).then((r) => r.json());
 
@@ -259,6 +266,14 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
     reviews.length > 0
       ? (reviews.reduce((acc, r) => acc + (r.overallRating || 10), 0) / reviews.length).toFixed(1)
       : null;
+
+  const avgReportedGrade = React.useMemo(() => {
+    const validGrades = reviews
+      .filter((r) => r.studentGrade !== null && r.studentGrade !== undefined)
+      .map((r) => Number(r.studentGrade));
+    if (validGrades.length === 0) return null;
+    return (validGrades.reduce((a, b) => a + b, 0) / validGrades.length).toFixed(1);
+  }, [reviews]);
 
   const criteriaAverages = React.useMemo(() => {
     const t: number[] = [];
@@ -388,6 +403,18 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                 نظر و تجربه
               </span>
             </div>
+
+            {avgReportedGrade && (
+              <div className="rounded-2xl border border-emerald-500/30 bg-card p-4 text-center min-w-[110px] shadow-2xs">
+                <div className="flex items-center justify-center gap-1 text-emerald-600">
+                  <GraduationCap className="h-5 w-5" />
+                  <span className="text-2xl font-black">{avgReportedGrade}</span>
+                </div>
+                <span className="text-[10px] text-muted-foreground font-semibold mt-1 block">
+                  میانگین نمره از ۲۰
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -625,6 +652,34 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                   </div>
                 </div>
 
+                {/* Optional Student Grade Input */}
+                <div className="space-y-1.5 pt-1 border-t border-border/40">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <Label className="text-xs font-semibold flex items-center gap-1.5">
+                        <GraduationCap className="h-4 w-4 text-primary" />
+                        نمره کسب‌شده شما از این درس با این استاد (اختیاری):
+                      </Label>
+                      <span className="text-[11px] text-muted-foreground block">
+                        اگر قبلاً این درس را پاس کرده‌اید، نمره خود را از ۲۰ وارد کنید.
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 self-start sm:self-center">
+                      <Input
+                        type="number"
+                        min="0"
+                        max="20"
+                        step="0.25"
+                        placeholder="مثال: ۱۸.۵"
+                        value={studentGrade}
+                        onChange={(e) => setStudentGrade(e.target.value)}
+                        className="h-8 text-xs w-28 bg-background"
+                      />
+                      <span className="text-xs text-muted-foreground">از ۲۰</span>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Comment Textarea */}
                 <div className="space-y-1.5 pt-1">
                   <Label className="text-xs font-semibold">متن نظر یا تجربه شما *</Label>
@@ -806,6 +861,17 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                           </div>
 
                           <div className="flex items-center gap-2">
+                            {/* Student Grade Badge if present */}
+                            {rev.studentGrade !== null && rev.studentGrade !== undefined && (
+                              <Badge
+                                variant="outline"
+                                className="text-xs font-bold gap-1 px-2.5 py-0.5 border-emerald-500/30 text-emerald-600 bg-emerald-500/10"
+                              >
+                                <GraduationCap className="h-3.5 w-3.5" />
+                                <span>نمره: {rev.studentGrade} از ۲۰</span>
+                              </Badge>
+                            )}
+
                             {/* Score badge */}
                             <Badge
                               variant="outline"
@@ -1157,6 +1223,27 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                       ))}
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Edit Student Grade */}
+              <div className="space-y-1.5 pt-1 border-t">
+                <Label className="text-xs font-semibold flex items-center gap-1.5">
+                  <GraduationCap className="h-4 w-4 text-primary" />
+                  نمره کسب‌شده از این درس (اختیاری - از ۲۰):
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min="0"
+                    max="20"
+                    step="0.25"
+                    placeholder="مثال: ۱۸.۵"
+                    value={editStudentGrade}
+                    onChange={(e) => setEditStudentGrade(e.target.value)}
+                    className="h-8 text-xs w-32 bg-background"
+                  />
+                  <span className="text-xs text-muted-foreground">از ۲۰</span>
                 </div>
               </div>
 

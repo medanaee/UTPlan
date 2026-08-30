@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     const session = token ? await verifySessionToken(token) : null;
 
     const body = await request.json();
-    const { offeringId, comment, isAnonymous, criteriaRatings } = body;
+    const { offeringId, comment, isAnonymous, criteriaRatings, studentGrade } = body;
 
     if (!offeringId || !comment || !comment.trim()) {
       return NextResponse.json(
@@ -55,6 +55,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    let parsedGrade: number | null = null;
+    if (studentGrade !== undefined && studentGrade !== null && studentGrade !== "") {
+      const numGrade = Number(studentGrade);
+      if (!isNaN(numGrade) && numGrade >= 0 && numGrade <= 20) {
+        parsedGrade = numGrade;
+      }
+    }
+
     const newRev = await createReview({
       userId: session?.id || null,
       targetType: "offering",
@@ -63,6 +71,7 @@ export async function POST(request: NextRequest) {
       isAnonymous: Boolean(isAnonymous),
       overallRating,
       criteriaRatings: criteriaRatings || undefined,
+      studentGrade: parsedGrade,
     });
 
     return NextResponse.json({
@@ -92,7 +101,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, comment, isAnonymous, criteriaRatings } = body;
+    const { id, comment, isAnonymous, criteriaRatings, studentGrade } = body;
 
     if (!id || !comment || !comment.trim()) {
       return NextResponse.json(
@@ -135,11 +144,20 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    let parsedGrade: number | null = null;
+    if (studentGrade !== undefined && studentGrade !== null && studentGrade !== "") {
+      const numGrade = Number(studentGrade);
+      if (!isNaN(numGrade) && numGrade >= 0 && numGrade <= 20) {
+        parsedGrade = numGrade;
+      }
+    }
+
     const updated = await updateReview(id, {
       comment: comment.trim(),
       isAnonymous: Boolean(isAnonymous),
       criteriaRatings: criteriaRatings || undefined,
       overallRating,
+      studentGrade: parsedGrade,
     });
 
     return NextResponse.json({
