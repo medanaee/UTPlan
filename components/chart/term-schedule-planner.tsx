@@ -219,13 +219,23 @@ export function TermSchedulePlanner({
             courseA: itemA.course,
             courseB: itemB.course,
             examDate: itemA.event.examDate,
+            timeA: `${exStartA} تا ${exEndA}`,
+            timeB: `${exStartB} تا ${exEndB}`,
             isSameHour: hasHourCollision,
           });
         }
       }
     }
 
-    return { classConflicts: classConf, examConflicts: examConf };
+    const sameHourExam = examConf.filter((e) => e.isSameHour);
+    const sameDayExam = examConf.filter((e) => !e.isSameHour);
+
+    return {
+      classConflicts: classConf,
+      examConflicts: examConf,
+      sameHourExamConflicts: sameHourExam,
+      sameDayExamConflicts: sameDayExam,
+    };
   }, [activeSelectedEvents]);
 
   const [hoveredEventId, setHoveredEventId] = useState<string | null>(null);
@@ -314,7 +324,7 @@ export function TermSchedulePlanner({
 
         <div className="flex items-center gap-2.5">
           {/* Status Badges */}
-          {classConflicts.length > 0 ? (
+          {classConflicts.length > 0 && (
             <Badge
               variant="destructive"
               className="text-xs gap-1 py-1 px-2.5 shadow-2xs animate-pulse"
@@ -322,23 +332,39 @@ export function TermSchedulePlanner({
               <AlertTriangle className="h-3.5 w-3.5" />
               <span>{classConflicts.length} تداخل کلاسی</span>
             </Badge>
-          ) : examConflicts.some((e) => e.isSameHour) ? (
+          )}
+
+          {sameHourExamConflicts.length > 0 && (
             <Badge
               variant="destructive"
-              className="text-xs gap-1 py-1 px-2.5 shadow-2xs"
+              className="text-xs gap-1 py-1 px-2.5 shadow-2xs animate-pulse"
             >
               <XCircle className="h-3.5 w-3.5" />
-              <span>تداخل ساعت امتحان</span>
-            </Badge>
-          ) : (
-            <Badge
-              variant="outline"
-              className="text-xs gap-1 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10 py-1 px-2.5"
-            >
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">بدون تداخل کلاسی</span>
+              <span>تداخل ساعت امتحان ({sameHourExamConflicts.length})</span>
             </Badge>
           )}
+
+          {sameDayExamConflicts.length > 0 && (
+            <Badge
+              variant="outline"
+              className="text-xs gap-1 text-amber-700 dark:text-amber-300 border-amber-500/40 bg-amber-500/10 py-1 px-2.5 shadow-2xs"
+            >
+              <AlertTriangle className="h-3.5 w-3.5" />
+              <span>همزمانی روز امتحان ({sameDayExamConflicts.length})</span>
+            </Badge>
+          )}
+
+          {classConflicts.length === 0 &&
+            sameHourExamConflicts.length === 0 &&
+            sameDayExamConflicts.length === 0 && (
+              <Badge
+                variant="outline"
+                className="text-xs gap-1 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10 py-1 px-2.5"
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">برنامه بدون تداخل</span>
+              </Badge>
+            )}
 
           {/* Exam Schedule Button */}
           <Button
@@ -643,7 +669,7 @@ export function TermSchedulePlanner({
 
         {/* Left/Main Area: Interactive Weekly Timetable Grid */}
         <main className="flex-1 flex flex-col overflow-hidden bg-muted/10">
-          {/* Conflict Alert Banner */}
+          {/* Class Conflict Alert Banner */}
           {classConflicts.length > 0 && (
             <div className="p-3 px-5 bg-destructive/10 border-b border-destructive/20 text-destructive text-xs flex items-center justify-between gap-3 shrink-0">
               <div className="flex items-center gap-2">
@@ -655,6 +681,42 @@ export function TermSchedulePlanner({
                       «{c.courseA.name}» با «{c.courseB.name}» در روز{" "}
                       {DAYS_OF_WEEK.find((d) => d.value === c.dayOfWeek)?.label} ({c.timeA})
                       {i < classConflicts.length - 1 ? " | " : ""}
+                    </span>
+                  ))}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Critical Exam Time Collision Banner (Red) */}
+          {sameHourExamConflicts.length > 0 && (
+            <div className="p-3 px-5 bg-destructive/15 border-b border-destructive/30 text-destructive text-xs flex items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-2">
+                <XCircle className="h-4 w-4 shrink-0 animate-pulse" />
+                <span className="font-bold">تداخل همزمان ساعت امتحان (بحرانی):</span>
+                <span>
+                  {sameHourExamConflicts.map((c, i) => (
+                    <span key={i} className="mr-1">
+                      امتحان «{c.courseA.name}» ({c.timeA}) با «{c.courseB.name}» ({c.timeB}) در تاریخ {c.examDate} همپوشانی دارند!
+                      {i < sameHourExamConflicts.length - 1 ? " | " : ""}
+                    </span>
+                  ))}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Same Day Exam Warning Banner (Amber / Yellow) */}
+          {sameDayExamConflicts.length > 0 && (
+            <div className="p-3 px-5 bg-amber-500/10 border-b border-amber-500/25 text-amber-800 dark:text-amber-300 text-xs flex items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span className="font-bold">هشدار همزمانی روز امتحان:</span>
+                <span>
+                  {sameDayExamConflicts.map((c, i) => (
+                    <span key={i} className="mr-1">
+                      در تاریخ {c.examDate} دو امتحان دارید: «{c.courseA.name}» ({c.timeA}) و «{c.courseB.name}» ({c.timeB})
+                      {i < sameDayExamConflicts.length - 1 ? " | " : ""}
                     </span>
                   ))}
                 </span>

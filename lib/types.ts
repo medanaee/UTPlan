@@ -75,6 +75,7 @@ export type CourseTermOffering = "fall" | "spring" | "both";
 export interface Course {
   id: string;
   facultyId: string;
+  facultyName?: string;
   name: string;
   code: string;
   units: number;
@@ -84,6 +85,14 @@ export interface Course {
   deletedAt?: string | null;
   // Computed / Joined fields
   prerequisites?: PrerequisiteRelation[];
+  dependentCourses?: {
+    id: string;
+    courseId: string;
+    courseName: string;
+    courseCode: string;
+    type: PrerequisiteType;
+  }[];
+  offerings?: CourseOffering[];
   trackAssignments?: TrackCourseAssignment[];
 }
 

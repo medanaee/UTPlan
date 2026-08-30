@@ -1410,7 +1410,15 @@ export async function getCourseById(id: string): Promise<Course | null> {
   const d1 = getD1();
   if (d1) {
     try {
-      const c = await d1.prepare("SELECT * FROM courses WHERE id = ? AND deleted_at IS NULL").bind(id).first();
+      const c = await d1
+        .prepare(
+          `SELECT c.*, f.name AS faculty_name
+           FROM courses c
+           LEFT JOIN faculties f ON c.faculty_id = f.id
+           WHERE c.id = ? AND c.deleted_at IS NULL`
+        )
+        .bind(id)
+        .first();
       if (!c) return null;
 
       const { results: prereqRows } = await d1
@@ -1424,6 +1432,28 @@ export async function getCourseById(id: string): Promise<Course | null> {
         .bind(id)
         .all();
 
+      const { results: depRows } = await d1
+        .prepare(
+          `SELECT p.id, p.course_id, p.required_course_id, p.type,
+                  c.name AS course_name, c.code AS course_code
+           FROM prerequisites p
+           LEFT JOIN courses c ON p.course_id = c.id
+           WHERE p.required_course_id = ? AND c.deleted_at IS NULL`
+        )
+        .bind(id)
+        .all();
+
+      const { results: offeringRows } = await d1
+        .prepare(
+          `SELECT o.id, o.course_id, o.professor_id, o.created_at,
+                  p.name AS professor_name, p.title AS professor_title, p.avatar_url AS professor_avatar
+           FROM course_offerings o
+           LEFT JOIN professors p ON o.professor_id = p.id
+           WHERE o.course_id = ? AND o.deleted_at IS NULL`
+        )
+        .bind(id)
+        .all();
+
       const { results: assignRows } = await d1
         .prepare("SELECT * FROM track_course_assignments WHERE course_id = ?")
         .bind(id)
@@ -1432,6 +1462,7 @@ export async function getCourseById(id: string): Promise<Course | null> {
       return {
         id: (c as any).id,
         facultyId: (c as any).faculty_id,
+        facultyName: (c as any).faculty_name || undefined,
         name: (c as any).name,
         code: (c as any).code,
         units: Number((c as any).units) || 3,
@@ -1446,6 +1477,22 @@ export async function getCourseById(id: string): Promise<Course | null> {
           type: p.type as any,
           requiredCourseName: p.required_course_name || "نامشخص",
           requiredCourseCode: p.required_course_code || "---",
+        })),
+        dependentCourses: (depRows || []).map((d: any) => ({
+          id: d.id,
+          courseId: d.course_id,
+          courseName: d.course_name || "نامشخص",
+          courseCode: d.course_code || "---",
+          type: d.type as any,
+        })),
+        offerings: (offeringRows || []).map((o: any) => ({
+          id: o.id,
+          courseId: o.course_id,
+          professorId: o.professor_id,
+          professorName: o.professor_name || "نامشخص",
+          professorTitle: o.professor_title || undefined,
+          createdAt: o.created_at,
+          deletedAt: null,
         })),
         trackAssignments: (assignRows || []).map((a: any) => ({
           id: a.id,
@@ -1464,6 +1511,8 @@ export async function getCourseById(id: string): Promise<Course | null> {
   const course = coursesStore.find((c) => c.id === id && !c.deletedAt);
   if (!course) return null;
 
+  const fac = facultiesStore.find((f) => f.id === course.facultyId);
+
   const prereqs = prerequisitesStore
     .filter((p) => p.courseId === course.id)
     .map((p) => {
@@ -1475,9 +1524,36 @@ export async function getCourseById(id: string): Promise<Course | null> {
       };
     });
 
+  const deps = prerequisitesStore
+    .filter((p) => p.requiredCourseId === course.id)
+    .map((p) => {
+      const target = coursesStore.find((c) => c.id === p.courseId);
+      return {
+        id: p.id,
+        courseId: p.courseId,
+        courseName: target?.name || "نامشخص",
+        courseCode: target?.code || "---",
+        type: p.type,
+      };
+    });
+
+  const offs = offeringsStore
+    .filter((o) => o.courseId === course.id && !o.deletedAt)
+    .map((o) => {
+      const prof = professorsStore.find((p) => p.id === o.professorId);
+      return {
+        ...o,
+        professorName: prof?.name || "نامشخص",
+        professorTitle: prof?.title || undefined,
+      };
+    });
+
   return {
     ...course,
+    facultyName: fac?.name || undefined,
     prerequisites: prereqs,
+    dependentCourses: deps,
+    offerings: offs,
     trackAssignments: trackAssignmentsStore.filter((a) => a.courseId === course.id),
   };
 }
