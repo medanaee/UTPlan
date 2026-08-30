@@ -18,6 +18,7 @@ import {
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Combobox } from "@/components/ui/combobox";
 import {
   Select,
   SelectContent,
@@ -366,33 +367,27 @@ export function RuleSandboxTester({
                   )}
                 </div>
 
-                {/* Add course select */}
+                {/* Add course combobox */}
                 {(() => {
-                  const availableCourseItems = courses
-                    .filter((c) => !allSelectedIds.has(c.id))
-                    .map((c) => ({ value: c.id, label: `${c.name} (${c.units} واحد)` }));
+                  const availableCourses = courses.filter((c) => !allSelectedIds.has(c.id));
 
                   return (
-                    <Select
-                      items={availableCourseItems}
+                    <Combobox
+                      items={availableCourses.map((c) => ({
+                        value: c.id,
+                        label: c.name,
+                        badge: c.code,
+                        sublabel: `${c.units} واحد`,
+                        keywords: [c.name, c.code],
+                      }))}
                       value=""
-                      onValueChange={(val) => {
+                      onChange={(val) => {
                         if (val) handleAddCourseToTerm(termNum, val);
                       }}
-                    >
-                      <SelectTrigger size="sm" className="h-7 w-full text-[11px] justify-between">
-                        <SelectValue placeholder="+ افزودن درس به این ترم" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          {availableCourseItems.map((c) => (
-                            <SelectItem key={c.value} value={c.value}>
-                              {c.label}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
+                      placeholder="+ افزودن درس به این ترم"
+                      searchPlaceholder="جستجوی نام یا کد درس..."
+                      className="h-7 w-full text-[11px] justify-between"
+                    />
                   );
                 })()}
               </div>

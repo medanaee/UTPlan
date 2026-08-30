@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Combobox } from "@/components/ui/combobox";
 import {
   Select,
   SelectContent,
@@ -403,50 +404,39 @@ export function OfferingManager({
           </div>
 
           <form onSubmit={handleSaveOffering} className="space-y-4">
-            {/* Course Select */}
+            {/* Course Combobox */}
             <div className="space-y-1">
               <Label className="text-xs font-semibold">انتخاب درس:</Label>
-              <Select
-                items={courseOptions}
+              <Combobox
+                items={courses.map((c) => ({
+                  value: c.id,
+                  label: c.name,
+                  badge: c.code,
+                  sublabel: `${c.units} واحد`,
+                  keywords: [c.name, c.code],
+                }))}
                 value={form.courseId}
-                onValueChange={(val) => val && setForm({ ...form, courseId: val })}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="-- انتخاب درس --" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {courseOptions.map((c) => (
-                      <SelectItem key={c.value} value={c.value}>
-                        {c.label}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+                onChange={(val) => setForm({ ...form, courseId: val })}
+                placeholder="-- انتخاب یا جستجوی درس --"
+                searchPlaceholder="جستجوی نام یا کد درس..."
+              />
             </div>
 
-            {/* Professor Select */}
+            {/* Professor Combobox */}
             <div className="space-y-1">
               <Label className="text-xs font-semibold">استاد مدرس:</Label>
-              <Select
-                items={professorOptions}
+              <Combobox
+                items={professors.map((p) => ({
+                  value: p.id,
+                  label: p.name,
+                  sublabel: p.title || undefined,
+                  keywords: [p.name, p.title || ""],
+                }))}
                 value={form.professorId}
-                onValueChange={(val) => val && setForm({ ...form, professorId: val })}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="-- انتخاب استاد --" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {professorOptions.map((p) => (
-                      <SelectItem key={p.value} value={p.value}>
-                        {p.label}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+                onChange={(val) => setForm({ ...form, professorId: val })}
+                placeholder="-- انتخاب یا جستجوی استاد --"
+                searchPlaceholder="جستجوی نام استاد..."
+              />
             </div>
 
             <DialogFooter className="pt-2">

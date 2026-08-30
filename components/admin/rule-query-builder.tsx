@@ -15,6 +15,7 @@ import {
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
@@ -549,27 +550,24 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
 
         {leaf.type === "MIN_TOTAL_CREDITS_BEFORE_COURSE" && (
           <div className="flex items-center gap-1.5">
-            <span className="text-muted-foreground">قبل از درس:</span>
-            <Select
-              items={courseItems}
-              value={leaf.targetCourseId || courses[0]?.id || ""}
-              onValueChange={(val) => val && onUpdate({ ...leaf, targetCourseId: val })}
-            >
-              <SelectTrigger size="sm" className="h-8 min-w-[180px] max-w-[220px] text-xs">
-                <SelectValue placeholder="-- انتخاب درس --" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {courseItems.map((c) => (
-                    <SelectItem key={c.value} value={c.value}>
-                      {c.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            <span className="text-muted-foreground text-xs shrink-0">قبل از درس:</span>
+            <div className="min-w-[200px]">
+              <Combobox
+                items={courses.map((c) => ({
+                  value: c.id,
+                  label: c.name,
+                  badge: c.code,
+                  keywords: [c.name, c.code],
+                }))}
+                value={leaf.targetCourseId || courses[0]?.id || ""}
+                onChange={(val) => onUpdate({ ...leaf, targetCourseId: val })}
+                placeholder="-- انتخاب یا جستجوی درس --"
+                searchPlaceholder="جستجوی نام یا کد درس..."
+                className="h-8 text-xs"
+              />
+            </div>
 
-            <span className="text-muted-foreground">حداقل:</span>
+            <span className="text-muted-foreground text-xs shrink-0">حداقل:</span>
             <NumberInput
               min={1}
               max={140}
@@ -580,37 +578,33 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
               sizeVariant="sm"
               className="w-20"
             />
-            <span className="text-muted-foreground">واحد</span>
+            <span className="text-muted-foreground text-xs shrink-0">واحد</span>
           </div>
         )}
 
         {leaf.type === "MANDATORY_COURSES" && (
           <div className="flex items-center gap-1.5">
-            <span className="text-muted-foreground">درس اجباری:</span>
-            <Select
-              items={courseItems}
-              value={leaf.mandatoryCourseIds?.[0] || courses[0]?.id || ""}
-              onValueChange={(val) =>
-                val &&
-                onUpdate({
-                  ...leaf,
-                  mandatoryCourseIds: [val],
-                })
-              }
-            >
-              <SelectTrigger size="sm" className="h-8 min-w-[180px] max-w-[220px] text-xs">
-                <SelectValue placeholder="-- انتخاب درس اجباری --" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {courseItems.map((c) => (
-                    <SelectItem key={c.value} value={c.value}>
-                      {c.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            <span className="text-muted-foreground text-xs shrink-0">درس اجباری:</span>
+            <div className="min-w-[200px]">
+              <Combobox
+                items={courses.map((c) => ({
+                  value: c.id,
+                  label: c.name,
+                  badge: c.code,
+                  keywords: [c.name, c.code],
+                }))}
+                value={leaf.mandatoryCourseIds?.[0] || courses[0]?.id || ""}
+                onChange={(val) =>
+                  onUpdate({
+                    ...leaf,
+                    mandatoryCourseIds: [val],
+                  })
+                }
+                placeholder="-- انتخاب یا جستجوی درس اجباری --"
+                searchPlaceholder="جستجوی نام یا کد درس..."
+                className="h-8 text-xs"
+              />
+            </div>
           </div>
         )}
       </div>

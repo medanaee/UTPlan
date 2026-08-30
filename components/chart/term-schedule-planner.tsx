@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/dialog";
 import { JalaliDatePicker } from "@/components/ui/jalali-date-picker";
 import { TimePicker } from "@/components/ui/time-picker";
+import { Combobox } from "@/components/ui/combobox";
 import { ExamScheduleModal } from "./exam-schedule-modal";
 import type {
   Course,
@@ -1165,23 +1166,18 @@ function CustomEventDialog({
                 هیچ ارائه رسمی (استادی) برای این درس در سامانه تعریف نشده است. لطفاً ابتدا از ادمین بخواهید استاد درس را ثبت کند.
               </div>
             ) : (
-              <Select
+              <Combobox
+                items={offerings.map((off) => ({
+                  value: off.id,
+                  label: off.professorName,
+                  sublabel: off.professorTitle || undefined,
+                  keywords: [off.professorName, off.professorTitle || ""],
+                }))}
                 value={selectedOfferingId}
-                onValueChange={setSelectedOfferingId}
-              >
-                <SelectTrigger className="w-full text-xs">
-                  <SelectValue placeholder="استاد مورد نظر را انتخاب کنید..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {offerings.map((off) => (
-                      <SelectItem key={off.id} value={off.id} className="text-xs">
-                        {off.professorName} {off.professorTitle ? `(${off.professorTitle})` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+                onChange={setSelectedOfferingId}
+                placeholder="-- انتخاب یا جستجوی استاد --"
+                searchPlaceholder="جستجوی نام استاد..."
+              />
             )}
           </div>
 

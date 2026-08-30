@@ -16,6 +16,7 @@ import { JalaliDatePicker } from "@/components/ui/jalali-date-picker";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Combobox } from "@/components/ui/combobox";
 import { TimePicker } from "@/components/ui/time-picker";
 import {
   Select,
@@ -826,27 +827,25 @@ export function EventManager({
               </div>
             </div>
 
-            {/* Select Offering */}
+            {/* Select Offering Combobox */}
             <div className="space-y-1.5">
               <Label className="text-xs font-bold flex items-center gap-1.5">
                 <BookOpen className="h-3.5 w-3.5 text-primary" />
                 ارائه درس (درس و استاد مدرس) *
               </Label>
-              <Select
+              <Combobox
+                items={offerings.map((o) => ({
+                  value: o.id,
+                  label: `${o.courseName || "درس"} — ${o.professorName || "استاد"}`,
+                  badge: o.courseCode || undefined,
+                  sublabel: o.professorTitle || undefined,
+                  keywords: [o.courseName || "", o.courseCode || "", o.professorName || ""],
+                }))}
                 value={selectedOfferingId}
-                onValueChange={(val) => val && setSelectedOfferingId(val)}
-              >
-                <SelectTrigger className="w-full text-xs">
-                  <SelectValue placeholder="-- انتخاب ارائه درس --" />
-                </SelectTrigger>
-                <SelectContent>
-                  {offeringOptions.map((o) => (
-                    <SelectItem key={o.value} value={o.value} className="text-xs">
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={(val) => setSelectedOfferingId(val)}
+                placeholder="-- انتخاب یا جستجوی ارائه درس --"
+                searchPlaceholder="جستجوی نام درس، کد یا استاد..."
+              />
             </div>
 
             {/* Group Code & Location */}

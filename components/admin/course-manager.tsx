@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Combobox } from "@/components/ui/combobox";
 import {
   Dialog,
   DialogContent,
@@ -459,23 +460,21 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
           <form onSubmit={handleAddPrerequisite} className="space-y-3 pt-2">
             <div className="space-y-1">
               <Label className="text-xs">انتخاب درس وابسته (از همین دانشکده):</Label>
-              <Select
+              <Combobox
+                items={facultyCourses
+                  .filter((c) => c.id !== selectedCourseForPrereq?.id)
+                  .map((c) => ({
+                    value: c.id,
+                    label: c.name,
+                    badge: c.code,
+                    sublabel: `${c.units} واحد`,
+                    keywords: [c.name, c.code],
+                  }))}
                 value={prereqForm.requiredCourseId}
-                onValueChange={(val) => val && setPrereqForm({ ...prereqForm, requiredCourseId: val })}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="یک درس را انتخاب کنید" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {prereqCourseSelectItems.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+                onChange={(val) => setPrereqForm({ ...prereqForm, requiredCourseId: val })}
+                placeholder="-- انتخاب یا جستجوی درس وابسته --"
+                searchPlaceholder="جستجوی نام یا کد درس..."
+              />
             </div>
 
             <div className="space-y-1">
