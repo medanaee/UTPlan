@@ -432,7 +432,6 @@ export default function ChartsPage() {
                 </Link>
               </div>
               <Select
-                items={trackSelectItems}
                 value={selectedTrackId}
                 onValueChange={(val) => val && setSelectedTrackId(val)}
               >
@@ -449,7 +448,11 @@ export default function ChartsPage() {
                   </SelectGroup>
                 </SelectContent>
               </Select>
+              
             </div>
+
+
+            
 
             {/* Template Selection */}
             <div className="space-y-1">

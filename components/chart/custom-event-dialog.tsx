@@ -19,6 +19,7 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -34,6 +35,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import type { Course, CourseEvent } from "@/lib/types";
+import { SelectGroup } from "radix-ui/select";
 
 interface CustomEventDialogProps {
   course: Course | null;
@@ -250,61 +252,10 @@ export function CustomEventDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg overflow-hidden">
-        <DialogHeader className=" ">
-          <div className="flex items-center gap-2.5">
-            <div>
-              <DialogTitle className="text-base font-bold flex items-center gap-2">
-                <span>{eventToEdit ? `ویرایش ارائه شخصی برای ${course.name}` : `تعریف ارائه شخصی برای ${course.name}`}</span>
-                <Badge variant="outline" className="text-[10px] font-mono">
-                  {course.code}
-                </Badge>
-              </DialogTitle>
-              <DialogDescription className="text-xs">
-                {eventToEdit
-                  ? "مشخصات ارائه شخصی خود را ویرایش کنید."
-                  : "این ارائه به صورت اختصاصی برای شما ذخیره می‌شود و می‌توانید آن را در چارت و برنامه هفتگی خود قرار دهید."}
-              </DialogDescription>
-            </div>
-          </div>
-        </DialogHeader>
+
 
         <form id="custom-event-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto space-y-4">
-          {error && (
-            <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-xs flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-              <span className="leading-relaxed font-medium">{error}</span>
-            </div>
-          )}
-
-          {/* Professor Name */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-bold flex items-center gap-1.5">
-              <User className="h-3.5 w-3.5 text-primary" />
-              نام و عنوان استاد *
-            </Label>
-            <Input
-              value={professorName}
-              onChange={(e) => setProfessorName(e.target.value)}
-              placeholder="مثال: دکتر علیرضا رضایی"
-              required
-              autoFocus
-              className="text-xs"
-            />
-          </div>
-
-          {/* Location */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium flex items-center gap-1.5">
-              <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-              مکان کلاس / اتاق (اختیاری)
-            </Label>
-            <Input
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="مثال: دانشکده فنی - کلاس ۱۰۴ یا آنلاین"
-              className="text-xs"
-            />
-          </div>
+          
 
           {/* Weekly Time Slots */}
           <div className="space-y-2.5 pt-1">
@@ -333,11 +284,10 @@ export function CustomEventDialog({
                 return (
                   <div
                     key={idx}
-                    className={`p-2.5 rounded-xl border transition-all shadow-2xs space-y-1.5 ${
-                      isInvalid
-                        ? "border-destructive/60 bg-destructive/5 ring-1 ring-destructive/30"
-                        : "border-border/70 bg-card/60"
-                    }`}
+                    className={`p-2.5 rounded-xl border transition-all shadow-2xs space-y-1.5 ${isInvalid
+                      ? "border-destructive/60 bg-destructive/5 ring-1 ring-destructive/30"
+                      : "border-border/70 bg-card/60"
+                      }`}
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="w-28 shrink-0">
@@ -347,19 +297,36 @@ export function CustomEventDialog({
                             handleUpdateSlot(idx, "dayOfWeek", Number(val))
                           }
                         >
-                          <SelectTrigger className="h-8 text-xs w-full">
+                          <SelectTrigger className="w-full">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {DAYS_OF_WEEK.map((d) => (
-                              <SelectItem key={d.value} value={String(d.value)} className="text-xs">
-                                {d.label}
-                              </SelectItem>
-                            ))}
+                            <SelectGroup>
+                              {DAYS_OF_WEEK.map((d) => (
+                                <SelectItem key={d.value} value={String(d.value)}>
+                                  {d.label}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
                           </SelectContent>
                         </Select>
                       </div>
-
+                      <Select>
+      <SelectTrigger className="w-full max-w-48">
+        <SelectValue placeholder="Select a fruit" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectGroup>
+          <SelectLabel>Fruits</SelectLabel>
+          <SelectItem value="apple">Apple</SelectItem>
+          <SelectItem value="banana">Banana</SelectItem>
+          <SelectItem value="blueberry">Blueberry</SelectItem>
+          <SelectItem value="grapes">Grapes</SelectItem>
+          <SelectItem value="pineapple">Pineapple</SelectItem>
+        </SelectGroup>
+      </SelectContent>
+    </Select>
+                                
                       <div className="flex items-center gap-1.5 flex-1 min-w-[200px]">
                         <span className="text-[11px] text-muted-foreground">از</span>
                         <TimePicker
@@ -387,7 +354,7 @@ export function CustomEventDialog({
                         </Button>
                       )}
                     </div>
-
+                      
                     {/* Inline Time Conflict Warning */}
                     {isInvalid && (
                       <div className="text-[11px] text-destructive flex items-center gap-1 pt-0.5 font-medium">
@@ -401,84 +368,10 @@ export function CustomEventDialog({
             </div>
           </div>
 
-          {/* Exam Details */}
-          <div className="space-y-2.5 pt-2 border-t border-border/50">
-            <Label className="text-xs font-bold flex items-center gap-1.5">
-              <Calendar className="h-3.5 w-3.5 text-primary" />
-              زمان امتحان پایان‌ترم (اختیاری)
-            </Label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <div className="space-y-1">
-                <span className="text-[11px] text-muted-foreground">تاریخ شمسی امتحان</span>
-                <JalaliDatePicker
-                  value={examDate}
-                  onChange={setExamDate}
-                  placeholder="انتخاب تاریخ امتحان"
-                />
-              </div>
-              <div className="space-y-1">
-                <span className="text-[11px] text-muted-foreground">بازه ساعت امتحان</span>
-                <div className="flex items-center gap-1">
-                  <TimePicker
-                    value={examStartTime}
-                    onChange={setExamStartTime}
-                    className="flex-1"
-                  />
-                  <span className="text-xs text-muted-foreground">تا</span>
-                  <TimePicker
-                    value={examEndTime}
-                    onChange={setExamEndTime}
-                    className="flex-1"
-                  />
-                </div>
-                {isExamTimeInvalid && (
-                  <div className="text-[11px] text-destructive flex items-center gap-1 pt-0.5 font-medium">
-                    <AlertTriangle className="h-3 w-3 shrink-0" />
-                    <span>ساعت پایان آزمون باید بعد از شروع باشد.</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
 
-          
+
         </form>
-        <DialogFooter className="pt-3 border-t" dir="ltr">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => onOpenChange(false)}
-              disabled={saving}
-            >
-              انصراف
-            </Button>
-            <Button
-              size="sm"
-              type="submit"
-              form="custom-event-form"
-              onClick={() => handleSubmit()}
-              disabled={saving}
-              className="gap-1.5 font-bold"
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  در حال ثبت...
-                </>
-              ) : eventToEdit ? (
-                <>
-                  <Sparkles className="h-4 w-4" />
-                  ذخیره تغییرات ارائه شخصی
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4" />
-                  ثبت ارائه شخصی و افزودن به چارت
-                </>
-              )}
-            </Button>
-          </DialogFooter>
+
       </DialogContent>
     </Dialog>
   );

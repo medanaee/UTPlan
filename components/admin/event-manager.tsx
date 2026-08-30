@@ -903,8 +903,8 @@ export function EventManager({
                     <div
                       key={idx}
                       className={`p-2.5 rounded-xl border transition-all shadow-2xs space-y-1.5 ${isInvalid
-                          ? "border-destructive/60 bg-destructive/5 ring-1 ring-destructive/30"
-                          : "border-border/70 bg-card/60"
+                        ? "border-destructive/60 bg-destructive/5 ring-1 ring-destructive/30"
+                        : "border-border/70 bg-card/60"
                         }`}
                     >
                       <div className="flex flex-wrap items-center gap-2">
@@ -920,11 +920,14 @@ export function EventManager({
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              {DAYS_OF_WEEK.map((d) => (
-                                <SelectItem key={d.value} value={String(d.value)} className="text-xs">
-                                  {d.label}
-                                </SelectItem>
-                              ))}
+                              <SelectGroup>
+                                {DAYS_OF_WEEK.map((d) => (
+                                  <SelectItem key={d.value} value={String(d.value)} className="text-xs">
+                                    {d.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+
                             </SelectContent>
                           </Select>
                         </div>
