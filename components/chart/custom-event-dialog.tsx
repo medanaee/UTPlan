@@ -14,6 +14,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { JalaliDatePicker } from "@/components/ui/jalali-date-picker";
+import { TimePicker } from "@/components/ui/time-picker";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Plus,
   Trash2,
@@ -23,7 +31,7 @@ import {
   Calendar,
   Sparkles,
   Loader2,
-  BookOpen,
+  AlertTriangle,
 } from "lucide-react";
 import type { Course, CourseEvent } from "@/lib/types";
 
@@ -43,32 +51,11 @@ const DAYS_OF_WEEK = [
   { value: 4, label: "چهارشنبه" },
 ];
 
-const STANDARD_TIME_OPTIONS = [
-  "07:30",
-  "08:00",
-  "08:30",
-  "09:00",
-  "09:30",
-  "10:00",
-  "10:30",
-  "11:00",
-  "11:30",
-  "12:00",
-  "12:30",
-  "13:00",
-  "13:30",
-  "14:00",
-  "14:30",
-  "15:00",
-  "15:30",
-  "16:00",
-  "16:30",
-  "17:00",
-  "17:30",
-  "18:00",
-  "18:30",
-  "19:00",
-];
+function parseTimeToMinutes(timeStr: string): number {
+  if (!timeStr) return 0;
+  const [h, m] = timeStr.split(":").map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
 
 export function CustomEventDialog({
   course,
@@ -108,20 +95,49 @@ export function CustomEventDialog({
     );
   };
 
+  const isExamTimeInvalid =
+    examStartTime &&
+    examEndTime &&
+    parseTimeToMinutes(examStartTime) >= parseTimeToMinutes(examEndTime);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+
     if (!professorName.trim()) {
       setError("لطفاً نام استاد را وارد کنید.");
       return;
     }
     if (slots.length === 0) {
-      setError("لطفاً حداقل یک ساعت کلاسی هفتگی تعریف کنید.");
+      setError("لطفاً حداقل یک جلسه کلاسی هفتگی تعریف کنید.");
+      return;
+    }
+
+    // Validate slots time order
+    for (let i = 0; i < slots.length; i++) {
+      const slot = slots[i];
+      const startMin = parseTimeToMinutes(slot.startTime);
+      const endMin = parseTimeToMinutes(slot.endTime);
+      const dayName = DAYS_OF_WEEK.find((d) => d.value === slot.dayOfWeek)?.label || "کلاس";
+
+      if (startMin >= endMin) {
+        setError(
+          "خطای زمان‌بندی: ساعت پایان کلاس در روز «" + dayName + "» (" + slot.endTime + ") باید بعد از ساعت شروع (" + slot.startTime + ") باشد."
+        );
+        return;
+      }
+    }
+
+    // Validate exam time order
+    if (examDate && isExamTimeInvalid) {
+      setError(
+        "خطای زمان آزمون: ساعت پایان امتحان (" + examEndTime + ") باید بعد از ساعت شروع (" + examStartTime + ") باشد."
+      );
       return;
     }
 
     try {
       setSaving(true);
-      setError(null);
 
       const res = await fetch("/api/events", {
         method: "POST",
@@ -162,15 +178,15 @@ export function CustomEventDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
-        <DialogHeader className="p-5 pb-4 border-b bg-muted/20">
-          <div className="flex items-center gap-2">
-            <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-              <Sparkles className="h-5 w-5" />
-            </div>
+      <DialogContent className="sm:max-w-lg overflow-hidden">
+        <DialogHeader className=" ">
+          <div className="flex items-center gap-2.5">
             <div>
-              <DialogTitle className="text-base font-bold">
-                تعریف ارائه شخصی برای {course.name}
+              <DialogTitle className="text-base font-bold flex items-center gap-2">
+                <span>تعریف ارائه شخصی برای {course.name}</span>
+                <Badge variant="outline" className="text-[10px] font-mono">
+                  {course.code}
+                </Badge>
               </DialogTitle>
               <DialogDescription className="text-xs">
                 این ارائه به صورت اختصاصی برای شما ذخیره می‌شود و می‌توانید آن را در چارت و برنامه هفتگی خود قرار دهید.
@@ -179,10 +195,11 @@ export function CustomEventDialog({
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-4">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto space-y-4">
           {error && (
-            <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs">
-              {error}
+            <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-xs flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+              <span className="leading-relaxed font-medium">{error}</span>
             </div>
           )}
 
@@ -198,6 +215,7 @@ export function CustomEventDialog({
               placeholder="مثال: دکتر علیرضا رضایی"
               required
               autoFocus
+              className="text-xs"
             />
           </div>
 
@@ -211,6 +229,7 @@ export function CustomEventDialog({
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder="مثال: دانشکده فنی - کلاس ۱۰۴ یا آنلاین"
+              className="text-xs"
             />
           </div>
 
@@ -226,69 +245,86 @@ export function CustomEventDialog({
                 variant="outline"
                 size="sm"
                 onClick={handleAddSlot}
-                className="h-7 text-xs gap-1 border-dashed"
+                className="h-7 text-xs gap-1 border-dashed text-primary border-primary/30"
               >
                 <Plus className="h-3 w-3" />
-                افزودن تایم دیگر
+                افزودن روز دیگر
               </Button>
             </div>
 
             <div className="space-y-2">
-              {slots.map((slot, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center gap-2 p-2.5 rounded-lg border bg-card/60"
-                >
-                  <select
-                    value={slot.dayOfWeek}
-                    onChange={(e) =>
-                      handleUpdateSlot(idx, "dayOfWeek", Number(e.target.value))
-                    }
-                    className="h-8 rounded-md border border-input bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+              {slots.map((slot, idx) => {
+                const isInvalid =
+                  parseTimeToMinutes(slot.startTime) >= parseTimeToMinutes(slot.endTime);
+
+                return (
+                  <div
+                    key={idx}
+                    className={`p-2.5 rounded-xl border transition-all shadow-2xs space-y-1.5 ${
+                      isInvalid
+                        ? "border-destructive/60 bg-destructive/5 ring-1 ring-destructive/30"
+                        : "border-border/70 bg-card/60"
+                    }`}
                   >
-                    {DAYS_OF_WEEK.map((d) => (
-                      <option key={d.value} value={d.value}>
-                        {d.label}
-                      </option>
-                    ))}
-                  </select>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="w-28 shrink-0">
+                        <Select
+                          value={String(slot.dayOfWeek)}
+                          onValueChange={(val) =>
+                            handleUpdateSlot(idx, "dayOfWeek", Number(val))
+                          }
+                        >
+                          <SelectTrigger className="h-8 text-xs w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {DAYS_OF_WEEK.map((d) => (
+                              <SelectItem key={d.value} value={String(d.value)} className="text-xs">
+                                {d.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                  <div className="flex items-center gap-1.5 flex-1">
-                    <span className="text-xs text-muted-foreground">از</span>
-                    <input
-                      type="time"
-                      value={slot.startTime}
-                      onChange={(e) =>
-                        handleUpdateSlot(idx, "startTime", e.target.value)
-                      }
-                      className="h-8 rounded-md border border-input bg-background px-2 text-xs flex-1 font-mono text-center focus:outline-none focus:ring-1 focus:ring-ring"
-                      required
-                    />
-                    <span className="text-xs text-muted-foreground">تا</span>
-                    <input
-                      type="time"
-                      value={slot.endTime}
-                      onChange={(e) =>
-                        handleUpdateSlot(idx, "endTime", e.target.value)
-                      }
-                      className="h-8 rounded-md border border-input bg-background px-2 text-xs flex-1 font-mono text-center focus:outline-none focus:ring-1 focus:ring-ring"
-                      required
-                    />
+                      <div className="flex items-center gap-1.5 flex-1 min-w-[200px]">
+                        <span className="text-[11px] text-muted-foreground">از</span>
+                        <TimePicker
+                          value={slot.startTime}
+                          onChange={(t) => handleUpdateSlot(idx, "startTime", t)}
+                          className="flex-1"
+                        />
+                        <span className="text-[11px] text-muted-foreground">تا</span>
+                        <TimePicker
+                          value={slot.endTime}
+                          onChange={(t) => handleUpdateSlot(idx, "endTime", t)}
+                          className="flex-1"
+                        />
+                      </div>
+
+                      {slots.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemoveSlot(idx)}
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Inline Time Conflict Warning */}
+                    {isInvalid && (
+                      <div className="text-[11px] text-destructive flex items-center gap-1 pt-0.5 font-medium">
+                        <AlertTriangle className="h-3 w-3 shrink-0" />
+                        <span>ساعت پایان کلاس باید بعد از ساعت شروع باشد.</span>
+                      </div>
+                    )}
                   </div>
-
-                  {slots.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleRemoveSlot(idx)}
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -310,34 +346,41 @@ export function CustomEventDialog({
               <div className="space-y-1">
                 <span className="text-[11px] text-muted-foreground">بازه ساعت امتحان</span>
                 <div className="flex items-center gap-1">
-                  <input
-                    type="time"
+                  <TimePicker
                     value={examStartTime}
-                    onChange={(e) => setExamStartTime(e.target.value)}
-                    className="h-9 rounded-md border border-input bg-background px-2 text-xs flex-1 font-mono text-center focus:outline-none focus:ring-1 focus:ring-ring"
+                    onChange={setExamStartTime}
+                    className="flex-1"
                   />
                   <span className="text-xs text-muted-foreground">تا</span>
-                  <input
-                    type="time"
+                  <TimePicker
                     value={examEndTime}
-                    onChange={(e) => setExamEndTime(e.target.value)}
-                    className="h-9 rounded-md border border-input bg-background px-2 text-xs flex-1 font-mono text-center focus:outline-none focus:ring-1 focus:ring-ring"
+                    onChange={setExamEndTime}
+                    className="flex-1"
                   />
                 </div>
+                {isExamTimeInvalid && (
+                  <div className="text-[11px] text-destructive flex items-center gap-1 pt-0.5 font-medium">
+                    <AlertTriangle className="h-3 w-3 shrink-0" />
+                    <span>ساعت پایان آزمون باید بعد از شروع باشد.</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
-          <DialogFooter className="pt-3 border-t">
+          
+        </form>
+        <DialogFooter className="pt-3 border-t" dir="ltr">
             <Button
               type="button"
               variant="outline"
+              size="sm"
               onClick={() => onOpenChange(false)}
               disabled={saving}
             >
               انصراف
             </Button>
-            <Button type="submit" disabled={saving} className="gap-1.5">
+            <Button size="sm" type="submit" disabled={saving} className="gap-1.5 font-bold">
               {saving ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -351,7 +394,6 @@ export function CustomEventDialog({
               )}
             </Button>
           </DialogFooter>
-        </form>
       </DialogContent>
     </Dialog>
   );

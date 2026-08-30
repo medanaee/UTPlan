@@ -16,6 +16,7 @@ import { JalaliDatePicker } from "@/components/ui/jalali-date-picker";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { TimePicker } from "@/components/ui/time-picker";
 import {
   Select,
   SelectContent,
@@ -48,6 +49,7 @@ import {
   CheckCircle2,
   CalendarRange,
   Building2,
+  AlertTriangle,
 } from "lucide-react";
 
 interface EventManagerProps {
@@ -84,6 +86,12 @@ export function formatSemesterLabel(termStr: string): string {
   return termStr;
 }
 
+export function parseTimeToMinutes(timeStr: string): number {
+  if (!timeStr) return 0;
+  const [h, m] = timeStr.split(":").map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
 export function EventManager({
   offerings: initialOfferings,
   faculties = [],
@@ -93,7 +101,7 @@ export function EventManager({
   const [events, setEvents] = useState<CourseEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  
+
   const currentFaculty = faculties.find((f) => f.id === selectedFacultyId);
 
   // Active selected semester - ALL operations & views are strictly bound to this term
@@ -211,6 +219,29 @@ export function EventManager({
     e.preventDefault();
     if (!selectedOfferingId) {
       alert("لطفاً یک ارائه درس را انتخاب کنید.");
+      return;
+    }
+
+    // Validate class slots
+    for (let i = 0; i < slots.length; i++) {
+      const slot = slots[i];
+      const startMin = parseTimeToMinutes(slot.startTime);
+      const endMin = parseTimeToMinutes(slot.endTime);
+      const dayName = DAYS_OF_WEEK.find((d) => d.value === slot.dayOfWeek)?.label || "کلاس";
+
+      if (startMin >= endMin) {
+        alert(
+          `خطای زمان‌بندی: ساعت پایان کلاس در روز «${dayName}» (${slot.endTime}) باید بعد از ساعت شروع (${slot.startTime}) باشد.`
+        );
+        return;
+      }
+    }
+
+    // Validate exam time
+    if (examDate && parseTimeToMinutes(examStartTime) >= parseTimeToMinutes(examEndTime)) {
+      alert(
+        `خطای زمان آزمون: ساعت پایان امتحان (${examEndTime}) باید بعد از ساعت شروع (${examStartTime}) باشد.`
+      );
       return;
     }
 
@@ -357,7 +388,7 @@ export function EventManager({
 
   // Distinct terms collected from events plus defaults and activeTerm
   const existingTerms = Array.from(new Set([...events.map((e) => e.term), activeTerm, "1403-1", "1403-2"].filter(Boolean)));
-  
+
   // Filter events strictly by activeTerm
   const termEvents = events.filter((evt) => evt.term === activeTerm);
 
@@ -763,202 +794,244 @@ export function EventManager({
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-lg" dir="rtl">
           <DialogHeader>
-            <DialogTitle className="text-base font-bold flex items-center gap-2">
-              {editingEvent ? (
-                <>
-                  <Pencil className="h-4 w-4 text-primary" />
-                  ویرایش رویداد کلاسی
-                </>
-              ) : (
-                <>
-                  <CalendarDays className="h-4 w-4 text-primary" />
-                  تعریف رویداد کلاسی جدید
-                </>
-              )}
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              مشخصات درس، گروه، محل تشکیل و زمان‌بندی جلسات هفتگی را وارد یا ویرایش کنید.
-            </DialogDescription>
+            <div className="flex items-center gap-2.5">
+              <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                {editingEvent ? (
+                  <Pencil className="h-5 w-5" />
+                ) : (
+                  <CalendarDays className="h-5 w-5" />
+                )}
+              </div>
+              <div>
+                <DialogTitle className="text-base font-bold flex items-center gap-2">
+                  <span>{editingEvent ? "ویرایش رویداد کلاسی" : "تعریف رویداد کلاسی جدید"}</span>
+                  <Badge variant="secondary" className="text-[10px] font-mono">
+                    {activeTerm}
+                  </Badge>
+                </DialogTitle>
+                <DialogDescription className="text-xs">
+                  مشخصات ارائه درس، کد گروه، محل تشکیل و زمان‌بندی جلسات هفتگی را وارد کنید.
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
 
-          {/* Active Semester Banner */}
-          <div className="rounded-xl border border-primary/20 bg-primary/5 p-2.5 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs">
-              <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
-              <span className="text-muted-foreground">ثبت در نیمسال تحصیلی:</span>
-              <span className="font-bold text-foreground">{formatSemesterLabel(activeTerm)} ({activeTerm})</span>
+          <form onSubmit={handleSaveEvent} className="flex-1 overflow-y-auto space-y-4">
+            {/* Active Semester Banner */}
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-2.5 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs">
+                <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+                <span className="text-muted-foreground">ثبت در نیمسال تحصیلی:</span>
+                <span className="font-bold text-foreground">{formatSemesterLabel(activeTerm)} ({activeTerm})</span>
+              </div>
             </div>
-          </div>
 
-          <form onSubmit={handleSaveEvent} className="space-y-4 pt-1">
             {/* Select Offering */}
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold">ارائه درس (درس و استاد مدرس):</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold flex items-center gap-1.5">
+                <BookOpen className="h-3.5 w-3.5 text-primary" />
+                ارائه درس (درس و استاد مدرس) *
+              </Label>
               <Select
-                items={offeringOptions}
                 value={selectedOfferingId}
                 onValueChange={(val) => val && setSelectedOfferingId(val)}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full text-xs">
                   <SelectValue placeholder="-- انتخاب ارائه درس --" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectGroup>
-                    {offeringOptions.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
+                  {offeringOptions.map((o) => (
+                    <SelectItem key={o.value} value={o.value} className="text-xs">
+                      {o.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
             {/* Group Code & Location */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">کد گروه درسی:</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">کد گروه درسی *</Label>
                 <Input
                   value={groupCode}
                   onChange={(e) => setGroupCode(e.target.value)}
                   placeholder="مثلاً ۰۱"
                   required
+                  className="text-xs"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">محل تشکیل کلاس / شماره اتاق:</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold flex items-center gap-1">
+                  <MapPin className="h-3 w-3 text-muted-foreground" />
+                  محل تشکیل کلاس / شماره اتاق
+                </Label>
                 <Input
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   placeholder="مثلاً دانشکده فنی - کلاس ۱۰۲"
+                  className="text-xs"
                 />
               </div>
             </div>
 
             {/* Weekly Slots Builder */}
-            <div className="space-y-2.5 rounded-xl border border-border/70 bg-muted/15 p-3.5">
+            <div className="space-y-2.5 pt-1">
               <div className="flex items-center justify-between">
-                <Label className="text-sm font-bold">جلسات هفتگی کلاس:</Label>
+                <Label className="text-xs font-bold flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5 text-primary" />
+                  جلسات هفتگی کلاس
+                </Label>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={handleAddSlot}
-                  className="h-7 text-xs gap-1 shadow-2xs"
+                  className="h-7 text-xs gap-1 border-dashed text-primary border-primary/30"
                 >
                   <Plus className="h-3 w-3" /> افزودن جلسه
                 </Button>
               </div>
 
               <div className="space-y-2">
-                {slots.map((slot, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    {/* Day */}
-                    <div className="w-36 shrink-0">
-                      <Select
-                        items={dayOptions}
-                        value={String(slot.dayOfWeek)}
-                        onValueChange={(val) =>
-                          handleUpdateSlot(idx, "dayOfWeek", parseInt(val))
-                        }
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectGroup>
-                            {dayOptions.map((d) => (
-                              <SelectItem key={d.value} value={d.value}>
-                                {d.label}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        </SelectContent>
-                      </Select>
+                {slots.map((slot, idx) => {
+                  const isInvalid =
+                    parseTimeToMinutes(slot.startTime) >= parseTimeToMinutes(slot.endTime);
+
+                  return (
+                    <div
+                      key={idx}
+                      className={`p-2.5 rounded-xl border transition-all shadow-2xs space-y-1.5 ${isInvalid
+                          ? "border-destructive/60 bg-destructive/5 ring-1 ring-destructive/30"
+                          : "border-border/70 bg-card/60"
+                        }`}
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        {/* Day */}
+                        <div className="w-28 shrink-0">
+                          <Select
+                            value={String(slot.dayOfWeek)}
+                            onValueChange={(val) =>
+                              handleUpdateSlot(idx, "dayOfWeek", parseInt(val))
+                            }
+                          >
+                            <SelectTrigger className="h-8 text-xs w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {DAYS_OF_WEEK.map((d) => (
+                                <SelectItem key={d.value} value={String(d.value)} className="text-xs">
+                                  {d.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Time Pickers */}
+                        <div className="flex items-center gap-1.5 flex-1 min-w-[200px]">
+                          <span className="text-[11px] text-muted-foreground">از</span>
+                          <TimePicker
+                            value={slot.startTime}
+                            onChange={(t) => handleUpdateSlot(idx, "startTime", t)}
+                            className="flex-1"
+                          />
+                          <span className="text-[11px] text-muted-foreground">تا</span>
+                          <TimePicker
+                            value={slot.endTime}
+                            onChange={(t) => handleUpdateSlot(idx, "endTime", t)}
+                            className="flex-1"
+                          />
+                        </div>
+
+                        {slots.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveSlot(idx)}
+                            className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive shrink-0"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+
+                      {/* Inline Time Conflict Warning */}
+                      {isInvalid && (
+                        <div className="text-[11px] text-destructive flex items-center gap-1 pt-0.5 font-medium">
+                          <AlertTriangle className="h-3 w-3 shrink-0" />
+                          <span>ساعت پایان کلاس باید بعد از ساعت شروع باشد.</span>
+                        </div>
+                      )}
                     </div>
-
-                    {/* Start Time */}
-                    <Input
-                      value={slot.startTime}
-                      onChange={(e) => handleUpdateSlot(idx, "startTime", e.target.value)}
-                      placeholder="10:30"
-                      className="w-28 text-center"
-                    />
-
-                    <span className="text-muted-foreground text-xs">تا</span>
-
-                    {/* End Time */}
-                    <Input
-                      value={slot.endTime}
-                      onChange={(e) => handleUpdateSlot(idx, "endTime", e.target.value)}
-                      placeholder="12:00"
-                      className="w-28 text-center"
-                    />
-
-                    {slots.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveSlot(idx)}
-                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive shrink-0"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
             {/* Exam Details */}
-            <div className="space-y-2.5 rounded-xl border border-border/70 bg-muted/15 p-3.5">
-              <Label className="text-sm font-bold">مشخصات آزمون پایان‌ترم:</Label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="space-y-1.5 sm:col-span-1">
-                  <span className="text-xs text-muted-foreground font-medium">تاریخ آزمون (شمسی):</span>
+            <div className="space-y-2.5 pt-2 border-t border-border/50">
+              <Label className="text-xs font-bold flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5 text-primary" />
+                مشخصات آزمون پایان‌ترم (اختیاری)
+              </Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="space-y-1">
+                  <span className="text-[11px] text-muted-foreground">تاریخ آزمون (شمسی):</span>
                   <JalaliDatePicker
                     value={examDate}
                     onChange={setExamDate}
                     placeholder="انتخاب تاریخ آزمون"
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <span className="text-xs text-muted-foreground font-medium">ساعت شروع:</span>
-                  <Input
-                    value={examStartTime}
-                    onChange={(e) => setExamStartTime(e.target.value)}
-                    placeholder="08:30"
-                    className="text-center"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <span className="text-xs text-muted-foreground font-medium">ساعت پایان:</span>
-                  <Input
-                    value={examEndTime}
-                    onChange={(e) => setExamEndTime(e.target.value)}
-                    placeholder="11:00"
-                    className="text-center"
-                  />
+                <div className="space-y-1">
+                  <span className="text-[11px] text-muted-foreground">بازه ساعت آزمون:</span>
+                  <div className="flex items-center gap-1">
+                    <TimePicker
+                      value={examStartTime}
+                      onChange={setExamStartTime}
+                      className="flex-1"
+                    />
+                    <span className="text-xs text-muted-foreground">تا</span>
+                    <TimePicker
+                      value={examEndTime}
+                      onChange={setExamEndTime}
+                      className="flex-1"
+                    />
+                  </div>
+                  {examDate && parseTimeToMinutes(examStartTime) >= parseTimeToMinutes(examEndTime) && (
+                    <div className="text-[11px] text-destructive flex items-center gap-1 pt-0.5 font-medium">
+                      <AlertTriangle className="h-3 w-3 shrink-0" />
+                      <span>ساعت پایان آزمون باید بعد از شروع باشد.</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
-
-            <DialogFooter className="pt-2">
-              <Button
-                type="submit"
-                disabled={isSubmitting || !selectedOfferingId}
-                className="w-full font-semibold"
-              >
-                {isSubmitting
-                  ? "در حال ثبت..."
-                  : editingEvent
-                  ? `ذخیره تغییرات رویداد در ${formatSemesterLabel(activeTerm)}`
-                  : `ثبت رویداد در ${formatSemesterLabel(activeTerm)}`}
-              </Button>
-            </DialogFooter>
           </form>
+          <DialogFooter className="pt-3 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsModalOpen(false)}
+              disabled={isSubmitting}
+            >
+              انصراف
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSubmitting || !selectedOfferingId}
+              className="gap-1.5 font-semibold"
+            >
+              {isSubmitting
+                ? "در حال ثبت..."
+                : editingEvent
+                  ? `ذخیره تغییرات رویداد`
+                  : `ثبت رویداد کلاسی`}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
