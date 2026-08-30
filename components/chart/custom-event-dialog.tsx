@@ -39,6 +39,7 @@ interface CustomEventDialogProps {
   course: Course | null;
   term: string;
   open: boolean;
+  eventToEdit?: CourseEvent | null;
   onOpenChange: (open: boolean) => void;
   onCreated: (event: CourseEvent) => void;
 }
@@ -61,6 +62,7 @@ export function CustomEventDialog({
   course,
   term,
   open,
+  eventToEdit,
   onOpenChange,
   onCreated,
 }: CustomEventDialogProps) {
@@ -74,6 +76,34 @@ export function CustomEventDialog({
   ]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (eventToEdit) {
+      setProfessorName(eventToEdit.professorName || "");
+      setLocation(eventToEdit.location || "");
+      setExamDate(eventToEdit.examDate || "");
+      setExamStartTime(eventToEdit.examStartTime || "08:30");
+      setExamEndTime(eventToEdit.examEndTime || "11:00");
+      if (eventToEdit.slots && eventToEdit.slots.length > 0) {
+        setSlots(
+          eventToEdit.slots.map((s) => ({
+            dayOfWeek: s.dayOfWeek,
+            startTime: s.startTime,
+            endTime: s.endTime,
+          }))
+        );
+      } else {
+        setSlots([{ dayOfWeek: 0, startTime: "10:30", endTime: "12:00" }]);
+      }
+    } else {
+      setProfessorName("");
+      setLocation("");
+      setExamDate("");
+      setExamStartTime("08:30");
+      setExamEndTime("11:00");
+      setSlots([{ dayOfWeek: 0, startTime: "10:30", endTime: "12:00" }]);
+    }
+  }, [eventToEdit, open]);
 
   if (!course) return null;
 
@@ -100,8 +130,8 @@ export function CustomEventDialog({
     examEndTime &&
     parseTimeToMinutes(examStartTime) >= parseTimeToMinutes(examEndTime);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setError(null);
 
     if (!professorName.trim()) {
@@ -139,29 +169,70 @@ export function CustomEventDialog({
     try {
       setSaving(true);
 
-      const res = await fetch("/api/events", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          courseId: course.id,
+      if (eventToEdit) {
+        // Edit existing custom event
+        const res = await fetch("/api/events", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: eventToEdit.id,
+            professorName: professorName.trim(),
+            term: term || "1403-1",
+            location: location.trim(),
+            examDate,
+            examStartTime,
+            examEndTime,
+            slots,
+          }),
+        }).then((r) => r.json());
+
+        if (!res.success) {
+          setError(res.message || "خطا در ویرایش رویداد شخصی");
+          return;
+        }
+
+        onCreated({
+          ...eventToEdit,
           professorName: professorName.trim(),
-          term: term || "1403-1",
           location: location.trim(),
           examDate,
           examStartTime,
           examEndTime,
-          slots,
-          isUserCustom: true,
-        }),
-      }).then((r) => r.json());
+          slots: slots.map((s) => ({
+            id: `slot_${crypto.randomUUID().slice(0, 8)}`,
+            eventId: eventToEdit.id,
+            dayOfWeek: s.dayOfWeek,
+            startTime: s.startTime,
+            endTime: s.endTime,
+          })),
+        });
+        onOpenChange(false);
+      } else {
+        // Create new
+        const res = await fetch("/api/events", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            courseId: course.id,
+            professorName: professorName.trim(),
+            term: term || "1403-1",
+            location: location.trim(),
+            examDate,
+            examStartTime,
+            examEndTime,
+            slots,
+            isUserCustom: true,
+          }),
+        }).then((r) => r.json());
 
-      if (!res.success || !res.data) {
-        setError(res.message || "خطا در ثبت رویداد شخصی");
-        return;
+        if (!res.success || !res.data) {
+          setError(res.message || "خطا در ثبت رویداد شخصی");
+          return;
+        }
+
+        onCreated(res.data);
+        onOpenChange(false);
       }
-
-      onCreated(res.data);
-      onOpenChange(false);
 
       // Reset form
       setProfessorName("");
@@ -169,7 +240,7 @@ export function CustomEventDialog({
       setExamDate("");
       setSlots([{ dayOfWeek: 0, startTime: "10:30", endTime: "12:00" }]);
     } catch (err: any) {
-      console.error("Custom event creation error:", err);
+      console.error("Custom event creation/edit error:", err);
       setError("خطا در ارتباط با سرور");
     } finally {
       setSaving(false);
@@ -183,19 +254,21 @@ export function CustomEventDialog({
           <div className="flex items-center gap-2.5">
             <div>
               <DialogTitle className="text-base font-bold flex items-center gap-2">
-                <span>تعریف ارائه شخصی برای {course.name}</span>
+                <span>{eventToEdit ? `ویرایش ارائه شخصی برای ${course.name}` : `تعریف ارائه شخصی برای ${course.name}`}</span>
                 <Badge variant="outline" className="text-[10px] font-mono">
                   {course.code}
                 </Badge>
               </DialogTitle>
               <DialogDescription className="text-xs">
-                این ارائه به صورت اختصاصی برای شما ذخیره می‌شود و می‌توانید آن را در چارت و برنامه هفتگی خود قرار دهید.
+                {eventToEdit
+                  ? "مشخصات ارائه شخصی خود را ویرایش کنید."
+                  : "این ارائه به صورت اختصاصی برای شما ذخیره می‌شود و می‌توانید آن را در چارت و برنامه هفتگی خود قرار دهید."}
               </DialogDescription>
             </div>
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto space-y-4">
+        <form id="custom-event-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto space-y-4">
           {error && (
             <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-xs flex items-start gap-2">
               <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -380,11 +453,23 @@ export function CustomEventDialog({
             >
               انصراف
             </Button>
-            <Button size="sm" type="submit" disabled={saving} className="gap-1.5 font-bold">
+            <Button
+              size="sm"
+              type="submit"
+              form="custom-event-form"
+              onClick={() => handleSubmit()}
+              disabled={saving}
+              className="gap-1.5 font-bold"
+            >
               {saving ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   در حال ثبت...
+                </>
+              ) : eventToEdit ? (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  ذخیره تغییرات ارائه شخصی
                 </>
               ) : (
                 <>

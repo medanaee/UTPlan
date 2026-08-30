@@ -7,6 +7,7 @@ import {
   MapPin,
   User,
   Plus,
+  Pencil,
   Trash2,
   CheckCircle2,
   AlertTriangle,
@@ -95,8 +96,8 @@ export function TermSchedulePlanner({
   const [expandedCourseId, setExpandedCourseId] = useState<string | null>(
     termCourses[0]?.id || null
   );
-  const [hoveredEventId, setHoveredEventId] = useState<string | null>(null);
   const [customEventCourse, setCustomEventCourse] = useState<Course | null>(null);
+  const [editingCustomEvent, setEditingCustomEvent] = useState<CourseEvent | null>(null);
   const [examModalOpen, setExamModalOpen] = useState(false);
   const [savingCourseId, setSavingCourseId] = useState<string | null>(null);
 
@@ -205,6 +206,29 @@ export function TermSchedulePlanner({
 
     return { classConflicts: classConf, examConflicts: examConf };
   }, [activeSelectedEvents]);
+
+  const [hoveredEventId, setHoveredEventId] = useState<string | null>(null);
+
+  // Handle Delete Custom Event
+  const handleDeleteCustomEvent = async (eventId: string, courseId: string) => {
+    if (!confirm("آیا از حذف این ارائه شخصی اطمینان دارید؟")) return;
+    try {
+      setSavingCourseId(courseId);
+      const res = await fetch(`/api/events?id=${eventId}`, { method: "DELETE" }).then((r) => r.json());
+      if (res.success) {
+        if (selectedEventsMap[courseId] === eventId) {
+          await handleSelectEvent(courseId, null);
+        }
+        await loadEvents();
+      } else {
+        alert(res.message || "خطا در حذف رویداد");
+      }
+    } catch (err) {
+      console.error("Delete custom event error:", err);
+    } finally {
+      setSavingCourseId(null);
+    }
+  };
 
   // Handle Event Select
   const handleSelectEvent = async (courseId: string, eventId: string | null) => {
@@ -501,20 +525,53 @@ export function TermSchedulePlanner({
                                       )}
                                     </div>
 
-                                    <Button
-                                      size="sm"
-                                      variant={isSelected ? "destructive" : "default"}
-                                      disabled={savingCourseId === course.id}
-                                      onClick={() =>
-                                        handleSelectEvent(
-                                          course.id,
-                                          isSelected ? null : evt.id
-                                        )
-                                      }
-                                      className="h-6 text-[11px] px-2"
-                                    >
-                                      {isSelected ? "حذف" : "انتخاب"}
-                                    </Button>
+                                    <div className="flex items-center gap-1">
+                                      {evt.isUserCustom && (
+                                        <>
+                                          <Button
+                                            type="button"
+                                            size="icon"
+                                            variant="ghost"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setCustomEventCourse(course);
+                                              setEditingCustomEvent(evt);
+                                            }}
+                                            className="h-6 w-6 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                            title="ویرایش ارائه شخصی"
+                                          >
+                                            <Pencil className="h-3 w-3" />
+                                          </Button>
+                                          <Button
+                                            type="button"
+                                            size="icon"
+                                            variant="ghost"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleDeleteCustomEvent(evt.id, course.id);
+                                            }}
+                                            className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                            title="حذف ارائه شخصی"
+                                          >
+                                            <Trash2 className="h-3 w-3" />
+                                          </Button>
+                                        </>
+                                      )}
+                                      <Button
+                                        size="sm"
+                                        variant={isSelected ? "destructive" : "default"}
+                                        disabled={savingCourseId === course.id}
+                                        onClick={() =>
+                                          handleSelectEvent(
+                                            course.id,
+                                            isSelected ? null : evt.id
+                                          )
+                                        }
+                                        className="h-6 text-[11px] px-2"
+                                      >
+                                        {isSelected ? "حذف" : "انتخاب"}
+                                      </Button>
+                                    </div>
                                   </div>
 
                                   {/* Slots list */}
@@ -777,17 +834,26 @@ export function TermSchedulePlanner({
         </main>
       </div>
 
-      {/* Custom Event Creator Dialog */}
+      {/* Custom Event Creator / Editor Dialog */}
       <CustomEventDialog
         course={customEventCourse}
         term={activeTerm}
+        eventToEdit={editingCustomEvent}
         open={Boolean(customEventCourse)}
-        onOpenChange={(open) => !open && setCustomEventCourse(null)}
-        onCreated={(newEvent) => {
-          setEvents((prev) => [newEvent, ...prev]);
-          if (customEventCourse) {
-            handleSelectEvent(customEventCourse.id, newEvent.id);
+        onOpenChange={(open) => {
+          if (!open) {
+            setCustomEventCourse(null);
+            setEditingCustomEvent(null);
           }
+        }}
+        onCreated={async (newEvent) => {
+          const targetCourseId = customEventCourse?.id || newEvent.courseId;
+          setEvents((prev) => [newEvent, ...prev.filter((e) => e.id !== newEvent.id)]);
+          await loadEvents();
+          if (targetCourseId && newEvent.id && !editingCustomEvent) {
+            handleSelectEvent(targetCourseId, newEvent.id);
+          }
+          setEditingCustomEvent(null);
         }}
       />
 

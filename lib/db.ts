@@ -2343,7 +2343,7 @@ export async function createCustomUserEvent(data: {
         .run();
     }
 
-    return await createEvent({
+    const created = await createEvent({
       offeringId,
       term: data.term,
       location: data.location || "",
@@ -2354,12 +2354,20 @@ export async function createCustomUserEvent(data: {
       userId: data.userId,
       slots: data.slots,
     });
+
+    const evts = await getEvents({ offeringId, userId: data.userId });
+    const fullEvt = evts.find((e) => e.id === created.id);
+    return fullEvt || {
+      ...created,
+      courseId: data.courseId,
+      professorName: data.professorName,
+    };
   }
 
   // Fallback
   profId = `prf_${crypto.randomUUID().slice(0, 8)}`;
   const offId = `off_${crypto.randomUUID().slice(0, 8)}`;
-  return await createEvent({
+  const created = await createEvent({
     offeringId: offId,
     term: data.term,
     location: data.location || "",
@@ -2370,6 +2378,11 @@ export async function createCustomUserEvent(data: {
     userId: data.userId,
     slots: data.slots,
   });
+  return {
+    ...created,
+    courseId: data.courseId,
+    professorName: data.professorName,
+  };
 }
 
 export async function promoteCustomEventToGlobal(eventId: string): Promise<boolean> {

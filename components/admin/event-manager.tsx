@@ -215,8 +215,8 @@ export function EventManager({
     setSlots(updated);
   };
 
-  const handleSaveEvent = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveEvent = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!selectedOfferingId) {
       alert("لطفاً یک ارائه درس را انتخاب کنید.");
       return;
@@ -816,7 +816,7 @@ export function EventManager({
             </div>
           </DialogHeader>
 
-          <form onSubmit={handleSaveEvent} className="flex-1 overflow-y-auto space-y-4">
+          <form id="admin-event-form" onSubmit={handleSaveEvent} className="flex-1 overflow-y-auto space-y-4">
             {/* Active Semester Banner */}
             <div className="rounded-xl border border-primary/20 bg-primary/5 p-2.5 flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs">
@@ -1022,6 +1022,8 @@ export function EventManager({
             </Button>
             <Button
               type="submit"
+              form="admin-event-form"
+              onClick={() => handleSaveEvent()}
               disabled={isSubmitting || !selectedOfferingId}
               className="gap-1.5 font-semibold"
             >

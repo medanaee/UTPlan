@@ -160,6 +160,23 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // Authorization check
+    if (session.role !== "admin" && session.role !== "super_admin") {
+      const d1 = (await import("@/lib/db")).getD1();
+      if (d1) {
+        const existing = await d1
+          .prepare("SELECT user_id, is_user_custom FROM course_events WHERE id = ?")
+          .bind(id)
+          .first();
+        if (!existing || (existing as any).user_id !== session.id) {
+          return NextResponse.json(
+            { success: false, message: "تنها صاحب رویداد یا مدیر می‌تواند آن را ویرایش کند." },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
     const updated = await updateEvent(id, {
       offeringId,
       term,
@@ -171,6 +188,23 @@ export async function PUT(request: NextRequest) {
       examEndTime,
       slots,
     });
+
+    // If custom event and professorName changed, update professor name
+    if (body.professorName && body.professorName.trim()) {
+      const d1 = (await import("@/lib/db")).getD1();
+      if (d1) {
+        const off = await d1
+          .prepare("SELECT professor_id FROM course_offerings co JOIN course_events ce ON ce.offering_id = co.id WHERE ce.id = ?")
+          .bind(id)
+          .first();
+        if (off && (off as any).professor_id) {
+          await d1
+            .prepare("UPDATE professors SET name = ? WHERE id = ?")
+            .bind(body.professorName.trim(), (off as any).professor_id)
+            .run();
+        }
+      }
+    }
 
     if (!updated) {
       return NextResponse.json(
@@ -197,10 +231,10 @@ export async function DELETE(request: NextRequest) {
   try {
     const token = getAuthTokenFromRequest(request);
     const session = token ? await verifySessionToken(token) : null;
-    if (!session || (session.role !== "admin" && session.role !== "super_admin")) {
+    if (!session) {
       return NextResponse.json(
-        { success: false, message: "عدم دسترسی کافی" },
-        { status: 403 }
+        { success: false, message: "عدم احراز هویت" },
+        { status: 401 }
       );
     }
 
@@ -212,6 +246,23 @@ export async function DELETE(request: NextRequest) {
         { success: false, message: "شناسه رویداد الزامی است." },
         { status: 400 }
       );
+    }
+
+    // Check permissions: Admin can delete all, users can delete their own custom events
+    if (session.role !== "admin" && session.role !== "super_admin") {
+      const d1 = (await import("@/lib/db")).getD1();
+      if (d1) {
+        const existing = await d1
+          .prepare("SELECT user_id, is_user_custom FROM course_events WHERE id = ?")
+          .bind(id)
+          .first();
+        if (!existing || (existing as any).user_id !== session.id) {
+          return NextResponse.json(
+            { success: false, message: "تنها صاحب رویداد یا مدیر می‌تواند آن را حذف کند." },
+            { status: 403 }
+          );
+        }
+      }
     }
 
     const success = await deleteEvent(id);
