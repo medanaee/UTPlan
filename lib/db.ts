@@ -2040,11 +2040,24 @@ export async function createOffering(
         .prepare("INSERT INTO course_offerings (id, course_id, professor_id, created_at) VALUES (?, ?, ?, ?)")
         .bind(id, courseId, professorId, now)
         .run();
+
+      const offs = await getOfferings();
+      const created = offs.find((o) => o.id === id);
+      return (
+        created || {
+          id,
+          courseId,
+          professorId,
+          createdAt: now,
+          deletedAt: null,
+        }
+      );
     } catch (err) {
       console.error("D1 createOffering error:", err);
     }
   }
 
+  await initFallbackDevData();
   const newOffering: CourseOffering = {
     id,
     courseId,
@@ -2068,9 +2081,24 @@ export async function updateOffering(
           .prepare("UPDATE course_offerings SET course_id = ?, professor_id = ? WHERE id = ?")
           .bind(data.courseId, data.professorId, id)
           .run();
+      } else if (data.courseId) {
+        await d1
+          .prepare("UPDATE course_offerings SET course_id = ? WHERE id = ?")
+          .bind(data.courseId, id)
+          .run();
+      } else if (data.professorId) {
+        await d1
+          .prepare("UPDATE course_offerings SET professor_id = ? WHERE id = ?")
+          .bind(data.professorId, id)
+          .run();
       }
+
+      const offs = await getOfferings();
+      const updated = offs.find((o) => o.id === id);
+      return updated || null;
     } catch (err) {
       console.error("D1 updateOffering error:", err);
+      return null;
     }
   }
 
@@ -2292,8 +2320,7 @@ export async function createEvent(data: {
 
 export async function createCustomUserEvent(data: {
   userId: string;
-  courseId: string;
-  professorName: string;
+  offeringId: string;
   term: string;
   location?: string;
   examDate?: string;
@@ -2301,74 +2328,8 @@ export async function createCustomUserEvent(data: {
   examEndTime?: string;
   slots: { dayOfWeek: number; startTime: string; endTime: string }[];
 }): Promise<CourseEvent> {
-  const d1 = getD1();
-  const now = new Date().toISOString();
-
-  // Find or create professor
-  let profId: string = "";
-  if (d1) {
-    const existingProf = await d1
-      .prepare("SELECT id FROM professors WHERE name LIKE ?")
-      .bind(`%${data.professorName.trim()}%`)
-      .first();
-
-    if (existingProf) {
-      profId = (existingProf as any).id;
-    } else {
-      profId = `prf_${crypto.randomUUID().slice(0, 8)}`;
-      // Find default faculty for course
-      const crs = await d1.prepare("SELECT faculty_id FROM courses WHERE id = ?").bind(data.courseId).first();
-      const facId = (crs as any)?.faculty_id || "fac_ece";
-
-      await d1
-        .prepare("INSERT INTO professors (id, faculty_id, name, created_at) VALUES (?, ?, ?, ?)")
-        .bind(profId, facId, data.professorName.trim(), now)
-        .run();
-    }
-
-    // Find or create offering
-    let offeringId: string = "";
-    const existingOff = await d1
-      .prepare("SELECT id FROM course_offerings WHERE course_id = ? AND professor_id = ? AND deleted_at IS NULL")
-      .bind(data.courseId, profId)
-      .first();
-
-    if (existingOff) {
-      offeringId = (existingOff as any).id;
-    } else {
-      offeringId = `off_${crypto.randomUUID().slice(0, 8)}`;
-      await d1
-        .prepare("INSERT INTO course_offerings (id, course_id, professor_id, created_at) VALUES (?, ?, ?, ?)")
-        .bind(offeringId, data.courseId, profId, now)
-        .run();
-    }
-
-    const created = await createEvent({
-      offeringId,
-      term: data.term,
-      location: data.location || "",
-      examDate: data.examDate || "",
-      examStartTime: data.examStartTime || "",
-      examEndTime: data.examEndTime || "",
-      isUserCustom: true,
-      userId: data.userId,
-      slots: data.slots,
-    });
-
-    const evts = await getEvents({ offeringId, userId: data.userId });
-    const fullEvt = evts.find((e) => e.id === created.id);
-    return fullEvt || {
-      ...created,
-      courseId: data.courseId,
-      professorName: data.professorName,
-    };
-  }
-
-  // Fallback
-  profId = `prf_${crypto.randomUUID().slice(0, 8)}`;
-  const offId = `off_${crypto.randomUUID().slice(0, 8)}`;
   const created = await createEvent({
-    offeringId: offId,
+    offeringId: data.offeringId,
     term: data.term,
     location: data.location || "",
     examDate: data.examDate || "",
@@ -2378,11 +2339,10 @@ export async function createCustomUserEvent(data: {
     userId: data.userId,
     slots: data.slots,
   });
-  return {
-    ...created,
-    courseId: data.courseId,
-    professorName: data.professorName,
-  };
+
+  const evts = await getEvents({ offeringId: data.offeringId, userId: data.userId });
+  const fullEvt = evts.find((e) => e.id === created.id);
+  return fullEvt || created;
 }
 
 export async function promoteCustomEventToGlobal(eventId: string): Promise<boolean> {
@@ -2415,17 +2375,31 @@ export async function updateEvent(
   const d1 = getD1();
   if (d1) {
     try {
-      if (data.location !== undefined || data.examDate !== undefined || data.examStartTime !== undefined || data.examEndTime !== undefined) {
+      if (
+        data.offeringId !== undefined ||
+        data.location !== undefined ||
+        data.examDate !== undefined ||
+        data.examStartTime !== undefined ||
+        data.examEndTime !== undefined
+      ) {
         await d1
           .prepare(
             `UPDATE course_events
-             SET location = COALESCE(?, location),
+             SET offering_id = COALESCE(?, offering_id),
+                 location = COALESCE(?, location),
                  exam_date = COALESCE(?, exam_date),
                  exam_start_time = COALESCE(?, exam_start_time),
                  exam_end_time = COALESCE(?, exam_end_time)
              WHERE id = ?`
           )
-          .bind(data.location || null, data.examDate || null, data.examStartTime || null, data.examEndTime || null, id)
+          .bind(
+            data.offeringId || null,
+            data.location !== undefined ? data.location : null,
+            data.examDate !== undefined ? data.examDate : null,
+            data.examStartTime !== undefined ? data.examStartTime : null,
+            data.examEndTime !== undefined ? data.examEndTime : null,
+            id
+          )
           .run();
       }
 
@@ -2439,6 +2413,9 @@ export async function updateEvent(
             .run();
         }
       }
+
+      const evts = await getEvents({ eventId: id });
+      if (evts.length > 0) return evts[0];
     } catch (err) {
       console.error("D1 updateEvent error:", err);
     }
@@ -2447,6 +2424,7 @@ export async function updateEvent(
   await initFallbackDevData();
   const evt = eventsStore.find((item) => item.id === id);
   if (!evt) return null;
+  if (data.offeringId !== undefined) evt.offeringId = data.offeringId;
   if (data.location !== undefined) evt.location = data.location;
   if (data.examDate !== undefined) evt.examDate = data.examDate;
   if (data.examStartTime !== undefined) evt.examStartTime = data.examStartTime;

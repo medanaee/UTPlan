@@ -61,18 +61,17 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Student custom event creation
-    if (isUserCustom || (!offeringId && courseId && professorName)) {
-      if (!courseId || !professorName) {
+    if (isUserCustom) {
+      if (!offeringId) {
         return NextResponse.json(
-          { success: false, message: "انتخاب درس و نام استاد الزامی است." },
+          { success: false, message: "انتخاب ارائه درس الزامی است." },
           { status: 400 }
         );
       }
 
       const newCustomEvent = await createCustomUserEvent({
         userId: session.id,
-        courseId,
-        professorName,
+        offeringId,
         term: term || "1403-1",
         location: location || "",
         examDate: examDate || "",
@@ -188,23 +187,6 @@ export async function PUT(request: NextRequest) {
       examEndTime,
       slots,
     });
-
-    // If custom event and professorName changed, update professor name
-    if (body.professorName && body.professorName.trim()) {
-      const d1 = (await import("@/lib/db")).getD1();
-      if (d1) {
-        const off = await d1
-          .prepare("SELECT professor_id FROM course_offerings co JOIN course_events ce ON ce.offering_id = co.id WHERE ce.id = ?")
-          .bind(id)
-          .first();
-        if (off && (off as any).professor_id) {
-          await d1
-            .prepare("UPDATE professors SET name = ? WHERE id = ?")
-            .bind(body.professorName.trim(), (off as any).professor_id)
-            .run();
-        }
-      }
-    }
 
     if (!updated) {
       return NextResponse.json(

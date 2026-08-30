@@ -44,6 +44,7 @@ import { TimePicker } from "@/components/ui/time-picker";
 import { ExamScheduleModal } from "./exam-schedule-modal";
 import type {
   Course,
+  CourseOffering,
   CourseEvent,
   CourseEventSlot,
   VisualCategory,
@@ -909,7 +910,9 @@ function CustomEventDialog({
   onOpenChange,
   onCreated,
 }: CustomEventDialogProps) {
-  const [professorName, setProfessorName] = useState("");
+  const [offerings, setOfferings] = useState<CourseOffering[]>([]);
+  const [loadingOfferings, setLoadingOfferings] = useState(false);
+  const [selectedOfferingId, setSelectedOfferingId] = useState<string>("");
   const [location, setLocation] = useState("");
   const [examDate, setExamDate] = useState("");
   const [examStartTime, setExamStartTime] = useState("08:30");
@@ -920,9 +923,36 @@ function CustomEventDialog({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Fetch registered offerings (professors) for this specific course
+  useEffect(() => {
+    if (!course || !open) return;
+    let isMounted = true;
+    setLoadingOfferings(true);
+    fetch(`/api/offerings?courseId=${course.id}`)
+      .then((r) => r.json())
+      .then((res) => {
+        if (isMounted && res.success && Array.isArray(res.data)) {
+          setOfferings(res.data);
+          if (eventToEdit) {
+            setSelectedOfferingId(eventToEdit.offeringId || (res.data[0]?.id ?? ""));
+          } else {
+            setSelectedOfferingId(res.data[0]?.id ?? "");
+          }
+        }
+      })
+      .catch((err) => console.error("Error loading offerings:", err))
+      .finally(() => {
+        if (isMounted) setLoadingOfferings(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [course, open, eventToEdit]);
+
   useEffect(() => {
     if (eventToEdit) {
-      setProfessorName(eventToEdit.professorName || "");
+      setSelectedOfferingId(eventToEdit.offeringId || "");
       setLocation(eventToEdit.location || "");
       setExamDate(eventToEdit.examDate || "");
       setExamStartTime(eventToEdit.examStartTime || "08:30");
@@ -939,7 +969,6 @@ function CustomEventDialog({
         setSlots([{ dayOfWeek: 0, startTime: "10:30", endTime: "12:00" }]);
       }
     } else {
-      setProfessorName("");
       setLocation("");
       setExamDate("");
       setExamStartTime("08:30");
@@ -977,8 +1006,8 @@ function CustomEventDialog({
     if (e) e.preventDefault();
     setError(null);
 
-    if (!professorName.trim()) {
-      setError("لطفاً نام استاد را وارد کنید.");
+    if (!selectedOfferingId) {
+      setError("لطفاً یک ارائه (استاد) برای این درس انتخاب کنید.");
       return;
     }
     if (slots.length === 0) {
@@ -1019,7 +1048,7 @@ function CustomEventDialog({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             id: eventToEdit.id,
-            professorName: professorName.trim(),
+            offeringId: selectedOfferingId,
             term: term || "1403-1",
             location: location.trim(),
             examDate,
@@ -1034,9 +1063,12 @@ function CustomEventDialog({
           return;
         }
 
+        const selectedOffering = offerings.find((o) => o.id === selectedOfferingId);
         onCreated({
           ...eventToEdit,
-          professorName: professorName.trim(),
+          offeringId: selectedOfferingId,
+          professorName: selectedOffering?.professorName || eventToEdit.professorName,
+          professorId: selectedOffering?.professorId || eventToEdit.professorId,
           location: location.trim(),
           examDate,
           examStartTime,
@@ -1056,8 +1088,7 @@ function CustomEventDialog({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            courseId: course.id,
-            professorName: professorName.trim(),
+            offeringId: selectedOfferingId,
             term: term || "1403-1",
             location: location.trim(),
             examDate,
@@ -1078,7 +1109,6 @@ function CustomEventDialog({
       }
 
       // Reset form
-      setProfessorName("");
       setLocation("");
       setExamDate("");
       setSlots([{ dayOfWeek: 0, startTime: "10:30", endTime: "12:00" }]);
@@ -1119,20 +1149,40 @@ function CustomEventDialog({
             </div>
           )}
 
-          {/* Professor Name */}
+          {/* Offering (Professor) Select */}
           <div className="space-y-1.5">
             <Label className="text-xs font-bold flex items-center gap-1.5">
               <User className="h-3.5 w-3.5 text-primary" />
-              نام و عنوان استاد *
+              انتخاب استاد / ارائه درس *
             </Label>
-            <Input
-              value={professorName}
-              onChange={(e) => setProfessorName(e.target.value)}
-              placeholder="مثال: دکتر علیرضا رضایی"
-              required
-              autoFocus
-              className="text-xs"
-            />
+            {loadingOfferings ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground p-2 border rounded-md">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                در حال بارگذاری اساتید درس...
+              </div>
+            ) : offerings.length === 0 ? (
+              <div className="p-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs">
+                هیچ ارائه رسمی (استادی) برای این درس در سامانه تعریف نشده است. لطفاً ابتدا از ادمین بخواهید استاد درس را ثبت کند.
+              </div>
+            ) : (
+              <Select
+                value={selectedOfferingId}
+                onValueChange={setSelectedOfferingId}
+              >
+                <SelectTrigger className="w-full text-xs">
+                  <SelectValue placeholder="استاد مورد نظر را انتخاب کنید..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {offerings.map((off) => (
+                      <SelectItem key={off.id} value={off.id} className="text-xs">
+                        {off.professorName} {off.professorTitle ? `(${off.professorTitle})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           {/* Location */}
@@ -1302,7 +1352,7 @@ function CustomEventDialog({
             type="submit"
             form="custom-event-form"
             onClick={() => handleSubmit()}
-            disabled={saving}
+            disabled={saving || offerings.length === 0}
             className="gap-1.5 font-bold"
           >
             {saving ? (
