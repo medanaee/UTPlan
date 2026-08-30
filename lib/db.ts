@@ -2287,6 +2287,10 @@ export async function createEvent(data: {
           .bind(slotId, eventId, slot.dayOfWeek, slot.startTime, slot.endTime)
           .run();
       }
+
+      const evts = await getEvents({ offeringId: data.offeringId, userId: data.userId || undefined });
+      const full = evts.find((e) => e.id === eventId);
+      if (full) return full;
     } catch (err) {
       console.error("D1 createEvent error:", err);
       throw err;
