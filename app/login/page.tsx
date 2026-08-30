@@ -3,17 +3,32 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Lock, Mail, Eye, EyeOff, ShieldAlert, GraduationCap, ArrowRight } from "lucide-react";
+import {
+  Lock,
+  Mail,
+  User,
+  Eye,
+  EyeOff,
+  ShieldAlert,
+  GraduationCap,
+  ArrowRight,
+  LogIn,
+  UserPlus,
+} from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { cn } from "@/lib/utils";
 
 export default function LoginPage() {
   const router = useRouter();
+  const [mode, setMode] = useState<"login" | "register">("login");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,21 +36,43 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (mode === "register") {
+      if (!name.trim()) {
+        setError("لطفاً نام و نام خانوادگی خود را وارد کنید.");
+        return;
+      }
+      if (password.length < 6) {
+        setError("رمز عبور باید حداقل ۶ کاراکتر باشد.");
+        return;
+      }
+      if (password !== confirmPassword) {
+        setError("تکرار رمز عبور با رمز عبور اصلی مطابقت ندارد.");
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/login", {
+      const endpoint = mode === "login" ? "/api/auth/login" : "/api/auth/register";
+      const payload =
+        mode === "login"
+          ? { email: email.trim().toLowerCase(), password }
+          : { name: name.trim(), email: email.trim().toLowerCase(), password };
+
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        setError(data.message || "اطلاعات ورود نامعتبر است.");
+        setError(data.message || (mode === "login" ? "اطلاعات ورود نامعتبر است." : "خطا در ثبت‌نام"));
         setLoading(false);
         return;
       }
@@ -53,6 +90,11 @@ export default function LoginPage() {
     }
   };
 
+  const toggleMode = (newMode: "login" | "register") => {
+    setMode(newMode);
+    setError(null);
+  };
+
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-muted/20 p-4 font-sans selection:bg-primary/20">
       <div className="absolute top-4 left-4">
@@ -68,21 +110,43 @@ export default function LoginPage() {
           <p className="text-xs text-muted-foreground">دانشکده مهندسی برق و کامپیوتر</p>
         </div>
 
-        {/* Compact Login Card */}
+        {/* Compact Auth Card */}
         <Card className="border-border/70 shadow-xs backdrop-blur">
           <CardHeader className="pb-3 text-center">
-            <CardTitle className="text-base font-bold">ورود به حساب کاربری</CardTitle>
+            <CardTitle className="text-base font-bold">
+              {mode === "login" ? "ورود به حساب کاربری" : "ایجاد حساب کاربری جدید"}
+            </CardTitle>
             <CardDescription className="text-xs">
-              جهت دسترسی به پنل و مدیریت چارت، مشخصات خود را وارد نمایید.
+              {mode === "login"
+                ? "جهت دسترسی به پنل و مدیریت چارت، مشخصات خود را وارد نمایید."
+                : "مشخصات خود را جهت ساخت حساب دانشجویی وارد نمایید."}
             </CardDescription>
           </CardHeader>
 
           <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-3.5 pb-5">
+            <CardContent className="space-y-3.5">
               {error && (
                 <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-2.5 text-xs text-destructive">
                   <ShieldAlert className="h-4 w-4 shrink-0" />
                   <span>{error}</span>
+                </div>
+              )}
+
+              {/* Name field (Only in Register mode) */}
+              {mode === "register" && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="name" className="text-xs font-medium">
+                    نام و نام خانوادگی
+                  </Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="مثلاً علی محمدی"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                    icon={<User />}
+                  />
                 </div>
               )}
 
@@ -91,19 +155,16 @@ export default function LoginPage() {
                 <Label htmlFor="email" className="text-xs font-medium">
                   آدرس ایمیل
                 </Label>
-                <div className="relative">
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="name@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    dir="ltr"
-                    className="h-9 pr-9 pl-3 text-xs"
-                  />
-                  <Mail className="pointer-events-none absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                </div>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="name@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  dir="ltr"
+                  icon={<Mail />}
+                />
               </div>
 
               {/* Password field */}
@@ -115,35 +176,80 @@ export default function LoginPage() {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
+                    placeholder="حداقل ۶ کاراکتر"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     dir="ltr"
-                    className="h-9 pr-9 pl-9 text-xs"
+                    className="pr-8"
+                    icon={<Lock />}
                   />
-                  <Lock className="pointer-events-none absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute left-2.5 top-2.5 text-muted-foreground transition-colors hover:text-foreground"
+                    className="absolute right-2.5 top-2 text-muted-foreground transition-colors hover:text-foreground"
+                    title={showPassword ? "مخفی کردن رمز" : "نمایش رمز"}
                   >
                     {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
+                      <EyeOff className="h-3.5 w-3.5" />
                     ) : (
-                      <Eye className="h-4 w-4" />
+                      <Eye className="h-3.5 w-3.5" />
                     )}
                   </button>
                 </div>
               </div>
 
+              {/* Confirm Password field (Only in Register mode) */}
+              {mode === "register" && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="confirmPassword" className="text-xs font-medium">
+                    تکرار رمز عبور
+                  </Label>
+                  <Input
+                    id="confirmPassword"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="تکرار رمز عبور"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    dir="ltr"
+                    icon={<Lock />}
+                  />
+                </div>
+              )}
+
               <Button
                 type="submit"
                 disabled={loading}
-                className="h-9 w-full text-xs font-semibold shadow-xs"
+                className="w-full font-semibold shadow-xs"
               >
-                {loading ? "در حال اعتبارسنجی..." : "ورود به سیستم"}
+                {loading
+                  ? "در حال پردازش..."
+                  : mode === "login"
+                  ? "ورود به سیستم"
+                  : "ثبت‌نام و ورود به سامانه"}
               </Button>
+
+              {/* Toggle text prompt */}
+              <div className="text-center pt-1">
+                {mode === "login" ? (
+                  <button
+                    type="button"
+                    onClick={() => toggleMode("register")}
+                    className="text-xs text-muted-foreground transition-colors"
+                  >
+                    حساب کاربری ندارید؟ <span className="font-semibold hover:text-primary">ثبت‌نام کنید</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => toggleMode("login")}
+                    className="text-xs text-muted-foreground transition-colors"
+                  >
+                    قبلاً ثبت‌نام کرده‌اید؟ <span className="font-semibold hover:text-primary">وارد شوید</span>
+                  </button>
+                )}
+              </div>
             </CardContent>
           </form>
         </Card>

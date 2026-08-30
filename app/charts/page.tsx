@@ -86,11 +86,14 @@ export default function ChartsPage() {
         fetch("/api/tracks").then((r) => r.json()),
       ]);
 
-      if (authRes.authenticated) {
-        setUser(authRes.user);
-        if (authRes.user?.trackId) {
-          setSelectedTrackId(authRes.user.trackId);
-        }
+      if (!authRes.authenticated || !authRes.user) {
+        router.push("/login");
+        return;
+      }
+
+      setUser(authRes.user);
+      if (authRes.user?.trackId) {
+        setSelectedTrackId(authRes.user.trackId);
       }
 
       if (chartsRes.success) {

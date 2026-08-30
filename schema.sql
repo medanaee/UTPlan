@@ -1,5 +1,29 @@
 -- Cloudflare D1 Database Schema for UT-ECE Course Planning & Scheduling System
 
+PRAGMA foreign_keys = OFF;
+
+-- Drop old tables if they exist to prevent schema conflicts
+DROP TABLE IF EXISTS reviews;
+DROP TABLE IF EXISTS chart_courses;
+DROP TABLE IF EXISTS chart_terms;
+DROP TABLE IF EXISTS charts;
+DROP TABLE IF EXISTS course_event_slots;
+DROP TABLE IF EXISTS course_events;
+DROP TABLE IF EXISTS course_offerings;
+DROP TABLE IF EXISTS professors;
+DROP TABLE IF EXISTS prerequisites;
+DROP TABLE IF EXISTS track_course_assignments;
+DROP TABLE IF EXISTS track_assignments;
+DROP TABLE IF EXISTS courses;
+DROP TABLE IF EXISTS rule_categories;
+DROP TABLE IF EXISTS visual_categories;
+DROP TABLE IF EXISTS tracks;
+DROP TABLE IF EXISTS majors;
+DROP TABLE IF EXISTS faculties;
+DROP TABLE IF EXISTS users;
+
+PRAGMA foreign_keys = ON;
+
 -- Users Table
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
@@ -122,10 +146,13 @@ CREATE INDEX IF NOT EXISTS idx_prereq_course ON prerequisites(course_id);
 CREATE TABLE IF NOT EXISTS professors (
   id TEXT PRIMARY KEY,
   faculty_id TEXT NOT NULL,
+  first_name TEXT,
+  last_name TEXT,
   name TEXT NOT NULL,
   avatar_url TEXT,
   title TEXT,
   email TEXT,
+  links TEXT, -- JSON string for website, scholar, etc.
   created_at TEXT NOT NULL,
   deleted_at TEXT,
   FOREIGN KEY (faculty_id) REFERENCES faculties(id)

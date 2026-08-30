@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
+import crypto from "node:crypto";
 
 /**
  * Upload API Endpoint
- * Handles direct image upload to Cloudflare Images / Cloudflare R2
- * with seamless local data URI fallback for development.
+ * Handles direct image upload to Cloudinary (Cloud name: mmlnviaw)
+ * with seamless local data URI fallback if offline.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -27,49 +28,60 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check file size (e.g. max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
+    // Check file size (e.g. max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
       return NextResponse.json(
-        { success: false, message: "حجم فایل نباید بیش از ۵ مگابایت باشد." },
+        { success: false, message: "حجم فایل نباید بیش از ۱۰ مگابایت باشد." },
         { status: 400 }
       );
     }
 
-    const cfAccountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-    const cfApiToken = process.env.CLOUDFLARE_API_TOKEN;
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME || "mmlnviaw";
+    const apiKey = process.env.CLOUDINARY_API_KEY || "493152994931629";
+    const apiSecret = process.env.CLOUDINARY_API_SECRET || "MUdfC3ueRbmjRXNpkwGO2_-x-h4";
 
-    // 1. If Cloudflare Images credentials are provided, upload directly to Cloudflare
-    if (cfAccountId && cfApiToken) {
+    // 1. Upload to Cloudinary using signed upload API
+    if (cloudName && apiKey && apiSecret) {
       try {
-        const cfFormData = new FormData();
-        cfFormData.append("file", file);
+        const timestamp = Math.floor(Date.now() / 1000);
+        const folder = "ut-ece";
 
-        const cfRes = await fetch(
-          `https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/images/v1`,
+        // Signature format: sorted parameters + api_secret
+        const stringToSign = `folder=${folder}&timestamp=${timestamp}${apiSecret}`;
+        const signature = crypto.createHash("sha1").update(stringToSign).digest("hex");
+
+        const cldFormData = new FormData();
+        cldFormData.append("file", file);
+        cldFormData.append("api_key", apiKey);
+        cldFormData.append("timestamp", timestamp.toString());
+        cldFormData.append("folder", folder);
+        cldFormData.append("signature", signature);
+
+        const cldRes = await fetch(
+          `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
           {
             method: "POST",
-            headers: {
-              Authorization: `Bearer ${cfApiToken}`,
-            },
-            body: cfFormData,
+            body: cldFormData,
           }
         );
 
-        const cfData = await cfRes.json();
-        if (cfData.success && cfData.result?.variants?.[0]) {
+        const cldData = await cldRes.json();
+        if (cldData.secure_url) {
           return NextResponse.json({
             success: true,
-            url: cfData.result.variants[0],
-            provider: "cloudflare_images",
-            message: "تصویر با موفقیت در Cloudflare Images بارگذاری شد.",
+            url: cldData.secure_url,
+            provider: "cloudinary",
+            message: "تصویر با موفقیت در Cloudinary بارگذاری شد.",
           });
+        } else {
+          console.warn("Cloudinary returned non-success response:", cldData);
         }
-      } catch (cfErr) {
-        console.error("Cloudflare Images upload failed, using fallback:", cfErr);
+      } catch (cldErr) {
+        console.error("Cloudinary upload failed, falling back:", cldErr);
       }
     }
 
-    // 2. Fallback for development / Edge local deployment (Data URI)
+    // 2. Fallback for offline development / edge fallback (Data URI)
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     const base64 = buffer.toString("base64");
@@ -79,7 +91,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       url: dataUrl,
-      provider: "cloudflare_ready_data_uri",
+      provider: "data_uri_fallback",
       message: "تصویر با موفقیت آپلود و ذخیره شد.",
     });
   } catch (error) {

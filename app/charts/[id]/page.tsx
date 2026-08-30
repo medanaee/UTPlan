@@ -46,9 +46,12 @@ export default function ChartEditorPage() {
           fetch("/api/courses").then((r) => r.json()),
         ]);
 
-        if (authRes.authenticated) {
-          setUser(authRes.user);
+        if (!authRes.authenticated || !authRes.user) {
+          router.push("/login");
+          return;
         }
+
+        setUser(authRes.user);
 
         if (!chartRes.success || !chartRes.data) {
           setError(chartRes.message || "چارت مورد نظر یافت نشد.");

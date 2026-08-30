@@ -487,7 +487,7 @@ export function ProfessorManager({
               </div>
 
               <div className="space-y-1.5 flex-1">
-                <Label className="text-xs font-semibold">تصویر پرسنلی استاد (Cloudflare):</Label>
+                <Label className="text-xs font-semibold">تصویر پرسنلی استاد:</Label>
                 <div className="flex items-center gap-2">
                   <label className="cursor-pointer">
                     <input
