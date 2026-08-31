@@ -273,35 +273,26 @@ export function ProfessorImportDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto" dir="rtl">
-        <DialogHeader className="pb-3 border-b">
+        <DialogHeader>
           <DialogTitle className="text-base font-bold flex items-center gap-2">
             <BookUser className="h-5 w-5 text-primary" />
             ورود دسته‌ای اساتید (Import JSON)
           </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground pt-1">
+          <DialogDescription className="text-xs text-muted-foreground">
             مشخصات اساتید، مرتبه علمی و پیوندها را در قالب فایل استاندارد JSON وارد دانشکده کنید.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
           {/* Target Faculty Fixed Card */}
-          <div className="p-3.5 rounded-2xl border border-border/80 bg-muted/20 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                <Building2 className="h-5 w-5" />
-              </div>
-              <div>
-                <span className="text-[11px] text-muted-foreground block font-medium">
-                  دانشکده مقصد برای ثبت اساتید:
-                </span>
-                <span className="text-xs font-bold text-foreground block mt-0.5">
-                  {activeFaculty ? `${activeFaculty.name} (${activeFaculty.code})` : "دانشکده انتخاب‌شده"}
-                </span>
-              </div>
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs">
+              <Building2 className="h-4 w-4 text-primary shrink-0" />
+              <span className="text-muted-foreground">دانشکده هدف:</span>
+              <span className="font-bold text-foreground">
+                {activeFaculty ? `${activeFaculty.name} (${activeFaculty.code})` : "انتخاب نشده"}
+              </span>
             </div>
-            <Badge variant="secondary" className="text-[10px] font-semibold px-2 py-0.5">
-              فیلتر سراسری پنل
-            </Badge>
           </div>
 
           {/* Import Mode Selection Options */}

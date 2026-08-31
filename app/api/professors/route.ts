@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response!;
     const body = await request.json();
-    const { facultyId, firstName, lastName, name, title, email, avatarUrl, links } = body;
+    const { facultyId, code, firstName, lastName, name, title, email, avatarUrl, links } = body;
 
     if (!facultyId || (!name && !firstName && !lastName)) {
       return Response.json({ success: false, message: "دانشکده و نام استاد الزامی است." }, { status: 400 });
@@ -26,6 +26,7 @@ export async function POST(request: Request) {
 
     const newProf = await createProfessor({
       facultyId,
+      code,
       firstName,
       lastName,
       name,
@@ -47,7 +48,7 @@ export async function PUT(request: Request) {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response!;
     const body = await request.json();
-    const { id, facultyId, firstName, lastName, name, title, email, avatarUrl, links } = body;
+    const { id, facultyId, code, firstName, lastName, name, title, email, avatarUrl, links } = body;
 
     if (!id) {
       return Response.json({ success: false, message: "شناسه استاد الزامی است." }, { status: 400 });
@@ -55,6 +56,7 @@ export async function PUT(request: Request) {
 
     const updated = await updateProfessor(id, {
       facultyId,
+      code,
       firstName,
       lastName,
       name,

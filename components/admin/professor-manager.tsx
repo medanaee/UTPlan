@@ -418,7 +418,7 @@ export function ProfessorManager({
                       <div className="flex items-center gap-1.5 truncate">
                         <p className="text-xs font-bold truncate text-foreground">{displayName}</p>
                         {p.code && (
-                          <Badge variant="outline" className="text-[9px] px-1 py-0 font-mono h-4 font-normal text-muted-foreground">
+                          <Badge variant="outline" className="text-[11px] px-1 py-0 font-mono h-4 font-normal text-muted-foreground">
                             {p.code}
                           </Badge>
                         )}
@@ -588,6 +588,21 @@ export function ProfessorManager({
                   )}
                 </div>
               </div>
+            </div>
+
+            {/* Professor Code (Optional) */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold">کد استاد:</Label>
+                <span className="text-[10px] text-muted-foreground">اختیاری (در صورت خالی بودن خودکار تولید می‌شود)</span>
+              </div>
+              <Input
+                placeholder="PRF-101 OR 90123"
+                value={form.code}
+                onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
+                className="font-mono"
+                dir="ltr"
+              />
             </div>
 
             {/* First Name & Last Name (Separated) */}
