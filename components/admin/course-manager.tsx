@@ -13,6 +13,7 @@ import {
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -534,6 +535,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                 onChange={(val) => setPrereqForm({ ...prereqForm, requiredCourseId: val })}
                 placeholder="-- انتخاب یا جستجوی درس وابسته --"
                 searchPlaceholder="جستجوی نام یا کد درس..."
+                className="w-full"
               />
             </div>
 
@@ -732,12 +734,17 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
               </div>
             </div>
 
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">توضیحات اختیاری:</Label>
-              <Input
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold">توضیحات درس:</Label>
+                <span className="text-[10px] text-muted-foreground">اختیاری (سرفصل، اهداف درس و ...)</span>
+              </div>
+              <Textarea
                 placeholder="توضیحات تکمیلی یا سرفصل درس..."
                 value={courseForm.description}
                 onChange={(e) => setCourseForm({ ...courseForm, description: e.target.value })}
+                rows={3}
+                className="text-xs resize-none"
               />
             </div>
 

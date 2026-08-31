@@ -113,24 +113,19 @@ export function CourseDetailView({ course }: CourseDetailViewProps) {
 
       {/* Hero Header Card */}
       <div className="relative overflow-hidden rounded-3xl border border-primary/20 bg-linear-to-b from-primary/10 via-background to-background p-6 sm:p-8 shadow-xs">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
           <div className="space-y-3 max-w-3xl">
             {/* Badges Bar */}
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline" className="text-xs font-bold px-3 py-1 bg-background/80">
                 کد درس: {course.code}
               </Badge>
-              {course.abbreviation && (
-                <Badge variant="outline" className="text-xs font-mono font-bold px-3 py-1 text-primary border-primary/30 bg-primary/10">
-                  مخفف: {course.abbreviation}
-                </Badge>
-              )}
-              <Badge variant="secondary" className="text-xs font-bold px-2.5 py-1">
+              <Badge variant="secondary" className="text-xs font-bold px-3 py-1">
                 {course.units} واحد تحصیلی
               </Badge>
-              <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${termInfo.color}`}>
+              <Badge className={`text-xs font-semibold px-3 py-1 rounded-full border ${termInfo.color}`}>
                 {termInfo.label}
-              </span>
+              </Badge>
             </div>
 
             {/* Course Title */}
@@ -153,26 +148,24 @@ export function CourseDetailView({ course }: CourseDetailViewProps) {
           </div>
 
           {/* Quick Stats Box */}
-          <div className="flex items-center gap-2 shrink-0 self-start lg:self-center flex-wrap">
-            <div className="rounded-2xl border border-border/80 bg-card p-3 text-center min-w-[75px] shadow-2xs">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            <div className="rounded-xl border border-border/80 p-3 text-center min-w-[75px] shadow-2xs">
               <span className="text-lg font-extrabold text-foreground block">{prereqs.length}</span>
               <span className="text-[10px] text-muted-foreground font-medium">پیش‌نیاز</span>
             </div>
-            <div className="rounded-2xl border border-border/80 bg-card p-3 text-center min-w-[75px] shadow-2xs">
+            <div className="rounded-xl border border-border/80 p-3 text-center min-w-[75px] shadow-2xs">
               <span className="text-lg font-extrabold text-foreground block">{coreqs.length}</span>
               <span className="text-[10px] text-muted-foreground font-medium">هم‌نیاز</span>
             </div>
-            {recommendedPrereqs.length > 0 && (
-              <div className="rounded-2xl border border-emerald-500/30 bg-card p-3 text-center min-w-[75px] shadow-2xs">
-                <span className="text-lg font-extrabold text-emerald-600 dark:text-emerald-400 block">{recommendedPrereqs.length}</span>
-                <span className="text-[10px] text-muted-foreground font-medium">پیش‌نیاز پیشنهادی</span>
-              </div>
-            )}
-            <div className="rounded-2xl border border-border/80 bg-card p-3 text-center min-w-[75px] shadow-2xs">
+            <div className="rounded-xl border border-border/80 p-3 text-center min-w-[75px] shadow-2x">
+              <span className="text-lg font-extrabold text-foreground block">{recommendedPrereqs.length}</span>
+              <span className="text-[10px] text-muted-foreground font-medium">پیش‌نیاز پیشنهادی</span>
+            </div>
+            <div className="rounded-xl border border-border/80 p-3 text-center min-w-[75px] shadow-2xs">
               <span className="text-lg font-extrabold text-foreground block">{deps.length}</span>
               <span className="text-[10px] text-muted-foreground font-medium">درس وابسته</span>
             </div>
-            <div className="rounded-2xl border border-border/80 bg-card p-3 text-center min-w-[75px] shadow-2xs">
+            <div className="rounded-xl border border-border/80 p-3 text-center min-w-[75px] shadow-2xs">
               <span className="text-lg font-extrabold text-foreground block">{offerings.length}</span>
               <span className="text-[10px] text-muted-foreground font-medium">استاد ارائه</span>
             </div>
@@ -183,16 +176,16 @@ export function CourseDetailView({ course }: CourseDetailViewProps) {
       {/* Main Content Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Right 2 Columns: Core Info & Dependencies */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4">
           {/* Description & Syllabus Card */}
           <Card className="border-border/80 shadow-xs">
-            <CardHeader className="pb-3 border-b border-border/50">
+            <CardHeader className="border-b border-border/50">
               <CardTitle className="text-sm font-bold flex items-center gap-2">
                 <FileText className="h-4 w-4 text-primary" />
                 معرفی، سرفصل و توضیحات درس
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-4">
+            <CardContent>
               {course.description ? (
                 <div className="text-xs sm:text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
                   {course.description}
@@ -206,125 +199,128 @@ export function CourseDetailView({ course }: CourseDetailViewProps) {
           </Card>
 
           {/* Prerequisites, Corequisites & Recommended Prerequisites */}
-          <div className="space-y-4">
-            <div className={`grid grid-cols-1 ${recommendedPrereqs.length > 0 ? "md:grid-cols-3" : "md:grid-cols-2"} gap-4`}>
-              {/* Prerequisites */}
-              <Card className="border-amber-500/30 bg-linear-to-b from-amber-500/5 to-transparent shadow-xs">
-                <CardHeader className="pb-3 border-b border-amber-500/20">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-xs sm:text-sm font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
-                      <AlertCircle className="h-4 w-4 shrink-0" />
-                      <span>پیش‌نیاز ({prereqs.length})</span>
-                    </CardTitle>
-                    <Badge variant="outline" className="text-[10px] font-medium border-amber-500/30 text-amber-600">
-                      الزامی
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-4 space-y-2.5">
-                  {prereqs.length > 0 ? (
-                    prereqs.map((p) => (
-                      <Link
-                        key={p.id}
-                        href={`/courses/${p.requiredCourseId}`}
-                        className="group flex items-center justify-between p-3 rounded-xl border border-amber-500/30 bg-card hover:border-amber-500 hover:shadow-xs transition-all text-xs"
-                      >
-                        <div className="space-y-0.5 truncate flex-1 min-w-0 pr-1">
-                          <span className="font-bold block truncate group-hover:text-primary transition-colors">
-                            {p.requiredCourseName}
-                          </span>
-                          <span className=" text-[10px] text-muted-foreground font-mono">
-                            {p.requiredCourseCode}
-                          </span>
-                        </div>
-                        <ArrowLeft className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary group-hover:-translate-x-0.5 transition-all shrink-0" />
-                      </Link>
-                    ))
-                  ) : (
-                    <div className="py-6 text-center text-xs text-muted-foreground/70 italic">
-                      این درس پیش‌نیاز رسمی ندارد.
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
 
-              {/* Corequisites */}
-              <Card className="border-blue-500/30 bg-linear-to-b from-blue-500/5 to-transparent shadow-xs">
-                <CardHeader className="pb-3 border-b border-blue-500/20">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-xs sm:text-sm font-bold text-blue-700 dark:text-blue-400 flex items-center gap-1.5">
-                      <Layers className="h-4 w-4 shrink-0" />
-                      <span>هم‌نیاز ({coreqs.length})</span>
-                    </CardTitle>
-                    <Badge variant="outline" className="text-[10px] font-medium border-blue-500/30 text-blue-600">
-                      همزمان/قبلی
-                    </Badge>
+          <div className={`grid grid-cols-1 md:grid-cols-2 gap-4`}>
+            {/* Prerequisites */}
+            <Card className="border-amber-500/30 bg-linear-to-b from-amber-500/5 to-transparent shadow-xs">
+              <CardHeader className="pb-3 border-b border-amber-500/20">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xs sm:text-sm font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>پیش‌نیاز ({prereqs.length})</span>
+                  </CardTitle>
+                  <Badge variant="outline" className="text-[10px] font-medium border-amber-500/30 text-amber-600">
+                    الزامی
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2.5">
+                {prereqs.length > 0 ? (
+                  prereqs.map((p) => (
+                    <Link
+                      key={p.id}
+                      href={`/courses/${p.requiredCourseId}`}
+                      className="group flex items-center justify-between p-3 rounded-xl border border-amber-500/30 hover:border-amber-500 hover:shadow-xs transition-all text-xs"
+                    >
+                      <div className="space-y-0.5 truncate flex-1 min-w-0 pr-1">
+                        <span className="font-bold block truncate transition-colors">
+                          {p.requiredCourseName}
+                        </span>
+                        <span className=" text-[10px] text-muted-foreground font-mono">
+                          {p.requiredCourseCode}
+                        </span>
+                      </div>
+                      <ArrowLeft className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-all shrink-0" />
+                    </Link>
+                  ))
+                ) : (
+                  <div className="py-6 text-center text-xs text-muted-foreground/70 italic">
+                    این درس پیش‌نیاز رسمی ندارد.
                   </div>
-                </CardHeader>
-                <CardContent className="pt-4 space-y-2.5">
-                  {coreqs.length > 0 ? (
-                    coreqs.map((c) => (
-                      <Link
-                        key={c.id}
-                        href={`/courses/${c.requiredCourseId}`}
-                        className="group flex items-center justify-between p-3 rounded-xl border border-blue-500/30 bg-card hover:border-blue-500 hover:shadow-xs transition-all text-xs"
-                      >
-                        <div className="space-y-0.5 truncate flex-1 min-w-0 pr-1">
-                          <span className="font-bold block truncate group-hover:text-primary transition-colors">
-                            {c.requiredCourseName}
-                          </span>
-                          <span className=" text-[10px] text-muted-foreground font-mono">
-                            {c.requiredCourseCode}
-                          </span>
-                        </div>
-                        <ArrowLeft className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary group-hover:-translate-x-0.5 transition-all shrink-0" />
-                      </Link>
-                    ))
-                  ) : (
-                    <div className="py-6 text-center text-xs text-muted-foreground/70 italic">
-                      فاقد هم‌نیاز رسمی
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                )}
+              </CardContent>
+            </Card>
 
-              {/* Recommended Prerequisites (Non-mandatory) */}
-              {recommendedPrereqs.length > 0 && (
-                <Card className="border-emerald-500/30 bg-linear-to-b from-emerald-500/5 to-transparent shadow-xs">
-                  <CardHeader className="pb-3 border-b border-emerald-500/20">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-xs sm:text-sm font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
-                        <Sparkles className="h-4 w-4 text-emerald-600 shrink-0" />
-                        <span>پیشنهادی ({recommendedPrereqs.length})</span>
-                      </CardTitle>
-                      <Badge variant="outline" className="text-[10px] font-medium border-emerald-500/30 text-emerald-600 bg-emerald-500/5">
-                        توصیه‌شده
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-4 space-y-2.5">
-                    {recommendedPrereqs.map((r) => (
-                      <Link
-                        key={r.id}
-                        href={`/courses/${r.requiredCourseId}`}
-                        className="group flex items-center justify-between p-3 rounded-xl border border-emerald-500/30 bg-card hover:border-emerald-500 hover:shadow-xs transition-all text-xs"
-                      >
-                        <div className="space-y-0.5 truncate flex-1 min-w-0 pr-1">
-                          <span className="font-bold block truncate group-hover:text-primary transition-colors">
-                            {r.requiredCourseName}
-                          </span>
-                          <span className=" text-[10px] text-muted-foreground font-mono">
-                            {r.requiredCourseCode}
-                          </span>
-                        </div>
-                        <ArrowLeft className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary group-hover:-translate-x-0.5 transition-all shrink-0" />
-                      </Link>
-                    ))}
-                  </CardContent>
-                </Card>
-              )}
-            </div>
+            {/* Corequisites */}
+            <Card className="border-blue-500/30 bg-linear-to-b from-blue-500/5 to-transparent shadow-xs">
+              <CardHeader className="pb-3 border-b border-blue-500/20">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xs sm:text-sm font-bold text-blue-700 dark:text-blue-400 flex items-center gap-1.5">
+                    <Layers className="h-4 w-4 shrink-0" />
+                    <span>هم‌نیاز ({coreqs.length})</span>
+                  </CardTitle>
+                  <Badge variant="outline" className="text-[10px] font-medium border-blue-500/30 text-blue-600">
+                    همزمان/قبلی
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2.5">
+                {coreqs.length > 0 ? (
+                  coreqs.map((c) => (
+                    <Link
+                      key={c.id}
+                      href={`/courses/${c.requiredCourseId}`}
+                      className="group flex items-center justify-between p-3 rounded-xl border border-blue-500/30 hover:border-blue-500 hover:shadow-xs transition-all text-xs"
+                    >
+                      <div className="space-y-0.5 truncate flex-1 min-w-0 pr-1">
+                        <span className="font-bold block truncate transition-colors">
+                          {c.requiredCourseName}
+                        </span>
+                        <span className=" text-[10px] text-muted-foreground font-mono">
+                          {c.requiredCourseCode}
+                        </span>
+                      </div>
+                      <ArrowLeft className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-all shrink-0" />
+                    </Link>
+                  ))
+                ) : (
+                  <div className="py-6 text-center text-xs text-muted-foreground/70 italic">
+                    فاقد هم‌نیاز رسمی
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
           </div>
+
+
+          <Card className="border-emerald-500/30 bg-linear-to-b from-emerald-500/5 to-transparent shadow-xs">
+            <CardHeader className="pb-3 border-b border-emerald-500/20">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xs sm:text-sm font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                  <Sparkles className="h-4 w-4 text-emerald-600 shrink-0" />
+                  <span>پیش نیاز های پیشنهادی ({recommendedPrereqs.length})</span>
+                </CardTitle>
+                <Badge variant="outline" className="text-[10px] font-medium border-emerald-500/30 text-emerald-600 bg-emerald-500/5">
+                  توصیه‌شده
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-2.5">
+              {recommendedPrereqs.length > 0 ? (
+                recommendedPrereqs.map((r) => (
+                  <Link
+                    key={r.id}
+                    href={`/courses/${r.requiredCourseId}`}
+                    className="group flex items-center justify-between p-3 rounded-xl border border-emerald-500/30 bg-card hover:border-emerald-500 hover:shadow-xs transition-all text-xs"
+                  >
+                    <div className="space-y-0.5 truncate flex-1 min-w-0 pr-1">
+                      <span className="font-bold block truncate group-hover:text-primary transition-colors">
+                        {r.requiredCourseName}
+                      </span>
+                      <span className=" text-[10px] text-muted-foreground font-mono">
+                        {r.requiredCourseCode}
+                      </span>
+                    </div>
+                    <ArrowLeft className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary group-hover:-translate-x-0.5 transition-all shrink-0" />
+                  </Link>))) : (
+                <div className="py-6 text-center text-xs text-muted-foreground/70 italic">
+                  این درس پیش‌نیاز پیشنهادی ندارد.
+                </div>)}
+
+            </CardContent>
+          </Card>
+
 
           {/* Reverse Prerequisites: "این درس پیش‌نیاز چه دروسی است؟" */}
           <Card className="border-purple-500/30 bg-linear-to-b from-purple-500/5 to-transparent shadow-xs">
@@ -332,22 +328,22 @@ export function CourseDetailView({ course }: CourseDetailViewProps) {
               <div className="flex items-center justify-between">
                 <CardTitle className="text-xs sm:text-sm font-bold text-purple-700 dark:text-purple-400 flex items-center gap-2">
                   <GraduationCap className="h-4 w-4" />
-                  زنجیره پیش‌نیاز: این درس پیش‌نیاز/هم‌نیاز کدام دروس است؟ ({deps.length})
+                  این درس پیش‌نیاز/هم‌نیاز کدام دروس است؟ ({deps.length})
                 </CardTitle>
                 <span className="text-[11px] text-muted-foreground">دروس وابسته به این درس در چارت</span>
               </div>
             </CardHeader>
-            <CardContent className="pt-4">
+            <CardContent>
               {deps.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {deps.map((d) => (
                     <Link
                       key={d.id}
                       href={`/courses/${d.courseId}`}
-                      className="group flex items-center justify-between p-3 rounded-xl border border-purple-500/30 bg-card hover:border-purple-500 hover:shadow-xs transition-all text-xs"
+                      className="group flex items-center justify-between p-3 rounded-xl border border-purple-500/30 hover:border-purple-500 hover:shadow-xs transition-all text-xs"
                     >
                       <div className="space-y-1 truncate flex-1 min-w-0 pr-1">
-                        <span className="font-bold block truncate group-hover:text-primary transition-colors">
+                        <span className="font-bold block truncate transition-colors">
                           {d.courseName}
                         </span>
                         <div className="flex items-center gap-2">
@@ -358,12 +354,12 @@ export function CourseDetailView({ course }: CourseDetailViewProps) {
                             {d.type === "prerequisite"
                               ? "پیش‌نیاز"
                               : d.type === "corequisite"
-                              ? "هم‌نیاز"
-                              : "پیش‌نیاز پیشنهادی"}
+                                ? "هم‌نیاز"
+                                : "پیش‌نیاز پیشنهادی"}
                           </span>
                         </div>
                       </div>
-                      <ArrowLeft className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary group-hover:-translate-x-0.5 transition-all shrink-0" />
+                      <ArrowLeft className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-all shrink-0" />
                     </Link>
                   ))}
                 </div>
@@ -389,7 +385,7 @@ export function CourseDetailView({ course }: CourseDetailViewProps) {
                 اساتیدی که این درس را در دانشکده ارائه می‌دهند.
               </CardDescription>
             </CardHeader>
-            <CardContent className="pt-4 space-y-3">
+            <CardContent className="pace-y-3">
               {offerings.length > 0 ? (
                 offerings.map((off) => (
                   <Link

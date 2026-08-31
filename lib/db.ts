@@ -21,7 +21,6 @@ import type {
 import { hashPassword } from "./auth";
 
 let isD1LogShown = false;
-let isD1SchemaEnsured = false;
 
 /**
  * Access Cloudflare D1 database binding
@@ -48,39 +47,6 @@ export function getD1(): any {
   }
 
   return db;
-}
-
-export async function ensureD1Schema(d1: any) {
-  if (isD1SchemaEnsured || !d1) return;
-  try {
-    // 1. Ensure offering_professors table
-    await d1
-      .prepare(`
-        CREATE TABLE IF NOT EXISTS offering_professors (
-          id TEXT PRIMARY KEY,
-          offering_id TEXT NOT NULL,
-          professor_id TEXT NOT NULL,
-          is_primary INTEGER NOT NULL DEFAULT 0,
-          created_at TEXT NOT NULL,
-          UNIQUE(offering_id, professor_id)
-        )
-      `)
-      .run()
-      .catch(() => {});
-
-    // 2. Ensure description column in course_offerings
-    await d1.prepare("ALTER TABLE course_offerings ADD COLUMN description TEXT").run().catch(() => {});
-
-    // 3. Ensure abbreviation column in courses
-    await d1.prepare("ALTER TABLE courses ADD COLUMN abbreviation TEXT").run().catch(() => {});
-
-    // 4. Ensure description column in offerings (legacy table)
-    await d1.prepare("ALTER TABLE offerings ADD COLUMN description TEXT").run().catch(() => {});
-
-    isD1SchemaEnsured = true;
-  } catch (e) {
-    console.error("ensureD1Schema error:", e);
-  }
 }
 
 // =========================================================================
@@ -2378,8 +2344,6 @@ export async function getOfferings(filter?: {
   const d1 = getD1();
   if (d1) {
     try {
-      await ensureD1Schema(d1);
-
       let query = `
         SELECT o.*,
                c.name AS course_name, c.code AS course_code, c.units AS course_units, c.faculty_id AS course_faculty_id,
@@ -2549,8 +2513,6 @@ export async function getOfferingById(id: string): Promise<CourseOffering | null
   const d1 = getD1();
   if (d1) {
     try {
-      await ensureD1Schema(d1);
-
       const query = `
         SELECT o.*,
                c.name AS course_name, c.code AS course_code, c.units AS course_units, c.description AS course_description, c.faculty_id AS course_faculty_id,
@@ -2761,8 +2723,6 @@ export async function createOffering(
   const d1 = getD1();
   if (d1) {
     try {
-      await ensureD1Schema(d1);
-
       await d1
         .prepare("INSERT INTO course_offerings (id, code, course_id, professor_id, description, created_at) VALUES (?, ?, ?, ?, ?, ?)")
         .bind(id, code, courseId, primaryProfId, description, now)
@@ -2852,8 +2812,6 @@ export async function updateOffering(
   const d1 = getD1();
   if (d1) {
     try {
-      await ensureD1Schema(d1);
-
       const profIds: string[] | undefined =
         Array.isArray(data.professorIds) && data.professorIds.length > 0
           ? data.professorIds
