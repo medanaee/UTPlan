@@ -84,8 +84,14 @@ const COURSE_SCHEMA_DESCRIPTOR = {
       corequisites: {
         type: "array",
         items: { type: "string" },
-        description: "لیست کدهای دروس هم‌نیاز (اختیاری)",
+        description: "لیست کدهای دروس هم‌نیاز رسمی (اختیاری)",
         example: []
+      },
+      recommendedPrerequisites: {
+        type: "array",
+        items: { type: "string" },
+        description: "لیست کدهای دروس پیش‌نیاز پیشنهادی و غیررسمی (اختیاری)",
+        example: ["8101101"]
       }
     },
     required: ["code", "name"]
@@ -110,7 +116,8 @@ const COURSE_SCHEMA_DESCRIPTOR = {
         offeredIn: "both",
         description: "مفاهیم شیءگرایی و جاوا.",
         prerequisites: ["8101101"],
-        corequisites: []
+        corequisites: [],
+        recommendedPrerequisites: []
       },
       {
         code: "8101999",
@@ -120,7 +127,8 @@ const COURSE_SCHEMA_DESCRIPTOR = {
         offeredIn: "none",
         description: "درس غیرفعال در ترم جاری.",
         prerequisites: [],
-        corequisites: []
+        corequisites: [],
+        recommendedPrerequisites: ["8101234"]
       }
     ]
   ]

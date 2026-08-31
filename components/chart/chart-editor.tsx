@@ -75,7 +75,7 @@ interface SvgConnection {
   id: string;
   sourceCourseId: string;
   targetCourseId: string;
-  type: "prerequisite" | "corequisite";
+  type: "prerequisite" | "corequisite" | "recommended";
   sourceSemester: number;
   targetSemester: number;
   isViolation: boolean;
@@ -204,7 +204,7 @@ export function ChartEditor({
     {
       id: string;
       d: string;
-      type: "prerequisite" | "corequisite";
+      type: "prerequisite" | "corequisite" | "recommended";
       sourceId: string;
       targetId: string;
       isViolation: boolean;
@@ -271,9 +271,14 @@ export function ChartEditor({
     });
 
     const courseViolations = new Set<string>();
+    const courseWarnings = new Set<string>();
     fullResult.issues.forEach((issue) => {
-      if (issue.courseId && issue.type === "error") {
-        courseViolations.add(issue.courseId);
+      if (issue.courseId) {
+        if (issue.type === "error") {
+          courseViolations.add(issue.courseId);
+        } else if (issue.type === "warning") {
+          courseWarnings.add(issue.courseId);
+        }
       }
     });
 
@@ -299,14 +304,21 @@ export function ChartEditor({
     });
 
     const hasErrors = fullResult.issues.filter((i) => i.type === "error").length > 0;
+    const hasWarnings = fullResult.issues.filter((i) => i.type === "warning").length > 0;
+    const errorCount = fullResult.issues.filter((i) => i.type === "error").length;
+    const warningCount = fullResult.issues.filter((i) => i.type === "warning").length;
 
     return {
       issues: fullResult.issues,
       courseViolations,
+      courseWarnings,
       semesterCredits,
       ruleEval: fullResult,
-      isGraduationReady: fullResult.isGraduationSatisfied && !hasErrors,
+      isGraduationReady: fullResult.isGraduationSatisfied && !hasErrors && !hasWarnings,
       hasErrors,
+      hasWarnings,
+      errorCount,
+      warningCount,
     };
   }, [chart.semesters, allCourses, placedCourseIdMap, activeTrack, ruleCategories, totalChartCredits]);
 
@@ -375,7 +387,11 @@ export function ChartEditor({
             }
 
             const isViolation =
-              pr.type === "prerequisite" ? sourceSem >= sem.semesterNumber : sourceSem > sem.semesterNumber;
+              pr.type === "prerequisite"
+                ? sourceSem >= sem.semesterNumber
+                : pr.type === "corequisite"
+                ? sourceSem > sem.semesterNumber
+                : sourceSem >= sem.semesterNumber;
 
             const isHighlighted =
               hoveredCourseId === targetCourseId || hoveredCourseId === sourceCourseId;
@@ -659,8 +675,10 @@ export function ChartEditor({
               className={`h-8 gap-1.5 text-xs font-semibold px-3 rounded-lg transition-all cursor-pointer shadow-2xs flex items-center ${
                 validation.hasErrors
                   ? "bg-destructive/15 text-destructive hover:bg-destructive/25 dark:hover:bg-destructive/25 border border-destructive/30"
+                  : validation.hasWarnings
+                  ? "bg-violet-500/15 text-violet-700 dark:text-violet-300 hover:bg-violet-500/25 border border-violet-500/30"
                   : validation.isGraduationReady
-                  ? "bg-muted/50 text-foreground hover:bg-muted/80 border border-border/80"
+                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/25 border border-emerald-500/30"
                   : "bg-muted/50 text-foreground hover:bg-muted/80 border border-border/80"
               }`}
               title="کلیک جهت مشاهده گزارش کامل خطاها و قوانین"
@@ -668,11 +686,16 @@ export function ChartEditor({
               {validation.hasErrors ? (
                 <>
                   <AlertTriangle className="h-3.5 w-3.5 animate-pulse text-destructive shrink-0" />
-                  <span>{validation.issues.filter((i) => i.type === "error").length} خطا (مشاهده گزارش)</span>
+                  <span>{validation.errorCount} خطا (مشاهده گزارش)</span>
+                </>
+              ) : validation.hasWarnings ? (
+                <>
+                  <Sparkles className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
+                  <span>{validation.warningCount} هشدار / توصیه ({totalChartCredits} واحد)</span>
                 </>
               ) : validation.isGraduationReady ? (
                 <>
-                  <CheckCircle2 className="h-3.5 w-3.5 text-foreground shrink-0" />
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                   <span>آماده فارغ‌التحصیلی ({totalChartCredits} واحد)</span>
                 </>
               ) : (
@@ -958,13 +981,19 @@ export function ChartEditor({
                       {prereqs.map((pr) => (
                         <span
                           key={pr.id}
-                          className={`text-[9px] px-1.5 py-0.5 rounded-md ${
+                          className={`text-[9px] px-1.5 py-0.5 rounded-md border ${
                             pr.type === "prerequisite"
-                              ? "bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20"
-                              : "bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20"
+                              ? "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20"
+                              : pr.type === "corequisite"
+                              ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+                              : "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20"
                           }`}
                         >
-                          {pr.type === "prerequisite" ? "پیشنیاز: " : "همنیاز: "}
+                          {pr.type === "prerequisite"
+                            ? "پیش‌نیاز: "
+                            : pr.type === "corequisite"
+                            ? "هم‌نیاز: "
+                            : "پیشنهادی: "}
                           {pr.requiredCourseName || pr.requiredCourseId}
                         </span>
                       ))}
@@ -1007,6 +1036,7 @@ export function ChartEditor({
               }}
             >
               <defs>
+                {/* 1. Official Prerequisite (Solid Sky Blue / Red on Error) */}
                 <marker
                   id="arrow-prereq"
                   viewBox="0 0 10 10"
@@ -1029,6 +1059,8 @@ export function ChartEditor({
                 >
                   <path d="M 0 1 L 10 5 L 0 9 z" fill="#ef4444" />
                 </marker>
+
+                {/* 2. Official Corequisite (Dashed Royal Blue) */}
                 <marker
                   id="arrow-coreq"
                   viewBox="0 0 10 10"
@@ -1038,43 +1070,86 @@ export function ChartEditor({
                   markerHeight="5"
                   orient="auto-start-reverse"
                 >
-                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#a855f7" />
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#2563eb" />
+                </marker>
+
+                {/* 3. Recommended Prerequisite (Distinct Violet / Amber on Advisory Warning) */}
+                <marker
+                  id="arrow-recommended"
+                  viewBox="0 0 10 10"
+                  refX="6"
+                  refY="5"
+                  markerWidth="5"
+                  markerHeight="5"
+                  orient="auto-start-reverse"
+                >
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#8b5cf6" />
+                </marker>
+                <marker
+                  id="arrow-recommended-violation"
+                  viewBox="0 0 10 10"
+                  refX="6"
+                  refY="5"
+                  markerWidth="5"
+                  markerHeight="5"
+                  orient="auto-start-reverse"
+                >
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#f59e0b" />
                 </marker>
               </defs>
 
-              {svgCurves.map((curve) => (
-                <path
-                  key={curve.id}
-                  d={curve.d}
-                  fill="none"
-                  stroke={
-                    curve.isViolation
-                      ? "#ef4444"
-                      : curve.type === "prerequisite"
-                      ? "#0ea5e9"
-                      : "#a855f7"
-                  }
-                  strokeWidth={curve.isHighlighted ? 2.5 : 1.5}
-                  strokeOpacity={
-                    curve.isDimmed
-                      ? 0.05
-                      : curve.isHighlighted
-                      ? 1
-                      : curve.isViolation
-                      ? 0.9
-                      : 0.35
-                  }
-                  strokeDasharray={curve.type === "corequisite" ? "4 3" : undefined}
-                  markerEnd={
-                    curve.isViolation
-                      ? "url(#arrow-prereq-violation)"
-                      : curve.type === "prerequisite"
-                      ? "url(#arrow-prereq)"
-                      : "url(#arrow-coreq)"
-                  }
-                  className="transition-all duration-150"
-                />
-              ))}
+              {svgCurves.map((curve) => {
+                const strokeColor =
+                  curve.type === "recommended"
+                    ? curve.isViolation
+                      ? "#f59e0b"
+                      : "#8b5cf6"
+                    : curve.isViolation
+                    ? "#ef4444"
+                    : curve.type === "prerequisite"
+                    ? "#0ea5e9"
+                    : "#2563eb";
+
+                const markerEnd =
+                  curve.type === "recommended"
+                    ? curve.isViolation
+                      ? "url(#arrow-recommended-violation)"
+                      : "url(#arrow-recommended)"
+                    : curve.isViolation
+                    ? "url(#arrow-prereq-violation)"
+                    : curve.type === "prerequisite"
+                    ? "url(#arrow-prereq)"
+                    : "url(#arrow-coreq)";
+
+                const dashArray =
+                  curve.type === "recommended"
+                    ? "3 3"
+                    : curve.type === "corequisite"
+                    ? "5 4"
+                    : undefined;
+
+                return (
+                  <path
+                    key={curve.id}
+                    d={curve.d}
+                    fill="none"
+                    stroke={strokeColor}
+                    strokeWidth={curve.isHighlighted ? 2.5 : 1.5}
+                    strokeOpacity={
+                      curve.isDimmed
+                        ? 0.05
+                        : curve.isHighlighted
+                        ? 1
+                        : curve.isViolation
+                        ? 0.9
+                        : 0.4
+                    }
+                    strokeDasharray={dashArray}
+                    markerEnd={markerEnd}
+                    className="transition-all duration-150"
+                  />
+                );
+              })}
             </svg>
           )}
 
@@ -1172,9 +1247,14 @@ export function ChartEditor({
                             (vc) => vc.id === assignment?.visualCategoryId
                           );
                           const isViolation = validation.courseViolations.has(cId);
+                          const isWarning = validation.courseWarnings.has(cId);
                           const isHovered = hoveredCourseId === cId;
                           const isDragTarget = dragOverCardId === cId;
-                          const baseColor = isViolation ? "#ef4444" : vcat?.color || "#64748b";
+                          const baseColor = isViolation
+                            ? "#ef4444"
+                            : isWarning
+                            ? "#8b5cf6"
+                            : vcat?.color || "#64748b";
 
                           return (
                             <div
@@ -1248,7 +1328,7 @@ export function ChartEditor({
                               <div className="flex items-center justify-between gap-1">
                                 <div className="flex items-center gap-1.5 min-w-0">
                                   <p className="text-xs font-bold leading-snug">{course.name}</p>
-                                  {isViolation && (
+                                  {isViolation ? (
                                     <button
                                       type="button"
                                       onClick={(e) => {
@@ -1256,13 +1336,27 @@ export function ChartEditor({
                                         setIssuesModalOpen(true);
                                       }}
                                       className="inline-flex items-center text-destructive hover:scale-110 transition-transform cursor-pointer shrink-0"
-                                      title="کلیک جهت مشاهده متن دقیق خطا"
+                                      title="خطای پیش‌نیاز رسمی — کلیک جهت مشاهده جزئیات"
                                     >
                                       <AlertTriangle
                                         className="h-3.5 w-3.5 text-destructive shrink-0 animate-pulse"
                                       />
                                     </button>
-                                  )}
+                                  ) : isWarning ? (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setIssuesModalOpen(true);
+                                      }}
+                                      className="inline-flex items-center text-violet-600 dark:text-violet-400 hover:scale-110 transition-transform cursor-pointer shrink-0"
+                                      title="توصیه پیش‌نیاز پیشنهادی — کلیک جهت مشاهده جزئیات"
+                                    >
+                                      <Sparkles
+                                        className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0"
+                                      />
+                                    </button>
+                                  ) : null}
                                 </div>
 
                                 {/* Remove button (Only on card hover) */}
@@ -1337,30 +1431,44 @@ export function ChartEditor({
               <div className="space-y-2">
                 <p className="font-bold text-foreground">لیست خطاها و هشدارهای شناسایی‌شده:</p>
                 <div className="space-y-2">
-                  {validation.issues.map((issue, idx) => (
-                    <div
-                      key={issue.id || idx}
-                      className={`p-3 rounded-xl border flex items-start gap-2.5 ${
-                        issue.type === "error"
-                          ? "border-destructive/30 bg-destructive/10 text-destructive dark:text-red-300"
-                          : "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300"
-                      }`}
-                    >
-                      {issue.type === "error" ? (
-                        <XCircle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
-                      ) : (
-                        <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500 mt-0.5" />
-                      )}
-                      <div className="space-y-0.5 flex-1">
-                        <p className="font-semibold text-xs leading-relaxed">{issue.message}</p>
-                        {issue.termIndex && (
-                          <span className="inline-block text-[10px] opacity-75">
-                            مربوط به ترم {issue.termIndex}
-                          </span>
+                  {validation.issues.map((issue, idx) => {
+                    const isRecPrereq = issue.id.includes("issue_rec_prereq");
+                    return (
+                      <div
+                        key={issue.id || idx}
+                        className={`p-3 rounded-xl border flex items-start gap-2.5 ${
+                          issue.type === "error"
+                            ? "border-destructive/30 bg-destructive/10 text-destructive dark:text-red-300"
+                            : isRecPrereq
+                            ? "border-violet-500/30 bg-violet-500/10 text-violet-800 dark:text-violet-300"
+                            : "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300"
+                        }`}
+                      >
+                        {issue.type === "error" ? (
+                          <XCircle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
+                        ) : isRecPrereq ? (
+                          <Sparkles className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400 mt-0.5" />
+                        ) : (
+                          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500 mt-0.5" />
                         )}
+                        <div className="space-y-0.5 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-xs leading-relaxed">{issue.message}</span>
+                            {isRecPrereq && (
+                              <Badge variant="outline" className="text-[10px] border-violet-500/30 text-violet-600 dark:text-violet-400">
+                                پیش‌نیاز پیشنهادی (غیرالزامی)
+                              </Badge>
+                            )}
+                          </div>
+                          {issue.termIndex && (
+                            <span className="inline-block text-[10px] opacity-75">
+                              مربوط به ترم {issue.termIndex}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ) : (

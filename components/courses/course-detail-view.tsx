@@ -59,6 +59,7 @@ export function CourseDetailView({ course }: CourseDetailViewProps) {
   const termInfo = formatTermOffered(course.offeredIn);
   const prereqs = (course.prerequisites || []).filter((p) => p.type === "prerequisite");
   const coreqs = (course.prerequisites || []).filter((p) => p.type === "corequisite");
+  const recommendedPrereqs = (course.prerequisites || []).filter((p) => p.type === "recommended");
   const deps = course.dependentCourses || [];
   const offerings = course.offerings || [];
 
@@ -128,9 +129,16 @@ export function CourseDetailView({ course }: CourseDetailViewProps) {
             </div>
 
             {/* Course Title */}
-            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-foreground">
-              {course.name}
-            </h1>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-foreground">
+                {course.name}
+              </h1>
+              {course.abbreviation && (
+                <Badge variant="outline" className="text-sm font-mono font-bold px-2.5 py-0.5 text-primary border-primary/30 bg-primary/5">
+                  {course.abbreviation}
+                </Badge>
+              )}
+            </div>
 
             {/* Faculty Name */}
             <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1.5 font-medium">

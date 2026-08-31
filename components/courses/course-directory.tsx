@@ -323,6 +323,31 @@ export function CourseDirectory({
                       {course.description}
                     </p>
                   )}
+
+                  {/* Prerequisites Preview */}
+                  {course.prerequisites && course.prerequisites.length > 0 && (
+                    <div className="flex flex-wrap gap-1 pt-2 border-t border-border/40">
+                      {course.prerequisites.map((p) => (
+                        <span
+                          key={p.id}
+                          className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium border ${
+                            p.type === "prerequisite"
+                              ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20"
+                              : p.type === "corequisite"
+                              ? "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/20"
+                              : "bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/20"
+                          }`}
+                        >
+                          {p.type === "prerequisite"
+                            ? "پیش‌نیاز:"
+                            : p.type === "corequisite"
+                            ? "هم‌نیاز:"
+                            : "پیشنهادی:"}{" "}
+                          {p.requiredCourseName}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Card Footer: Action */}

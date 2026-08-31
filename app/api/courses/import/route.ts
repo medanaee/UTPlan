@@ -21,6 +21,8 @@ interface ImportCourseItem {
   description?: string;
   prerequisites?: string[];
   corequisites?: string[];
+  recommendedPrerequisites?: string[];
+  recommended?: string[];
 }
 
 export async function POST(request: NextRequest) {

@@ -4,7 +4,9 @@ import {
   createVisualCategory,
   deleteVisualCategory,
   reorderVisualCategories,
+  updateVisualCategory,
   getRuleCategories,
+  updateRuleCategory,
   createRuleCategory,
   deleteRuleCategory,
   reorderRuleCategories,
@@ -102,12 +104,18 @@ export async function PUT(request: Request) {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response!;
     const body = await request.json();
-    const { action, type, items } = body as {
-      action: "reorder";
+    const { action, type, items, id, name, color, sortOrder, parentId } = body as {
+      action?: "reorder" | "update";
       type: "visual" | "rule";
-      items: { id: string; sortOrder: number; parentId?: string | null }[];
+      items?: { id: string; sortOrder: number; parentId?: string | null }[];
+      id?: string;
+      name?: string;
+      color?: string;
+      sortOrder?: number;
+      parentId?: string | null;
     };
 
+    // Sub-action: Reorder
     if (action === "reorder" && Array.isArray(items)) {
       if (type === "visual") {
         await reorderVisualCategories(items);
@@ -117,11 +125,28 @@ export async function PUT(request: Request) {
       return Response.json({ success: true, message: "ترتیب دسته‌ها با موفقیت ذخیره شد." });
     }
 
-    return Response.json({ success: false, message: "عملیات نامعتبر است." }, { status: 400 });
+    // Sub-action: Update category
+    if (id) {
+      if (type === "visual") {
+        const updated = await updateVisualCategory(id, { name, color, sortOrder });
+        if (!updated) {
+          return Response.json({ success: false, message: "دسته بصری یافت نشد." }, { status: 404 });
+        }
+        return Response.json({ success: true, data: updated, message: "دسته بصری با موفقیت ویرایش شد." });
+      } else {
+        const updated = await updateRuleCategory(id, { name, parentId, sortOrder });
+        if (!updated) {
+          return Response.json({ success: false, message: "دسته قوانین یافت نشد." }, { status: 404 });
+        }
+        return Response.json({ success: true, data: updated, message: "دسته قوانین با موفقیت ویرایش شد." });
+      }
+    }
+
+    return Response.json({ success: false, message: "عملیات یا اطلاعات نامعتبر است." }, { status: 400 });
   } catch (error: any) {
     console.error("PUT categories error:", error);
     return Response.json(
-      { success: false, message: "خطا در به‌روزرسانی ترتیب دسته‌ها: " + (error?.message || "نامشخص") },
+      { success: false, message: "خطا در به‌روزرسانی دسته: " + (error?.message || "نامشخص") },
       { status: 500 }
     );
   }

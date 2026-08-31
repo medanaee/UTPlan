@@ -6,6 +6,7 @@ import {
   Building2,
   Plus,
   Trash2,
+  Pencil,
   CornerDownLeft,
   GripVertical,
   BookOpen,
@@ -32,7 +33,7 @@ import { CategoryPicker } from "./category-picker";
 import { useAdminStore } from "@/lib/stores/admin-store";
 import { TrackCloneDialog } from "./track-clone-dialog";
 import { CategoryCourseAssignDialog } from "./category-course-assign-dialog";
-import type { Course } from "@/lib/types";
+import type { Course, VisualCategory, RuleCategory } from "@/lib/types";
 
 const COLOR_PRESETS = [
   { name: "آبی", hex: "#3b82f6" },
@@ -68,9 +69,22 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
     setActionMessage,
   } = useAdminStore();
 
+  // Create Modals
   const [vcatModalOpen, setVcatModalOpen] = useState(false);
   const [rcatModalOpen, setRcatModalOpen] = useState(false);
   const [cloneModalOpen, setCloneModalOpen] = useState(false);
+
+  // Edit Modals
+  const [vcatEditModalOpen, setVcatEditModalOpen] = useState(false);
+  const [editingVcat, setEditingVcat] = useState<VisualCategory | null>(null);
+  const [vcatEditForm, setVcatEditForm] = useState({ name: "", color: "#3b82f6" });
+
+  const [rcatEditModalOpen, setRcatEditModalOpen] = useState(false);
+  const [editingRcat, setEditingRcat] = useState<RuleCategory | null>(null);
+  const [rcatEditForm, setRcatEditForm] = useState<{ name: string; parentId: string | null }>({
+    name: "",
+    parentId: null,
+  });
 
   const [vcatForm, setVcatForm] = useState({ name: "", color: "#3b82f6", sortOrder: 1 });
   const [rcatForm, setRcatForm] = useState<{ name: string; parentId: string | null }>({
@@ -128,6 +142,27 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
       curr = ruleCats.find((c) => c.id === curr!.parentId);
     }
     return depth;
+  };
+
+  // Helper: Calculate subtree height (1 if leaf, 2 if has children, 3 if has grandchildren)
+  const getSubtreeDepth = (catId: string): number => {
+    const children = ruleCats.filter((c) => c.parentId === catId);
+    if (children.length === 0) return 1;
+    let maxChildSubtree = 0;
+    for (const ch of children) {
+      maxChildSubtree = Math.max(maxChildSubtree, getSubtreeDepth(ch.id));
+    }
+    return 1 + maxChildSubtree;
+  };
+
+  // Helper: Check if childId is a descendant of ancestorId
+  const isDescendant = (childId: string, ancestorId: string): boolean => {
+    let curr = ruleCats.find((c) => c.id === childId);
+    while (curr?.parentId) {
+      if (curr.parentId === ancestorId) return true;
+      curr = ruleCats.find((c) => c.id === curr!.parentId);
+    }
+    return false;
   };
 
   // Quick Unassign Course from Visual Category
@@ -197,6 +232,40 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
     }
   };
 
+  // Open Edit Visual Category Modal
+  const handleOpenEditVcat = (cat: VisualCategory) => {
+    setEditingVcat(cat);
+    setVcatEditForm({ name: cat.name, color: cat.color });
+    setVcatEditModalOpen(true);
+  };
+
+  // Update Visual Category
+  const handleUpdateVcat = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingVcat || !selectedTrackId) return;
+
+    const res = await fetch("/api/categories", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "update",
+        type: "visual",
+        id: editingVcat.id,
+        name: vcatEditForm.name,
+        color: vcatEditForm.color,
+      }),
+    }).then((r) => r.json());
+
+    if (res.success) {
+      setVcatEditModalOpen(false);
+      setEditingVcat(null);
+      setActionMessage("دسته بصری با موفقیت ویرایش شد.");
+      await loadTrackDetails(selectedTrackId);
+    } else {
+      alert(res.message || "خطا در ویرایش دسته بصری");
+    }
+  };
+
   // Create Rule Category (With strict Depth 3 check)
   const handleCreateRcat = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -225,6 +294,57 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
       setRcatForm({ name: "", parentId: null });
       setActionMessage("دسته قوانین با موفقیت اضافه شد.");
       await loadTrackDetails(selectedTrackId);
+    }
+  };
+
+  // Open Edit Rule Category Modal
+  const handleOpenEditRcat = (cat: RuleCategory) => {
+    setEditingRcat(cat);
+    setRcatEditForm({ name: cat.name, parentId: cat.parentId || null });
+    setRcatEditModalOpen(true);
+  };
+
+  // Update Rule Category
+  const handleUpdateRcat = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingRcat || !selectedTrackId) return;
+
+    if (rcatEditForm.parentId) {
+      if (rcatEditForm.parentId === editingRcat.id) {
+        alert("خطا: یک دسته نمی‌تواند والد خودش باشد!");
+        return;
+      }
+      if (isDescendant(rcatEditForm.parentId, editingRcat.id)) {
+        alert("خطا: نمی‌توانید یکی از زیردسته‌ها را به عنوان والد این دسته انتخاب کنید (ایجاد چرخه)!");
+        return;
+      }
+      const parentDepth = getCategoryDepth(rcatEditForm.parentId);
+      const subtreeDepth = getSubtreeDepth(editingRcat.id);
+      if (parentDepth + subtreeDepth > 3) {
+        alert("خطا: ساختار درختی دسته‌های قوانین حداکثر تا عمق ۳ لایه مجاز است.");
+        return;
+      }
+    }
+
+    const res = await fetch("/api/categories", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "update",
+        type: "rule",
+        id: editingRcat.id,
+        name: rcatEditForm.name,
+        parentId: rcatEditForm.parentId || null,
+      }),
+    }).then((r) => r.json());
+
+    if (res.success) {
+      setRcatEditModalOpen(false);
+      setEditingRcat(null);
+      setActionMessage("دسته قوانین با موفقیت ویرایش شد.");
+      await loadTrackDetails(selectedTrackId);
+    } else {
+      alert(res.message || "خطا در ویرایش دسته قوانین");
     }
   };
 
@@ -304,6 +424,17 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
   // Filter categories eligible to be parent for new categories (depth < 3)
   const eligibleParentCategories = ruleCats.filter((c) => getCategoryDepth(c.id) < 3);
 
+  // Filter categories eligible to be parent when editing an existing category
+  const eligibleParentsForEdit = editingRcat
+    ? ruleCats.filter((c) => {
+        if (c.id === editingRcat.id) return false;
+        if (isDescendant(c.id, editingRcat.id)) return false;
+        const pDepth = getCategoryDepth(c.id);
+        const subDepth = getSubtreeDepth(editingRcat.id);
+        return pDepth + subDepth <= 3;
+      })
+    : eligibleParentCategories;
+
   // Render course chips list with identical formatting across all levels
   const renderCourseChips = (catId: string, type: "visual" | "rule", catName: string, catColor?: string) => {
     const assignedCourses = type === "visual" ? getVisualCategoryCourses(catId) : getRuleCategoryCourses(catId);
@@ -381,7 +512,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                 )}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                دسته‌های بصری و دسته‌های قوانین برای دروس این گرایش تنظیم می‌شوند. با کلیک روی هر دسته می‌توانید مستقیماً دروس آن را انتخاب و تخصیص دهید.
+                دسته‌های بصری و دسته‌های قوانین برای دروس این گرایش تنظیم می‌شوند. با کلیک روی هر دسته می‌توانید نام، رنگ، والد و دروس آن را ویرایش کنید.
               </p>
             </div>
           </div>
@@ -422,7 +553,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
               <span>دسته‌های بصری چارت (رنگی سایدبار چارت)</span>
             </CardTitle>
             <CardDescription className="text-xs">
-              این دسته‌ها با رنگ دلخواه در سایدبار ساخت چارت به دانشجو نشان داده می‌شوند. برای انتساب یا حذف دروس روی هر دسته کلیک کنید.
+              این دسته‌ها با رنگ دلخواه در سایدبار ساخت چارت به دانشجو نشان داده می‌شوند. برای تغییر نام، رنگ یا انتساب دروس از دکمه‌های مربوطه استفاده کنید.
             </CardDescription>
           </div>
 
@@ -503,7 +634,17 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                       className="h-8 text-xs gap-1.5 shadow-2xs font-medium"
                     >
                       <BookOpen className="h-3.5 w-3.5 text-primary" />
-                      انتخاب و تخصیص دروس
+                      تخصیص دروس
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleOpenEditVcat(cat)}
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10 shrink-0"
+                      title="ویرایش نام و رنگ دسته بصری"
+                    >
+                      <Pencil className="h-4 w-4" />
                     </Button>
 
                     <Button
@@ -642,7 +783,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 self-end sm:self-auto">
+                    <div className="flex items-center gap-1.5 self-end sm:self-auto">
                       <Button
                         size="sm"
                         variant="outline"
@@ -657,7 +798,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                         className="h-8 text-xs gap-1.5 shadow-2xs font-medium"
                       >
                         <BookOpen className="h-3.5 w-3.5 text-primary" />
-                        انتخاب و تخصیص دروس
+                        تخصیص دروس
                       </Button>
 
                       {/* Level 1 can add Level 2 Subcategory */}
@@ -669,11 +810,24 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                           setRcatForm({ name: "", parentId: parentCat.id });
                           setRcatModalOpen(true);
                         }}
-                        className="h-8 text-xs px-2.5 gap-1 text-primary hover:bg-primary/10 font-medium"
+                        className="h-8 text-xs px-2 gap-1 text-primary hover:bg-primary/10 font-medium"
                         title="افزودن زیردسته (سطح ۲)"
                       >
                         <Plus className="h-3.5 w-3.5" />
                         زیردسته
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenEditRcat(parentCat);
+                        }}
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                        title="ویرایش دسته قوانین"
+                      >
+                        <Pencil className="h-4 w-4" />
                       </Button>
 
                       <Button
@@ -762,7 +916,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                                 )}
                               </div>
 
-                              <div className="flex items-center gap-2 self-end sm:self-auto">
+                              <div className="flex items-center gap-1.5 self-end sm:self-auto">
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -777,7 +931,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                                   className="h-8 text-xs gap-1.5 shadow-2xs font-medium"
                                 >
                                   <BookOpen className="h-3.5 w-3.5 text-primary" />
-                                  انتخاب و تخصیص دروس
+                                  تخصیص دروس
                                 </Button>
 
                                 {/* Level 2 can add Level 3 Subcategory */}
@@ -789,11 +943,24 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                                     setRcatForm({ name: "", parentId: childCat.id });
                                     setRcatModalOpen(true);
                                   }}
-                                  className="h-8 text-xs px-2.5 gap-1 text-primary hover:bg-primary/10 font-medium"
+                                  className="h-8 text-xs px-2 gap-1 text-primary hover:bg-primary/10 font-medium"
                                   title="افزودن زیردسته سطح ۳"
                                 >
                                   <Plus className="h-3.5 w-3.5" />
                                   زیردسته
+                                </Button>
+
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenEditRcat(childCat);
+                                  }}
+                                  className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                  title="ویرایش زیردسته"
+                                >
+                                  <Pencil className="h-4 w-4" />
                                 </Button>
 
                                 <Button
@@ -870,7 +1037,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                                           </Badge>
                                         </div>
 
-                                        <div className="flex items-center gap-2 self-end sm:self-auto">
+                                        <div className="flex items-center gap-1.5 self-end sm:self-auto">
                                           <Button
                                             size="sm"
                                             variant="outline"
@@ -885,7 +1052,20 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                                             className="h-8 text-xs gap-1.5 shadow-2xs font-medium"
                                           >
                                             <BookOpen className="h-3.5 w-3.5 text-primary" />
-                                            انتخاب و تخصیص دروس
+                                            تخصیص دروس
+                                          </Button>
+
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleOpenEditRcat(subChild);
+                                            }}
+                                            className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                            title="ویرایش زیردسته"
+                                          >
+                                            <Pencil className="h-4 w-4" />
                                           </Button>
 
                                           <Button
@@ -958,7 +1138,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
         />
       )}
 
-      {/* Add Visual Category Modal */}
+      {/* 1. Add Visual Category Modal */}
       <Dialog open={vcatModalOpen} onOpenChange={setVcatModalOpen}>
         <DialogContent className="sm:max-w-xs" dir="rtl">
           <DialogHeader>
@@ -1006,7 +1186,58 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
         </DialogContent>
       </Dialog>
 
-      {/* Rule Category Modal with CategoryPicker restricted to depth < 3 */}
+      {/* 2. Edit Visual Category Modal */}
+      <Dialog open={vcatEditModalOpen} onOpenChange={setVcatEditModalOpen}>
+        <DialogContent className="sm:max-w-xs" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-bold flex items-center gap-1.5">
+              <Pencil className="h-4 w-4 text-primary" />
+              <span>ویرایش دسته بصری چارت</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              نام و رنگ اختصاصی این دسته بصری را تغییر دهید.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleUpdateVcat} className="space-y-3.5 pt-2">
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">نام دسته بصری</Label>
+              <Input
+                required
+                placeholder="نام دسته بصری"
+                value={vcatEditForm.name}
+                onChange={(e) => setVcatEditForm({ ...vcatEditForm, name: e.target.value })}
+                className="h-8 text-xs"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">رنگ شاخص دسته</Label>
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {COLOR_PRESETS.map((color) => (
+                  <button
+                    key={color.hex}
+                    type="button"
+                    onClick={() => setVcatEditForm({ ...vcatEditForm, color: color.hex })}
+                    className={"h-6 w-6 rounded-full transition-transform " + (
+                      vcatEditForm.color === color.hex
+                        ? "ring-2 ring-primary ring-offset-2 scale-110"
+                        : "opacity-80 hover:opacity-100"
+                    )}
+                    style={{ backgroundColor: color.hex }}
+                    title={color.name}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <Button type="submit" size="sm" className="w-full h-8 text-xs font-bold">
+              ذخیره تغییرات دسته بصری
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* 3. Add Rule Category Modal */}
       <Dialog open={rcatModalOpen} onOpenChange={setRcatModalOpen}>
         <DialogContent className="sm:max-w-sm" dir="rtl">
           <DialogHeader>
@@ -1041,6 +1272,49 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
 
             <Button type="submit" className="w-full font-bold">
               ثبت دسته قوانین
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* 4. Edit Rule Category Modal */}
+      <Dialog open={rcatEditModalOpen} onOpenChange={setRcatEditModalOpen}>
+        <DialogContent className="sm:max-w-sm" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-bold flex items-center gap-1.5">
+              <Pencil className="h-4 w-4 text-primary" />
+              <span>ویرایش دسته قوانین: {editingRcat?.name}</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              نام و دسته والد این دسته‌بندی را تغییر دهید (حداکثر عمق مجاز: ۳ لایه).
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleUpdateRcat} className="space-y-3.5 pt-2">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold">دسته والد:</Label>
+                <span className="text-xs text-muted-foreground">حداکثر عمق: ۳ لایه</span>
+              </div>
+              <CategoryPicker
+                categories={eligibleParentsForEdit}
+                value={rcatEditForm.parentId}
+                onChange={(val) => setRcatEditForm({ ...rcatEditForm, parentId: val })}
+                placeholder="دسته اصلی (بدون والد - سطح ۱)"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">نام دسته قوانین:</Label>
+              <Input
+                required
+                placeholder="نام جدید دسته"
+                value={rcatEditForm.name}
+                onChange={(e) => setRcatEditForm({ ...rcatEditForm, name: e.target.value })}
+              />
+            </div>
+
+            <Button type="submit" className="w-full font-bold">
+              ذخیره تغییرات دسته قوانین
             </Button>
           </form>
         </DialogContent>

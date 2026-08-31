@@ -102,7 +102,7 @@ export interface Course {
   trackAssignments?: TrackCourseAssignment[];
 }
 
-export type PrerequisiteType = "prerequisite" | "corequisite";
+export type PrerequisiteType = "prerequisite" | "corequisite" | "recommended";
 
 export interface PrerequisiteRelation {
   id: string;

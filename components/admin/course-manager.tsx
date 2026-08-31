@@ -72,7 +72,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
 
   const [prereqForm, setPrereqForm] = useState({
     requiredCourseId: "",
-    type: "prerequisite" as "prerequisite" | "corequisite",
+    type: "prerequisite" as "prerequisite" | "corequisite" | "recommended",
   });
   const [prereqError, setPrereqError] = useState<string | null>(null);
 
@@ -230,8 +230,9 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
     }));
 
   const prereqTypeSelectItems = [
-    { value: "prerequisite", label: "پیش‌نیاز (باید در ترم‌های قبل گذرانده شود)" },
-    { value: "corequisite", label: "هم‌نیاز (می‌تواند در همان ترم یا قبل از آن اخذ شود)" },
+    { value: "prerequisite", label: "پیش‌نیاز رسمی (باید در ترم‌های قبل گذرانده شود)" },
+    { value: "corequisite", label: "هم‌نیاز رسمی (می‌تواند در همان ترم یا قبل از آن اخذ شود)" },
+    { value: "recommended", label: "پیش‌نیاز پیشنهادی / غیررسمی (توصیه شده - غیرالزامی)" },
   ];
 
   return (
@@ -406,12 +407,20 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                         {course.prerequisites.map((p) => (
                           <span
                             key={p.id}
-                            className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium ${p.type === "prerequisite"
-                                ? "bg-amber-500/10 text-amber-700 dark:text-amber-300"
-                                : "bg-sky-500/10 text-sky-700 dark:text-sky-300"
-                              }`}
+                            className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-medium border ${
+                              p.type === "prerequisite"
+                                ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20"
+                                : p.type === "corequisite"
+                                ? "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/20"
+                                : "bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/20"
+                            }`}
                           >
-                            {p.type === "prerequisite" ? "پیش‌نیاز:" : "هم‌نیاز:"} {p.requiredCourseName}
+                            {p.type === "prerequisite"
+                              ? "پیش‌نیاز:"
+                              : p.type === "corequisite"
+                              ? "هم‌نیاز:"
+                              : "پیشنهادی:"}{" "}
+                            {p.requiredCourseName}
                           </span>
                         ))}
                       </div>
@@ -577,10 +586,19 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                       <span className="font-semibold">{rel.requiredCourseName}</span>
                       <Badge
                         variant="outline"
-                        className={`mr-2 text-[10px] ${rel.type === "prerequisite" ? "text-amber-600" : "text-sky-600"
-                          }`}
+                        className={`mr-2 text-[10px] ${
+                          rel.type === "prerequisite"
+                            ? "text-amber-600 border-amber-500/30 bg-amber-500/10"
+                            : rel.type === "corequisite"
+                            ? "text-sky-600 border-sky-500/30 bg-sky-500/10"
+                            : "text-violet-600 border-violet-500/30 bg-violet-500/10"
+                        }`}
                       >
-                        {rel.type === "prerequisite" ? "پیش‌نیاز" : "هم‌نیاز"}
+                        {rel.type === "prerequisite"
+                          ? "پیش‌نیاز رسمی"
+                          : rel.type === "corequisite"
+                          ? "هم‌نیاز رسمی"
+                          : "پیش‌نیاز پیشنهادی"}
                       </Badge>
                     </div>
                     <Button

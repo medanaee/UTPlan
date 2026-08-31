@@ -1167,6 +1167,89 @@ export async function createVisualCategory(
   return newCat;
 }
 
+
+export async function updateVisualCategory(
+  id: string,
+  data: { name?: string; color?: string; sortOrder?: number }
+): Promise<VisualCategory | null> {
+  const d1 = getD1();
+  if (d1) {
+    try {
+      const existing = await d1.prepare("SELECT * FROM visual_categories WHERE id = ?").bind(id).first();
+      if (!existing) return null;
+
+      const name = data.name !== undefined ? data.name.trim() : (existing as any).name;
+      const color = data.color !== undefined ? data.color : (existing as any).color;
+      const sortOrder = data.sortOrder !== undefined ? data.sortOrder : (existing as any).sort_order;
+
+      await d1
+        .prepare("UPDATE visual_categories SET name = ?, color = ?, sort_order = ? WHERE id = ?")
+        .bind(name, color, sortOrder, id)
+        .run();
+
+      return {
+        id,
+        trackId: (existing as any).track_id,
+        name,
+        color,
+        sortOrder,
+        createdAt: (existing as any).created_at,
+      };
+    } catch (err) {
+      console.error("D1 updateVisualCategory error:", err);
+    }
+  }
+
+  await initFallbackDevData();
+  const cat = visualCategoriesStore.find((c) => c.id === id);
+  if (!cat) return null;
+  if (data.name !== undefined) cat.name = data.name.trim();
+  if (data.color !== undefined) cat.color = data.color;
+  if (data.sortOrder !== undefined) cat.sortOrder = data.sortOrder;
+  return cat;
+}
+
+export async function updateRuleCategory(
+  id: string,
+  data: { name?: string; parentId?: string | null; sortOrder?: number }
+): Promise<RuleCategory | null> {
+  const d1 = getD1();
+  if (d1) {
+    try {
+      const existing = await d1.prepare("SELECT * FROM rule_categories WHERE id = ?").bind(id).first();
+      if (!existing) return null;
+
+      const name = data.name !== undefined ? data.name.trim() : (existing as any).name;
+      const parentId = data.parentId !== undefined ? (data.parentId || null) : (existing as any).parent_id;
+      const sortOrder = data.sortOrder !== undefined ? data.sortOrder : (existing as any).sort_order;
+
+      await d1
+        .prepare("UPDATE rule_categories SET name = ?, parent_id = ?, sort_order = ? WHERE id = ?")
+        .bind(name, parentId, sortOrder, id)
+        .run();
+
+      return {
+        id,
+        trackId: (existing as any).track_id,
+        parentId,
+        name,
+        sortOrder,
+        createdAt: (existing as any).created_at,
+      };
+    } catch (err) {
+      console.error("D1 updateRuleCategory error:", err);
+    }
+  }
+
+  await initFallbackDevData();
+  const cat = ruleCategoriesStore.find((c) => c.id === id);
+  if (!cat) return null;
+  if (data.name !== undefined) cat.name = data.name.trim();
+  if (data.parentId !== undefined) cat.parentId = data.parentId || null;
+  if (data.sortOrder !== undefined) cat.sortOrder = data.sortOrder;
+  return cat;
+}
+
 export async function deleteVisualCategory(id: string): Promise<boolean> {
   const d1 = getD1();
   if (d1) {
@@ -2981,6 +3064,15 @@ export async function createChart(data: {
   const now = new Date().toISOString();
   const isApproved = data.isApprovedDefault ? 1 : 0;
 
+  // Default to 8 empty semesters if not provided or empty
+  const defaultSemesters: ChartSemester[] = [1, 2, 3, 4, 5, 6, 7, 8].map((num) => ({
+    id: `sem_${num}`,
+    semesterNumber: num,
+    courseIds: [],
+    courseEventsMap: {},
+  }));
+  const semesters = data.semesters && data.semesters.length > 0 ? data.semesters : defaultSemesters;
+
   const d1 = getD1();
   if (d1) {
     try {
@@ -2992,7 +3084,6 @@ export async function createChart(data: {
         .bind(chartId, data.userId, data.trackId, data.title, isApproved, now, now)
         .run();
 
-      const semesters = data.semesters || [];
       for (const s of semesters) {
         const termId = `term_${chartId}_${s.semesterNumber}`;
         await d1
@@ -3024,7 +3115,7 @@ export async function createChart(data: {
     trackId: data.trackId,
     title: data.title,
     isApprovedDefault: Boolean(data.isApprovedDefault),
-    semesters: data.semesters || [],
+    semesters,
     createdAt: now,
     updatedAt: now,
   };

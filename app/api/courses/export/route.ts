@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
     const exportData = courses.map((course) => {
       const prereqCodes: string[] = [];
       const coreqCodes: string[] = [];
+      const recommendedCodes: string[] = [];
 
       (course.prerequisites || []).forEach((p) => {
         const code =
@@ -19,6 +20,8 @@ export async function GET(request: NextRequest) {
             : p.requiredCourseName;
         if (p.type === "corequisite") {
           coreqCodes.push(code);
+        } else if (p.type === "recommended") {
+          recommendedCodes.push(code);
         } else {
           prereqCodes.push(code);
         }
@@ -33,6 +36,7 @@ export async function GET(request: NextRequest) {
         description: course.description || "",
         prerequisites: prereqCodes,
         corequisites: coreqCodes,
+        recommendedPrerequisites: recommendedCodes,
       };
     });
 
