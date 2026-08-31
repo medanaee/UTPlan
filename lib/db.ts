@@ -2192,7 +2192,7 @@ export async function getOfferings(filter?: {
   if (d1) {
     try {
       let query = `
-        SELECT o.id, o.course_id, o.professor_id, o.created_at, o.deleted_at,
+        SELECT o.id, o.code, o.course_id, o.professor_id, o.created_at, o.deleted_at,
                c.name AS course_name, c.code AS course_code, c.units AS course_units, c.faculty_id AS course_faculty_id,
                p.name AS professor_name, p.title AS professor_title, p.avatar_url AS professor_avatar_url
         FROM course_offerings o
@@ -2218,6 +2218,7 @@ export async function getOfferings(filter?: {
       const { results } = await d1.prepare(query).bind(...params).all();
       return (results || []).map((r: any) => ({
         id: r.id,
+        code: r.code || undefined,
         courseId: r.course_id,
         professorId: r.professor_id,
         createdAt: r.created_at,
@@ -2246,7 +2247,7 @@ export async function getOfferingById(id: string): Promise<CourseOffering | null
   if (d1) {
     try {
       const query = `
-        SELECT o.id, o.course_id, o.professor_id, o.created_at, o.deleted_at,
+        SELECT o.id, o.code, o.course_id, o.professor_id, o.created_at, o.deleted_at,
                c.name AS course_name, c.code AS course_code, c.units AS course_units, c.description AS course_description, c.faculty_id AS course_faculty_id,
                f.name AS faculty_name,
                p.name AS professor_name, p.title AS professor_title, p.avatar_url AS professor_avatar_url, p.email AS professor_email
@@ -2275,6 +2276,7 @@ export async function getOfferingById(id: string): Promise<CourseOffering | null
 
       return {
         id: (row as any).id,
+        code: (row as any).code || undefined,
         courseId: (row as any).course_id,
         professorId: (row as any).professor_id,
         createdAt: (row as any).created_at,
@@ -2328,20 +2330,28 @@ export async function getOfferingById(id: string): Promise<CourseOffering | null
 }
 
 export async function createOffering(
-  courseIdOrData: string | { courseId: string; professorId: string },
-  professorIdArg?: string
+  courseIdOrData: string | { courseId: string; professorId: string; code?: string; id?: string },
+  professorIdArg?: string,
+  codeArg?: string
 ): Promise<CourseOffering> {
   const courseId = typeof courseIdOrData === "object" ? courseIdOrData.courseId : courseIdOrData;
   const professorId = typeof courseIdOrData === "object" ? courseIdOrData.professorId : professorIdArg!;
-  const id = `off_${crypto.randomUUID().slice(0, 8)}`;
+  const code =
+    typeof courseIdOrData === "object"
+      ? (courseIdOrData.code?.trim().toUpperCase() || `OFF-${crypto.randomUUID().slice(0, 6).toUpperCase()}`)
+      : (codeArg?.trim().toUpperCase() || `OFF-${crypto.randomUUID().slice(0, 6).toUpperCase()}`);
+  const id =
+    typeof courseIdOrData === "object" && courseIdOrData.id
+      ? courseIdOrData.id.trim()
+      : `off_${crypto.randomUUID().slice(0, 8)}`;
   const now = new Date().toISOString();
 
   const d1 = getD1();
   if (d1) {
     try {
       await d1
-        .prepare("INSERT INTO course_offerings (id, course_id, professor_id, created_at) VALUES (?, ?, ?, ?)")
-        .bind(id, courseId, professorId, now)
+        .prepare("INSERT INTO course_offerings (id, code, course_id, professor_id, created_at) VALUES (?, ?, ?, ?, ?)")
+        .bind(id, code, courseId, professorId, now)
         .run();
 
       const offs = await getOfferings();
@@ -2349,6 +2359,7 @@ export async function createOffering(
       return (
         created || {
           id,
+          code,
           courseId,
           professorId,
           createdAt: now,
@@ -2363,6 +2374,7 @@ export async function createOffering(
   await initFallbackDevData();
   const newOffering: CourseOffering = {
     id,
+    code,
     courseId,
     professorId,
     createdAt: now,
@@ -3656,5 +3668,56 @@ export async function deleteProfessorsByFaculty(facultyId: string): Promise<bool
   const profIdsToDelete = new Set(professorsStore.filter((p) => p.facultyId === facultyId).map((p) => p.id));
   professorsStore = professorsStore.filter((p) => !profIdsToDelete.has(p.id));
   offeringsStore = offeringsStore.filter((o) => !profIdsToDelete.has(o.professorId));
+  return true;
+}
+
+export async function deleteOfferingsByFaculty(facultyId: string): Promise<boolean> {
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1
+        .prepare(
+          `DELETE FROM reviews 
+           WHERE target_type = 'offering' AND target_id IN (
+             SELECT o.id FROM course_offerings o
+             JOIN courses c ON o.course_id = c.id
+             WHERE c.faculty_id = ?
+           )`
+        )
+        .bind(facultyId)
+        .run();
+
+      await d1
+        .prepare(
+          `DELETE FROM course_events 
+           WHERE offering_id IN (
+             SELECT o.id FROM course_offerings o
+             JOIN courses c ON o.course_id = c.id
+             WHERE c.faculty_id = ?
+           )`
+        )
+        .bind(facultyId)
+        .run();
+
+      await d1
+        .prepare(
+          `DELETE FROM course_offerings 
+           WHERE course_id IN (SELECT id FROM courses WHERE faculty_id = ?)`
+        )
+        .bind(facultyId)
+        .run();
+
+      return true;
+    } catch (err) {
+      console.error("D1 deleteOfferingsByFaculty error:", err);
+      return false;
+    }
+  }
+
+  await initFallbackDevData();
+  const facultyCourseIds = new Set(coursesStore.filter((c) => c.facultyId === facultyId).map((c) => c.id));
+  const offIdsToDelete = new Set(offeringsStore.filter((o) => facultyCourseIds.has(o.courseId)).map((o) => o.id));
+  offeringsStore = offeringsStore.filter((o) => !offIdsToDelete.has(o.id));
+  eventsStore = eventsStore.filter((e) => !offIdsToDelete.has(e.offeringId));
   return true;
 }

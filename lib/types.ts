@@ -152,6 +152,7 @@ export interface Professor {
 
 export interface CourseOffering {
   id: string;
+  code?: string;
   courseId: string;
   professorId: string;
   createdAt: string;

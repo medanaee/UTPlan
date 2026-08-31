@@ -139,6 +139,7 @@ CREATE INDEX IF NOT EXISTS idx_professors_code ON professors(code);
 -- Course Offerings Table (Professor + Course)
 CREATE TABLE IF NOT EXISTS course_offerings (
   id TEXT PRIMARY KEY,
+  code TEXT,
   course_id TEXT NOT NULL,
   professor_id TEXT NOT NULL,
   created_at TEXT NOT NULL,

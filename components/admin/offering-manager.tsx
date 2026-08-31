@@ -10,6 +10,8 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { OfferingImportDialog } from "@/components/offerings/offering-import-dialog";
+import { Download, Upload } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -69,6 +71,8 @@ export function OfferingManager({
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [editingOffering, setEditingOffering] = useState<CourseOffering | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -76,6 +80,7 @@ export function OfferingManager({
 
   // Form State: Only Course + Professor
   const [form, setForm] = useState({
+    code: "",
     courseId: "",
     professorId: "",
   });
@@ -113,6 +118,7 @@ export function OfferingManager({
   const handleOpenEditModal = (off: CourseOffering) => {
     setEditingOffering(off);
     setForm({
+      code: off.code || "",
       courseId: off.courseId,
       professorId: off.professorId,
     });
@@ -186,6 +192,39 @@ export function OfferingManager({
     return matchesSearch;
   });
 
+  
+  const handleExportJson = async () => {
+    try {
+      setIsExporting(true);
+      const url = selectedFacultyId
+        ? `/api/offerings/export?facultyId=${selectedFacultyId}`
+        : "/api/offerings/export";
+
+      const res = await fetch(url).then((r) => r.json());
+      if (res.success && Array.isArray(res.data)) {
+        const fileName = currentFaculty
+          ? `offerings-${currentFaculty.code.toLowerCase()}.json`
+          : "offerings-export.json";
+
+        const dataStr =
+          "data:text/json;charset=utf-8," +
+          encodeURIComponent(JSON.stringify(res.data, null, 2));
+        const downloadAnchor = document.createElement("a");
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", fileName);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+      } else {
+        alert(res.message || "خطا در خروجی گرفتن از اطلاعات ارائه‌ها");
+      }
+    } catch (err: any) {
+      alert("خطا در برقراری ارتباط با سرور: " + (err?.message || "نامشخص"));
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const facultyCourses = courses.filter(
     (c) => !selectedFacultyId || c.facultyId === selectedFacultyId
   );
@@ -234,24 +273,52 @@ export function OfferingManager({
       </div>
 
       <Card className="border-border/70 shadow-xs">
-        <CardHeader className="flex flex-row items-center justify-between pb-3 border-b">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
           <div>
             <CardTitle className="text-base flex items-center gap-2">
               <BookUser className="h-4 w-4 text-primary" />
-              <span>ارائه‌های درسی (اتصال درس به استاد)</span>
+              <span>ارائه‌های درسی {currentFaculty ? `«${currentFaculty.name}»` : ""}</span>
             </CardTitle>
             <CardDescription className="text-xs">
               تعریف اینکه چه استادی چه درسی را تدریس می‌کند (موجودیت پایه جهت تفکیک نظرات دانشجویان و برنامه‌ریزی کلاسی)
             </CardDescription>
           </div>
-          <Button
-            size="sm"
-            onClick={handleOpenCreateModal}
-            className="h-8 gap-1.5 text-xs shadow-xs"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            تعریف اتصال درس و استاد
-          </Button>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleExportJson}
+              disabled={isExporting}
+              className="h-8 gap-1.5 text-xs shadow-2xs"
+            >
+              <Download className="h-3.5 w-3.5 text-primary" />
+              <span>خروجی ارائه‌ها (Export JSON)</span>
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setImportModalOpen(true)}
+              className="h-8 gap-1.5 text-xs shadow-2xs font-semibold"
+            >
+              <Upload className="h-3.5 w-3.5 text-primary" />
+              <span>ورود دسته‌ای (Import JSON)</span>
+            </Button>
+
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleOpenCreateModal}
+              disabled={!selectedFacultyId}
+              className="h-8 gap-1.5 text-xs shadow-xs font-semibold"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              تعریف اتصال درس و استاد
+            </Button>
+          </div>
         </CardHeader>
 
         <CardContent className="px-4 space-y-4">
@@ -279,7 +346,7 @@ export function OfferingManager({
                 <tr className="border-b bg-muted/40 text-muted-foreground font-semibold">
                   <th className="py-2.5 px-3 text-right">نام درس و مشخصات</th>
                   <th className="py-2.5 px-3 text-right">استاد مدرس</th>
-                  <th className="py-2.5 px-3 text-center">شناسه ارائه</th>
+                  <th className="py-2.5 px-3 text-center">کد ارائه</th>
                   <th className="py-2.5 px-3 text-center">عملیات</th>
                 </tr>
               </thead>
@@ -320,10 +387,10 @@ export function OfferingManager({
                       </div>
                     </td>
 
-                    {/* ID */}
+                    {/* Code */}
                     <td className="py-2.5 px-3 text-center">
-                      <Badge variant="outline" className="text-[10px]">
-                        {off.id}
+                      <Badge variant="outline" className="text-[10px] font-mono">
+                        {off.code || off.id}
                       </Badge>
                     </td>
 
@@ -404,6 +471,21 @@ export function OfferingManager({
           </div>
 
           <form onSubmit={handleSaveOffering} className="space-y-4">
+            {/* Offering Code (Optional) */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold">کد ارائه:</Label>
+                <span className="text-[10px] text-muted-foreground">اختیاری (در صورت خالی بودن خودکار تولید می‌شود)</span>
+              </div>
+              <Input
+                placeholder="مثلاً OFF-101 یا 8101234-01"
+                value={form.code}
+                onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
+                className="h-8 text-xs font-mono"
+                dir="ltr"
+              />
+            </div>
+
             {/* Course Combobox */}
             <div className="space-y-1">
               <Label className="text-xs font-semibold">انتخاب درس:</Label>
@@ -458,6 +540,15 @@ export function OfferingManager({
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Offering Import Dialog */}
+      <OfferingImportDialog
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
+        defaultFacultyId={selectedFacultyId}
+        targetFaculty={currentFaculty}
+        onSuccess={loadOfferings}
+      />
     </div>
   );
 }
