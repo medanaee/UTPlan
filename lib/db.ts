@@ -3782,3 +3782,92 @@ export async function reorderRuleCategories(
   ruleCategoriesStore.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   return true;
 }
+
+export async function assignCategoryCourses(
+  trackId: string,
+  type: "visual" | "rule",
+  categoryId: string,
+  courseIds: string[]
+): Promise<boolean> {
+  const d1 = getD1();
+  if (d1) {
+    try {
+      if (type === "visual") {
+        // Clear previous assignments for this visual category
+        await d1
+          .prepare(
+            "UPDATE track_course_assignments SET visual_category_id = NULL WHERE track_id = ? AND visual_category_id = ?"
+          )
+          .bind(trackId, categoryId)
+          .run();
+
+        // Assign selected courses
+        for (const courseId of courseIds) {
+          const id = `assign_${trackId}_${courseId}`;
+          await d1
+            .prepare(
+              `INSERT INTO track_course_assignments (id, track_id, course_id, visual_category_id)
+               VALUES (?, ?, ?, ?)
+               ON CONFLICT(track_id, course_id) DO UPDATE SET visual_category_id = excluded.visual_category_id`
+            )
+            .bind(id, trackId, courseId, categoryId)
+            .run();
+        }
+      } else {
+        // Clear previous assignments for this rule category
+        await d1
+          .prepare(
+            "UPDATE track_course_assignments SET rule_category_id = NULL WHERE track_id = ? AND rule_category_id = ?"
+          )
+          .bind(trackId, categoryId)
+          .run();
+
+        // Assign selected courses
+        for (const courseId of courseIds) {
+          const id = `assign_${trackId}_${courseId}`;
+          await d1
+            .prepare(
+              `INSERT INTO track_course_assignments (id, track_id, course_id, rule_category_id)
+               VALUES (?, ?, ?, ?)
+               ON CONFLICT(track_id, course_id) DO UPDATE SET rule_category_id = excluded.rule_category_id`
+            )
+            .bind(id, trackId, courseId, categoryId)
+            .run();
+        }
+      }
+      return true;
+    } catch (err) {
+      console.error("D1 assignCategoryCourses error:", err);
+      return false;
+    }
+  }
+
+  await initFallbackDevData();
+  trackAssignmentsStore.forEach((a) => {
+    if (a.trackId === trackId) {
+      if (type === "visual" && a.visualCategoryId === categoryId) {
+        a.visualCategoryId = null;
+      }
+      if (type === "rule" && a.ruleCategoryId === categoryId) {
+        a.ruleCategoryId = null;
+      }
+    }
+  });
+
+  for (const courseId of courseIds) {
+    const existing = trackAssignmentsStore.find((a) => a.trackId === trackId && a.courseId === courseId);
+    if (existing) {
+      if (type === "visual") existing.visualCategoryId = categoryId;
+      if (type === "rule") existing.ruleCategoryId = categoryId;
+    } else {
+      trackAssignmentsStore.push({
+        id: `assign_${trackId}_${courseId}`,
+        trackId,
+        courseId,
+        visualCategoryId: type === "visual" ? categoryId : null,
+        ruleCategoryId: type === "rule" ? categoryId : null,
+      });
+    }
+  }
+  return true;
+}
