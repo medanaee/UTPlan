@@ -3,9 +3,11 @@ import {
   getVisualCategories,
   createVisualCategory,
   deleteVisualCategory,
+  reorderVisualCategories,
   getRuleCategories,
   createRuleCategory,
   deleteRuleCategory,
+  reorderRuleCategories,
 } from "@/lib/db";
 
 export async function GET(request: Request) {
@@ -92,5 +94,35 @@ export async function DELETE(request: Request) {
   } catch (error) {
     console.error("Delete category error:", error);
     return Response.json({ success: false, message: "خطا در حذف دسته‌بندی" }, { status: 500 });
+  }
+}
+
+export async function PUT(request: Request) {
+  try {
+    const auth = await requireAdminSession(request);
+    if (!auth.authorized) return auth.response!;
+    const body = await request.json();
+    const { action, type, items } = body as {
+      action: "reorder";
+      type: "visual" | "rule";
+      items: { id: string; sortOrder: number; parentId?: string | null }[];
+    };
+
+    if (action === "reorder" && Array.isArray(items)) {
+      if (type === "visual") {
+        await reorderVisualCategories(items);
+      } else {
+        await reorderRuleCategories(items);
+      }
+      return Response.json({ success: true, message: "ترتیب دسته‌ها با موفقیت ذخیره شد." });
+    }
+
+    return Response.json({ success: false, message: "عملیات نامعتبر است." }, { status: 400 });
+  } catch (error: any) {
+    console.error("PUT categories error:", error);
+    return Response.json(
+      { success: false, message: "خطا در به‌روزرسانی ترتیب دسته‌ها: " + (error?.message || "نامشخص") },
+      { status: 500 }
+    );
   }
 }

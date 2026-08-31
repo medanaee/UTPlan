@@ -1194,7 +1194,7 @@ export async function getRuleCategories(trackId: string): Promise<RuleCategory[]
   if (d1) {
     try {
       const { results } = await d1
-        .prepare("SELECT * FROM rule_categories WHERE track_id = ? ORDER BY name ASC")
+        .prepare("SELECT * FROM rule_categories WHERE track_id = ? ORDER BY sort_order ASC, created_at ASC")
         .bind(trackId)
         .all();
       return (results || []).map((r: any) => ({
@@ -1202,6 +1202,7 @@ export async function getRuleCategories(trackId: string): Promise<RuleCategory[]
         trackId: r.track_id,
         parentId: r.parent_id || null,
         name: r.name,
+        sortOrder: Number(r.sort_order) || 0,
         createdAt: r.created_at,
       }));
     } catch (err) {
@@ -1210,14 +1211,16 @@ export async function getRuleCategories(trackId: string): Promise<RuleCategory[]
   }
 
   await initFallbackDevData();
-  return ruleCategoriesStore.filter((c) => c.trackId === trackId);
+  return ruleCategoriesStore
+    .filter((c) => c.trackId === trackId)
+    .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
 }
 
 export async function createRuleCategory(
   trackId: string,
   name: string,
-  minCredits = 0,
-  parentId?: string | null
+  parentId?: string | null,
+  sortOrder = 0
 ): Promise<RuleCategory> {
   const id = `rcat_${crypto.randomUUID().slice(0, 8)}`;
   const now = new Date().toISOString();
@@ -1227,9 +1230,9 @@ export async function createRuleCategory(
     try {
       await d1
         .prepare(
-          "INSERT INTO rule_categories (id, track_id, parent_id, name, min_credits, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+          "INSERT INTO rule_categories (id, track_id, parent_id, name, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)"
         )
-        .bind(id, trackId, parentId || null, name.trim(), minCredits, now)
+        .bind(id, trackId, parentId || null, name.trim(), sortOrder, now)
         .run();
     } catch (err) {
       console.error("D1 createRuleCategory error:", err);
@@ -1242,7 +1245,7 @@ export async function createRuleCategory(
     trackId,
     parentId: parentId || null,
     name: name.trim(),
-    minCredits,
+    sortOrder,
     createdAt: now,
   };
   ruleCategoriesStore.push(newCat);
@@ -3719,5 +3722,63 @@ export async function deleteOfferingsByFaculty(facultyId: string): Promise<boole
   const offIdsToDelete = new Set(offeringsStore.filter((o) => facultyCourseIds.has(o.courseId)).map((o) => o.id));
   offeringsStore = offeringsStore.filter((o) => !offIdsToDelete.has(o.id));
   eventsStore = eventsStore.filter((e) => !offIdsToDelete.has(e.offeringId));
+  return true;
+}
+
+export async function reorderVisualCategories(items: { id: string; sortOrder: number }[]): Promise<boolean> {
+  const d1 = getD1();
+  if (d1) {
+    try {
+      const stmts = items.map((item) =>
+        d1.prepare("UPDATE visual_categories SET sort_order = ? WHERE id = ?").bind(item.sortOrder, item.id)
+      );
+      await d1.batch(stmts);
+      return true;
+    } catch (err) {
+      console.error("D1 reorderVisualCategories error:", err);
+      return false;
+    }
+  }
+
+  await initFallbackDevData();
+  items.forEach((item) => {
+    const cat = visualCategoriesStore.find((c) => c.id === item.id);
+    if (cat) cat.sortOrder = item.sortOrder;
+  });
+  visualCategoriesStore.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  return true;
+}
+
+export async function reorderRuleCategories(
+  items: { id: string; sortOrder: number; parentId?: string | null }[]
+): Promise<boolean> {
+  const d1 = getD1();
+  if (d1) {
+    try {
+      const stmts = items.map((item) => {
+        if (item.parentId !== undefined) {
+          return d1
+            .prepare("UPDATE rule_categories SET sort_order = ?, parent_id = ? WHERE id = ?")
+            .bind(item.sortOrder, item.parentId || null, item.id);
+        }
+        return d1.prepare("UPDATE rule_categories SET sort_order = ? WHERE id = ?").bind(item.sortOrder, item.id);
+      });
+      await d1.batch(stmts);
+      return true;
+    } catch (err) {
+      console.error("D1 reorderRuleCategories error:", err);
+      return false;
+    }
+  }
+
+  await initFallbackDevData();
+  items.forEach((item) => {
+    const cat = ruleCategoriesStore.find((c) => c.id === item.id);
+    if (cat) {
+      cat.sortOrder = item.sortOrder;
+      if (item.parentId !== undefined) cat.parentId = item.parentId || null;
+    }
+  });
+  ruleCategoriesStore.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   return true;
 }

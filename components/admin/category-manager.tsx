@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import {
   Layers,
   Building2,
+  GripVertical,
   Plus,
   Trash2,
   CornerDownLeft,
@@ -76,6 +77,89 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
     name: "",
     parentId: null,
   });
+
+  
+  // Drag and Drop States
+  const [draggedVcatIndex, setDraggedVcatIndex] = useState<number | null>(null);
+  const [dragOverVcatIndex, setDragOverVcatIndex] = useState<number | null>(null);
+
+  const [draggedRcatId, setDraggedRcatId] = useState<string | null>(null);
+  const [dragOverRcatId, setDragOverRcatId] = useState<string | null>(null);
+
+  // Visual Category Reorder Handler
+  const handleVcatDrop = async (targetIndex: number) => {
+    if (draggedVcatIndex === null || draggedVcatIndex === targetIndex) {
+      setDraggedVcatIndex(null);
+      setDragOverVcatIndex(null);
+      return;
+    }
+
+    const updated = [...visualCats];
+    const [draggedItem] = updated.splice(draggedVcatIndex, 1);
+    updated.splice(targetIndex, 0, draggedItem);
+    
+    setVisualCats(updated);
+    setDraggedVcatIndex(null);
+    setDragOverVcatIndex(null);
+
+    try {
+      const itemsPayload = updated.map((item, idx) => ({ id: item.id, sortOrder: idx + 1 }));
+      await fetch("/api/categories", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reorder", type: "visual", items: itemsPayload }),
+      });
+    } catch (err) {
+      console.error("Reorder visual categories error:", err);
+    }
+  };
+
+  // Rule Category Reorder Handler
+  const handleRcatDrop = async (targetCatId: string, parentId: string | null) => {
+    if (!draggedRcatId || draggedRcatId === targetCatId) {
+      setDraggedRcatId(null);
+      setDragOverRcatId(null);
+      return;
+    }
+
+    // Get sibling list
+    const siblings = ruleCats.filter((c) => (c.parentId || null) === parentId);
+    const draggedIdx = siblings.findIndex((c) => c.id === draggedRcatId);
+    const targetIdx = siblings.findIndex((c) => c.id === targetCatId);
+
+    if (draggedIdx === -1 || targetIdx === -1) {
+      setDraggedRcatId(null);
+      setDragOverRcatId(null);
+      return;
+    }
+
+    const reorderedSiblings = [...siblings];
+    const [draggedItem] = reorderedSiblings.splice(draggedIdx, 1);
+    reorderedSiblings.splice(targetIdx, 0, draggedItem);
+
+    // Update global ruleCats list preserving other branches
+    const otherCats = ruleCats.filter((c) => (c.parentId || null) !== parentId);
+    const newRuleCats = [...otherCats, ...reorderedSiblings];
+
+    setRuleCats(newRuleCats);
+    setDraggedRcatId(null);
+    setDragOverRcatId(null);
+
+    try {
+      const itemsPayload = reorderedSiblings.map((item, idx) => ({
+        id: item.id,
+        sortOrder: idx + 1,
+        parentId: parentId || null,
+      }));
+      await fetch("/api/categories", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reorder", type: "rule", items: itemsPayload }),
+      });
+    } catch (err) {
+      console.error("Reorder rule categories error:", err);
+    }
+  };
 
   const currentFaculty = faculties.find((f) => f.id === selectedFacultyId);
   const currentMajor = majors.find((m) => m.id === selectedMajorId);
@@ -203,17 +287,42 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
             </Button>
           </CardHeader>
           <CardContent className="px-3 space-y-2">
-            {visualCats.map((cat) => (
+            {visualCats.map((cat, idx) => (
               <div
                 key={cat.id}
-                className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/20 p-2.5 text-xs"
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData("text/plain", idx.toString());
+                  setDraggedVcatIndex(idx);
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  if (dragOverVcatIndex !== idx) setDragOverVcatIndex(idx);
+                }}
+                onDragLeave={() => {
+                  if (dragOverVcatIndex === idx) setDragOverVcatIndex(null);
+                }}
+                onDrop={() => handleVcatDrop(idx)}
+                onDragEnd={() => {
+                  setDraggedVcatIndex(null);
+                  setDragOverVcatIndex(null);
+                }}
+                className={`flex items-center justify-between rounded-xl border p-2.5 text-xs transition-all duration-150 select-none cursor-grab active:cursor-grabbing ${
+                  draggedVcatIndex === idx
+                    ? "opacity-40 border-dashed border-primary bg-primary/5 scale-[0.98]"
+                    : dragOverVcatIndex === idx
+                    ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary/40 -translate-y-0.5"
+                    : "border-border/70 bg-card hover:border-primary/40 hover:bg-muted/20"
+                }`}
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2.5">
+                  <GripVertical className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0 cursor-grab" />
                   <span
-                    className="h-4 w-4 rounded-full border shadow-xs"
+                    className="h-4 w-4 rounded-full border shadow-2xs shrink-0"
                     style={{ backgroundColor: cat.color }}
                   />
-                  <span className="font-semibold">{cat.name}</span>
+                  <span className="font-bold text-foreground">{cat.name}</span>
+                  <span className="text-[10px] text-muted-foreground font-mono">#{idx + 1}</span>
                 </div>
                 <Button
                   variant="ghost"
@@ -225,7 +334,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                     );
                     if (res.success) setVisualCats(res.data.visual);
                   }}
-                  className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                  className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive shrink-0"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
@@ -274,23 +383,52 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                 );
               }
 
-              return topLevelCats.map((parentCat) => {
+              return topLevelCats.map((parentCat, pIdx) => {
                 const children = getChildCats(parentCat.id);
 
                 return (
                   <div
                     key={parentCat.id}
-                    className="space-y-1.5 rounded-xl border border-border/70 bg-muted/15 p-2.5"
+                    draggable
+                    onDragStart={(e) => {
+                      e.stopPropagation();
+                      setDraggedRcatId(parentCat.id);
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (dragOverRcatId !== parentCat.id) setDragOverRcatId(parentCat.id);
+                    }}
+                    onDragLeave={() => {
+                      if (dragOverRcatId === parentCat.id) setDragOverRcatId(null);
+                    }}
+                    onDrop={(e) => {
+                      e.stopPropagation();
+                      handleRcatDrop(parentCat.id, null);
+                    }}
+                    onDragEnd={() => {
+                      setDraggedRcatId(null);
+                      setDragOverRcatId(null);
+                    }}
+                    className={`space-y-1.5 rounded-2xl border p-3 transition-all duration-150 ${
+                      draggedRcatId === parentCat.id
+                        ? "opacity-40 border-dashed border-primary bg-primary/5 scale-[0.99]"
+                        : dragOverRcatId === parentCat.id
+                        ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary/40"
+                        : "border-border/70 bg-card hover:border-border"
+                    }`}
                   >
                     {/* Parent Category Row */}
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between cursor-grab active:cursor-grabbing">
                       <div className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-primary" />
+                        <GripVertical className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0 cursor-grab" />
+                        <span className="h-2.5 w-2.5 rounded-full bg-primary shrink-0" />
                         <span className="font-bold text-xs text-foreground">
                           {parentCat.name}
                         </span>
+                        <span className="text-[10px] text-muted-foreground font-mono">#{pIdx + 1}</span>
                         {children.length > 0 && (
-                          <Badge variant="secondary" className="text-[10px] h-4.5 px-1.5">
+                          <Badge variant="secondary" className="text-[10px] h-4.5 px-1.5 font-normal">
                             {children.length} زیردسته
                           </Badge>
                         )}
@@ -300,7 +438,8 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setRcatForm({ name: "", parentId: parentCat.id });
                             setRcatModalOpen(true);
                           }}
@@ -313,7 +452,8 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={async () => {
+                          onClick={async (e) => {
+                            e.stopPropagation();
                             await fetch(`/api/categories?id=${parentCat.id}&type=rule`, {
                               method: "DELETE",
                             });
@@ -332,17 +472,49 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
 
                     {/* Nested Children Subcategories */}
                     {children.length > 0 && (
-                      <div className="mr-3.5 pr-2.5 border-r-2 border-primary/30 space-y-1 pt-1">
-                        {children.map((childCat) => {
+                      <div className="mr-3.5 pr-2.5 border-r-2 border-primary/30 space-y-1.5 pt-1">
+                        {children.map((childCat, cIdx) => {
                           const subChildren = getChildCats(childCat.id);
                           return (
-                            <div key={childCat.id} className="space-y-1">
-                              <div className="flex items-center justify-between rounded-lg bg-background/80 border border-border/50 p-2 text-xs">
+                            <div
+                              key={childCat.id}
+                              draggable
+                              onDragStart={(e) => {
+                                e.stopPropagation();
+                                setDraggedRcatId(childCat.id);
+                              }}
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (dragOverRcatId !== childCat.id) setDragOverRcatId(childCat.id);
+                              }}
+                              onDragLeave={() => {
+                                if (dragOverRcatId === childCat.id) setDragOverRcatId(null);
+                              }}
+                              onDrop={(e) => {
+                                e.stopPropagation();
+                                handleRcatDrop(childCat.id, parentCat.id);
+                              }}
+                              onDragEnd={() => {
+                                setDraggedRcatId(null);
+                                setDragOverRcatId(null);
+                              }}
+                              className={`space-y-1 rounded-xl border p-2 text-xs transition-all duration-150 cursor-grab active:cursor-grabbing ${
+                                draggedRcatId === childCat.id
+                                  ? "opacity-40 border-dashed border-primary bg-primary/5"
+                                  : dragOverRcatId === childCat.id
+                                  ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary/30"
+                                  : "bg-background/90 border-border/60 hover:border-primary/40"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-1.5">
+                                  <GripVertical className="h-3 w-3 text-muted-foreground/60 shrink-0 cursor-grab" />
                                   <CornerDownLeft className="h-3 w-3 text-muted-foreground/70 shrink-0" />
-                                  <span className="font-medium text-foreground">
+                                  <span className="font-semibold text-foreground">
                                     {childCat.name}
                                   </span>
+                                  <span className="text-[9px] text-muted-foreground font-mono">#{cIdx + 1}</span>
                                   {subChildren.length > 0 && (
                                     <Badge variant="outline" className="text-[9px] h-4 px-1">
                                       {subChildren.length} زیردسته
