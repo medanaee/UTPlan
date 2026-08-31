@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Combobox } from "@/components/ui/combobox";
 import { TimePicker } from "@/components/ui/time-picker";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -125,6 +126,7 @@ export function EventManager({
 
   // Event Form state (Term is omitted because it's locked to activeTerm)
   const [selectedOfferingId, setSelectedOfferingId] = useState("");
+  const [isTermFinalized, setIsTermFinalized] = useState(false);
   const [groupCode, setGroupCode] = useState("01");
   const [location, setLocation] = useState("دانشکده فنی - کلاس ۱۰۲");
   const [examDate, setExamDate] = useState("1403/10/22");
@@ -169,7 +171,10 @@ export function EventManager({
 
   const handleOpenCreateModal = () => {
     setEditingEvent(null);
-    setSelectedOfferingId(offerings[0]?.id || "");
+    const initialOffId = offerings[0]?.id || "";
+    setSelectedOfferingId(initialOffId);
+    const off = offerings.find((o) => o.id === initialOffId);
+    setIsTermFinalized(off?.finalizedSemesters?.includes(activeTerm) || false);
     setGroupCode("01");
     setLocation("دانشکده فنی - کلاس ۱۰۲");
     setExamDate("1403/10/22");
@@ -184,7 +189,10 @@ export function EventManager({
 
   const handleOpenEditModal = (evt: CourseEvent) => {
     setEditingEvent(evt);
-    setSelectedOfferingId(evt.offeringId || "");
+    const offId = evt.offeringId || "";
+    setSelectedOfferingId(offId);
+    const off = offerings.find((o) => o.id === offId);
+    setIsTermFinalized(off?.finalizedSemesters?.includes(activeTerm) || false);
     setGroupCode(evt.groupCode || "01");
     setLocation(evt.location || "");
     setExamDate(evt.examDate || "");
@@ -248,6 +256,42 @@ export function EventManager({
 
     setIsSubmitting(true);
     try {
+      // Sync offering finalized semesters status for activeTerm
+      const targetOffering = offerings.find((o) => o.id === selectedOfferingId);
+      if (targetOffering) {
+        const currentFinalized = targetOffering.finalizedSemesters || [];
+        const currentlyHasTerm = currentFinalized.includes(activeTerm);
+        if (currentlyHasTerm !== isTermFinalized) {
+          let updatedFinalized: string[];
+          if (isTermFinalized) {
+            updatedFinalized = Array.from(new Set([...currentFinalized, activeTerm]));
+          } else {
+            updatedFinalized = currentFinalized.filter((s) => s !== activeTerm);
+          }
+
+          const profIds =
+            targetOffering.professors?.map((p) => p.id) ||
+            (targetOffering.professorIds
+              ? targetOffering.professorIds
+              : targetOffering.professorId
+              ? [targetOffering.professorId]
+              : []);
+
+          await fetch("/api/offerings", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: targetOffering.id,
+              courseId: targetOffering.courseId,
+              professorIds: profIds,
+              code: targetOffering.code,
+              description: targetOffering.description,
+              finalizedSemesters: updatedFinalized,
+            }),
+          });
+        }
+      }
+
       if (editingEvent) {
         // Edit existing
         const res = await fetch("/api/events", {
@@ -842,10 +886,31 @@ export function EventManager({
                   keywords: [o.courseName || "", o.courseCode || "", o.professorName || ""],
                 }))}
                 value={selectedOfferingId}
-                onChange={(val) => setSelectedOfferingId(val)}
+                onChange={(val) => {
+                  setSelectedOfferingId(val);
+                  const off = offerings.find((o) => o.id === val);
+                  setIsTermFinalized(off?.finalizedSemesters?.includes(activeTerm) || false);
+                }}
                 placeholder="-- انتخاب یا جستجوی ارائه درس --"
                 searchPlaceholder="جستجوی نام درس، کد یا استاد..."
                 className="w-full"
+              />
+            </div>
+
+            {/* Finalized Status Switch for selected offering in activeTerm */}
+            <div className="flex items-center justify-between p-3 rounded-2xl border border-border/80 bg-muted/20 space-x-2 space-x-reverse shadow-2xs">
+              <div className="space-y-0.5 pr-1">
+                <Label htmlFor="term-finalized-switch" className="text-xs font-bold block cursor-pointer">
+                  وضعیت ثبت نهایی رویدادها در این نیمسال
+                </Label>
+                <p className="text-[11px] text-muted-foreground">
+                  ثبت رویدادهای این ارائه در نیمسال <span className="font-semibold text-foreground">{formatSemesterLabel(activeTerm)}</span> نهایی و تکمیل شده است.
+                </p>
+              </div>
+              <Switch
+                id="term-finalized-switch"
+                checked={isTermFinalized}
+                onCheckedChange={setIsTermFinalized}
               />
             </div>
 
