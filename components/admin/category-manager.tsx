@@ -14,7 +14,6 @@ import {
   Sparkles,
   Copy,
   FolderTree,
-  ChevronDown,
   Palette,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -305,6 +304,53 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
   // Filter categories eligible to be parent for new categories (depth < 3)
   const eligibleParentCategories = ruleCats.filter((c) => getCategoryDepth(c.id) < 3);
 
+  // Render course chips list with identical formatting across all levels
+  const renderCourseChips = (catId: string, type: "visual" | "rule", catName: string, catColor?: string) => {
+    const assignedCourses = type === "visual" ? getVisualCategoryCourses(catId) : getRuleCategoryCourses(catId);
+
+    if (assignedCourses.length === 0) {
+      return (
+        <div
+          onClick={() =>
+            setAssignModal({
+              open: true,
+              type,
+              categoryId: catId,
+              categoryName: catName,
+              categoryColor: catColor,
+            })
+          }
+          className="text-xs text-muted-foreground/80 italic py-1.5 cursor-pointer hover:text-primary transition-colors flex items-center gap-1.5"
+        >
+          <Sparkles className="h-4 w-4 text-primary/70 shrink-0" />
+          <span>هیچ درسی به این دسته اختصاص داده نشده است (جهت انتساب سریع درس‌ها کلیک کنید).</span>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex flex-wrap gap-2 items-center">
+        {assignedCourses.map((c) => (
+          <div
+            key={c.id}
+            className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl bg-muted/40 border border-border/70 text-xs hover:bg-muted/70 transition-colors shadow-2xs"
+          >
+            <span className="font-semibold text-foreground">{c.name}</span>
+            <span className="text-muted-foreground font-mono text-xs">({c.code || (c.units + " واحد")})</span>
+            <button
+              type="button"
+              onClick={() => (type === "visual" ? handleQuickUnassignVisual(catId, c.id) : handleQuickUnassignRule(catId, c.id))}
+              className="text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 rounded-full p-0.5 transition-colors"
+              title="حذف این درس از دسته"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Active Track Banner */}
@@ -329,7 +375,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                   </Badge>
                 )}
               </div>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
+              <p className="text-xs text-muted-foreground mt-1">
                 دسته‌های بصری و دسته‌های قوانین برای دروس این گرایش تنظیم می‌شوند. با کلیک روی هر دسته می‌توانید مستقیماً دروس آن را انتخاب و تخصیص دهید.
               </p>
             </div>
@@ -386,7 +432,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
           </Button>
         </CardHeader>
 
-        <CardContent className="p-4 space-y-3">
+        <CardContent className="p-4 space-y-3.5">
           {visualCats.map((cat, idx) => {
             const assignedCourses = getVisualCategoryCourses(cat.id);
             const totalUnits = assignedCourses.reduce((sum, c) => sum + (c.units || 3), 0);
@@ -411,16 +457,16 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                   setDraggedVcatIndex(null);
                   setDragOverVcatIndex(null);
                 }}
-                className={"rounded-2xl border p-3.5 transition-all duration-150 space-y-2.5 " + (
+                className={"rounded-2xl border border-border/70 bg-card p-4 transition-all duration-150 space-y-3 shadow-2xs " + (
                   draggedVcatIndex === idx
                     ? "opacity-40 border-dashed border-primary bg-primary/5 scale-[0.99]"
                     : dragOverVcatIndex === idx
                     ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary/40"
-                    : "border-border/70 bg-card hover:border-primary/40 shadow-2xs"
+                    : "hover:border-primary/40"
                 )}
               >
                 {/* Category Header Row */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                   <div className="flex items-center gap-2.5 cursor-grab active:cursor-grabbing select-none">
                     <GripVertical className="h-4 w-4 text-muted-foreground/60 shrink-0 cursor-grab" />
                     <span
@@ -428,15 +474,15 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                       style={{ backgroundColor: cat.color }}
                     />
                     <span className="font-bold text-sm text-foreground">{cat.name}</span>
-                    <Badge variant="outline" className="text-[10px] font-mono text-muted-foreground font-normal">
-                      #{idx + 1}
+                    <Badge variant="outline" className="text-xs font-semibold px-2 py-0.5">
+                      ترتیب #{idx + 1}
                     </Badge>
-                    <Badge variant="secondary" className="text-[11px] font-medium">
+                    <Badge variant="secondary" className="text-xs font-medium px-2 py-0.5">
                       {assignedCourses.length} درس ({totalUnits} واحد)
                     </Badge>
                   </div>
 
-                  <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                  <div className="flex items-center gap-2 self-end sm:self-auto">
                     <Button
                       size="sm"
                       variant="outline"
@@ -449,7 +495,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                           categoryColor: cat.color,
                         })
                       }
-                      className="h-7 text-xs gap-1 shadow-2xs font-medium"
+                      className="h-8 text-xs gap-1.5 shadow-2xs font-medium"
                     >
                       <BookOpen className="h-3.5 w-3.5 text-primary" />
                       انتخاب و تخصیص دروس
@@ -466,53 +512,17 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                         );
                         if (res.success) setVisualCats(res.data.visual);
                       }}
-                      className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive shrink-0"
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive shrink-0"
                       title="حذف دسته"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
 
                 {/* Assigned Courses Chips Container */}
-                <div className="pt-2 border-t border-border/50">
-                  {assignedCourses.length > 0 ? (
-                    <div className="flex flex-wrap gap-1.5 items-center">
-                      {assignedCourses.map((c) => (
-                        <div
-                          key={c.id}
-                          className="flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 rounded-lg bg-muted/40 border border-border/70 text-xs hover:bg-muted/70 transition-colors"
-                        >
-                          <span className="font-semibold text-foreground">{c.name}</span>
-                          <span className="text-[10px] text-muted-foreground font-mono">({c.code || (c.units + " واحد")})</span>
-                          <button
-                            type="button"
-                            onClick={() => handleQuickUnassignVisual(cat.id, c.id)}
-                            className="text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 rounded-full p-0.5 transition-colors"
-                            title="حذف این درس از دسته"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div
-                      onClick={() =>
-                        setAssignModal({
-                          open: true,
-                          type: "visual",
-                          categoryId: cat.id,
-                          categoryName: cat.name,
-                          categoryColor: cat.color,
-                        })
-                      }
-                      className="text-xs text-muted-foreground/80 italic py-1 cursor-pointer hover:text-primary transition-colors flex items-center gap-1.5"
-                    >
-                      <Sparkles className="h-3.5 w-3.5 text-primary/70" />
-                      <span>هیچ درسی به این دسته بصری اختصاص داده نشده است (جهت انتساب سریع درس‌ها کلیک کنید).</span>
-                    </div>
-                  )}
+                <div className="pt-2.5 border-t border-border/50">
+                  {renderCourseChips(cat.id, "visual", cat.name, cat.color)}
                 </div>
               </div>
             );
@@ -554,7 +564,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
           </Button>
         </CardHeader>
 
-        <CardContent className="p-4 space-y-3.5">
+        <CardContent className="p-4 space-y-4">
           {(() => {
             const topLevelCats = ruleCats.filter(
               (c) => !c.parentId || !ruleCats.some((p) => p.id === c.parentId)
@@ -600,34 +610,34 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                     setDraggedRcatId(null);
                     setDragOverRcatId(null);
                   }}
-                  className={"space-y-3 rounded-2xl border p-4 transition-all duration-150 " + (
+                  className={"rounded-2xl border border-border/70 bg-card p-4 transition-all duration-150 space-y-3.5 shadow-2xs " + (
                     draggedRcatId === parentCat.id
                       ? "opacity-40 border-dashed border-primary bg-primary/5 scale-[0.99]"
                       : dragOverRcatId === parentCat.id
                       ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary/40"
-                      : "border-border/80 bg-card hover:border-border shadow-2xs"
+                      : "hover:border-border"
                   )}
                 >
                   {/* LEVEL 1: Parent Category Row */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 select-none">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 select-none">
                     <div className="flex items-center gap-2.5 cursor-grab active:cursor-grabbing">
                       <GripVertical className="h-4 w-4 text-muted-foreground/60 shrink-0 cursor-grab" />
-                      <span className="h-3 w-3 rounded-md bg-primary shrink-0" />
+                      <span className="h-3.5 w-3.5 rounded-md bg-primary shrink-0" />
                       <span className="font-bold text-sm text-foreground">{parentCat.name}</span>
-                      <Badge variant="outline" className="text-[10px] font-mono text-muted-foreground font-normal">
-                        سطح ۱ • #{pIdx + 1}
+                      <Badge variant="outline" className="text-xs font-semibold px-2 py-0.5">
+                        سطح ۱ (اصلی)
                       </Badge>
-                      <Badge variant="secondary" className="text-[11px] font-medium">
+                      <Badge variant="secondary" className="text-xs font-medium px-2 py-0.5">
                         {parentAssignedCourses.length} درس ({parentUnits} واحد)
                       </Badge>
                       {children.length > 0 && (
-                        <Badge variant="outline" className="text-[10px] h-5 px-1.5 font-normal">
+                        <Badge variant="outline" className="text-xs px-2 py-0.5 font-normal">
                           {children.length} زیردسته
                         </Badge>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                    <div className="flex items-center gap-2 self-end sm:self-auto">
                       <Button
                         size="sm"
                         variant="outline"
@@ -639,7 +649,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                             categoryName: parentCat.name,
                           })
                         }
-                        className="h-7 text-xs gap-1 shadow-2xs font-medium"
+                        className="h-8 text-xs gap-1.5 shadow-2xs font-medium"
                       >
                         <BookOpen className="h-3.5 w-3.5 text-primary" />
                         انتخاب و تخصیص دروس
@@ -654,7 +664,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                           setRcatForm({ name: "", parentId: parentCat.id });
                           setRcatModalOpen(true);
                         }}
-                        className="h-7 text-xs px-2 gap-1 text-primary hover:bg-primary/10"
+                        className="h-8 text-xs px-2.5 gap-1 text-primary hover:bg-primary/10 font-medium"
                         title="افزودن زیردسته (سطح ۲)"
                       >
                         <Plus className="h-3.5 w-3.5" />
@@ -675,57 +685,22 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                           ).then((r) => r.json());
                           if (res.success) setRuleCats(res.data.rule);
                         }}
-                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
                         title="حذف دسته"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
 
                   {/* Level 1 Assigned Courses Chips */}
-                  <div className="pt-2 border-t border-border/40">
-                    {parentAssignedCourses.length > 0 ? (
-                      <div className="flex flex-wrap gap-1.5 items-center">
-                        {parentAssignedCourses.map((c) => (
-                          <div
-                            key={c.id}
-                            className="flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 rounded-lg bg-primary/5 border border-primary/20 text-xs"
-                          >
-                            <span className="font-semibold text-foreground">{c.name}</span>
-                            <span className="text-[10px] text-muted-foreground font-mono">({c.code || (c.units + " واحد")})</span>
-                            <button
-                              type="button"
-                              onClick={() => handleQuickUnassignRule(parentCat.id, c.id)}
-                              className="text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 rounded-full p-0.5 transition-colors"
-                              title="حذف این درس از دسته"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div
-                        onClick={() =>
-                          setAssignModal({
-                            open: true,
-                            type: "rule",
-                            categoryId: parentCat.id,
-                            categoryName: parentCat.name,
-                          })
-                        }
-                        className="text-xs text-muted-foreground/80 italic py-0.5 cursor-pointer hover:text-primary transition-colors flex items-center gap-1.5"
-                      >
-                        <Sparkles className="h-3 w-3 text-primary/70" />
-                        <span>هیچ درسی به این دسته اختصاص نیافته است (برای انتساب کلیک کنید).</span>
-                      </div>
-                    )}
+                  <div className="pt-2.5 border-t border-border/50">
+                    {renderCourseChips(parentCat.id, "rule", parentCat.name)}
                   </div>
 
                   {/* LEVEL 2 & LEVEL 3: Nested Children Subcategories */}
                   {children.length > 0 && (
-                    <div className="mr-3 pr-3 border-r-2 border-primary/30 space-y-2.5 pt-1.5">
+                    <div className="mr-4 pr-4 border-r-2 border-primary/25 space-y-3.5 pt-2">
                       {children.map((childCat, cIdx) => {
                         const subChildren = getChildCats(childCat.id);
                         const childAssignedCourses = getRuleCategoryCourses(childCat.id);
@@ -755,34 +730,34 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                               setDraggedRcatId(null);
                               setDragOverRcatId(null);
                             }}
-                            className={"space-y-2 rounded-xl border p-3 text-xs transition-all duration-150 " + (
+                            className={"rounded-2xl border border-border/70 bg-card p-4 transition-all duration-150 space-y-3 shadow-2xs " + (
                               draggedRcatId === childCat.id
                                 ? "opacity-40 border-dashed border-primary bg-primary/5"
                                 : dragOverRcatId === childCat.id
                                 ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary/30"
-                                : "bg-muted/10 border-border/70 hover:border-primary/40 shadow-2xs"
+                                : "hover:border-primary/40"
                             )}
                           >
                             {/* Level 2 Row */}
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 select-none">
-                              <div className="flex items-center gap-1.5 cursor-grab active:cursor-grabbing">
-                                <GripVertical className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0 cursor-grab" />
-                                <CornerDownLeft className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0" />
-                                <span className="font-bold text-foreground">{childCat.name}</span>
-                                <Badge variant="outline" className="text-[9px] font-mono text-muted-foreground font-normal">
-                                  سطح ۲ • #{cIdx + 1}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 select-none">
+                              <div className="flex items-center gap-2.5 cursor-grab active:cursor-grabbing">
+                                <GripVertical className="h-4 w-4 text-muted-foreground/60 shrink-0 cursor-grab" />
+                                <CornerDownLeft className="h-4 w-4 text-muted-foreground/70 shrink-0" />
+                                <span className="font-bold text-sm text-foreground">{childCat.name}</span>
+                                <Badge variant="outline" className="text-xs font-semibold px-2 py-0.5">
+                                  سطح ۲ (زیردسته)
                                 </Badge>
-                                <Badge variant="secondary" className="text-[10px] font-normal">
+                                <Badge variant="secondary" className="text-xs font-medium px-2 py-0.5">
                                   {childAssignedCourses.length} درس ({childUnits} واحد)
                                 </Badge>
                                 {subChildren.length > 0 && (
-                                  <Badge variant="outline" className="text-[9px] h-4 px-1 font-normal">
+                                  <Badge variant="outline" className="text-xs px-2 py-0.5 font-normal">
                                     {subChildren.length} زیردسته
                                   </Badge>
                                 )}
                               </div>
 
-                              <div className="flex items-center gap-1 self-end sm:self-auto">
+                              <div className="flex items-center gap-2 self-end sm:self-auto">
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -794,10 +769,10 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                                       categoryName: childCat.name,
                                     })
                                   }
-                                  className="h-6 text-[11px] px-2 gap-1 shadow-2xs"
+                                  className="h-8 text-xs gap-1.5 shadow-2xs font-medium"
                                 >
-                                  <BookOpen className="h-3 w-3 text-primary" />
-                                  انتخاب دروس
+                                  <BookOpen className="h-3.5 w-3.5 text-primary" />
+                                  انتخاب و تخصیص دروس
                                 </Button>
 
                                 {/* Level 2 can add Level 3 Subcategory */}
@@ -809,10 +784,10 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                                     setRcatForm({ name: "", parentId: childCat.id });
                                     setRcatModalOpen(true);
                                   }}
-                                  className="h-6 text-[10px] px-1.5 gap-0.5 text-primary hover:bg-primary/10"
+                                  className="h-8 text-xs px-2.5 gap-1 text-primary hover:bg-primary/10 font-medium"
                                   title="افزودن زیردسته سطح ۳"
                                 >
-                                  <Plus className="h-3 w-3" />
+                                  <Plus className="h-3.5 w-3.5" />
                                   زیردسته
                                 </Button>
 
@@ -830,57 +805,22 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                                     ).then((r) => r.json());
                                     if (res.success) setRuleCats(res.data.rule);
                                   }}
-                                  className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                                  className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
                                   title="حذف زیردسته"
                                 >
-                                  <Trash2 className="h-3 w-3" />
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
                               </div>
                             </div>
 
                             {/* Level 2 Assigned Courses Chips */}
-                            <div className="pt-1.5 border-t border-border/30">
-                              {childAssignedCourses.length > 0 ? (
-                                <div className="flex flex-wrap gap-1.5 items-center">
-                                  {childAssignedCourses.map((c) => (
-                                    <div
-                                      key={c.id}
-                                      className="flex items-center gap-1 pl-1 pr-2 py-0.5 rounded-md bg-background border border-border/70 text-[11px]"
-                                    >
-                                      <span className="font-medium text-foreground">{c.name}</span>
-                                      <span className="text-[10px] text-muted-foreground">({c.code || (c.units + " واحد")})</span>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleQuickUnassignRule(childCat.id, c.id)}
-                                        className="text-muted-foreground/60 hover:text-destructive p-0.5"
-                                        title="حذف"
-                                      >
-                                        <X className="h-2.5 w-2.5" />
-                                      </button>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <div
-                                  onClick={() =>
-                                    setAssignModal({
-                                      open: true,
-                                      type: "rule",
-                                      categoryId: childCat.id,
-                                      categoryName: childCat.name,
-                                    })
-                                  }
-                                  className="text-[11px] text-muted-foreground/70 italic py-0.5 cursor-pointer hover:text-primary transition-colors flex items-center gap-1"
-                                >
-                                  <Sparkles className="h-2.5 w-2.5 text-primary/70" />
-                                  <span>هیچ درسی به این زیردسته اختصاص نیافته است.</span>
-                                </div>
-                              )}
+                            <div className="pt-2.5 border-t border-border/50">
+                              {renderCourseChips(childCat.id, "rule", childCat.name)}
                             </div>
 
                             {/* LEVEL 3: Deepest Allowed Subchildren (NO +زیردسته button here!) */}
                             {subChildren.length > 0 && (
-                              <div className="mr-3 pr-2 border-r border-border/60 space-y-1.5 pt-1">
+                              <div className="mr-4 pr-4 border-r-2 border-primary/25 space-y-3.5 pt-2">
                                 {subChildren.map((subChild, sIdx) => {
                                   const subAssignedCourses = getRuleCategoryCourses(subChild.id);
                                   const subUnits = subAssignedCourses.reduce((sum, c) => sum + (c.units || 3), 0);
@@ -909,23 +849,23 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                                         setDraggedRcatId(null);
                                         setDragOverRcatId(null);
                                       }}
-                                      className="rounded-lg bg-background/90 border border-border/50 p-2 text-xs space-y-1.5"
+                                      className="rounded-2xl border border-border/70 bg-card p-4 transition-all duration-150 space-y-3 shadow-2xs"
                                     >
                                       {/* Level 3 Row */}
-                                      <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-1.5 cursor-grab active:cursor-grabbing">
-                                          <GripVertical className="h-3 w-3 text-muted-foreground/60 shrink-0 cursor-grab" />
-                                          <CornerDownLeft className="h-3 w-3 text-muted-foreground/70 shrink-0" />
-                                          <span className="font-semibold text-foreground">{subChild.name}</span>
-                                          <Badge variant="outline" className="text-[8px] font-mono font-normal">
-                                            سطح ۳ (حداکثر عمق) • #{sIdx + 1}
+                                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 select-none">
+                                        <div className="flex items-center gap-2.5 cursor-grab active:cursor-grabbing">
+                                          <GripVertical className="h-4 w-4 text-muted-foreground/60 shrink-0 cursor-grab" />
+                                          <CornerDownLeft className="h-4 w-4 text-muted-foreground/70 shrink-0" />
+                                          <span className="font-bold text-sm text-foreground">{subChild.name}</span>
+                                          <Badge variant="outline" className="text-xs font-semibold px-2 py-0.5">
+                                            سطح ۳ (حداکثر عمق)
                                           </Badge>
-                                          <Badge variant="secondary" className="text-[9px] font-normal">
+                                          <Badge variant="secondary" className="text-xs font-medium px-2 py-0.5">
                                             {subAssignedCourses.length} درس ({subUnits} واحد)
                                           </Badge>
                                         </div>
 
-                                        <div className="flex items-center gap-1">
+                                        <div className="flex items-center gap-2 self-end sm:self-auto">
                                           <Button
                                             size="sm"
                                             variant="outline"
@@ -937,10 +877,10 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                                                 categoryName: subChild.name,
                                               })
                                             }
-                                            className="h-5 text-[10px] px-1.5 gap-0.5 shadow-2xs"
+                                            className="h-8 text-xs gap-1.5 shadow-2xs font-medium"
                                           >
-                                            <BookOpen className="h-2.5 w-2.5 text-primary" />
-                                            انتخاب دروس
+                                            <BookOpen className="h-3.5 w-3.5 text-primary" />
+                                            انتخاب و تخصیص دروس
                                           </Button>
 
                                           <Button
@@ -957,34 +897,18 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                                               ).then((r) => r.json());
                                               if (res.success) setRuleCats(res.data.rule);
                                             }}
-                                            className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive"
+                                            className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
                                             title="حذف زیردسته"
                                           >
-                                            <Trash2 className="h-2.5 w-2.5" />
+                                            <Trash2 className="h-4 w-4" />
                                           </Button>
                                         </div>
                                       </div>
 
                                       {/* Level 3 Assigned Courses */}
-                                      {subAssignedCourses.length > 0 && (
-                                        <div className="flex flex-wrap gap-1 items-center pt-1 border-t border-border/20">
-                                          {subAssignedCourses.map((c) => (
-                                            <div
-                                              key={c.id}
-                                              className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted/40 text-[10px]"
-                                            >
-                                              <span>{c.name}</span>
-                                              <button
-                                                type="button"
-                                                onClick={() => handleQuickUnassignRule(subChild.id, c.id)}
-                                                className="text-muted-foreground/60 hover:text-destructive"
-                                              >
-                                                <X className="h-2 w-2" />
-                                              </button>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      )}
+                                      <div className="pt-2.5 border-t border-border/50">
+                                        {renderCourseChips(subChild.id, "rule", subChild.name)}
+                                      </div>
                                     </div>
                                   );
                                 })}
@@ -1090,7 +1014,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-semibold">دسته والد (اختیاری):</Label>
-                <span className="text-[10px] text-muted-foreground">حداکثر عمق: ۳ لایه</span>
+                <span className="text-xs text-muted-foreground">حداکثر عمق: ۳ لایه</span>
               </div>
               <CategoryPicker
                 categories={eligibleParentCategories}

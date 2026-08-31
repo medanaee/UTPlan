@@ -7,11 +7,11 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Search, BookOpen, CheckSquare, Square, Loader2, Sparkles, Scale } from "lucide-react";
 import type { Course } from "@/lib/types";
 
@@ -134,13 +134,13 @@ export function CategoryCourseAssignDialog({
             )}
             <DialogTitle className="text-base font-bold flex items-center gap-2">
               <span>تخصیص دروس به «{categoryName}»</span>
-              <Badge variant="outline" className="text-[10px] font-normal">
+              <Badge variant="outline" className="text-xs font-normal">
                 {type === "visual" ? "دسته بصری چارت" : "دسته قوانین آموزشی"}
               </Badge>
             </DialogTitle>
           </div>
           <DialogDescription className="text-xs text-muted-foreground pt-1">
-            دروس مورد نظر را با تیک زدن انتخاب کنید تا در این دسته‌بندی قرار گیرند.
+            دروس مورد نظر را انتخاب کنید تا در این دسته‌بندی قرار گیرند.
           </DialogDescription>
         </DialogHeader>
 
@@ -211,24 +211,23 @@ export function CategoryCourseAssignDialog({
                 <div
                   key={c.id}
                   onClick={() => toggleCourse(c.id)}
-                  className={`flex items-center justify-between p-2.5 rounded-xl border text-xs cursor-pointer transition-all ${
+                  className={"flex items-center justify-between p-2.5 rounded-xl border text-xs cursor-pointer transition-all " + (
                     isSelected
                       ? "border-primary bg-primary/10 ring-1 ring-primary/30 shadow-2xs"
                       : "border-border/60 bg-card hover:bg-muted/30 hover:border-border"
-                  }`}
+                  )}
                 >
-                  <div className="flex items-center gap-2.5">
-                    <input
-                      type="checkbox"
+                  <div className="flex items-center gap-3">
+                    <Checkbox
                       checked={isSelected}
-                      onChange={() => {}}
-                      className="h-4 w-4 rounded accent-primary cursor-pointer"
+                      onCheckedChange={() => toggleCourse(c.id)}
+                      onClick={(e) => e.stopPropagation()}
                     />
                     <div>
                       <div className="font-bold text-foreground flex items-center gap-2">
                         <span>{c.name}</span>
                         {c.code && (
-                          <Badge variant="outline" className="text-[10px] font-mono font-normal">
+                          <Badge variant="outline" className="text-xs font-mono font-normal">
                             {c.code}
                           </Badge>
                         )}
@@ -241,7 +240,7 @@ export function CategoryCourseAssignDialog({
 
                   <Badge
                     variant={isSelected ? "default" : "secondary"}
-                    className="text-[10px] font-normal"
+                    className="text-xs font-normal"
                   >
                     {isSelected ? "تخصیص داده شده" : "تخصیص نیافته"}
                   </Badge>
@@ -251,12 +250,12 @@ export function CategoryCourseAssignDialog({
           )}
         </div>
 
-        {/* Footer */}
-        <DialogFooter className="p-3 border-t bg-muted/20 flex flex-row items-center justify-between gap-2">
-          <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-            <Sparkles className="h-3.5 w-3.5 text-primary" />
+        {/* Fixed Custom Footer - Clean RTL layout without standard DialogFooter conflict */}
+        <div className="flex items-center justify-between border-t bg-muted/40 px-4 py-3">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Sparkles className="h-4 w-4 text-primary shrink-0" />
             <span>
-              مجموع: <b className="text-foreground">{selectedIds.size}</b> درس (<b className="text-primary">{totalUnits}</b> واحد)
+              مجموع: <b className="text-foreground font-bold">{selectedIds.size}</b> درس (<b className="text-primary font-bold">{totalUnits}</b> واحد)
             </span>
           </div>
 
@@ -266,7 +265,7 @@ export function CategoryCourseAssignDialog({
               variant="outline"
               size="sm"
               onClick={() => onOpenChange(false)}
-              className="h-8 text-xs"
+              className="h-8 px-3 text-xs"
             >
               انصراف
             </Button>
@@ -275,7 +274,7 @@ export function CategoryCourseAssignDialog({
               size="sm"
               disabled={isSaving}
               onClick={handleSave}
-              className="h-8 text-xs font-bold gap-1.5 px-4"
+              className="h-8 px-4 text-xs font-bold gap-1.5"
             >
               {isSaving ? (
                 <>
@@ -287,7 +286,7 @@ export function CategoryCourseAssignDialog({
               )}
             </Button>
           </div>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
