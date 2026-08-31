@@ -27,7 +27,16 @@ import {
   Sparkles,
   Info,
   FileText,
+  AlertCircle,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +52,20 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import type { CourseOffering, ReviewItem, UserSession } from "@/lib/types";
+
+function formatSemesterLabel(termStr: string): string {
+  if (!termStr) return "تعیین‌نشده";
+  const parts = termStr.split("-");
+  if (parts.length === 2) {
+    const year = parts[0];
+    const sem = parts[1];
+    if (sem === "1" || sem === "fall") return `پاییز ${year}`;
+    if (sem === "2" || sem === "spring") return `بهار ${year}`;
+    if (sem === "3" || sem === "summer") return `تابستان ${year}`;
+    return `${sem} ${year}`;
+  }
+  return termStr;
+}
 
 const DAYS_NAMES: Record<number, string> = {
   0: "شنبه",
@@ -81,6 +104,49 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // Semesters & Events Selection State
+  const availableSemesters = React.useMemo(() => {
+    const sems = new Set<string>();
+    if (offering.events && offering.events.length > 0) {
+      offering.events.forEach((e) => {
+        if (e.term) sems.add(e.term);
+      });
+    }
+    if (offering.finalizedSemesters && offering.finalizedSemesters.length > 0) {
+      offering.finalizedSemesters.forEach((s) => sems.add(s));
+    }
+    const arr = Array.from(sems);
+    if (arr.length === 0) {
+      return ["1404-2"];
+    }
+    return arr.sort().reverse();
+  }, [offering.events, offering.finalizedSemesters]);
+
+  const [selectedSemester, setSelectedSemester] = useState<string>(() => {
+    if (offering.events && offering.events.length > 0) {
+      return offering.events[0].term || "1404-2";
+    }
+    if (offering.finalizedSemesters && offering.finalizedSemesters.length > 0) {
+      return offering.finalizedSemesters[0];
+    }
+    return "1404-2";
+  });
+
+  useEffect(() => {
+    if (availableSemesters.length > 0 && !availableSemesters.includes(selectedSemester)) {
+      setSelectedSemester(availableSemesters[0]);
+    }
+  }, [availableSemesters]);
+
+  const isSelectedSemesterFinalized = Boolean(
+    offering.finalizedSemesters && offering.finalizedSemesters.includes(selectedSemester)
+  );
+
+  const filteredEvents = React.useMemo(() => {
+    if (!offering.events) return [];
+    return offering.events.filter((e) => e.term === selectedSemester);
+  }, [offering.events, selectedSemester]);
 
   // Edit Review Modal State
   const [editingReview, setEditingReview] = useState<ReviewItem | null>(null);
@@ -424,73 +490,136 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Right 2 Columns: Classes/Schedule + Reviews Feed */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Class Schedule & Events Card */}
+          {/* Class Schedule & Events Card with Semester Selector & Status Badge */}
           <Card className="border-border/80 shadow-xs">
             <CardHeader className="pb-3 border-b border-border/50">
-              <CardTitle className="text-sm font-bold flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-primary" />
-                زمان‌بندی کلاس‌ها و تاریخ امتحانات ثبت‌شده
-              </CardTitle>
-              <CardDescription className="text-xs">
-                رویدادهای رسمی این ارائه در نیمسال‌های تحصیلی
-              </CardDescription>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <CardTitle className="text-sm font-bold flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-primary" />
+                    زمان‌بندی کلاس‌ها و تاریخ امتحانات
+                  </CardTitle>
+                  <CardDescription className="text-xs mt-0.5">
+                    برنامه جلسات هفتگی، محل تشکیل کلاس و امتحانات به تفکیک نیمسال
+                  </CardDescription>
+                </div>
+
+                {/* Semester Selector & Status Badge */}
+                <div className="flex items-center gap-2 self-start sm:self-center flex-wrap">
+                  {/* Status Badge */}
+                  {isSelectedSemesterFinalized ? (
+                    <Badge className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 gap-1 text-[11px] font-semibold px-2.5 py-1 shadow-2xs">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      <span>اطلاعات نهایی و کامل</span>
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10 gap-1 text-[11px] font-semibold px-2.5 py-1 shadow-2xs">
+                      <AlertCircle className="h-3.5 w-3.5" />
+                      <span>اطلاعات در حال تکمیل</span>
+                    </Badge>
+                  )}
+
+                  {/* Semester Dropdown */}
+                  <Select value={selectedSemester} onValueChange={setSelectedSemester}>
+                    <SelectTrigger className="text-xs font-semibold bg-background min-w-36">
+                      <SelectValue placeholder="انتخاب نیمسال" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {availableSemesters.map((sem) => (
+                          <SelectItem key={sem} value={sem} className="text-xs">
+                            {formatSemesterLabel(sem)}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </CardHeader>
+
             <CardContent className="space-y-3">
-              {offering.events && offering.events.length > 0 ? (
-                offering.events.map((evt) => (
+              {filteredEvents.length > 0 ? (
+                filteredEvents.map((evt) => (
                   <div
                     key={evt.id}
-                    className="p-3.5 rounded-2xl border border-border/80 bg-card/60 space-y-2.5 shadow-2xs"
+                    className="p-3.5 rounded-2xl border border-border/80 bg-card/60 space-y-3 shadow-2xs"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-2">
                       <div className="flex items-center gap-2">
                         <Badge variant="secondary" className="text-xs font-bold">
-                          نیمسال {evt.term}
+                          {evt.groupCode ? `گروه درسی ${evt.groupCode}` : "گروه درسی اصلی"}
                         </Badge>
-                        {evt.groupCode && (
-                          <Badge variant="outline" className="text-xs ">
-                            گروه {evt.groupCode}
-                          </Badge>
-                        )}
+                        <span className="text-xs text-muted-foreground">
+                          نیمسال {formatSemesterLabel(evt.term)}
+                        </span>
                       </div>
-                      {evt.location && (
+                      {evt.location ? (
+                        <span className="text-xs text-foreground bg-muted/40 px-2.5 py-1 rounded-lg border border-border/60 flex items-center gap-1.5 font-medium">
+                          <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
+                          <span>محل تشکیل: {evt.location}</span>
+                        </span>
+                      ) : (
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <MapPin className="h-3 w-3 text-primary shrink-0" />
-                          <span>{evt.location}</span>
+                          <MapPin className="h-3 w-3 text-muted-foreground/60 shrink-0" />
+                          <span>محل تشکیل: تعیین‌نشده</span>
                         </span>
                       )}
                     </div>
 
                     {/* Weekly Class Slots */}
-                    <div className="flex flex-wrap items-center gap-2 pt-1">
-                      <span className="text-xs font-semibold text-muted-foreground">جلسات هفتگی:</span>
+                    <div className="space-y-1.5">
+                      <span className="text-xs font-semibold text-muted-foreground block">
+                        زمان جلسات کلاسی:
+                      </span>
                       {evt.slots && evt.slots.length > 0 ? (
-                        evt.slots.map((s, idx) => (
-                          <span
-                            key={idx}
-                            className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg bg-primary/5 text-primary border border-primary/20"
-                          >
-                            <Clock className="h-3 w-3" />
-                            <span>{DAYS_NAMES[s.dayOfWeek] || "روز"}: {s.startTime} تا {s.endTime}</span>
-                          </span>
-                        ))
+                        <div className="flex flex-wrap items-center gap-2">
+                          {evt.slots.map((s, idx) => (
+                            <span
+                              key={idx}
+                              className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-xl bg-primary/5 text-primary border border-primary/20 shadow-2xs"
+                            >
+                              <Clock className="h-3.5 w-3.5" />
+                              <span>
+                                {DAYS_NAMES[s.dayOfWeek] || "روز"}: ساعت {s.startTime} تا {s.endTime}
+                              </span>
+                            </span>
+                          ))}
+                        </div>
                       ) : (
-                        <span className="text-xs text-muted-foreground">تعیین نشده</span>
+                        <span className="text-xs text-muted-foreground">تعیین‌نشده</span>
                       )}
                     </div>
 
-                    {/* Exam Time */}
-                    {evt.examDate && (
-                      <div className="text-xs text-amber-700 dark:text-amber-400 bg-amber-500/10 p-2 rounded-lg border border-amber-500/20 flex items-center justify-between">
-                        <span className="font-semibold">امتحان پایان‌ترم: {evt.examDate}</span>
-                        <span>ساعت: {evt.examStartTime || "۰۸:۳۰"} تا {evt.examEndTime || "۱۱:۰۰"}</span>
+                    {/* Exam Date & Time */}
+                    {evt.examDate ? (
+                      <div className="text-xs text-amber-800 dark:text-amber-300 bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/25 flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 font-semibold">
+                          <GraduationCap className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                          <span>روز و تاریخ امتحان پایان‌ترم: {evt.examDate}</span>
+                        </div>
+                        <div className="flex items-center gap-1 font-medium">
+                          <Clock className="h-3.5 w-3.5 opacity-80" />
+                          <span>ساعت: {evt.examStartTime || "۰۸:۳۰"} تا {evt.examEndTime || "۱۱:۰۰"}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-[11px] text-muted-foreground bg-muted/20 p-2 rounded-lg border border-dashed flex items-center gap-1.5">
+                        <Info className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0" />
+                        <span>تاریخ و ساعت امتحان پایان‌ترم در سامانه ثبت نشده است.</span>
                       </div>
                     )}
                   </div>
                 ))
               ) : (
-                <div className="py-8 text-center text-xs text-muted-foreground/70 bg-muted/20 rounded-xl border border-dashed">
-                  هنوز رویداد کلاسی فعالی برای این ارائه در سامانه ثبت نشده است.
+                <div className="py-8 text-center text-xs text-muted-foreground bg-muted/20 rounded-2xl border border-dashed p-6 space-y-2">
+                  <Calendar className="h-8 w-8 mx-auto text-muted-foreground/40" />
+                  <p className="font-semibold text-foreground">
+                    در نیمسال {formatSemesterLabel(selectedSemester)} رویداد کلاسی ثبت نشده است.
+                  </p>
+                  <p className="text-[11px]">
+                    می‌توانید از منوی بالا سایر نیمسال‌های تحصیلی را برای مشاهده زمان‌بندی انتخاب کنید.
+                  </p>
                 </div>
               )}
             </CardContent>
@@ -1143,7 +1272,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                       <ArrowLeft className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:-translate-x-1 transition-all shrink-0 mr-2" />
                     </Link>
                     {p.email && (
-                      <div className="text-[11px] text-muted-foreground bg-muted/20 px-3 py-1.5 rounded-xl border border-border/50 font-mono" dir="ltr">
+                      <div className="text-[11px] text-muted-foreground bg-muted/20 px-3 py-1.5 rounded-xl border border-border/50" dir="ltr">
                         {p.email}
                       </div>
                     )}

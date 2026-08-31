@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { OfferingImportDialog } from "@/components/offerings/offering-import-dialog";
 import { Download, Upload, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +30,7 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -571,9 +573,9 @@ export function OfferingManager({
         </CardContent>
       </Card>
 
-      {/* Create / Edit Modal (Multi-Professor Support) */}
+      {/* Create / Edit Modal (2-Column Responsive Layout) */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-lg" dir="rtl">
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto" dir="rtl">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2">
               {editingOffering ? (
@@ -605,270 +607,242 @@ export function OfferingManager({
           </div>
 
           <form onSubmit={handleSaveOffering} className="space-y-4">
-            {/* Offering Code (Optional) */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-semibold">کد ارائه:</Label>
-                <span className="text-[10px] text-muted-foreground">اختیاری (در صورت خالی بودن خودکار تولید می‌شود)</span>
-              </div>
-              <Input
-                placeholder="مثلاً OFF-101 یا 8101234-01"
-                value={form.code}
-                onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
-                className="h-8 text-xs"
-                dir="ltr"
-              />
-            </div>
-
-            {/* Course Combobox */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">انتخاب درس:</Label>
-              <Combobox
-                items={courses.map((c) => ({
-                  value: c.id,
-                  label: c.name,
-                  badge: c.code,
-                  sublabel: `${c.units} واحد`,
-                  keywords: [c.name, c.code, c.abbreviation || ""],
-                }))}
-                value={form.courseId}
-                onChange={(val) => setForm({ ...form, courseId: val })}
-                placeholder="-- انتخاب یا جستجوی درس --"
-                searchPlaceholder="جستجوی نام یا کد درس..."
-                className="w-full"
-              />
-            </div>
-
-            {/* Offering Description Textarea (Optional) */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-semibold">توضیحات ارائه:</Label>
-                <span className="text-[10px] text-muted-foreground">اختیاری (نکات، منابع درسی، پروژه‌ها و ...)</span>
-              </div>
-              <Textarea
-                placeholder="توضیحات خاص این ارائه، منابع درسی، کارگاه‌های عملی، پیش‌نیازهای مهارتی و ..."
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                rows={3}
-                className="text-xs resize-none"
-              />
-            </div>
-
-            {/* Multiple Professors Selection Box */}
-            <div className="space-y-2 pt-1 border-t border-border/60">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-semibold">
-                  اساتید مدرس (امکان انتخاب چند استاد):
-                </Label>
-                <span className="text-xs text-primary font-semibold">
-                  {form.professorIds.length} استاد انتخاب‌شده
-                </span>
-              </div>
-
-              {/* Selected Professors Chips */}
-              {selectedProfessorsList.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 p-2 rounded-xl bg-muted/40 border border-border/60 max-h-24 overflow-y-auto">
-                  {selectedProfessorsList.map((p, idx) => (
-                    <div
-                      key={p.id}
-                      className="flex items-center gap-1 bg-background px-2 py-1 rounded-lg border border-border/80 text-xs shadow-2xs"
-                    >
-                      <span className="font-semibold text-foreground">{p.name}</span>
-                      {idx === 0 && (
-                        <span className="text-[9px] text-primary font-bold">(اصلی)</span>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveProfessor(p.id)}
-                        className="text-muted-foreground hover:text-destructive p-0.5 rounded-full"
-                        title="حذف از ارائه"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
+            {/* 2-Column Responsive Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+              {/* Column 1: Course Info & Finalized Semesters */}
+              <div className="space-y-3.5">
+                {/* Course Combobox */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">انتخاب درس:</Label>
+                  <Combobox
+                    items={courses.map((c) => ({
+                      value: c.id,
+                      label: c.name,
+                      badge: c.code,
+                      sublabel: `${c.units} واحد`,
+                      keywords: [c.name, c.code, c.abbreviation || ""],
+                    }))}
+                    value={form.courseId}
+                    onChange={(val) => setForm({ ...form, courseId: val })}
+                    placeholder="-- انتخاب یا جستجوی درس --"
+                    searchPlaceholder="جستجوی نام یا کد درس..."
+                    className="w-full"
+                  />
                 </div>
-              )}
 
-              {/* Search Professor Inside Modal */}
-              <div className="relative">
-                <Input
-                  placeholder="جستجوی سریع در لیست اساتید..."
-                  value={modalProfSearch}
-                  onChange={(e) => setModalProfSearch(e.target.value)}
-                  className="h-8 text-xs pr-8"
-                />
-                <Search className="pointer-events-none absolute right-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
-              </div>
-
-              {/* Professors List with Checkbox */}
-              <div className="max-h-40 overflow-y-auto rounded-xl border border-border/70 divide-y divide-border/40 bg-card">
-                {filteredModalProfessors.map((p) => {
-                  const isSelected = form.professorIds.includes(p.id);
-                  return (
-                    <div
-                      key={p.id}
-                      onClick={() => handleToggleProfessor(p.id)}
-                      className={`flex items-center justify-between p-2.5 cursor-pointer transition-colors ${
-                        isSelected ? "bg-primary/10 hover:bg-primary/15" : "hover:bg-muted/40"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={() => handleToggleProfessor(p.id)}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-[10px] overflow-hidden shrink-0 border border-border/60">
-                          {p.avatarUrl ? (
-                            <img src={p.avatarUrl} alt={p.name} className="h-full w-full object-cover" />
-                          ) : (
-                            <span>{p.name ? p.name.charAt(0) : "؟"}</span>
-                          )}
-                        </div>
-                        <div className="truncate">
-                          <span className="font-semibold text-xs text-foreground block truncate">
-                            {p.name}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground block truncate">
-                            {[p.title, p.code].filter(Boolean).join(" • ") || "عضو هیئت علمی"}
-                          </span>
-                        </div>
-                      </div>
-
-                      {isSelected && (
-                        <Badge variant="outline" className="text-[10px] text-primary border-primary/30 bg-primary/5 shrink-0">
-                          انتخاب‌شده
-                        </Badge>
-                      )}
-                    </div>
-                  );
-                })}
-
-                {filteredModalProfessors.length === 0 && (
-                  <div className="text-center py-6 text-xs text-muted-foreground">
-                    استادی با این مشخصات یافت نشد.
+                {/* Offering Code (Optional) */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold">کد ارائه:</Label>
+                    <span className="text-[10px] text-muted-foreground">اختیاری (تولید خودکار در صورت خالی بودن)</span>
                   </div>
-                )}
-              </div>
-            </div>
+                  <Input
+                    placeholder="مثلاً OFF-101 یا 8101234-01"
+                    value={form.code}
+                    onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
+                    className="h-8 text-xs"
+                    dir="ltr"
+                  />
+                </div>
 
-            {/* Finalized Semesters Manager */}
-            <div className="space-y-2.5 pt-2 border-t border-border/60">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="text-xs font-semibold block text-foreground flex items-center gap-1.5">
-                    <CalendarCheck className="h-3.5 w-3.5 text-primary" />
-                    <span>نیمسال‌های نهایی‌شده ثبت رویدادها:</span>
+                {/* Offering Description Textarea (Optional) */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold">توضیحات ارائه:</Label>
+                    <span className="text-[10px] text-muted-foreground">اختیاری (نکات، منابع و ...)</span>
+                  </div>
+                  <Textarea
+                    placeholder="توضیحات خاص این ارائه، منابع درسی، کارگاه‌های عملی، پیش‌نیازهای مهارتی و ..."
+                    value={form.description}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    rows={2}
+                    className="text-xs resize-none"
+                  />
+                </div>
+
+                {/* Finalized Semesters Manager */}
+                <div className="space-y-2 pt-2 border-t border-border/60">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <CalendarCheck className="h-3.5 w-3.5 text-primary" />
+                      <span>نیمسال‌های نهایی‌شده ثبت رویدادها:</span>
+                    </Label>
+                    <Badge variant="outline" className="text-[10px] text-primary border-primary/30 bg-primary/5 shrink-0">
+                      {form.finalizedSemesters.length} نیمسال
+                    </Badge>
+                  </div>
+
+                  {/* Selected Semesters Chips */}
+                  {form.finalizedSemesters.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5 p-2 rounded-xl bg-muted/40 border border-border/60 max-h-24 overflow-y-auto">
+                      {form.finalizedSemesters.map((semCode) => (
+                        <div
+                          key={semCode}
+                          className="flex items-center gap-1.5 bg-background px-2 py-1 rounded-lg border border-border/80 text-xs shadow-2xs"
+                        >
+                          <CheckCircle2 className="h-3 w-3 text-emerald-600 shrink-0" />
+                          <span className="font-semibold text-foreground">
+                            {formatSemesterLabel(semCode)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFinalizedSemester(semCode)}
+                            className="text-muted-foreground hover:text-destructive p-0.5 rounded-full transition-colors mr-0.5"
+                            title="حذف نیمسال"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-2 rounded-xl border border-dashed text-center text-xs text-muted-foreground bg-muted/20">
+                      هنوز نیمسالی ثبت نشده است.
+                    </div>
+                  )}
+
+                  {/* Add New Semester Container */}
+                  <div className="p-2 rounded-xl bg-card border border-border/70 flex items-center justify-between gap-2">
+                    {/* Inputs container on the right */}
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      {/* Year NumberInput */}
+                      <NumberInput
+                        min={1350}
+                        max={1499}
+                        value={newSemYear}
+                        onChange={(val) => setNewSemYear(String(val))}
+                        placeholder="سال"
+                        className="w-28 shrink-0"
+                      />
+
+                      {/* Term Type Select */}
+                      <div className="flex-1 min-w-0">
+                        <Select value={newSemType} onValueChange={setNewSemType}>
+                          <SelectTrigger className="w-full text-xs">
+                            <SelectValue placeholder="نوع نیمسال" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectGroup>
+                              <SelectItem value="1" className="text-xs">پاییز (نیمسال اول)</SelectItem>
+                              <SelectItem value="2" className="text-xs">بهار (نیمسال دوم)</SelectItem>
+                              <SelectItem value="3" className="text-xs">تابستان</SelectItem>
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* Add Button */}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleAddFinalizedSemester}
+                      className="text-xs font-semibold gap-1 shrink-0"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      افزودن
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Column 2: Multi-Professors Selection */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold">
+                    اساتید مدرس (امکان انتخاب چند استاد):
                   </Label>
-                  <span className="text-[11px] text-muted-foreground block mt-0.5">
-                    مشخص کنید در کدام نیمسال‌ها کلیه اطلاعات کلاسی و امتحانی این ارائه نهایی و کامل ثبت شده است.
+                  <span className="text-xs text-primary font-semibold">
+                    {form.professorIds.length} استاد انتخاب‌شده
                   </span>
                 </div>
-                <Badge variant="outline" className="text-[10px] text-primary border-primary/30 bg-primary/5 shrink-0">
-                  {form.finalizedSemesters.length} نیمسال
-                </Badge>
-              </div>
 
-              {/* Selected Semesters Chips */}
-              {form.finalizedSemesters.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5 p-2 rounded-xl bg-muted/40 border border-border/60 max-h-24 overflow-y-auto">
-                  {form.finalizedSemesters.map((semCode) => (
-                    <div
-                      key={semCode}
-                      className="flex items-center gap-1.5 bg-background px-2.5 py-1 rounded-lg border border-border/80 text-xs shadow-2xs"
-                    >
-                      <CheckCircle2 className="h-3 w-3 text-emerald-600 shrink-0" />
-                      <span className="font-semibold text-foreground">
-                        {formatSemesterLabel(semCode)}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">
-                        ({semCode})
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveFinalizedSemester(semCode)}
-                        className="text-muted-foreground hover:text-destructive p-0.5 rounded-full transition-colors mr-0.5"
-                        title="حذف نیمسال"
+                {/* Selected Professors Chips */}
+                {selectedProfessorsList.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 p-2 rounded-xl bg-muted/40 border border-border/60 max-h-24 overflow-y-auto">
+                    {selectedProfessorsList.map((p, idx) => (
+                      <div
+                        key={p.id}
+                        className="flex items-center gap-1 bg-background px-2 py-1 rounded-lg border border-border/80 text-xs shadow-2xs"
                       >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-2.5 rounded-xl border border-dashed text-center text-xs text-muted-foreground bg-muted/20">
-                  هنوز نیمسالی به عنوان نهایی‌شده برای این ارائه ثبت نشده است.
-                </div>
-              )}
-
-              {/* Add New Semester Controls */}
-              <div className="p-2.5 rounded-xl bg-card border border-border/70 space-y-2">
-                <div className="flex items-center gap-2">
-                  {/* Year Select */}
-                  <div className="w-28 shrink-0">
-                    <Select value={newSemYear} onValueChange={setNewSemYear}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="سال" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {["1402", "1403", "1404", "1405", "1406", "1407"].map((y) => (
-                          <SelectItem key={y} value={y} className="text-xs">
-                            {y}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                        <span className="font-semibold text-foreground">{p.name}</span>
+                        {idx === 0 && (
+                          <span className="text-[9px] text-primary font-bold">(اصلی)</span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveProfessor(p.id)}
+                          className="text-muted-foreground hover:text-destructive p-0.5 rounded-full"
+                          title="حذف از ارائه"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
+                )}
 
-                  {/* Term Type Select */}
-                  <div className="flex-1 min-w-0">
-                    <Select value={newSemType} onValueChange={setNewSemType}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="نوع نیمسال" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1" className="text-xs">پاییز (نیمسال اول)</SelectItem>
-                        <SelectItem value="2" className="text-xs">بهار (نیمسال دوم)</SelectItem>
-                        <SelectItem value="3" className="text-xs">تابستان</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Add Button */}
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={handleAddFinalizedSemester}
-                    className="h-8 text-xs font-semibold gap-1 shrink-0"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    افزودن
-                  </Button>
+                {/* Search Professor Inside Modal */}
+                <div className="relative">
+                  <Input
+                    placeholder="جستجوی سریع در لیست اساتید..."
+                    value={modalProfSearch}
+                    onChange={(e) => setModalProfSearch(e.target.value)}
+                    className="h-8 text-xs pr-8"
+                  />
+                  <Search className="pointer-events-none absolute right-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
                 </div>
 
-                {/* Quick Add Suggestions */}
-                <div className="flex flex-wrap items-center gap-1 pt-1 text-[11px] text-muted-foreground">
-                  <span className="shrink-0">پیشنهادی:</span>
-                  {["1403-1", "1403-2", "1404-1", "1404-2", "1405-1", "1405-2", "1405-3"].map((code) => {
-                    const isAdded = form.finalizedSemesters.includes(code);
+                {/* Professors List with Checkbox */}
+                <div className="max-h-72 overflow-y-auto rounded-xl border border-border/70 divide-y divide-border/40 bg-card">
+                  {filteredModalProfessors.map((p) => {
+                    const isSelected = form.professorIds.includes(p.id);
                     return (
-                      <button
-                        key={code}
-                        type="button"
-                        onClick={() => handleToggleFinalizedSemester(code)}
-                        className={`px-2 py-0.5 rounded-md border text-[10px] font-medium transition-all ${
-                          isAdded
-                            ? "bg-primary/10 border-primary text-primary font-bold"
-                            : "bg-muted/40 border-border/70 hover:bg-muted text-muted-foreground hover:text-foreground"
+                      <div
+                        key={p.id}
+                        onClick={() => handleToggleProfessor(p.id)}
+                        className={`flex items-center justify-between p-2.5 cursor-pointer transition-colors ${
+                          isSelected ? "bg-primary/10 hover:bg-primary/15" : "hover:bg-muted/40"
                         }`}
                       >
-                        {isAdded ? "✓ " : "+ "}
-                        {formatSemesterLabel(code)}
-                      </button>
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => handleToggleProfessor(p.id)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-[10px] overflow-hidden shrink-0 border border-border/60">
+                            {p.avatarUrl ? (
+                              <img src={p.avatarUrl} alt={p.name} className="h-full w-full object-cover" />
+                            ) : (
+                              <span>{p.name ? p.name.charAt(0) : "؟"}</span>
+                            )}
+                          </div>
+                          <div className="truncate">
+                            <span className="font-semibold text-xs text-foreground block truncate">
+                              {p.name}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground block truncate">
+                              {[p.title, p.code].filter(Boolean).join(" • ") || "عضو هیئت علمی"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {isSelected && (
+                          <Badge variant="outline" className="text-[10px] text-primary border-primary/30 bg-primary/5 shrink-0">
+                            انتخاب‌شده
+                          </Badge>
+                        )}
+                      </div>
                     );
                   })}
+
+                  {filteredModalProfessors.length === 0 && (
+                    <div className="text-center py-6 text-xs text-muted-foreground">
+                      استادی با این مشخصات یافت نشد.
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
