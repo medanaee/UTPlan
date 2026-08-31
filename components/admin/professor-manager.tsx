@@ -314,17 +314,33 @@ export function ProfessorManager({
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+        </div>
+      </div>
+
+      {/* Main Professors List Card */}
+      <Card className="rounded-2xl border-border/80 shadow-xs">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <UsersRound className="h-4 w-4 text-primary" />
+              <span> اساتید {currentFaculty ? `«${currentFaculty.name}»` : ""}</span>
+            </CardTitle>
+            <CardDescription className="text-xs">
+              مدیریت، ویرایش و آپلود تصاویر اساتید جهت انتساب به ارائه‌های درسی و ارزشیابی دانشجویان
+            </CardDescription>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={handleExportJson}
               disabled={isExporting}
-              className="h-8 gap-1.5 text-xs shadow-2xs font-medium"
+              className="h-8 gap-1.5 text-xs shadow-2xs"
             >
               <Download className="h-3.5 w-3.5 text-primary" />
-              {isExporting ? "در حال دریافت..." : "خروجی JSON"}
+              <span>خروجی اساتید (Export JSON)</span>
             </Button>
 
             <Button
@@ -332,44 +348,23 @@ export function ProfessorManager({
               variant="outline"
               size="sm"
               onClick={() => setImportModalOpen(true)}
-              className="h-8 gap-1.5 text-xs shadow-2xs font-medium"
+              className="h-8 gap-1.5 text-xs shadow-2xs font-semibold"
             >
               <Upload className="h-3.5 w-3.5 text-primary" />
-              ورود اساتید (Import JSON)
+              <span>ورود دسته‌ای (Import JSON)</span>
             </Button>
 
             <Button
+              type="button"
               size="sm"
               onClick={handleOpenCreateModal}
+              disabled={!selectedFacultyId}
               className="h-8 gap-1.5 text-xs shadow-xs font-semibold"
             >
               <Plus className="h-3.5 w-3.5" />
               افزودن استاد جدید
             </Button>
           </div>
-        </div>
-      </div>
-
-      {/* Main Professors List Card */}
-      <Card className="rounded-2xl border-border/80 shadow-xs">
-        <CardHeader className="border-b border-border/60 flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="text-base flex items-center gap-2">
-              <UsersRound className="h-4 w-4 text-primary"/>
-              لیست اساتید و اعضای هیئت علمی
-              </CardTitle>
-            <CardDescription className="text-xs">
-              مدیریت، ویرایش و آپلود تصاویر اساتید جهت انتساب به ارائه‌های درسی و ارزشیابی دانشجویان
-            </CardDescription>
-          </div>
-          <Button
-            size="sm"
-            onClick={handleOpenCreateModal}
-            className="h-8 gap-1.5 text-xs shadow-xs"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            افزودن استاد جدید
-          </Button>
         </CardHeader>
 
         <CardContent className="px-4 space-y-4">
