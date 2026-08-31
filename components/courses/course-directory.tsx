@@ -77,11 +77,13 @@ export function CourseDirectory({
 
   // Filtered list
   const filteredCourses = useMemo(() => {
+    const q = search.trim().toLowerCase();
     return courses.filter((c) => {
       const matchesSearch =
-        search.trim() === "" ||
-        c.name.toLowerCase().includes(search.toLowerCase()) ||
-        c.code.toLowerCase().includes(search.toLowerCase());
+        q === "" ||
+        c.name.toLowerCase().includes(q) ||
+        c.code.toLowerCase().includes(q) ||
+        Boolean(c.abbreviation && c.abbreviation.toLowerCase().includes(q));
 
       const matchesFaculty =
         selectedFaculty === "all" || c.facultyId === selectedFaculty;

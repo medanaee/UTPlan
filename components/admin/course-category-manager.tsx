@@ -169,9 +169,12 @@ export function CourseCategoryManager({
   };
 
   const filteredCourses = courses.filter((c) => {
+    const q = search.trim().toLowerCase();
     const matchSearch =
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.code.toLowerCase().includes(search.toLowerCase());
+      !q ||
+      c.name.toLowerCase().includes(q) ||
+      c.code.toLowerCase().includes(q) ||
+      Boolean(c.abbreviation && c.abbreviation.toLowerCase().includes(q));
 
     if (!matchSearch) return false;
 

@@ -580,7 +580,8 @@ export function ChartEditor({
         const term = drawerSearch.trim().toLowerCase();
         const matchName = course.name.toLowerCase().includes(term);
         const matchCode = course.code.toLowerCase().includes(term);
-        if (!matchName && !matchCode) return false;
+        const matchAbbr = Boolean(course.abbreviation && course.abbreviation.toLowerCase().includes(term));
+        if (!matchName && !matchCode && !matchAbbr) return false;
       }
 
       // 2. Category filter

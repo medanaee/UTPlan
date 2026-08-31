@@ -57,7 +57,8 @@ export function CategoryCourseAssignDialog({
     return allCourses.filter(
       (c) =>
         c.name.toLowerCase().includes(q) ||
-        (c.code && c.code.toLowerCase().includes(q))
+        (c.code && c.code.toLowerCase().includes(q)) ||
+        Boolean(c.abbreviation && c.abbreviation.toLowerCase().includes(q))
     );
   }, [allCourses, search]);
 

@@ -83,11 +83,15 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
     (c) => !selectedFacultyId || c.facultyId === selectedFacultyId
   );
 
-  const filteredCourses = facultyCourses.filter(
-    (c) =>
-      c.name.toLowerCase().includes(courseSearch.toLowerCase()) ||
-      c.code.toLowerCase().includes(courseSearch.toLowerCase())
-  );
+  const filteredCourses = facultyCourses.filter((c) => {
+    const q = courseSearch.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      c.name.toLowerCase().includes(q) ||
+      c.code.toLowerCase().includes(q) ||
+      Boolean(c.abbreviation && c.abbreviation.toLowerCase().includes(q))
+    );
+  });
 
   // Create or Update Course
   const handleSaveCourse = async (e: React.FormEvent) => {

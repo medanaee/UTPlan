@@ -283,7 +283,8 @@ export function TermSchedulePlanner({
     return termCourses.filter(
       (c) =>
         c.name.toLowerCase().includes(q) ||
-        c.code.toLowerCase().includes(q)
+        c.code.toLowerCase().includes(q) ||
+        Boolean(c.abbreviation && c.abbreviation.toLowerCase().includes(q))
     );
   }, [termCourses, searchQuery]);
 
