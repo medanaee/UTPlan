@@ -139,14 +139,14 @@ export default function AdminDashboardPage() {
       icon: BookUser,
     },
     {
-      id: "events" as const,
-      label: "رویدادها و برنامه‌ریزی کلاسی",
-      icon: CalendarDays,
-    },
-    {
       id: "categories" as const,
       label: "دسته‌بندی و انتساب دروس",
       icon: Layers,
+    },
+    {
+      id: "rules" as const,
+      label: "موتور قوانین و شبیه‌ساز",
+      icon: GitBranch,
     },
     {
       id: "approved-charts" as const,
@@ -154,9 +154,9 @@ export default function AdminDashboardPage() {
       icon: GraduationCap,
     },
     {
-      id: "rules" as const,
-      label: "موتور قوانین و شبیه‌ساز",
-      icon: GitBranch,
+      id: "events" as const,
+      label: "رویدادها و برنامه‌ریزی کلاسی",
+      icon: CalendarDays,
     },
     {
       id: "users" as const,
