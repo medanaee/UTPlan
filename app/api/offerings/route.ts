@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     if (!auth.authorized) return auth.response! as NextResponse;
 
     const body = await request.json();
-    const { courseId, professorId, professorIds, code } = body;
+    const { courseId, professorId, professorIds, code, description } = body;
 
     const resolvedProfIds: string[] = Array.isArray(professorIds) && professorIds.length > 0
       ? professorIds
@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
       courseId,
       professorIds: resolvedProfIds,
       code,
+      description,
     });
 
     return NextResponse.json({
@@ -65,7 +66,7 @@ export async function PUT(request: NextRequest) {
     if (!auth.authorized) return auth.response! as NextResponse;
 
     const body = await request.json();
-    const { id, courseId, professorId, professorIds, code } = body;
+    const { id, courseId, professorId, professorIds, code, description } = body;
 
     const resolvedProfIds: string[] | undefined = Array.isArray(professorIds)
       ? professorIds
@@ -80,7 +81,12 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const updated = await updateOffering(id, { courseId, professorIds: resolvedProfIds, code });
+    const updated = await updateOffering(id, {
+      courseId,
+      professorIds: resolvedProfIds,
+      code,
+      description,
+    });
     if (!updated) {
       return NextResponse.json(
         { success: false, message: "ارائه درس مورد نظر یافت نشد." },

@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
         code: o.code || undefined,
         courseCode: crs?.code || o.courseCode || "",
         courseName: crs?.name || o.courseName || "",
+        description: o.description || undefined,
         // Array of professors (supporting co-teaching)
         professors: offeringProfs,
         // Legacy single-professor fields for convenience

@@ -1,4 +1,4 @@
-﻿-- ============================================================
+-- ============================================================
 -- UT-ECE Database Schema for Cloudflare D1 (SQLite)
 -- ============================================================
 
@@ -133,6 +133,7 @@ CREATE TABLE IF NOT EXISTS offerings (
   term TEXT NOT NULL,
   capacity INTEGER NOT NULL,
   registered INTEGER NOT NULL DEFAULT 0,
+  description TEXT,
   exam_date TEXT,
   exam_time TEXT,
   created_at TEXT NOT NULL,

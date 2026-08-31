@@ -143,6 +143,7 @@ CREATE TABLE IF NOT EXISTS course_offerings (
   code TEXT,
   course_id TEXT NOT NULL,
   professor_id TEXT NOT NULL,
+  description TEXT,
   created_at TEXT NOT NULL,
   deleted_at TEXT,
   FOREIGN KEY (course_id) REFERENCES courses(id),

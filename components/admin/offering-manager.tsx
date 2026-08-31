@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { OfferingImportDialog } from "@/components/offerings/offering-import-dialog";
 import { Download, Upload, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -66,14 +67,16 @@ export function OfferingManager({
 
   const currentFaculty = faculties.find((f) => f.id === selectedFacultyId);
 
-  // Form State: Course + Multiple Professors
+  // Form State: Course + Multiple Professors + Description
   const [form, setForm] = useState<{
     code: string;
     courseId: string;
+    description: string;
     professorIds: string[];
   }>({
     code: "",
     courseId: "",
+    description: "",
     professorIds: [],
   });
 
@@ -104,6 +107,7 @@ export function OfferingManager({
     setForm({
       code: "",
       courseId: courses[0]?.id || "",
+      description: "",
       professorIds: professors[0] ? [professors[0].id] : [],
     });
     setIsModalOpen(true);
@@ -122,6 +126,7 @@ export function OfferingManager({
     setForm({
       code: off.code || "",
       courseId: off.courseId,
+      description: off.description || "",
       professorIds: pIds,
     });
     setIsModalOpen(true);
@@ -446,11 +451,6 @@ export function OfferingManager({
                               </div>
                             ))}
                           </div>
-                          {offeringProfs.length > 1 && (
-                            <span className="text-[10px] text-primary font-medium block">
-                              {offeringProfs.length} استاد هم‌تدریس
-                            </span>
-                          )}
                         </div>
                       </td>
 
@@ -568,6 +568,21 @@ export function OfferingManager({
                 placeholder="-- انتخاب یا جستجوی درس --"
                 searchPlaceholder="جستجوی نام یا کد درس..."
                 className="w-full"
+              />
+            </div>
+
+            {/* Offering Description Textarea (Optional) */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold">توضیحات ارائه:</Label>
+                <span className="text-[10px] text-muted-foreground">اختیاری (نکات، منابع درسی، پروژه‌ها و ...)</span>
+              </div>
+              <Textarea
+                placeholder="توضیحات خاص این ارائه، منابع درسی، کارگاه‌های عملی، پیش‌نیازهای مهارتی و ..."
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                rows={3}
+                className="text-xs resize-none"
               />
             </div>
 

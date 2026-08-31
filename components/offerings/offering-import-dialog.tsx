@@ -58,6 +58,11 @@ const OFFERING_SCHEMA_DESCRIPTOR = {
         description: "نام درس (اولویت دوم در صورت نبود کد درس)",
         example: "برنامه‌نویسی پیشرفته"
       },
+      description: {
+        type: "string",
+        description: "توضیحات و نکات اختیاری ارائه (منابع، پیش‌نیازهای مهارتی و ...)",
+        example: "این درس به همراه کارگاه عملی و پروژه نهایی ارائه می‌شود."
+      },
       professors: {
         type: "array",
         description: "لیست اساتید این ارائه (برای ارائه‌های با چند استاد هم‌تدریس)",
@@ -103,6 +108,7 @@ const OFFERING_SCHEMA_DESCRIPTOR = {
       {
         code: "OFF-101",
         courseCode: "8101234",
+        description: "ارائه ویژه به همراه تمرین‌یار و پروژه تیمی",
         professors: [
           { professorCode: "PRF-101" },
           { professorName: "سارا رضایی" }

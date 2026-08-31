@@ -20,6 +20,7 @@ interface ImportOfferingItem {
   code?: string;
   courseCode?: string;
   courseName?: string;
+  description?: string;
   // Multi-professor formats:
   professors?: RawProfessorRef[];
   professorCodes?: string[];
@@ -192,6 +193,7 @@ export async function POST(request: NextRequest) {
             courseId: matchedCourse.id,
             professorIds: matchedProfIds,
             code: offeringCode || existingMatch.code,
+            description: item.description !== undefined ? item.description : undefined,
           });
           updatedCount++;
         } catch (err: any) {
@@ -204,6 +206,7 @@ export async function POST(request: NextRequest) {
             courseId: matchedCourse.id,
             professorIds: matchedProfIds,
             code: offeringCode,
+            description: item.description,
           });
           createdCount++;
           offeringPairMap.set(pairKey, newOff);

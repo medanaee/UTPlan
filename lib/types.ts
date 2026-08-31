@@ -165,6 +165,7 @@ export interface CourseOffering {
   id: string;
   code?: string;
   courseId: string;
+  description?: string;
   professorId?: string;
   professorIds?: string[];
   professors?: OfferingProfessorInfo[];

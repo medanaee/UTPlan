@@ -26,6 +26,7 @@ import {
   Loader2,
   Sparkles,
   Info,
+  FileText,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1021,6 +1022,23 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
 
         {/* Left 1 Column: Linked Course & Professor Details */}
         <div className="space-y-6">
+          {/* Offering Specific Description Card */}
+          {offering.description && (
+            <Card className="border-primary/30 bg-primary/5 shadow-xs">
+              <CardHeader className="pb-3 border-b border-primary/20">
+                <CardTitle className="text-sm font-bold flex items-center gap-2 text-primary">
+                  <FileText className="h-4 w-4 text-primary" />
+                  توضیحات و نکات این ارائه
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <p className="text-xs text-foreground/90 leading-relaxed whitespace-pre-line bg-background/80 p-3.5 rounded-2xl border border-primary/20">
+                  {offering.description}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Linked Course Card */}
           <Card className="border-border/80 shadow-xs">
             <CardHeader className="pb-3 border-b border-border/50">
@@ -1061,37 +1079,77 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
           {/* Professor Card */}
           <Card className="border-border/80 shadow-xs">
             <CardHeader className="pb-3 border-b border-border/50">
-              <CardTitle className="text-sm font-bold flex items-center gap-2">
-                <User className="h-4 w-4 text-primary" />
-                مشخصات استاد مدرس
+              <CardTitle className="text-sm font-bold flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-primary" />
+                  <span>{offering.professors && offering.professors.length > 1 ? "اساتید مدرس (هم‌تدریس)" : "مشخصات استاد مدرس"}</span>
+                </div>
+                {offering.professors && offering.professors.length > 1 && (
+                  <Badge variant="outline" className="text-[10px] text-primary border-primary/30 bg-primary/5">
+                    {offering.professors.length} استاد
+                  </Badge>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-4 space-y-3">
-              <Link
-                href={`/professors/${offering.professorId}`}
-                className="group flex items-center justify-between p-3.5 rounded-2xl border border-border/80 bg-card hover:border-primary/50 hover:shadow-xs transition-all text-xs"
-              >
-                <div className="flex items-center gap-3 truncate flex-1 min-w-0 pr-1">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0">
-                    {offering.professorName?.[0] || "ا"}
-                  </div>
-                  <div className="truncate">
-                    <span className="font-bold text-sm block truncate group-hover:text-primary transition-colors text-foreground">
-                      {offering.professorName}
-                    </span>
-                    <span className="text-xs text-muted-foreground block truncate">
-                      {offering.professorTitle || "استاد تمام"}
-                    </span>
-                  </div>
-                </div>
-                <ArrowLeft className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:-translate-x-1 transition-all shrink-0 mr-2" />
-              </Link>
+              {(() => {
+                const profs =
+                  offering.professors && offering.professors.length > 0
+                    ? offering.professors
+                    : [
+                        {
+                          id: offering.professorId || "",
+                          name: offering.professorName || "استاد درس",
+                          title: offering.professorTitle,
+                          avatarUrl: offering.professorAvatarUrl,
+                          email: offering.professorEmail,
+                          isPrimary: true,
+                        },
+                      ];
 
-              {offering.professorEmail && (
-                <div className="text-xs text-muted-foreground  bg-muted/20 p-2.5 rounded-xl border border-border/50">
-                  ایمیل: {offering.professorEmail}
-                </div>
-              )}
+                return profs.map((p, idx) => (
+                  <div key={p.id || idx} className="space-y-2">
+                    <Link
+                      href={`/professors/${p.id}`}
+                      className="group flex items-center justify-between p-3 rounded-2xl border border-border/80 bg-card hover:border-primary/50 hover:shadow-xs transition-all text-xs"
+                    >
+                      <div className="flex items-center gap-3 truncate flex-1 min-w-0 pr-1">
+                        <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden border border-border/60">
+                          {p.avatarUrl ? (
+                            <img src={p.avatarUrl} alt={p.name} className="h-full w-full object-cover" />
+                          ) : (
+                            <span>{p.name?.[0] || "ا"}</span>
+                          )}
+                        </div>
+                        <div className="truncate">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-sm block truncate group-hover:text-primary transition-colors text-foreground">
+                              {p.name}
+                            </span>
+                            {profs.length > 1 && (
+                              <Badge
+                                variant={p.isPrimary ? "default" : "outline"}
+                                className={`text-[9px] px-1 py-0 ${p.isPrimary ? "text-primary-foreground" : "text-muted-foreground"}`}
+                              >
+                                {p.isPrimary ? "اصلی" : "هم‌تدریس"}
+                              </Badge>
+                            )}
+                          </div>
+                          <span className="text-xs text-muted-foreground block truncate mt-0.5">
+                            {[p.title, p.code].filter(Boolean).join(" • ") || "استاد دانشگاه"}
+                          </span>
+                        </div>
+                      </div>
+                      <ArrowLeft className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:-translate-x-1 transition-all shrink-0 mr-2" />
+                    </Link>
+                    {p.email && (
+                      <div className="text-[11px] text-muted-foreground bg-muted/20 px-3 py-1.5 rounded-xl border border-border/50 font-mono" dir="ltr">
+                        {p.email}
+                      </div>
+                    )}
+                  </div>
+                ));
+              })()}
             </CardContent>
           </Card>
 

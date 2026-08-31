@@ -21,6 +21,7 @@ import type {
 import { hashPassword } from "./auth";
 
 let isD1LogShown = false;
+let isD1SchemaEnsured = false;
 
 /**
  * Access Cloudflare D1 database binding
@@ -47,6 +48,39 @@ export function getD1(): any {
   }
 
   return db;
+}
+
+export async function ensureD1Schema(d1: any) {
+  if (isD1SchemaEnsured || !d1) return;
+  try {
+    // 1. Ensure offering_professors table
+    await d1
+      .prepare(`
+        CREATE TABLE IF NOT EXISTS offering_professors (
+          id TEXT PRIMARY KEY,
+          offering_id TEXT NOT NULL,
+          professor_id TEXT NOT NULL,
+          is_primary INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL,
+          UNIQUE(offering_id, professor_id)
+        )
+      `)
+      .run()
+      .catch(() => {});
+
+    // 2. Ensure description column in course_offerings
+    await d1.prepare("ALTER TABLE course_offerings ADD COLUMN description TEXT").run().catch(() => {});
+
+    // 3. Ensure abbreviation column in courses
+    await d1.prepare("ALTER TABLE courses ADD COLUMN abbreviation TEXT").run().catch(() => {});
+
+    // 4. Ensure description column in offerings (legacy table)
+    await d1.prepare("ALTER TABLE offerings ADD COLUMN description TEXT").run().catch(() => {});
+
+    isD1SchemaEnsured = true;
+  } catch (e) {
+    console.error("ensureD1Schema error:", e);
+  }
 }
 
 // =========================================================================
@@ -1629,6 +1663,7 @@ export async function getCourseById(id: string): Promise<Course | null> {
         facultyName: (c as any).faculty_name || undefined,
         name: (c as any).name,
         code: (c as any).code,
+        abbreviation: (c as any).abbreviation || undefined,
         units: Number((c as any).units) || 3,
         offeredIn: (c as any).offered_in || "both",
         description: (c as any).description || "",
@@ -2338,49 +2373,111 @@ export async function getOfferings(filter?: {
   courseId?: string;
   professorId?: string;
   facultyId?: string;
-}): Promise<CourseOffering[]> {
+} | string): Promise<CourseOffering[]> {
+  const normFilter = typeof filter === "string" ? { facultyId: filter } : filter;
   const d1 = getD1();
   if (d1) {
     try {
+      await ensureD1Schema(d1);
+
       let query = `
-        SELECT o.id, o.code, o.course_id, o.professor_id, o.created_at, o.deleted_at,
+        SELECT o.*,
                c.name AS course_name, c.code AS course_code, c.units AS course_units, c.faculty_id AS course_faculty_id,
                p.name AS professor_name, p.title AS professor_title, p.avatar_url AS professor_avatar_url
         FROM course_offerings o
         JOIN courses c ON o.course_id = c.id
-        JOIN professors p ON o.professor_id = p.id
+        LEFT JOIN professors p ON o.professor_id = p.id
         WHERE o.deleted_at IS NULL
       `;
       const params: any[] = [];
-      if (filter?.courseId) {
+      if (normFilter?.courseId) {
         query += " AND o.course_id = ?";
-        params.push(filter.courseId);
+        params.push(normFilter.courseId);
       }
-      if (filter?.professorId) {
-        query += " AND o.professor_id = ?";
-        params.push(filter.professorId);
-      }
-      if (filter?.facultyId) {
+      if (normFilter?.facultyId) {
         query += " AND c.faculty_id = ?";
-        params.push(filter.facultyId);
+        params.push(normFilter.facultyId);
       }
       query += " ORDER BY c.name ASC";
 
       const { results } = await d1.prepare(query).bind(...params).all();
-      return (results || []).map((r: any) => ({
-        id: r.id,
-        code: r.code || undefined,
-        courseId: r.course_id,
-        professorId: r.professor_id,
-        createdAt: r.created_at,
-        deletedAt: r.deleted_at || null,
-        courseName: r.course_name,
-        courseCode: r.course_code,
-        courseUnits: Number(r.course_units) || 3,
-        professorName: r.professor_name,
-        professorTitle: r.professor_title,
-        professorAvatarUrl: r.professor_avatar_url,
-      }));
+      const offeringRows = results || [];
+
+      // Safely fetch professor links from offering_professors junction table
+      let profLinksList: any[] = [];
+      try {
+        const { results: allProfLinks } = await d1
+          .prepare(`
+            SELECT op.offering_id, op.is_primary, p.id, p.name, p.code, p.title, p.avatar_url, p.email
+            FROM offering_professors op
+            JOIN professors p ON op.professor_id = p.id
+            WHERE p.deleted_at IS NULL
+            ORDER BY op.is_primary DESC, p.name ASC
+          `)
+          .all();
+        profLinksList = allProfLinks || [];
+      } catch (e) {
+        // Safe fallback if junction table is not yet populated
+      }
+
+      let list = offeringRows.map((r: any) => {
+        const offProfs = profLinksList
+          .filter((lp: any) => lp.offering_id === r.id)
+          .map((lp: any) => ({
+            id: lp.id,
+            name: lp.name,
+            code: lp.code || undefined,
+            title: lp.title || undefined,
+            avatarUrl: lp.avatar_url || undefined,
+            email: lp.email || undefined,
+            isPrimary: Boolean(lp.is_primary),
+          }));
+
+        const finalProfs =
+          offProfs.length > 0
+            ? offProfs
+            : r.professor_id && r.professor_name
+            ? [
+                {
+                  id: r.professor_id,
+                  name: r.professor_name,
+                  title: r.professor_title || undefined,
+                  avatarUrl: r.professor_avatar_url || undefined,
+                  isPrimary: true,
+                },
+              ]
+            : [];
+
+        const primaryProf = finalProfs.find((p: any) => p.isPrimary) || finalProfs[0];
+        const profNames = finalProfs.map((p: any) => p.name).join(" و ");
+
+        return {
+          id: r.id,
+          code: r.code || undefined,
+          courseId: r.course_id,
+          description: r.description || undefined,
+          professorId: primaryProf?.id || r.professor_id || "",
+          professorIds: finalProfs.map((p: any) => p.id),
+          professors: finalProfs,
+          createdAt: r.created_at,
+          deletedAt: r.deleted_at || null,
+          courseName: r.course_name,
+          courseCode: r.course_code,
+          courseUnits: Number(r.course_units) || 3,
+          facultyId: r.course_faculty_id,
+          professorName: profNames || r.professor_name || "استاد نامشخص",
+          professorTitle: primaryProf?.title || r.professor_title,
+          professorAvatarUrl: primaryProf?.avatarUrl || r.professor_avatar_url,
+        };
+      });
+
+      if (normFilter?.professorId) {
+        list = list.filter(
+          (o) => o.professorId === normFilter.professorId || o.professorIds?.includes(normFilter.professorId!)
+        );
+      }
+
+      return list;
     } catch (err) {
       console.error("D1 getOfferings error:", err);
     }
@@ -2388,48 +2485,158 @@ export async function getOfferings(filter?: {
 
   await initFallbackDevData();
   let list = offeringsStore.filter((o) => !o.deletedAt);
-  if (filter?.courseId) list = list.filter((o) => o.courseId === filter.courseId);
-  if (filter?.professorId) list = list.filter((o) => o.professorId === filter.professorId);
-  return list;
+  if (normFilter?.courseId) list = list.filter((o) => o.courseId === normFilter.courseId);
+
+  const mappedList = list.map((o) => {
+    const crs = coursesStore.find((c) => c.id === o.courseId);
+    const pIds =
+      Array.isArray(o.professorIds) && o.professorIds.length > 0
+        ? o.professorIds
+        : o.professorId
+        ? [o.professorId]
+        : [];
+
+    const profs: OfferingProfessorInfo[] = pIds
+      .map((pid, idx) => {
+        const p = professorsStore.find((item) => item.id === pid);
+        if (!p) return null;
+        return {
+          id: p.id,
+          name: p.name,
+          code: p.code,
+          title: p.title,
+          avatarUrl: p.avatarUrl,
+          email: p.email,
+          isPrimary: idx === 0,
+        };
+      })
+      .filter(Boolean) as OfferingProfessorInfo[];
+
+    const primaryProf = profs.find((p) => p.isPrimary) || profs[0];
+    const profNames = profs.map((p) => p.name).join(" و ");
+
+    return {
+      ...o,
+      description: o.description || undefined,
+      professorId: primaryProf?.id || o.professorId || "",
+      professorIds: profs.map((p) => p.id),
+      professors: profs,
+      courseName: crs?.name || o.courseName,
+      courseCode: crs?.code || o.courseCode,
+      courseUnits: crs?.units || o.courseUnits || 3,
+      courseDescription: crs?.description || o.courseDescription,
+      facultyId: crs?.facultyId || o.facultyId,
+      professorName: profNames || primaryProf?.name || o.professorName || "استاد نامشخص",
+      professorTitle: primaryProf?.title || o.professorTitle,
+      professorAvatarUrl: primaryProf?.avatarUrl || o.professorAvatarUrl,
+    };
+  });
+
+  let filtered = mappedList;
+  if (normFilter?.facultyId) {
+    filtered = filtered.filter((o) => o.facultyId === normFilter.facultyId);
+  }
+  if (normFilter?.professorId) {
+    filtered = filtered.filter(
+      (o) => o.professorId === normFilter.professorId || o.professorIds?.includes(normFilter.professorId!)
+    );
+  }
+
+  return filtered;
 }
 
 export async function getOfferingById(id: string): Promise<CourseOffering | null> {
   const d1 = getD1();
   if (d1) {
     try {
+      await ensureD1Schema(d1);
+
       const query = `
-        SELECT o.id, o.code, o.course_id, o.professor_id, o.created_at, o.deleted_at,
+        SELECT o.*,
                c.name AS course_name, c.code AS course_code, c.units AS course_units, c.description AS course_description, c.faculty_id AS course_faculty_id,
                f.name AS faculty_name,
                p.name AS professor_name, p.title AS professor_title, p.avatar_url AS professor_avatar_url, p.email AS professor_email
         FROM course_offerings o
         JOIN courses c ON o.course_id = c.id
         LEFT JOIN faculties f ON c.faculty_id = f.id
-        JOIN professors p ON o.professor_id = p.id
+        LEFT JOIN professors p ON o.professor_id = p.id
         WHERE o.id = ? AND o.deleted_at IS NULL
       `;
       const row = await d1.prepare(query).bind(id).first();
       if (!row) return null;
 
+      let profRows: any[] = [];
+      try {
+        const { results } = await d1
+          .prepare(`
+            SELECT op.is_primary, p.id, p.name, p.code, p.title, p.avatar_url, p.email
+            FROM offering_professors op
+            JOIN professors p ON op.professor_id = p.id
+            WHERE op.offering_id = ? AND p.deleted_at IS NULL
+            ORDER BY op.is_primary DESC, p.name ASC
+          `)
+          .bind(id)
+          .all();
+        profRows = results || [];
+      } catch (e) {
+        // Safe fallback
+      }
+
+      const offProfs = (profRows || []).map((lp: any) => ({
+        id: lp.id,
+        name: lp.name,
+        code: lp.code || undefined,
+        title: lp.title || undefined,
+        avatarUrl: lp.avatar_url || undefined,
+        email: lp.email || undefined,
+        isPrimary: Boolean(lp.is_primary),
+      }));
+
+      const finalProfs =
+        offProfs.length > 0
+          ? offProfs
+          : (row as any).professor_id && (row as any).professor_name
+          ? [
+              {
+                id: (row as any).professor_id,
+                name: (row as any).professor_name,
+                title: (row as any).professor_title || undefined,
+                avatarUrl: (row as any).professor_avatar_url || undefined,
+                email: (row as any).professor_email || undefined,
+                isPrimary: true,
+              },
+            ]
+          : [];
+
+      const primaryProf = finalProfs.find((p: any) => p.isPrimary) || finalProfs[0];
+      const profNames = finalProfs.map((p: any) => p.name).join(" و ");
+
       const events = await getEvents({ offeringId: id });
 
       // Review stats
-      const { results: reviewRows } = await d1
-        .prepare("SELECT overall_rating FROM reviews WHERE target_type = 'offering' AND target_id = ? AND deleted_at IS NULL")
-        .bind(id)
-        .all();
+      let revCount = 0;
+      let avgRating = 0;
+      try {
+        const { results: reviewRows } = await d1
+          .prepare("SELECT overall_rating FROM reviews WHERE target_type = 'offering' AND target_id = ? AND deleted_at IS NULL")
+          .bind(id)
+          .all();
 
-      const revCount = reviewRows?.length || 0;
-      const avgRating =
-        revCount > 0
-          ? (reviewRows || []).reduce((sum: number, r: any) => sum + Number(r.overall_rating), 0) / revCount
-          : 0;
+        revCount = reviewRows?.length || 0;
+        avgRating =
+          revCount > 0
+            ? (reviewRows || []).reduce((sum: number, r: any) => sum + Number(r.overall_rating), 0) / revCount
+            : 0;
+      } catch (e) {}
 
       return {
         id: (row as any).id,
         code: (row as any).code || undefined,
         courseId: (row as any).course_id,
-        professorId: (row as any).professor_id,
+        description: (row as any).description || "",
+        professorId: primaryProf?.id || (row as any).professor_id,
+        professorIds: finalProfs.map((p: any) => p.id),
+        professors: finalProfs,
         createdAt: (row as any).created_at,
         deletedAt: (row as any).deleted_at || null,
         courseName: (row as any).course_name,
@@ -2438,10 +2645,10 @@ export async function getOfferingById(id: string): Promise<CourseOffering | null
         courseDescription: (row as any).course_description || "",
         facultyId: (row as any).course_faculty_id,
         facultyName: (row as any).faculty_name || "دانشکده مهندسی برق و کامپیوتر",
-        professorName: (row as any).professor_name,
-        professorTitle: (row as any).professor_title,
-        professorAvatarUrl: (row as any).professor_avatar_url,
-        professorEmail: (row as any).professor_email,
+        professorName: profNames || (row as any).professor_name || "استاد نامشخص",
+        professorTitle: primaryProf?.title || (row as any).professor_title,
+        professorAvatarUrl: primaryProf?.avatarUrl || (row as any).professor_avatar_url,
+        professorEmail: primaryProf?.email || (row as any).professor_email,
         events,
         reviewsCount: revCount,
         averageRating: Number(avgRating.toFixed(1)),
@@ -2456,7 +2663,32 @@ export async function getOfferingById(id: string): Promise<CourseOffering | null
   if (!o) return null;
 
   const crs = coursesStore.find((c) => c.id === o.courseId);
-  const prof = professorsStore.find((p) => p.id === o.professorId);
+  const pIds =
+    Array.isArray(o.professorIds) && o.professorIds.length > 0
+      ? o.professorIds
+      : o.professorId
+      ? [o.professorId]
+      : [];
+
+  const profs: OfferingProfessorInfo[] = pIds
+    .map((pid, idx) => {
+      const p = professorsStore.find((item) => item.id === pid);
+      if (!p) return null;
+      return {
+        id: p.id,
+        name: p.name,
+        code: p.code,
+        title: p.title,
+        avatarUrl: p.avatarUrl,
+        email: p.email,
+        isPrimary: idx === 0,
+      };
+    })
+    .filter(Boolean) as OfferingProfessorInfo[];
+
+  const primaryProf = profs.find((p) => p.isPrimary) || profs[0];
+  const profNames = profs.map((p) => p.name).join(" و ");
+
   const fac = facultiesStore.find((f) => f.id === crs?.facultyId);
   const events = eventsStore.filter((e) => e.offeringId === id && !e.isUserCustom);
   const revs = reviewsStore.filter((r) => r.targetType === "offering" && r.targetId === id && !r.deletedAt);
@@ -2464,16 +2696,20 @@ export async function getOfferingById(id: string): Promise<CourseOffering | null
 
   return {
     ...o,
+    description: o.description || "",
+    professorId: primaryProf?.id || o.professorId,
+    professorIds: profs.map((p) => p.id),
+    professors: profs,
     courseName: crs?.name,
     courseCode: crs?.code,
     courseUnits: crs?.units,
     courseDescription: crs?.description,
     facultyId: crs?.facultyId,
     facultyName: fac?.name || "دانشکده مهندسی برق و کامپیوتر",
-    professorName: prof?.name,
-    professorTitle: prof?.title,
-    professorAvatarUrl: prof?.avatarUrl,
-    professorEmail: prof?.email,
+    professorName: profNames || primaryProf?.name || "استاد نامشخص",
+    professorTitle: primaryProf?.title,
+    professorAvatarUrl: primaryProf?.avatarUrl,
+    professorEmail: primaryProf?.email,
     events,
     reviewsCount: revs.length,
     averageRating: Number(avg.toFixed(1)),
@@ -2488,6 +2724,7 @@ export async function createOffering(
         professorId?: string;
         professorIds?: string[];
         code?: string;
+        description?: string;
         id?: string;
       },
   professorIdArg?: string,
@@ -2511,6 +2748,10 @@ export async function createOffering(
     typeof courseIdOrData === "object"
       ? courseIdOrData.code?.trim().toUpperCase() || `OFF-${crypto.randomUUID().slice(0, 6).toUpperCase()}`
       : codeArg?.trim().toUpperCase() || `OFF-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
+  const description =
+    typeof courseIdOrData === "object" && courseIdOrData.description
+      ? courseIdOrData.description.trim()
+      : null;
   const id =
     typeof courseIdOrData === "object" && courseIdOrData.id
       ? courseIdOrData.id.trim()
@@ -2520,9 +2761,11 @@ export async function createOffering(
   const d1 = getD1();
   if (d1) {
     try {
+      await ensureD1Schema(d1);
+
       await d1
-        .prepare("INSERT INTO course_offerings (id, code, course_id, professor_id, created_at) VALUES (?, ?, ?, ?, ?)")
-        .bind(id, code, courseId, primaryProfId, now)
+        .prepare("INSERT INTO course_offerings (id, code, course_id, professor_id, description, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+        .bind(id, code, courseId, primaryProfId, description, now)
         .run();
 
       // Insert junction rows for all professors
@@ -2537,7 +2780,8 @@ export async function createOffering(
              ON CONFLICT(offering_id, professor_id) DO UPDATE SET is_primary = excluded.is_primary`
           )
           .bind(opId, id, pId, isPrimary, now)
-          .run();
+          .run()
+          .catch(() => {});
       }
 
       const offs = await getOfferings();
@@ -2547,6 +2791,7 @@ export async function createOffering(
           id,
           code,
           courseId,
+          description: description || undefined,
           professorId: primaryProfId,
           professorIds: profIds,
           createdAt: now,
@@ -2560,12 +2805,39 @@ export async function createOffering(
   }
 
   await initFallbackDevData();
+  const crs = coursesStore.find((c) => c.id === courseId);
+  const profs: OfferingProfessorInfo[] = profIds
+    .map((pid, idx) => {
+      const p = professorsStore.find((item) => item.id === pid);
+      if (!p) return null;
+      return {
+        id: p.id,
+        name: p.name,
+        code: p.code,
+        title: p.title,
+        avatarUrl: p.avatarUrl,
+        email: p.email,
+        isPrimary: idx === 0,
+      };
+    })
+    .filter(Boolean) as OfferingProfessorInfo[];
+
+  const primaryProf = profs[0];
   const newOffering: CourseOffering = {
     id,
     code,
     courseId,
+    description: description || undefined,
     professorId: primaryProfId,
     professorIds: profIds,
+    professors: profs,
+    courseName: crs?.name,
+    courseCode: crs?.code,
+    courseUnits: crs?.units || 3,
+    facultyId: crs?.facultyId,
+    professorName: profs.map((p) => p.name).join(" و ") || primaryProf?.name || "استاد نامشخص",
+    professorTitle: primaryProf?.title,
+    professorAvatarUrl: primaryProf?.avatarUrl,
     createdAt: now,
     deletedAt: null,
   };
@@ -2575,11 +2847,13 @@ export async function createOffering(
 
 export async function updateOffering(
   id: string,
-  data: { courseId?: string; professorId?: string; professorIds?: string[]; code?: string }
+  data: { courseId?: string; professorId?: string; professorIds?: string[]; code?: string; description?: string }
 ): Promise<CourseOffering | null> {
   const d1 = getD1();
   if (d1) {
     try {
+      await ensureD1Schema(d1);
+
       const profIds: string[] | undefined =
         Array.isArray(data.professorIds) && data.professorIds.length > 0
           ? data.professorIds
@@ -2603,6 +2877,10 @@ export async function updateOffering(
       if (code) {
         sets.push("code = ?");
         params.push(code);
+      }
+      if (data.description !== undefined) {
+        sets.push("description = ?");
+        params.push(data.description ? data.description.trim() : null);
       }
 
       if (sets.length > 0) {
@@ -2645,9 +2923,41 @@ export async function updateOffering(
   const o = offeringsStore.find((item) => item.id === id);
   if (!o) return null;
   if (data.courseId) o.courseId = data.courseId;
-  if (data.professorIds) o.professorIds = data.professorIds;
-  if (data.professorId) o.professorId = data.professorId;
   if (data.code) o.code = data.code;
+  if (data.description !== undefined) o.description = data.description ? data.description.trim() : undefined;
+
+  const profIds: string[] | undefined =
+    Array.isArray(data.professorIds) && data.professorIds.length > 0
+      ? data.professorIds
+      : data.professorId
+      ? [data.professorId]
+      : undefined;
+
+  if (profIds) {
+    o.professorIds = profIds;
+    o.professorId = profIds[0];
+    const profs: OfferingProfessorInfo[] = profIds
+      .map((pid, idx) => {
+        const p = professorsStore.find((item) => item.id === pid);
+        if (!p) return null;
+        return {
+          id: p.id,
+          name: p.name,
+          code: p.code,
+          title: p.title,
+          avatarUrl: p.avatarUrl,
+          email: p.email,
+          isPrimary: idx === 0,
+        };
+      })
+      .filter(Boolean) as OfferingProfessorInfo[];
+
+    o.professors = profs;
+    const primaryProf = profs[0];
+    o.professorName = profs.map((p) => p.name).join(" و ") || primaryProf?.name || "استاد نامشخص";
+    o.professorTitle = primaryProf?.title;
+    o.professorAvatarUrl = primaryProf?.avatarUrl;
+  }
   return o;
 }
 
@@ -2739,6 +3049,18 @@ export async function getEvents(
       const { results: slotRows } = await d1.prepare("SELECT * FROM course_event_slots").all();
       const slotsList = slotRows || [];
 
+      // Fetch professor links for all offerings
+      const { results: allProfLinks } = await d1
+        .prepare(`
+          SELECT op.offering_id, op.is_primary, p.id, p.name, p.code, p.title, p.avatar_url, p.email
+          FROM offering_professors op
+          JOIN professors p ON op.professor_id = p.id
+          WHERE p.deleted_at IS NULL
+          ORDER BY op.is_primary DESC, p.name ASC
+        `)
+        .all();
+      const profLinksList = allProfLinks || [];
+
       return eventsList.map((e: any) => {
         const slots = slotsList
           .filter((s: any) => s.event_id === e.id)
@@ -2749,6 +3071,10 @@ export async function getEvents(
             startTime: s.start_time,
             endTime: s.end_time,
           }));
+
+        const offProfs = profLinksList.filter((lp: any) => lp.offering_id === e.offering_id);
+        const primaryProf = offProfs.find((p: any) => p.is_primary) || offProfs[0];
+        const profNames = offProfs.length > 0 ? offProfs.map((p: any) => p.name).join(" و ") : e.professor_name;
 
         return {
           id: e.id,
@@ -2766,10 +3092,10 @@ export async function getEvents(
           courseName: e.course_name,
           courseCode: e.course_code,
           courseUnits: Number(e.course_units) || 3,
-          professorId: e.professor_id,
-          professorName: e.professor_name,
-          professorTitle: e.professor_title,
-          professorAvatarUrl: e.professor_avatar_url,
+          professorId: primaryProf?.id || e.professor_id,
+          professorName: profNames || e.professor_name || "استاد نامشخص",
+          professorTitle: primaryProf?.title || e.professor_title,
+          professorAvatarUrl: primaryProf?.avatar_url || e.professor_avatar_url,
           slots,
         };
       });
@@ -2782,7 +3108,25 @@ export async function getEvents(
   let list = eventsStore;
   if (term) list = list.filter((e) => e.term === term);
   if (offeringId) list = list.filter((e) => e.offeringId === offeringId);
-  return list;
+  return list.map((e) => {
+    const off = offeringsStore.find((o) => o.id === e.offeringId);
+    const crs = coursesStore.find((c) => c.id === (e.courseId || off?.courseId));
+    const pIds =
+      Array.isArray(off?.professorIds) && off!.professorIds.length > 0
+        ? off!.professorIds
+        : off?.professorId
+        ? [off.professorId]
+        : [];
+    const profs = pIds.map((pid) => professorsStore.find((p) => p.id === pid)).filter(Boolean);
+    const profNames = profs.length > 0 ? profs.map((p) => p!.name).join(" و ") : e.professorName;
+    return {
+      ...e,
+      courseName: crs?.name || e.courseName,
+      courseCode: crs?.code || e.courseCode,
+      courseUnits: crs?.units || e.courseUnits || 3,
+      professorName: profNames || e.professorName,
+    };
+  });
 }
 
 export async function createEvent(data: {
