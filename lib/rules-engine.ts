@@ -184,7 +184,21 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
       return sum + (c ? c.units : 3);
     }, 0);
 
-    const required = rcat.minCredits || 0;
+    // Extract requirement dynamically from rulesTree if defined
+    let required = 0;
+    if (rulesTree) {
+      const findReq = (node: any) => {
+        if (!node) return;
+        if (node.type === "MIN_CREDITS_IN_CATEGORY" && node.ruleCategoryId === rcat.id) {
+          required = node.minCredits || 0;
+        }
+        if (node.children && Array.isArray(node.children)) {
+          node.children.forEach(findReq);
+        }
+      };
+      findReq(rulesTree);
+    }
+
     const isSatisfied = required === 0 || earnedCredits >= required;
 
     return {

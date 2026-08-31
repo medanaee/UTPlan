@@ -68,10 +68,10 @@ export function getUTECEDemoSeed() {
   const rcatGeneral = "rcat_general";
 
   const ruleCategories: RuleCategory[] = [
-    { id: rcatGeneral, trackId, name: "دروس عمومی", minCredits: 22, createdAt: new Date().toISOString() },
-    { id: rcatBasic, trackId, name: "علوم پایه", minCredits: 20, createdAt: new Date().toISOString() },
-    { id: rcatCore, trackId, name: "دروس اصلی", minCredits: 59, createdAt: new Date().toISOString() },
-    { id: rcatSpec, trackId, name: "دروس تخصصی", minCredits: 21, createdAt: new Date().toISOString() },
+    { id: rcatGeneral, trackId, name: "دروس عمومی", createdAt: new Date().toISOString() },
+    { id: rcatBasic, trackId, name: "علوم پایه", createdAt: new Date().toISOString() },
+    { id: rcatCore, trackId, name: "دروس اصلی", createdAt: new Date().toISOString() },
+    { id: rcatSpec, trackId, name: "دروس تخصصی", createdAt: new Date().toISOString() },
   ];
 
   // 3. Tracks

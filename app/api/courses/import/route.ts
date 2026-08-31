@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
+  deleteCoursesByFaculty,
   getCourses,
   getFaculties,
   createCourse,
@@ -61,7 +62,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 1. Resolve Target Faculty
+    // 1. Resolve Target Faculty & Import Mode
+    const mode = (searchParams.get("mode") || (body && typeof body === "object" ? body.mode : null) || "append") as "append" | "replace";
+
     const existingFaculties = await getFaculties();
     if (!targetFacultyId || !existingFaculties.some((f) => f.id === targetFacultyId)) {
       if (existingFaculties.length > 0) {
@@ -72,6 +75,11 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
+    }
+
+    // If Mode is "replace", wipe all existing courses in this faculty first
+    if (mode === "replace") {
+      await deleteCoursesByFaculty(targetFacultyId);
     }
 
     // 2. Fetch current courses

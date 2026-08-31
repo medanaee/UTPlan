@@ -10,6 +10,8 @@ import {
   Loader2,
   Building2,
   Sparkles,
+  PlusCircle,
+  RefreshCw,
 } from "lucide-react";
 import {
   Dialog,
@@ -22,20 +24,13 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import type { Faculty } from "@/lib/types";
 
 interface CourseImportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultFacultyId?: string;
+  targetFaculty?: Faculty | null;
   onSuccess?: () => void;
 }
 
@@ -73,12 +68,16 @@ export function CourseImportDialog({
   open,
   onOpenChange,
   defaultFacultyId,
+  targetFaculty,
   onSuccess,
 }: CourseImportDialogProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [faculties, setFaculties] = useState<Faculty[]>([]);
-  const [selectedFacultyId, setSelectedFacultyId] = useState<string>(defaultFacultyId || "");
+  const [selectedFacultyId, setSelectedFacultyId] = useState<string>(
+    targetFaculty?.id || defaultFacultyId || ""
+  );
 
+  const [importMode, setImportMode] = useState<"append" | "replace">("append");
   const [jsonText, setJsonText] = useState("");
   const [parsedData, setParsedData] = useState<any[] | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
@@ -95,29 +94,35 @@ export function CourseImportDialog({
     };
   } | null>(null);
 
-  // Load faculties
+  // Load faculties if not supplied
   useEffect(() => {
-    fetch("/api/faculties")
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.success && Array.isArray(d.data)) {
-          setFaculties(d.data);
-          if (!selectedFacultyId && d.data.length > 0) {
-            setSelectedFacultyId(defaultFacultyId || d.data[0].id);
+    if (!targetFaculty) {
+      fetch("/api/faculties")
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.success && Array.isArray(d.data)) {
+            setFaculties(d.data);
           }
-        }
-      })
-      .catch(() => {});
-  }, [defaultFacultyId]);
+        })
+        .catch(() => { });
+    }
+  }, [targetFaculty]);
 
   useEffect(() => {
-    if (defaultFacultyId) {
-      setSelectedFacultyId(defaultFacultyId);
+    const activeId = targetFaculty?.id || defaultFacultyId || "";
+    if (activeId) {
+      setSelectedFacultyId(activeId);
     }
-  }, [defaultFacultyId]);
+  }, [targetFaculty, defaultFacultyId]);
+
+  const activeFaculty =
+    targetFaculty ||
+    faculties.find((f) => f.id === (selectedFacultyId || defaultFacultyId));
 
   const handleDownloadSample = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(SAMPLE_TEMPLATE, null, 2));
+    const dataStr =
+      "data:text/json;charset=utf-8," +
+      encodeURIComponent(JSON.stringify(SAMPLE_TEMPLATE, null, 2));
     const downloadAnchor = document.createElement("a");
     downloadAnchor.setAttribute("href", dataStr);
     downloadAnchor.setAttribute("download", "sample-courses.json");
@@ -166,8 +171,19 @@ export function CourseImportDialog({
 
   const handleImportSubmit = async () => {
     if (!parsedData || parsedData.length === 0) return;
-    if (!selectedFacultyId) {
-      alert("لطفاً دانشکده مقصد را مشخص کنید.");
+    const targetId = selectedFacultyId || targetFaculty?.id || defaultFacultyId;
+    if (!targetId) {
+      alert("لطفاً ابتدا یک دانشکده را در هدر پنل انتخاب کنید.");
+      return;
+    }
+
+    if (
+      importMode === "replace" &&
+      !confirm(
+        `هشدار مهم: با انتخاب «جایگزینی کامل»، کلیه دروس و پیش‌نیازهای فعلی دانشکده «${activeFaculty?.name || "انتخاب‌شده"
+        }» حذف شده و با اطلاعات این فایل جایگزین خواهند شد. آیا مطمئن هستید؟`
+      )
+    ) {
       return;
     }
 
@@ -175,13 +191,10 @@ export function CourseImportDialog({
       setLoading(true);
       setResult(null);
 
-      const res = await fetch(`/api/courses/import?facultyId=${selectedFacultyId}`, {
+      const res = await fetch(`/api/courses/import?facultyId=${targetId}&mode=${importMode}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          facultyId: selectedFacultyId,
-          courses: parsedData,
-        }),
+        body: JSON.stringify({ courses: parsedData, mode: importMode }),
       }).then((r) => r.json());
 
       setResult(res);
@@ -192,7 +205,7 @@ export function CourseImportDialog({
     } catch (err: any) {
       setResult({
         success: false,
-        message: "خطا در ارتباط با سرور هنگام ورود اطلاعات.",
+        message: "خطا در برقراری ارتباط با سرور: " + (err?.message || "نامشخص"),
       });
     } finally {
       setLoading(false);
@@ -209,55 +222,109 @@ export function CourseImportDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader className="pb-2 border-b">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-base font-bold flex items-center gap-2">
-              <Upload className="h-5 w-5 text-primary" />
-              ورود دسته‌ای دروس (Import JSON)
-            </DialogTitle>
+      <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto" dir="rtl">
+        <DialogHeader>
+          <DialogTitle className="text-base font-bold flex items-center gap-2">
+            <Upload className="h-5 w-5 text-primary" />
+            ورود دسته‌ای دروس (Import JSON)
+          </DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground">
+            مشخصات دروس و پیش‌نیازها را در قالب فایل استاندارد JSON وارد دانشکده کنید.
+          </DialogDescription>
+        </DialogHeader>
 
+        <div className="space-y-4 pt-2">
+          {/* Target Faculty Fixed Card */}
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs">
+              <Building2 className="h-4 w-4 text-primary shrink-0" />
+              <span className="text-muted-foreground">دانشکده هدف:</span>
+              <span className="font-bold text-foreground">
+                {activeFaculty ? `${activeFaculty.name} (${activeFaculty.code})` : "انتخاب نشده"}
+              </span>
+            </div>
+          </div>
+
+          {/* Import Mode Selection Options */}
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold block text-foreground">
+              نحوه ورود و همگام‌سازی دروس:
+            </Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {/* Option 1: Append & Update (Merge) */}
+              <div
+                onClick={() => setImportMode("append")}
+                className={`p-3 rounded-2xl border cursor-pointer transition-all flex items-start gap-2.5 ${importMode === "append"
+                    ? "border-primary bg-primary/10 ring-1 ring-primary/30"
+                    : "border-border/80 bg-muted/20 hover:bg-muted/40"
+                  }`}
+              >
+                <input
+                  type="radio"
+                  name="importMode"
+                  checked={importMode === "append"}
+                  onChange={() => setImportMode("append")}
+                  className="mt-0.5 accent-primary cursor-pointer"
+                />
+                <div className="space-y-0.5">
+                  <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    <PlusCircle className="h-3.5 w-3.5 text-primary" />
+                    افزودن و به‌روزرسانی (Merge)
+                  </span>
+                  <span className="text-[11px] text-muted-foreground block leading-relaxed">
+                    دروس جدید افزوده می‌شوند؛ کدهای تکراری به‌روز شده و دروس قبلی دست‌نخورده باقی می‌مانند.
+                  </span>
+                </div>
+              </div>
+
+              {/* Option 2: Wipe & Replace */}
+              <div
+                onClick={() => setImportMode("replace")}
+                className={`p-3 rounded-2xl border cursor-pointer transition-all flex items-start gap-2.5 ${importMode === "replace"
+                    ? "border-destructive bg-destructive/10 ring-1 ring-destructive/30"
+                    : "border-border/80 bg-muted/20 hover:bg-muted/40"
+                  }`}
+              >
+                <input
+                  type="radio"
+                  name="importMode"
+                  checked={importMode === "replace"}
+                  onChange={() => setImportMode("replace")}
+                  className="mt-0.5 accent-destructive cursor-pointer"
+                />
+                <div className="space-y-0.5">
+                  <span className="text-xs font-bold text-destructive flex items-center gap-1.5">
+                    <RefreshCw className="h-3.5 w-3.5 text-destructive" />
+                    جایگزینی کامل (Wipe & Replace)
+                  </span>
+                  <span className="text-[11px] text-muted-foreground block leading-relaxed">
+                    تمام دروس فعلی این دانشکده حذف و با لیست موجود در این فایل بازنویسی می‌شوند.
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Sample Download Action Banner */}
+          <div className="flex items-center justify-between p-3 rounded-2xl bg-primary/5 border border-primary/20">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Sparkles className="h-4 w-4 text-primary shrink-0" />
+              <span>قالب استاندارد JSON برای ورود دروس و پیش‌نیازها:</span>
+            </div>
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={handleDownloadSample}
-              className="h-7 text-xs gap-1.5"
+              className="h-7 text-xs font-medium gap-1.5 shadow-2xs hover:bg-background shrink-0"
             >
-              <Download className="h-3.5 w-3.5" />
+              <Download className="h-3.5 w-3.5 text-primary" />
               دانلود قالب نمونه JSON
             </Button>
           </div>
-          <DialogDescription className="text-xs text-muted-foreground pt-1">
-            مشخصات دروس و پیش‌نیازها را در قالب فایل JSON وارد دانشکده انتخابی کنید.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 pt-2">
-          {/* Target Faculty Selector */}
-          <div className="p-3 rounded-2xl border border-border/80 bg-muted/20 space-y-1.5">
-            <Label className="text-xs font-semibold flex items-center gap-1.5">
-              <Building2 className="h-4 w-4 text-primary" />
-              دانشکده مقصد برای ثبت دروس:
-            </Label>
-            <Select value={selectedFacultyId} onValueChange={setSelectedFacultyId}>
-              <SelectTrigger className="w-full text-xs h-9 bg-background">
-                <SelectValue placeholder="انتخاب دانشکده" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {faculties.map((f) => (
-                    <SelectItem key={f.id} value={f.id} className="text-xs">
-                      {f.name}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
 
           {/* File Upload Area */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 rounded-2xl border border-dashed border-primary/40 bg-primary/5">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 rounded-2xl border border-dashed border-primary/40 bg-muted/10">
             <div className="space-y-1 text-center sm:text-right">
               <span className="text-xs font-bold text-foreground block">انتخاب فایل از سیستم</span>
               <span className="text-[11px] text-muted-foreground block">
@@ -355,11 +422,10 @@ export function CourseImportDialog({
           {/* Result Stats Banner */}
           {result && (
             <div
-              className={`p-4 rounded-2xl border space-y-2 text-xs ${
-                result.success
+              className={`p-4 rounded-2xl border space-y-2 text-xs ${result.success
                   ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
                   : "bg-destructive/10 border-destructive/30 text-destructive"
-              }`}
+                }`}
             >
               <div className="flex items-center gap-2 font-bold text-sm">
                 {result.success ? (
@@ -432,18 +498,31 @@ export function CourseImportDialog({
                 type="button"
                 size="sm"
                 onClick={handleImportSubmit}
-                disabled={loading || !parsedData || parsedData.length === 0 || !selectedFacultyId}
-                className="h-8 text-xs font-bold gap-1.5 px-4"
+                disabled={
+                  loading ||
+                  !parsedData ||
+                  parsedData.length === 0 ||
+                  !(selectedFacultyId || targetFaculty?.id || defaultFacultyId)
+                }
+                className={`h-8 text-xs font-bold gap-1.5 px-4 ${importMode === "replace"
+                    ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    : ""
+                  }`}
               >
                 {loading ? (
                   <>
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    در حال ورود اطلاعات...
+                    در حال اعمال تغییرات...
+                  </>
+                ) : importMode === "replace" ? (
+                  <>
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    جایگزینی کامل دروس {activeFaculty?.name || ""}
                   </>
                 ) : (
                   <>
                     <Upload className="h-3.5 w-3.5" />
-                    ثبت در دانشکده انتخابی
+                    افزودن به {activeFaculty?.name || "دانشکده"}
                   </>
                 )}
               </Button>

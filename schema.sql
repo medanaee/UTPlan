@@ -68,7 +68,6 @@ CREATE TABLE IF NOT EXISTS rule_categories (
   track_id TEXT NOT NULL,
   parent_id TEXT,
   name TEXT NOT NULL,
-  min_credits INTEGER DEFAULT 0,
   created_at TEXT NOT NULL,
   FOREIGN KEY (track_id) REFERENCES tracks(id),
   FOREIGN KEY (parent_id) REFERENCES rule_categories(id)

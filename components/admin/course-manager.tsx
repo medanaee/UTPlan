@@ -714,6 +714,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
         open={importModalOpen}
         onOpenChange={setImportModalOpen}
         defaultFacultyId={selectedFacultyId}
+        targetFaculty={currentFaculty}
         onSuccess={() => loadAllData()}
       />
     </div>

@@ -48,13 +48,12 @@ export async function POST(request: Request) {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response!;
     const body = await request.json();
-    const { type, trackId, name, color, sortOrder, minCredits, parentId } = body as {
+    const { type, trackId, name, color, sortOrder, parentId } = body as {
       type: "visual" | "rule";
       trackId: string;
       name: string;
       color?: string;
       sortOrder?: number;
-      minCredits?: number;
       parentId?: string | null;
     };
 
@@ -66,7 +65,7 @@ export async function POST(request: Request) {
       const newCat = await createVisualCategory(trackId, name, color || "#3b82f6", sortOrder || 0);
       return Response.json({ success: true, data: newCat }, { status: 201 });
     } else {
-      const newCat = await createRuleCategory(trackId, name, minCredits || 0, parentId);
+      const newCat = await createRuleCategory(trackId, name, parentId);
       return Response.json({ success: true, data: newCat }, { status: 201 });
     }
   } catch (error) {

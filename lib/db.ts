@@ -1202,7 +1202,6 @@ export async function getRuleCategories(trackId: string): Promise<RuleCategory[]
         trackId: r.track_id,
         parentId: r.parent_id || null,
         name: r.name,
-        minCredits: Number(r.min_credits) || 0,
         createdAt: r.created_at,
       }));
     } catch (err) {
@@ -3573,4 +3572,47 @@ export async function cloneTrackStructure(
       },
     };
   }
+}
+
+export async function deleteCoursesByFaculty(facultyId: string): Promise<boolean> {
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1
+        .prepare(
+          `DELETE FROM prerequisites 
+           WHERE course_id IN (SELECT id FROM courses WHERE faculty_id = ?) 
+              OR required_course_id IN (SELECT id FROM courses WHERE faculty_id = ?)`
+        )
+        .bind(facultyId, facultyId)
+        .run();
+
+      await d1
+        .prepare(
+          `DELETE FROM track_course_assignments 
+           WHERE course_id IN (SELECT id FROM courses WHERE faculty_id = ?)`
+        )
+        .bind(facultyId)
+        .run();
+
+      await d1
+        .prepare("DELETE FROM courses WHERE faculty_id = ?")
+        .bind(facultyId)
+        .run();
+
+      return true;
+    } catch (err) {
+      console.error("D1 deleteCoursesByFaculty error:", err);
+      return false;
+    }
+  }
+
+  await initFallbackDevData();
+  const toDeleteIds = new Set(coursesStore.filter((c) => c.facultyId === facultyId).map((c) => c.id));
+  coursesStore = coursesStore.filter((c) => !toDeleteIds.has(c.id));
+  prerequisitesStore = prerequisitesStore.filter(
+    (p) => !toDeleteIds.has(p.courseId) && !toDeleteIds.has(p.requiredCourseId)
+  );
+  trackAssignmentsStore = trackAssignmentsStore.filter((a) => !toDeleteIds.has(a.courseId));
+  return true;
 }
