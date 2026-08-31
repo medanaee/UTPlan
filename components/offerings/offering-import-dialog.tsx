@@ -38,7 +38,7 @@ interface OfferingImportDialogProps {
 const OFFERING_SCHEMA_DESCRIPTOR = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
   title: "قالب و اسناد ورود ارائه‌های درسی (Course Offerings JSON Schema)",
-  description: "اسکیمای استاندارد برای ورود دسته‌ای ارائه‌های درسی و انتساب دروس به اساتید",
+  description: "اسکیمای استاندارد برای ورود دسته‌ای ارائه‌های درسی و انتساب دروس به یک یا چند استاد (هم‌تدریس)",
   type: "array",
   items: {
     type: "object",
@@ -58,20 +58,42 @@ const OFFERING_SCHEMA_DESCRIPTOR = {
         description: "نام درس (اولویت دوم در صورت نبود کد درس)",
         example: "برنامه‌نویسی پیشرفته"
       },
+      professors: {
+        type: "array",
+        description: "لیست اساتید این ارائه (برای ارائه‌های با چند استاد هم‌تدریس)",
+        items: {
+          type: "object",
+          properties: {
+            professorCode: { type: "string", description: "کد استاد (اولویت اول)" },
+            professorEmail: { type: "string", description: "ایمیل استاد (اولویت دوم)" },
+            professorName: { type: "string", description: "نام کامل استاد (اولویت سوم)" }
+          }
+        },
+        example: [
+          { professorCode: "PRF-101" },
+          { professorName: "سارا رضایی" }
+        ]
+      },
+      professorCodes: {
+        type: "array",
+        items: { type: "string" },
+        description: "آرایه‌ای از کدهای اساتید (جایگزین ساده‌تر)",
+        example: ["PRF-101", "PRF-102"]
+      },
       professorCode: {
         type: "string",
-        description: "کد یکتای استاد (اولویت اول برای شناسایی استاد)",
+        description: "کد یکتای استاد (برای ارائه‌های تک‌استادی)",
         example: "PRF-101"
       },
       professorEmail: {
         type: "string",
         format: "email",
-        description: "ایمیل رسمی استاد (اولویت دوم برای شناسایی استاد)",
+        description: "ایمیل رسمی استاد (برای ارائه‌های تک‌استادی)",
         example: "amohammadi@ut.ac.ir"
       },
       professorName: {
         type: "string",
-        description: "نام کامل استاد (اولویت سوم برای شناسایی استاد)",
+        description: "نام کامل استاد (برای ارائه‌های تک‌استادی)",
         example: "علی محمدی"
       }
     }
@@ -81,15 +103,18 @@ const OFFERING_SCHEMA_DESCRIPTOR = {
       {
         code: "OFF-101",
         courseCode: "8101234",
-        professorCode: "PRF-101"
+        professors: [
+          { professorCode: "PRF-101" },
+          { professorName: "سارا رضایی" }
+        ]
       },
       {
         courseCode: "8101101",
-        professorEmail: "amohammadi@ut.ac.ir"
+        professorCodes: ["PRF-102", "PRF-103"]
       },
       {
         courseName: "ساختمان داده‌ها و الگوریتم‌ها",
-        professorName: "سارا رضایی"
+        professorName: "علی محمدی"
       }
     ]
   ]
@@ -147,6 +172,48 @@ export function OfferingImportDialog({
   const activeFaculty =
     targetFaculty ||
     faculties.find((f) => f.id === (selectedFacultyId || defaultFacultyId));
+
+  const handleDownloadSample = () => {
+    const sampleData = [
+      {
+        code: "OFF-101",
+        courseCode: "8101234",
+        courseName: "برنامه‌نویسی پیشرفته",
+        professors: [
+          { professorCode: "PRF-101", professorName: "علی محمدی" },
+          { professorCode: "PRF-102", professorName: "سارا رضایی" }
+        ]
+      },
+      {
+        code: "OFF-102",
+        courseCode: "8101101",
+        courseName: "مبانی کامپیوتر و برنامه‌سازی",
+        professorCode: "PRF-101",
+        professorName: "علی محمدی"
+      },
+      {
+        code: "OFF-103",
+        courseCode: "8101201",
+        courseName: "مدارهای الکتریکی ۱",
+        professorCodes: ["PRF-103", "PRF-104"]
+      },
+      {
+        code: "OFF-104",
+        courseName: "ساختمان داده‌ها و الگوریتم‌ها",
+        professorEmail: "amohammadi@ut.ac.ir"
+      }
+    ];
+
+    const dataStr =
+      "data:text/json;charset=utf-8," +
+      encodeURIComponent(JSON.stringify(sampleData, null, 2));
+    const downloadAnchor = document.createElement("a");
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", "sample-offerings.json");
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  };
 
   const handleDownloadSchemaDescriptor = () => {
     const dataStr =
@@ -340,22 +407,34 @@ export function OfferingImportDialog({
             </div>
           </div>
 
-          {/* Detailed Schema Descriptor Download Banner */}
-          <div className="flex items-center justify-between p-3 rounded-2xl bg-primary/5 border border-primary/20">
+          {/* Detailed Schema Descriptor & Sample Download Banner */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 p-3 rounded-2xl bg-primary/5 border border-primary/20">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Sparkles className="h-4 w-4 text-primary shrink-0" />
-              <span>فایل توصیف‌کننده اسکیمای استاندارد JSON ارائه‌های درسی:</span>
+              <span>فایل‌های الگو و راهنمای ساختار ارائه‌های درسی (تک‌استادی و چنداستادی):</span>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleDownloadSchemaDescriptor}
-              className="h-7 text-xs font-medium gap-1.5 shadow-2xs hover:bg-background shrink-0"
-            >
-              <Download className="h-3.5 w-3.5 text-primary" />
-              دانلود توصیف اسکیما (Schema JSON)
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadSample}
+                className="h-7 text-xs font-medium gap-1.5 shadow-2xs hover:bg-background shrink-0"
+              >
+                <Download className="h-3.5 w-3.5 text-primary" />
+                دانلود فایل نمونه (Sample JSON)
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadSchemaDescriptor}
+                className="h-7 text-xs font-medium gap-1.5 shadow-2xs hover:bg-background shrink-0"
+              >
+                <Download className="h-3.5 w-3.5 text-primary" />
+                دانلود توصیف اسکیما (Schema JSON)
+              </Button>
+            </div>
           </div>
 
           {/* File Upload Area */}
@@ -427,7 +506,16 @@ export function OfferingImportDialog({
               <div className="max-h-36 overflow-y-auto space-y-1.5 text-xs pr-1">
                 {parsedData.slice(0, 10).map((o, idx) => {
                   const courseDesc = o.courseCode || o.courseName || "درس نامشخص";
-                  const profDesc = o.professorCode || o.professorEmail || o.professorName || "استاد نامشخص";
+                  const profDesc =
+                    Array.isArray(o.professors) && o.professors.length > 0
+                      ? o.professors
+                          .map((p: any) => p.professorName || p.professorCode || p.professorEmail || "استاد")
+                          .join(" و ")
+                      : Array.isArray(o.professorCodes) && o.professorCodes.length > 0
+                      ? o.professorCodes.join("، ")
+                      : Array.isArray(o.professorNames) && o.professorNames.length > 0
+                      ? o.professorNames.join(" و ")
+                      : o.professorCode || o.professorEmail || o.professorName || "استاد نامشخص";
                   return (
                     <div
                       key={idx}

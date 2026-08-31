@@ -10,10 +10,21 @@ import {
 } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
 
+interface RawProfessorRef {
+  professorCode?: string;
+  professorEmail?: string;
+  professorName?: string;
+}
+
 interface ImportOfferingItem {
   code?: string;
   courseCode?: string;
   courseName?: string;
+  // Multi-professor formats:
+  professors?: RawProfessorRef[];
+  professorCodes?: string[];
+  professorNames?: string[];
+  // Single-professor fallback:
   professorCode?: string;
   professorEmail?: string;
   professorName?: string;
@@ -71,7 +82,7 @@ export async function POST(request: NextRequest) {
     const [allCourses, allProfessors, existingOfferings] = await Promise.all([
       getCourses(targetFacultyId),
       getProfessors(targetFacultyId),
-      getOfferings({ facultyId: targetFacultyId }),
+      getOfferings(targetFacultyId),
     ]);
 
     // Build Course Lookup Maps
@@ -94,7 +105,19 @@ export async function POST(request: NextRequest) {
       if (fullName) profByName.set(fullName, p);
     });
 
-    // Build Existing Offerings Key Map: "courseId::professorId" -> offering & code -> offering
+    // Match professor helper function
+    const findProfessor = (ref: RawProfessorRef): typeof allProfessors[0] | null => {
+      const pCode = ref.professorCode ? String(ref.professorCode).trim().toUpperCase() : "";
+      const pEmail = ref.professorEmail ? String(ref.professorEmail).trim().toLowerCase() : "";
+      const pName = ref.professorName ? String(ref.professorName).trim().toLowerCase() : "";
+
+      if (pCode && profByCode.has(pCode)) return profByCode.get(pCode)!;
+      if (pEmail && profByEmail.has(pEmail)) return profByEmail.get(pEmail)!;
+      if (pName && profByName.has(pName)) return profByName.get(pName)!;
+      return null;
+    };
+
+    // Build Existing Offerings Key Map: "courseId::primaryProfId" -> offering & code -> offering
     const offeringPairMap = new Map<string, typeof existingOfferings[0]>();
     const offeringCodeMap = new Map<string, typeof existingOfferings[0]>();
     existingOfferings.forEach((o) => {
@@ -110,11 +133,6 @@ export async function POST(request: NextRequest) {
     for (const item of rawList) {
       const rawCourseCode = item.courseCode ? String(item.courseCode).trim().toUpperCase() : "";
       const rawCourseName = item.courseName ? String(item.courseName).trim().toLowerCase() : "";
-
-      const rawProfCode = item.professorCode ? String(item.professorCode).trim().toUpperCase() : "";
-      const rawProfEmail = item.professorEmail ? String(item.professorEmail).trim().toLowerCase() : "";
-      const rawProfName = item.professorName ? String(item.professorName).trim().toLowerCase() : "";
-
       const offeringCode = item.code ? String(item.code).trim().toUpperCase() : undefined;
 
       // Match Course (Priority 1: Code, Priority 2: Name)
@@ -130,76 +148,86 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      // Match Professor (Priority 1: Code, Priority 2: Email, Priority 3: Name)
-      let matchedProfessor = null;
-      if (rawProfCode && profByCode.has(rawProfCode)) {
-        matchedProfessor = profByCode.get(rawProfCode);
-      } else if (rawProfEmail && profByEmail.has(rawProfEmail)) {
-        matchedProfessor = profByEmail.get(rawProfEmail);
-      } else if (rawProfName && profByName.has(rawProfName)) {
-        matchedProfessor = profByName.get(rawProfName);
+      // Match All Professors for this Offering
+      const rawProfRefs: RawProfessorRef[] = [];
+
+      if (Array.isArray(item.professors) && item.professors.length > 0) {
+        rawProfRefs.push(...item.professors);
+      } else if (Array.isArray(item.professorCodes) && item.professorCodes.length > 0) {
+        item.professorCodes.forEach((c) => rawProfRefs.push({ professorCode: c }));
+      } else if (Array.isArray(item.professorNames) && item.professorNames.length > 0) {
+        item.professorNames.forEach((n) => rawProfRefs.push({ professorName: n }));
+      } else if (item.professorCode || item.professorEmail || item.professorName) {
+        rawProfRefs.push({
+          professorCode: item.professorCode,
+          professorEmail: item.professorEmail,
+          professorName: item.professorName,
+        });
       }
 
-      if (!matchedProfessor) {
-        errors.push(`استاد با مشخصات کد «${rawProfCode || "---"}» / ایمیل «${rawProfEmail || "---"}» / نام «${item.professorName || "---"}» یافت نشد.`);
+      const matchedProfIds: string[] = [];
+      for (const pRef of rawProfRefs) {
+        const prof = findProfessor(pRef);
+        if (prof && !matchedProfIds.includes(prof.id)) {
+          matchedProfIds.push(prof.id);
+        }
+      }
+
+      if (matchedProfIds.length === 0) {
+        errors.push(`برای درس «${matchedCourse.name}»، هیچ استادی با اطلاعات ارسالی یافت نشد.`);
         continue;
       }
 
-      const pairKey = `${matchedCourse.id}::${matchedProfessor.id}`;
+      const primaryProfId = matchedProfIds[0];
+      const pairKey = `${matchedCourse.id}::${primaryProfId}`;
       const existingPair = offeringPairMap.get(pairKey);
       const existingByCode = offeringCode ? offeringCodeMap.get(offeringCode) : null;
 
       const existingMatch = existingPair || existingByCode;
 
       if (existingMatch) {
-        // Already exists -> update code if provided
+        // Already exists -> update code & professors
         try {
-          if (offeringCode && offeringCode !== existingMatch.code) {
-            await updateOffering(existingMatch.id, {
-              courseId: matchedCourse.id,
-              professorId: matchedProfessor.id,
-              code: offeringCode,
-            });
-            updatedCount++;
-            if (offeringCode) offeringCodeMap.set(offeringCode, existingMatch);
-          } else {
-            updatedCount++;
-          }
+          await updateOffering(existingMatch.id, {
+            courseId: matchedCourse.id,
+            professorIds: matchedProfIds,
+            code: offeringCode || existingMatch.code,
+          });
+          updatedCount++;
         } catch (err: any) {
-          errors.push(`خطا در به‌روزرسانی ارائه درس ${matchedCourse.name} با ${matchedProfessor.name}: ${err?.message || "خطای نامشخص"}`);
+          errors.push(`خطا در به‌روزرسانی ارائه درس «${matchedCourse.name}»: ${err?.message || "نامشخص"}`);
         }
       } else {
-        // Create new offering
+        // Create new offering with multi-professors
         try {
           const newOff = await createOffering({
             courseId: matchedCourse.id,
-            professorId: matchedProfessor.id,
+            professorIds: matchedProfIds,
             code: offeringCode,
           });
-
           createdCount++;
           offeringPairMap.set(pairKey, newOff);
-          if (newOff.code) offeringCodeMap.set(newOff.code.trim().toUpperCase(), newOff);
+          if (offeringCode) offeringCodeMap.set(offeringCode, newOff);
         } catch (err: any) {
-          errors.push(`خطا در ایجاد ارائه درس ${matchedCourse.name} با ${matchedProfessor.name}: ${err?.message || "خطای نامشخص"}`);
+          errors.push(`خطا در ایجاد ارائه درس «${matchedCourse.name}»: ${err?.message || "نامشخص"}`);
         }
       }
     }
 
     return NextResponse.json({
       success: true,
-      message: `عملیات با موفقیت انجام شد: ${createdCount} ارائه درسی جدید افزوده و ${updatedCount} ارائه همگام‌سازی شد.`,
-      stats: {
-        total: rawList.length,
-        created: createdCount,
-        updated: updatedCount,
+      message: `عملیات ایمپورت با موفقیت انجام شد: ${createdCount} ارائه ایجاد شد، ${updatedCount} ارائه به‌روزرسانی گردید.`,
+      data: {
+        createdCount,
+        updatedCount,
+        errorCount: errors.length,
         errors,
       },
     });
   } catch (error: any) {
-    console.error("Offerings Import error:", error);
+    console.error("Import offerings error:", error);
     return NextResponse.json(
-      { success: false, message: "خطای سرور در ورود ارائه‌های درسی: " + (error?.message || "نامشخص") },
+      { success: false, message: "خطا در پردازش فایل ایمپورت ارائه‌ها: " + (error?.message || "نامشخص") },
       { status: 500 }
     );
   }

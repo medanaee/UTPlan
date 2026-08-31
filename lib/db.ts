@@ -1599,14 +1599,24 @@ export async function getCourseById(id: string): Promise<Course | null> {
 
       const { results: offeringRows } = await d1
         .prepare(
-          `SELECT o.id, o.course_id, o.professor_id, o.created_at,
-                  p.name AS professor_name, p.title AS professor_title, p.avatar_url AS professor_avatar
+          `SELECT o.id, o.code, o.course_id, o.professor_id, o.created_at
            FROM course_offerings o
-           LEFT JOIN professors p ON o.professor_id = p.id
            WHERE o.course_id = ? AND o.deleted_at IS NULL`
         )
         .bind(id)
         .all();
+
+      const { results: allProfLinks } = await d1
+        .prepare(`
+          SELECT op.offering_id, op.is_primary, p.id, p.name, p.code, p.title, p.avatar_url, p.email
+          FROM offering_professors op
+          JOIN professors p ON op.professor_id = p.id
+          WHERE p.deleted_at IS NULL
+          ORDER BY op.is_primary DESC, p.name ASC
+        `)
+        .all();
+
+      const courseProfLinks = allProfLinks || [];
 
       const { results: assignRows } = await d1
         .prepare("SELECT * FROM track_course_assignments WHERE course_id = ?")
@@ -1639,15 +1649,36 @@ export async function getCourseById(id: string): Promise<Course | null> {
           courseCode: d.course_code || "---",
           type: d.type as any,
         })),
-        offerings: (offeringRows || []).map((o: any) => ({
-          id: o.id,
-          courseId: o.course_id,
-          professorId: o.professor_id,
-          professorName: o.professor_name || "نامشخص",
-          professorTitle: o.professor_title || undefined,
-          createdAt: o.created_at,
-          deletedAt: null,
-        })),
+        offerings: (offeringRows || []).map((o: any) => {
+          const offProfs = courseProfLinks
+            .filter((lp: any) => lp.offering_id === o.id)
+            .map((lp: any) => ({
+              id: lp.id,
+              name: lp.name,
+              code: lp.code || undefined,
+              title: lp.title || undefined,
+              avatarUrl: lp.avatar_url || undefined,
+              email: lp.email || undefined,
+              isPrimary: Boolean(lp.is_primary),
+            }));
+
+          const primaryProf = offProfs.find((p: any) => p.isPrimary) || offProfs[0];
+          const profNames = offProfs.map((p: any) => p.name).join(" و ");
+
+          return {
+            id: o.id,
+            code: o.code || undefined,
+            courseId: o.course_id,
+            professorId: primaryProf?.id || o.professor_id || "",
+            professorIds: offProfs.map((p: any) => p.id),
+            professors: offProfs,
+            professorName: profNames || primaryProf?.name || "نامشخص",
+            professorTitle: primaryProf?.title || undefined,
+            professorAvatarUrl: primaryProf?.avatarUrl || undefined,
+            createdAt: o.created_at,
+            deletedAt: null,
+          };
+        }),
         trackAssignments: (assignRows || []).map((a: any) => ({
           id: a.id,
           trackId: a.track_id,
@@ -1907,10 +1938,24 @@ export async function getAllPrerequisites(): Promise<{ courseId: string; require
 }
 
 export async function addPrerequisite(
-  courseId: string,
-  requiredCourseId: string,
-  type: "prerequisite" | "corequisite" = "prerequisite"
+  courseIdOrData: string | { courseId: string; requiredCourseId: string; type?: PrerequisiteType },
+  requiredCourseIdParam?: string,
+  typeParam: PrerequisiteType = "prerequisite"
 ): Promise<PrerequisiteRelation> {
+  let courseId: string;
+  let requiredCourseId: string;
+  let type: PrerequisiteType;
+
+  if (typeof courseIdOrData === "object" && courseIdOrData !== null) {
+    courseId = courseIdOrData.courseId;
+    requiredCourseId = courseIdOrData.requiredCourseId;
+    type = courseIdOrData.type || "prerequisite";
+  } else {
+    courseId = courseIdOrData;
+    requiredCourseId = requiredCourseIdParam!;
+    type = typeParam;
+  }
+
   const id = `pr_${crypto.randomUUID().slice(0, 8)}`;
   const d1 = getD1();
   if (d1) {
@@ -2035,16 +2080,17 @@ export async function getProfessorById(id: string): Promise<Professor | null> {
         } catch {}
       }
 
-      // Offerings taught by this professor
+      // Offerings taught by this professor (either primary or co-instructor)
       const { results: offRows } = await d1
         .prepare(
-          `SELECT o.id, o.course_id, o.professor_id, o.created_at,
+          `SELECT DISTINCT o.id, o.code, o.course_id, o.professor_id, o.created_at,
                   c.name AS course_name, c.code AS course_code, c.units AS course_units
            FROM course_offerings o
            JOIN courses c ON o.course_id = c.id
-           WHERE o.professor_id = ? AND o.deleted_at IS NULL`
+           LEFT JOIN offering_professors op ON o.id = op.offering_id
+           WHERE (o.professor_id = ? OR op.professor_id = ?) AND o.deleted_at IS NULL AND c.deleted_at IS NULL`
         )
-        .bind(id)
+        .bind(id, id)
         .all();
 
       // Review stats
@@ -3692,6 +3738,71 @@ export async function deleteCoursesByFaculty(facultyId: string): Promise<boolean
   const d1 = getD1();
   if (d1) {
     try {
+      // 1. Delete course event slots referencing events of offerings of courses in this faculty
+      await d1
+        .prepare(
+          `DELETE FROM course_event_slots 
+           WHERE event_id IN (
+             SELECT id FROM course_events WHERE offering_id IN (
+               SELECT id FROM course_offerings WHERE course_id IN (SELECT id FROM courses WHERE faculty_id = ?)
+             )
+           )`
+        )
+        .bind(facultyId)
+        .run();
+
+      // 2. Delete course events of offerings of courses in this faculty
+      await d1
+        .prepare(
+          `DELETE FROM course_events 
+           WHERE offering_id IN (
+             SELECT id FROM course_offerings WHERE course_id IN (SELECT id FROM courses WHERE faculty_id = ?)
+           )`
+        )
+        .bind(facultyId)
+        .run();
+
+      // 3. Delete offering professors of offerings of courses in this faculty
+      await d1
+        .prepare(
+          `DELETE FROM offering_professors 
+           WHERE offering_id IN (
+             SELECT id FROM course_offerings WHERE course_id IN (SELECT id FROM courses WHERE faculty_id = ?)
+           )`
+        )
+        .bind(facultyId)
+        .run();
+
+      // 4. Delete offering reviews
+      await d1
+        .prepare(
+          `DELETE FROM reviews 
+           WHERE target_type = 'offering' AND target_id IN (
+             SELECT id FROM course_offerings WHERE course_id IN (SELECT id FROM courses WHERE faculty_id = ?)
+           )`
+        )
+        .bind(facultyId)
+        .run();
+
+      // 5. Delete course offerings
+      await d1
+        .prepare(
+          `DELETE FROM course_offerings 
+           WHERE course_id IN (SELECT id FROM courses WHERE faculty_id = ?)`
+        )
+        .bind(facultyId)
+        .run();
+
+      // 6. Delete chart courses
+      await d1
+        .prepare(
+          `DELETE FROM chart_courses 
+           WHERE course_id IN (SELECT id FROM courses WHERE faculty_id = ?)`
+        )
+        .bind(facultyId)
+        .run();
+
+      // 7. Delete prerequisites (both as course and as prerequisite)
       await d1
         .prepare(
           `DELETE FROM prerequisites 
@@ -3701,6 +3812,7 @@ export async function deleteCoursesByFaculty(facultyId: string): Promise<boolean
         .bind(facultyId, facultyId)
         .run();
 
+      // 8. Delete track course assignments
       await d1
         .prepare(
           `DELETE FROM track_course_assignments 
@@ -3709,6 +3821,7 @@ export async function deleteCoursesByFaculty(facultyId: string): Promise<boolean
         .bind(facultyId)
         .run();
 
+      // 9. Delete courses
       await d1
         .prepare("DELETE FROM courses WHERE faculty_id = ?")
         .bind(facultyId)
@@ -3728,6 +3841,7 @@ export async function deleteCoursesByFaculty(facultyId: string): Promise<boolean
     (p) => !toDeleteIds.has(p.courseId) && !toDeleteIds.has(p.requiredCourseId)
   );
   trackAssignmentsStore = trackAssignmentsStore.filter((a) => !toDeleteIds.has(a.courseId));
+  offeringsStore = offeringsStore.filter((o) => !toDeleteIds.has(o.courseId));
   return true;
 }
 

@@ -11,6 +11,7 @@ import {
 } from "@/lib/db";
 import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
 import { wouldCreatePrerequisiteCycle } from "@/lib/graph-utils";
+import type { PrerequisiteType } from "@/lib/types";
 
 interface ImportCourseItem {
   code: string;
@@ -19,10 +20,49 @@ interface ImportCourseItem {
   units?: number;
   offeredIn?: "fall" | "spring" | "both" | "none";
   description?: string;
-  prerequisites?: string[];
-  corequisites?: string[];
-  recommendedPrerequisites?: string[];
-  recommended?: string[];
+  prerequisites?: any;
+  corequisites?: any;
+  recommendedPrerequisites?: any;
+  recommended?: any;
+}
+
+// Helper: Extract clean string references from array, object, or comma-separated string
+function extractCourseRefs(rawVal: any): string[] {
+  if (!rawVal) return [];
+  if (Array.isArray(rawVal)) {
+    const res: string[] = [];
+    for (const item of rawVal) {
+      if (typeof item === "string" && item.trim()) {
+        res.push(item.trim());
+      } else if (item && typeof item === "object") {
+        const codeOrName =
+          item.code ||
+          item.courseCode ||
+          item.name ||
+          item.courseName ||
+          item.abbreviation ||
+          item.id;
+        if (codeOrName && typeof codeOrName === "string" && codeOrName.trim()) {
+          res.push(codeOrName.trim());
+        }
+      }
+    }
+    return res;
+  }
+  if (typeof rawVal === "string") {
+    const trimmed = rawVal.trim();
+    if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        return extractCourseRefs(parsed);
+      } catch {}
+    }
+    return trimmed
+      .split(/[,،]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  return [];
 }
 
 export async function POST(request: NextRequest) {
@@ -44,10 +84,12 @@ export async function POST(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const queryFacultyId = searchParams.get("facultyId");
+    const queryMode = searchParams.get("mode");
 
     const body = await request.json();
     let rawList: ImportCourseItem[] = [];
     let targetFacultyId = queryFacultyId || undefined;
+    let mode = (queryMode || (body && typeof body === "object" ? body.mode : null) || "append") as "append" | "replace";
 
     if (Array.isArray(body)) {
       rawList = body;
@@ -65,9 +107,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 1. Resolve Target Faculty & Import Mode
-    const mode = (searchParams.get("mode") || (body && typeof body === "object" ? body.mode : null) || "append") as "append" | "replace";
-
+    // 1. Resolve Target Faculty
     const existingFaculties = await getFaculties();
     if (!targetFacultyId || !existingFaculties.some((f) => f.id === targetFacultyId)) {
       if (existingFaculties.length > 0) {
@@ -80,19 +120,24 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // If Mode is "replace", wipe all existing courses in this faculty first
+    // 2. Wipe if mode is "replace"
     if (mode === "replace") {
-      await deleteCoursesByFaculty(targetFacultyId);
+      const deleteOk = await deleteCoursesByFaculty(targetFacultyId);
+      if (!deleteOk) {
+        console.warn("deleteCoursesByFaculty encountered an issue or wiped partially");
+      }
     }
 
-    // 2. Fetch current courses
-    const existingCourses = await getCourses();
+    // 3. Fetch current remaining courses across all faculties for lookup
+    const currentCourses = await getCourses();
+    const courseCodeToIdMap = new Map<string, string>(); // UPPER(code) -> id
+    const courseNameToIdMap = new Map<string, string>(); // LOWER(name) -> id
+    const courseAbbrToIdMap = new Map<string, string>(); // UPPER(abbr) -> id
 
-    const courseCodeToIdMap = new Map<string, string>(); // code -> id
-    const courseNameToIdMap = new Map<string, string>(); // name -> id
-    existingCourses.forEach((c) => {
-      if (c.code) courseCodeToIdMap.set(c.code.trim(), c.id);
-      if (c.name) courseNameToIdMap.set(c.name.trim(), c.id);
+    currentCourses.forEach((c) => {
+      if (c.code) courseCodeToIdMap.set(c.code.trim().toUpperCase(), c.id);
+      if (c.name) courseNameToIdMap.set(c.name.trim().toLowerCase(), c.id);
+      if (c.abbreviation) courseAbbrToIdMap.set(c.abbreviation.trim().toUpperCase(), c.id);
     });
 
     let createdCount = 0;
@@ -100,14 +145,14 @@ export async function POST(request: NextRequest) {
     let prereqsAdded = 0;
     const errors: string[] = [];
 
-    // 3. Step 1: Create or Update Courses
+    // 4. Step 1: Create or Update Courses
     for (const item of rawList) {
       if (!item.code || !item.name) {
         errors.push(`سطر بدون کد یا نام درس رد شد: ${JSON.stringify(item)}`);
         continue;
       }
 
-      const cleanCode = String(item.code).trim();
+      const cleanCode = String(item.code).trim().toUpperCase();
       const cleanName = String(item.name).trim();
       const cleanUnits = Number(item.units) || 3;
       const rawOff = item.offeredIn ? String(item.offeredIn).trim().toLowerCase() : "";
@@ -124,8 +169,8 @@ export async function POST(request: NextRequest) {
 
       const existingCourseId = courseCodeToIdMap.get(cleanCode);
 
-      if (existingCourseId) {
-        // Update existing course
+      if (existingCourseId && mode !== "replace") {
+        // Update existing course in append mode
         try {
           await updateCourse(existingCourseId, {
             name: cleanName,
@@ -136,7 +181,8 @@ export async function POST(request: NextRequest) {
             facultyId: targetFacultyId,
           });
           updatedCount++;
-          courseNameToIdMap.set(cleanName, existingCourseId);
+          courseNameToIdMap.set(cleanName.toLowerCase(), existingCourseId);
+          if (cleanAbbr) courseAbbrToIdMap.set(cleanAbbr.toUpperCase(), existingCourseId);
         } catch (err: any) {
           errors.push(`خطا در ویرایش درس ${cleanName} (${cleanCode}): ${err?.message || "خطای نامشخص"}`);
         }
@@ -154,69 +200,78 @@ export async function POST(request: NextRequest) {
           });
           createdCount++;
           courseCodeToIdMap.set(cleanCode, newCourse.id);
-          courseNameToIdMap.set(cleanName, newCourse.id);
+          courseNameToIdMap.set(cleanName.toLowerCase(), newCourse.id);
+          if (cleanAbbr) courseAbbrToIdMap.set(cleanAbbr.toUpperCase(), newCourse.id);
         } catch (err: any) {
           errors.push(`خطا در ایجاد درس ${cleanName} (${cleanCode}): ${err?.message || "خطای نامشخص"}`);
         }
       }
     }
 
-    // 4. Step 2: Establish Prerequisites and Corequisites
+    // 5. Step 2: Establish Prerequisites, Corequisites, and Recommended Prerequisites
     let allPrereqs = await getAllPrerequisites();
 
+    // Helper: Find target course ID by reference string
+    const resolveTargetId = (refStr: string): string | null => {
+      const clean = refStr.trim();
+      if (!clean) return null;
+      const upper = clean.toUpperCase();
+      const lower = clean.toLowerCase();
+
+      return (
+        courseCodeToIdMap.get(upper) ||
+        courseNameToIdMap.get(lower) ||
+        courseAbbrToIdMap.get(upper) ||
+        null
+      );
+    };
+
     for (const item of rawList) {
-      const cleanCode = String(item.code || "").trim();
-      const sourceCourseId = courseCodeToIdMap.get(cleanCode);
+      const cleanCode = String(item.code || "").trim().toUpperCase();
+      const cleanName = String(item.name || "").trim().toLowerCase();
+      const sourceCourseId = courseCodeToIdMap.get(cleanCode) || courseNameToIdMap.get(cleanName);
       if (!sourceCourseId) continue;
 
-      // Process Prerequisites
-      const prereqsList = Array.isArray(item.prerequisites) ? item.prerequisites : [];
+      // A) Process Hard Prerequisites
+      const prereqsList = extractCourseRefs(item.prerequisites);
       for (const reqRef of prereqsList) {
-        const cleanRef = String(reqRef).trim();
-        const targetCourseId = courseCodeToIdMap.get(cleanRef) || courseNameToIdMap.get(cleanRef);
+        const targetCourseId = resolveTargetId(reqRef);
 
         if (!targetCourseId) {
-          errors.push(`پیش‌نیاز «${cleanRef}» برای درس «${item.name}» در سامانه یافت نشد.`);
+          errors.push(`پیش‌نیاز «${reqRef}» برای درس «${item.name}» در سامانه یافت نشد.`);
           continue;
         }
 
         if (sourceCourseId === targetCourseId) continue;
 
-        // Check if already exists
         const exists = allPrereqs.some(
-          (p) => p.courseId === sourceCourseId && p.requiredCourseId === targetCourseId
+          (p) => p.courseId === sourceCourseId && p.requiredCourseId === targetCourseId && p.type === "prerequisite"
         );
 
         if (!exists) {
-          // Check cycle
           const causesCycle = wouldCreatePrerequisiteCycle(allPrereqs, {
             courseId: sourceCourseId,
             requiredCourseId: targetCourseId,
           });
 
           if (causesCycle) {
-            errors.push(`هشدار: پیش‌نیاز «${cleanRef}» برای درس «${item.name}» به دلیل ایجاد چرخه اضافه نشد.`);
+            errors.push(`هشدار: پیش‌نیاز «${reqRef}» برای درس «${item.name}» به دلیل ایجاد چرخه اضافه نشد.`);
           } else {
             try {
-              const added = await addPrerequisite({
-                courseId: sourceCourseId,
-                requiredCourseId: targetCourseId,
-                type: "prerequisite",
-              });
+              const added = await addPrerequisite(sourceCourseId, targetCourseId, "prerequisite");
               allPrereqs.push(added);
               prereqsAdded++;
             } catch (err: any) {
-              errors.push(`خطا در افزودن پیش‌نیاز: ${err?.message || ""}`);
+              errors.push(`خطا در افزودن پیش‌نیاز «${reqRef}»: ${err?.message || ""}`);
             }
           }
         }
       }
 
-      // Process Corequisites
-      const coreqsList = Array.isArray(item.corequisites) ? item.corequisites : [];
+      // B) Process Corequisites
+      const coreqsList = extractCourseRefs(item.corequisites);
       for (const reqRef of coreqsList) {
-        const cleanRef = String(reqRef).trim();
-        const targetCourseId = courseCodeToIdMap.get(cleanRef) || courseNameToIdMap.get(cleanRef);
+        const targetCourseId = resolveTargetId(reqRef);
 
         if (!targetCourseId || sourceCourseId === targetCourseId) continue;
 
@@ -226,15 +281,33 @@ export async function POST(request: NextRequest) {
 
         if (!exists) {
           try {
-            const added = await addPrerequisite({
-              courseId: sourceCourseId,
-              requiredCourseId: targetCourseId,
-              type: "corequisite",
-            });
+            const added = await addPrerequisite(sourceCourseId, targetCourseId, "corequisite");
             allPrereqs.push(added);
             prereqsAdded++;
           } catch (err: any) {
-            errors.push(`خطا در افزودن هم‌نیاز: ${err?.message || ""}`);
+            errors.push(`خطا در افزودن هم‌نیاز «${reqRef}»: ${err?.message || ""}`);
+          }
+        }
+      }
+
+      // C) Process Recommended Prerequisites
+      const recList = extractCourseRefs(item.recommendedPrerequisites || item.recommended);
+      for (const reqRef of recList) {
+        const targetCourseId = resolveTargetId(reqRef);
+
+        if (!targetCourseId || sourceCourseId === targetCourseId) continue;
+
+        const exists = allPrereqs.some(
+          (p) => p.courseId === sourceCourseId && p.requiredCourseId === targetCourseId && p.type === "recommended"
+        );
+
+        if (!exists) {
+          try {
+            const added = await addPrerequisite(sourceCourseId, targetCourseId, "recommended");
+            allPrereqs.push(added);
+            prereqsAdded++;
+          } catch (err: any) {
+            errors.push(`خطا در افزودن پیش‌نیاز پیشنهادی «${reqRef}»: ${err?.message || ""}`);
           }
         }
       }
@@ -242,7 +315,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `ورود اطلاعات انجام شد: ${createdCount} درس جدید، ${updatedCount} درس به‌روزشده، ${prereqsAdded} پیش‌نیاز/هم‌نیاز ثبت گردید.`,
+      message: `ورود اطلاعات دروس با موفقیت انجام شد: ${createdCount} درس ایجاد، ${updatedCount} درس به‌روزرسانی و ${prereqsAdded} پیش‌نیاز/هم‌نیاز/پیشنهادی ثبت گردید.`,
       stats: {
         total: rawList.length,
         created: createdCount,
@@ -251,8 +324,11 @@ export async function POST(request: NextRequest) {
         errors,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Courses import error:", error);
-    return NextResponse.json({ success: false, message: "خطا در ورود دسته‌ای دروس" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, message: "خطا در ورود دسته‌ای دروس: " + (error?.message || "نامشخص") },
+      { status: 500 }
+    );
   }
 }

@@ -151,11 +151,23 @@ export interface Professor {
   averageRating?: number;
 }
 
+export interface OfferingProfessorInfo {
+  id: string;
+  name: string;
+  code?: string;
+  title?: string;
+  avatarUrl?: string;
+  email?: string;
+  isPrimary?: boolean;
+}
+
 export interface CourseOffering {
   id: string;
   code?: string;
   courseId: string;
-  professorId: string;
+  professorId?: string;
+  professorIds?: string[];
+  professors?: OfferingProfessorInfo[];
   createdAt: string;
   deletedAt?: string | null;
   // Joined

@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     const facultyId = searchParams.get("facultyId") || undefined;
 
     const [offerings, courses, professors] = await Promise.all([
-      getOfferings({ facultyId }),
+      getOfferings(facultyId),
       getCourses(facultyId),
       getProfessors(facultyId),
     ]);
@@ -20,15 +20,27 @@ export async function GET(request: NextRequest) {
 
     const exportData = offerings.map((o) => {
       const crs = courseMap.get(o.courseId);
-      const prof = profMap.get(o.professorId);
+      const offeringProfs = (o.professors || []).map((p) => {
+        const fullProf = profMap.get(p.id);
+        return {
+          professorCode: fullProf?.code || p.code || undefined,
+          professorName: fullProf?.name || p.name || "",
+          professorEmail: fullProf?.email || p.email || undefined,
+        };
+      });
+
+      const primaryProf = offeringProfs[0];
 
       return {
         code: o.code || undefined,
         courseCode: crs?.code || o.courseCode || "",
         courseName: crs?.name || o.courseName || "",
-        professorCode: prof?.code || undefined,
-        professorName: prof?.name || o.professorName || "",
-        professorEmail: prof?.email || undefined,
+        // Array of professors (supporting co-teaching)
+        professors: offeringProfs,
+        // Legacy single-professor fields for convenience
+        professorCode: primaryProf?.professorCode || undefined,
+        professorName: o.professorName || primaryProf?.professorName || "",
+        professorEmail: primaryProf?.professorEmail || undefined,
       };
     });
 

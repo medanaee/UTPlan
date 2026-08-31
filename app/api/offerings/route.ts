@@ -5,11 +5,9 @@ import { requireAdminSession } from "@/lib/auth";
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const courseId = searchParams.get("courseId") || undefined;
-    const professorId = searchParams.get("professorId") || undefined;
     const facultyId = searchParams.get("facultyId") || undefined;
 
-    const data = await getOfferings({ courseId, professorId, facultyId });
+    const data = await getOfferings(facultyId);
     return NextResponse.json({ success: true, data });
   } catch (error) {
     console.error("GET offerings error:", error);
@@ -26,18 +24,24 @@ export async function POST(request: NextRequest) {
     if (!auth.authorized) return auth.response! as NextResponse;
 
     const body = await request.json();
-    const { courseId, professorId, code } = body;
+    const { courseId, professorId, professorIds, code } = body;
 
-    if (!courseId || !professorId) {
+    const resolvedProfIds: string[] = Array.isArray(professorIds) && professorIds.length > 0
+      ? professorIds
+      : professorId
+      ? [professorId]
+      : [];
+
+    if (!courseId || resolvedProfIds.length === 0) {
       return NextResponse.json(
-        { success: false, message: "شناسه درس و استاد الزامی است." },
+        { success: false, message: "شناسه درس و حداقل یک استاد الزامی است." },
         { status: 400 }
       );
     }
 
     const newOffering = await createOffering({
       courseId,
-      professorId,
+      professorIds: resolvedProfIds,
       code,
     });
 
@@ -61,16 +65,22 @@ export async function PUT(request: NextRequest) {
     if (!auth.authorized) return auth.response! as NextResponse;
 
     const body = await request.json();
-    const { id, courseId, professorId, code } = body;
+    const { id, courseId, professorId, professorIds, code } = body;
 
-    if (!id || !courseId || !professorId) {
+    const resolvedProfIds: string[] | undefined = Array.isArray(professorIds)
+      ? professorIds
+      : professorId
+      ? [professorId]
+      : undefined;
+
+    if (!id || !courseId || (resolvedProfIds && resolvedProfIds.length === 0)) {
       return NextResponse.json(
-        { success: false, message: "شناسه ارائه، درس و استاد الزامی است." },
+        { success: false, message: "شناسه ارائه، درس و حداقل یک استاد الزامی است." },
         { status: 400 }
       );
     }
 
-    const updated = await updateOffering(id, { courseId, professorId, code });
+    const updated = await updateOffering(id, { courseId, professorIds: resolvedProfIds, code });
     if (!updated) {
       return NextResponse.json(
         { success: false, message: "ارائه درس مورد نظر یافت نشد." },
@@ -110,7 +120,7 @@ export async function DELETE(request: NextRequest) {
     const success = await deleteOffering(id);
     if (!success) {
       return NextResponse.json(
-        { success: false, message: "ارائه مورد نظر یافت نشد." },
+        { success: false, message: "ارائه درس یافت نشد یا حذف نشد." },
         { status: 404 }
       );
     }

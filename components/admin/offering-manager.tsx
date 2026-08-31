@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import type { Course, Professor, CourseOffering, Faculty } from "@/lib/types";
 import {
   Card,
@@ -11,19 +11,12 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { OfferingImportDialog } from "@/components/offerings/offering-import-dialog";
-import { Download, Upload } from "lucide-react";
+import { Download, Upload, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Combobox } from "@/components/ui/combobox";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -43,16 +36,8 @@ import {
   Sparkles,
   Building2,
   BookUser,
+  X,
 } from "lucide-react";
-
-const items = [
-  { label: "Select a fruit", value: null },
-  { label: "Apple", value: "apple" },
-  { label: "Banana", value: "banana" },
-  { label: "Blueberry", value: "blueberry" },
-  { label: "Grapes", value: "grapes" },
-  { label: "Pineapple", value: "pineapple" },
-];
 
 interface OfferingManagerProps {
   courses: Course[];
@@ -76,13 +61,20 @@ export function OfferingManager({
   const [editingOffering, setEditingOffering] = useState<CourseOffering | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Professor filter search inside modal
+  const [modalProfSearch, setModalProfSearch] = useState("");
+
   const currentFaculty = faculties.find((f) => f.id === selectedFacultyId);
 
-  // Form State: Only Course + Professor
-  const [form, setForm] = useState({
+  // Form State: Course + Multiple Professors
+  const [form, setForm] = useState<{
+    code: string;
+    courseId: string;
+    professorIds: string[];
+  }>({
     code: "",
     courseId: "",
-    professorId: "",
+    professorIds: [],
   });
 
   const loadOfferings = async () => {
@@ -108,26 +100,63 @@ export function OfferingManager({
 
   const handleOpenCreateModal = () => {
     setEditingOffering(null);
+    setModalProfSearch("");
     setForm({
+      code: "",
       courseId: courses[0]?.id || "",
-      professorId: professors[0]?.id || "",
+      professorIds: professors[0] ? [professors[0].id] : [],
     });
     setIsModalOpen(true);
   };
 
   const handleOpenEditModal = (off: CourseOffering) => {
     setEditingOffering(off);
+    setModalProfSearch("");
+    const pIds =
+      off.professors && off.professors.length > 0
+        ? off.professors.map((p) => p.id)
+        : off.professorId
+        ? [off.professorId]
+        : [];
+
     setForm({
       code: off.code || "",
       courseId: off.courseId,
-      professorId: off.professorId,
+      professorIds: pIds,
     });
     setIsModalOpen(true);
   };
 
+  const handleToggleProfessor = (profId: string) => {
+    setForm((prev) => {
+      const exists = prev.professorIds.includes(profId);
+      if (exists) {
+        return {
+          ...prev,
+          professorIds: prev.professorIds.filter((id) => id !== profId),
+        };
+      } else {
+        return {
+          ...prev,
+          professorIds: [...prev.professorIds, profId],
+        };
+      }
+    });
+  };
+
+  const handleRemoveProfessor = (profId: string) => {
+    setForm((prev) => ({
+      ...prev,
+      professorIds: prev.professorIds.filter((id) => id !== profId),
+    }));
+  };
+
   const handleSaveOffering = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.courseId || !form.professorId) return;
+    if (!form.courseId || form.professorIds.length === 0) {
+      alert("لطفاً درس و حداقل یک استاد مدرس را انتخاب کنید.");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -183,68 +212,75 @@ export function OfferingManager({
     }
   };
 
-  const filteredOfferings = offerings.filter((off) => {
-    const matchesSearch =
-      (off.courseName || "").toLowerCase().includes(search.toLowerCase()) ||
-      (off.courseCode || "").toLowerCase().includes(search.toLowerCase()) ||
-      (off.professorName || "").toLowerCase().includes(search.toLowerCase());
-
-    return matchesSearch;
-  });
-
-  
   const handleExportJson = async () => {
     try {
       setIsExporting(true);
       const url = selectedFacultyId
         ? `/api/offerings/export?facultyId=${selectedFacultyId}`
         : "/api/offerings/export";
-
       const res = await fetch(url).then((r) => r.json());
       if (res.success && Array.isArray(res.data)) {
-        const fileName = currentFaculty
-          ? `offerings-${currentFaculty.code.toLowerCase()}.json`
-          : "offerings-export.json";
-
-        const dataStr =
-          "data:text/json;charset=utf-8," +
-          encodeURIComponent(JSON.stringify(res.data, null, 2));
-        const downloadAnchor = document.createElement("a");
-        downloadAnchor.setAttribute("href", dataStr);
-        downloadAnchor.setAttribute("download", fileName);
-        document.body.appendChild(downloadAnchor);
-        downloadAnchor.click();
-        downloadAnchor.remove();
+        const blob = new Blob([JSON.stringify(res.data, null, 2)], {
+          type: "application/json",
+        });
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = `offerings-export-${
+          currentFaculty ? currentFaculty.code : "all"
+        }-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
       } else {
-        alert(res.message || "خطا در خروجی گرفتن از اطلاعات ارائه‌ها");
+        alert("خطا در دریافت خروجی ارائه‌ها: " + (res.message || "پاسخ نامعتبر"));
       }
-    } catch (err: any) {
-      alert("خطا در برقراری ارتباط با سرور: " + (err?.message || "نامشخص"));
+    } catch (err) {
+      console.error("Export offerings error:", err);
+      alert("خطا در برقراری ارتباط با سرور");
     } finally {
       setIsExporting(false);
     }
   };
 
-  const facultyCourses = courses.filter(
-    (c) => !selectedFacultyId || c.facultyId === selectedFacultyId
-  );
-  const facultyProfessors = professors.filter(
-    (p) => !selectedFacultyId || p.facultyId === selectedFacultyId
-  );
+  const filteredOfferings = useMemo(() => {
+    return offerings.filter((o) => {
+      const q = search.trim().toLowerCase();
+      if (!q) return true;
+      const cName = (o.courseName || "").toLowerCase();
+      const cCode = (o.courseCode || "").toLowerCase();
+      const pName = (o.professorName || "").toLowerCase();
+      const offCode = (o.code || "").toLowerCase();
+      return (
+        cName.includes(q) ||
+        cCode.includes(q) ||
+        pName.includes(q) ||
+        offCode.includes(q)
+      );
+    });
+  }, [offerings, search]);
 
-  const courseOptions = facultyCourses.map((c) => ({
-    value: c.id,
-    label: `${c.name} (${c.units} واحد)`,
-  }));
+  const filteredModalProfessors = useMemo(() => {
+    const q = modalProfSearch.trim().toLowerCase();
+    if (!q) return professors;
+    return professors.filter((p) => {
+      const name = (p.name || "").toLowerCase();
+      const code = (p.code || "").toLowerCase();
+      const title = (p.title || "").toLowerCase();
+      return name.includes(q) || code.includes(q) || title.includes(q);
+    });
+  }, [professors, modalProfSearch]);
 
-  const professorOptions = facultyProfessors.map((p) => ({
-    value: p.id,
-    label: `${p.name} (${p.title || "استاد"})`,
-  }));
+  const selectedProfessorsList = useMemo(() => {
+    return form.professorIds
+      .map((id) => professors.find((p) => p.id === id))
+      .filter(Boolean) as Professor[];
+  }, [form.professorIds, professors]);
 
   return (
-    <div className="space-y-4">
-      {/* Standard Active Faculty Header Banner */}
+    <div className="space-y-6">
+      {/* Faculty Selection Banner */}
       <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-sm">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -265,7 +301,7 @@ export function OfferingManager({
                 )}
               </div>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                فقط ارائه‌های درسی (ترکیب درس + استاد) مربوط به این دانشکده نمایش داده می‌شوند و ارائه‌های جدید نیز از دروس و اساتید این دانشکده ساخته می‌شوند.
+                ارائه‌های درسی می‌توانند به یک یا چند استاد هم‌تدریس اختصاص داده شوند (موجودیت پایه برای نظرسنجی و برنامه‌ریزی هفتگی).
               </p>
             </div>
           </div>
@@ -280,7 +316,7 @@ export function OfferingManager({
               <span>ارائه‌های درسی {currentFaculty ? `«${currentFaculty.name}»` : ""}</span>
             </CardTitle>
             <CardDescription className="text-xs">
-              تعریف اینکه چه استادی چه درسی را تدریس می‌کند (موجودیت پایه جهت تفکیک نظرات دانشجویان و برنامه‌ریزی کلاسی)
+              تعریف اینکه چه اساتیدی چه درسی را تدریس می‌کنند (پشتیبانی از ارائه‌های تک‌استادی و چنداستادی / Co-Teaching)
             </CardDescription>
           </div>
 
@@ -316,7 +352,7 @@ export function OfferingManager({
               className="h-8 gap-1.5 text-xs shadow-xs font-semibold"
             >
               <Plus className="h-3.5 w-3.5" />
-              تعریف اتصال درس و استاد
+              تعریف ارائه جدید
             </Button>
           </div>
         </CardHeader>
@@ -345,82 +381,114 @@ export function OfferingManager({
               <thead>
                 <tr className="border-b bg-muted/40 text-muted-foreground font-semibold">
                   <th className="py-2.5 px-3 text-right">نام درس و مشخصات</th>
-                  <th className="py-2.5 px-3 text-right">استاد مدرس</th>
+                  <th className="py-2.5 px-3 text-right">استاد / اساتید مدرس</th>
                   <th className="py-2.5 px-3 text-center">کد ارائه</th>
                   <th className="py-2.5 px-3 text-center">عملیات</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
-                {filteredOfferings.map((off) => (
-                  <tr key={off.id} className="hover:bg-muted/20 transition-colors">
-                    {/* Course */}
-                    <td className="py-2.5 px-3">
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 font-bold text-xs shrink-0">
-                          <BookOpen className="h-3.5 w-3.5" />
-                        </div>
-                        <div>
-                          <div className="font-bold text-foreground">{off.courseName}</div>
-                          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                            <span>{off.courseCode}</span>
-                            <span>•</span>
-                            <span>{off.courseUnits} واحد</span>
+                {filteredOfferings.map((off) => {
+                  const offeringProfs = off.professors && off.professors.length > 0
+                    ? off.professors
+                    : [{ id: off.professorId || "p1", name: off.professorName || "استاد درس", title: off.professorTitle, avatarUrl: off.professorAvatarUrl }];
+
+                  return (
+                    <tr key={off.id} className="hover:bg-muted/20 transition-colors">
+                      {/* Course */}
+                      <td className="py-2.5 px-3">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 font-bold text-xs shrink-0">
+                            <BookOpen className="h-3.5 w-3.5" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-foreground">{off.courseName}</span>
+                              {off.courseAbbreviation && (
+                                <Badge variant="outline" className="text-[10px] font-mono text-primary border-primary/30 bg-primary/5 px-1 py-0">
+                                  {off.courseAbbreviation}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-0.5">
+                              <span className="font-mono">{off.courseCode}</span>
+                              <span>•</span>
+                              <span>{off.courseUnits} واحد</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Professor */}
-                    <td className="py-2.5 px-3">
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs shrink-0 overflow-hidden border border-border/70">
-                          {off.professorAvatarUrl ? (
-                            <img src={off.professorAvatarUrl} alt={off.professorName} className="h-full w-full object-cover" />
-                          ) : (
-                            <span>{off.professorName ? off.professorName.charAt(0) : "؟"}</span>
+                      {/* Professors (Multi-Professor Badges & Avatars) */}
+                      <td className="py-2.5 px-3">
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {offeringProfs.map((p, idx) => (
+                              <div
+                                key={p.id}
+                                className="flex items-center gap-1.5 bg-muted/60 pl-1.5 pr-2 py-0.5 rounded-lg border border-border/70 text-xs shadow-2xs"
+                              >
+                                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-[10px] overflow-hidden border border-border/60 shrink-0">
+                                  {p.avatarUrl ? (
+                                    <img src={p.avatarUrl} alt={p.name} className="h-full w-full object-cover" />
+                                  ) : (
+                                    <span>{p.name ? p.name.charAt(0) : "؟"}</span>
+                                  )}
+                                </div>
+                                <span className="font-semibold text-foreground text-xs">{p.name}</span>
+                                {p.code && (
+                                  <span className="text-[10px] text-muted-foreground font-mono">({p.code})</span>
+                                )}
+                                {offeringProfs.length > 1 && idx === 0 && (
+                                  <Badge variant="outline" className="text-[9px] px-1 py-0 text-primary border-primary/30 bg-primary/5">
+                                    اصلی
+                                  </Badge>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                          {offeringProfs.length > 1 && (
+                            <span className="text-[10px] text-primary font-medium block">
+                              {offeringProfs.length} استاد هم‌تدریس
+                            </span>
                           )}
                         </div>
-                        <div>
-                          <div className="font-semibold text-foreground">{off.professorName}</div>
-                          <div className="text-[10px] text-muted-foreground">{off.professorTitle}</div>
+                      </td>
+
+                      {/* Code */}
+                      <td className="py-2.5 px-3 text-center">
+                        <Badge variant="outline" className="text-[10px] font-mono">
+                          {off.code || off.id}
+                        </Badge>
+                      </td>
+
+                      {/* Actions */}
+                      <td className="py-2.5 px-3 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleOpenEditModal(off)}
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                            title="ویرایش ارائه"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              handleDeleteOffering(off.id, `${off.courseName} (${off.professorName})`)
+                            }
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                            title="حذف ارائه"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
-                      </div>
-                    </td>
-
-                    {/* Code */}
-                    <td className="py-2.5 px-3 text-center">
-                      <Badge variant="outline" className="text-[10px] font-mono">
-                        {off.code || off.id}
-                      </Badge>
-                    </td>
-
-                    {/* Actions */}
-                    <td className="py-2.5 px-3 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenEditModal(off)}
-                          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-                          title="ویرایش ارائه"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            handleDeleteOffering(off.id, `${off.courseName} (${off.professorName})`)
-                          }
-                          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                          title="حذف ارائه"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  );
+                })}
 
                 {filteredOfferings.length === 0 && (
                   <tr>
@@ -432,32 +500,30 @@ export function OfferingManager({
               </tbody>
             </table>
           </div>
-          
         </CardContent>
       </Card>
 
-      {/* Create / Edit Modal */}
+      {/* Create / Edit Modal (Multi-Professor Support) */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg" dir="rtl">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2">
               {editingOffering ? (
                 <>
                   <Pencil className="h-4 w-4 text-primary" />
-                  ویرایش اتصال درس به استاد (ارائه)
+                  ویرایش اتصال درس به اساتید (ارائه)
                 </>
               ) : (
                 <>
                   <Plus className="h-4 w-4 text-primary" />
-                  اتصال درس به استاد (تعریف ارائه)
+                  اتصال درس به اساتید (تعریف ارائه جدید)
                 </>
               )}
             </DialogTitle>
             <DialogDescription className="text-xs">
-              درس و استاد مربوطه را انتخاب کنید تا به عنوان ارائه‌دهنده در سامانه ثبت شود.
+              درس و یک یا چند استاد ارائه‌دهنده را مشخص کنید (امکان تعریف چند استاد هم‌تدریس).
             </DialogDescription>
           </DialogHeader>
-          
 
           {/* Target Faculty Indicator */}
           <div className="rounded-xl border border-primary/20 bg-primary/5 p-2.5 flex items-center justify-between">
@@ -487,7 +553,7 @@ export function OfferingManager({
             </div>
 
             {/* Course Combobox */}
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <Label className="text-xs font-semibold">انتخاب درس:</Label>
               <Combobox
                 items={courses.map((c) => ({
@@ -495,7 +561,7 @@ export function OfferingManager({
                   label: c.name,
                   badge: c.code,
                   sublabel: `${c.units} واحد`,
-                  keywords: [c.name, c.code],
+                  keywords: [c.name, c.code, c.abbreviation || ""],
                 }))}
                 value={form.courseId}
                 onChange={(val) => setForm({ ...form, courseId: val })}
@@ -505,36 +571,117 @@ export function OfferingManager({
               />
             </div>
 
-            {/* Professor Combobox */}
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">استاد مدرس:</Label>
-              <Combobox
-                items={professors.map((p) => ({
-                  value: p.id,
-                  label: p.code ? `${p.name} (${p.code})` : p.name,
-                  sublabel: [p.title, p.code].filter(Boolean).join(" • ") || undefined,
-                  keywords: [p.name, p.title || "", p.code || ""],
-                }))}
-                value={form.professorId}
-                onChange={(val) => setForm({ ...form, professorId: val })}
-                placeholder="-- انتخاب یا جستجوی استاد --"
-                searchPlaceholder="جستجوی نام استاد..."
-                className="w-full"
-              />
+            {/* Multiple Professors Selection Box */}
+            <div className="space-y-2 pt-1 border-t border-border/60">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold">
+                  اساتید مدرس (امکان انتخاب چند استاد):
+                </Label>
+                <span className="text-xs text-primary font-semibold">
+                  {form.professorIds.length} استاد انتخاب‌شده
+                </span>
+              </div>
+
+              {/* Selected Professors Chips */}
+              {selectedProfessorsList.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 p-2 rounded-xl bg-muted/40 border border-border/60 max-h-24 overflow-y-auto">
+                  {selectedProfessorsList.map((p, idx) => (
+                    <div
+                      key={p.id}
+                      className="flex items-center gap-1 bg-background px-2 py-1 rounded-lg border border-border/80 text-xs shadow-2xs"
+                    >
+                      <span className="font-semibold text-foreground">{p.name}</span>
+                      {idx === 0 && (
+                        <span className="text-[9px] text-primary font-bold">(اصلی)</span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveProfessor(p.id)}
+                        className="text-muted-foreground hover:text-destructive p-0.5 rounded-full"
+                        title="حذف از ارائه"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Search Professor Inside Modal */}
+              <div className="relative">
+                <Input
+                  placeholder="جستجوی سریع در لیست اساتید..."
+                  value={modalProfSearch}
+                  onChange={(e) => setModalProfSearch(e.target.value)}
+                  className="h-8 text-xs pr-8"
+                />
+                <Search className="pointer-events-none absolute right-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+              </div>
+
+              {/* Professors List with Checkbox */}
+              <div className="max-h-48 overflow-y-auto rounded-xl border border-border/70 divide-y divide-border/40 bg-card">
+                {filteredModalProfessors.map((p) => {
+                  const isSelected = form.professorIds.includes(p.id);
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => handleToggleProfessor(p.id)}
+                      className={`flex items-center justify-between p-2.5 cursor-pointer transition-colors ${
+                        isSelected ? "bg-primary/10 hover:bg-primary/15" : "hover:bg-muted/40"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => handleToggleProfessor(p.id)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-[10px] overflow-hidden shrink-0 border border-border/60">
+                          {p.avatarUrl ? (
+                            <img src={p.avatarUrl} alt={p.name} className="h-full w-full object-cover" />
+                          ) : (
+                            <span>{p.name ? p.name.charAt(0) : "؟"}</span>
+                          )}
+                        </div>
+                        <div className="truncate">
+                          <span className="font-semibold text-xs text-foreground block truncate">
+                            {p.name}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground block truncate">
+                            {[p.title, p.code].filter(Boolean).join(" • ") || "عضو هیئت علمی"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {isSelected && (
+                        <Badge variant="outline" className="text-[10px] text-primary border-primary/30 bg-primary/5 shrink-0">
+                          انتخاب‌شده
+                        </Badge>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {filteredModalProfessors.length === 0 && (
+                  <div className="text-center py-6 text-xs text-muted-foreground">
+                    استادی با این مشخصات یافت نشد.
+                  </div>
+                )}
+              </div>
             </div>
 
             <DialogFooter className="pt-2">
               <Button
                 type="submit"
                 size="sm"
-                disabled={isSubmitting || !form.courseId || !form.professorId}
+                disabled={isSubmitting || !form.courseId || form.professorIds.length === 0}
                 className="w-full font-semibold"
               >
                 {isSubmitting
                   ? "در حال ثبت..."
                   : editingOffering
                   ? "ذخیره تغییرات ارائه"
-                  : "ثبت اتصال ارائه"}
+                  : "ثبت ارائه"}
               </Button>
             </DialogFooter>
           </form>
@@ -552,4 +699,3 @@ export function OfferingManager({
     </div>
   );
 }
-
