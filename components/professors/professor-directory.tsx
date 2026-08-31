@@ -200,8 +200,16 @@ export function ProfessorDirectory({
                 <div className="space-y-3.5">
                   {/* Top Bar: Avatar + Details */}
                   <div className="flex items-center gap-3">
-                    <div className="h-11 w-11 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0 border border-primary/20">
-                      {prof.name[0] || "ا"}
+                    <div className="h-11 w-11 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0 border border-primary/20 overflow-hidden">
+                      {prof.avatarUrl ? (
+                        <img
+                          src={prof.avatarUrl}
+                          alt={prof.name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <span>{prof.name[0] || "ا"}</span>
+                      )}
                     </div>
                     <div className="truncate flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 truncate">

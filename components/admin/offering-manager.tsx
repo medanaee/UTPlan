@@ -664,9 +664,6 @@ export function OfferingManager({
                                   )}
                                 </div>
                                 <span className="font-semibold text-foreground text-xs">{p.name}</span>
-                                {p.code && (
-                                  <span className="text-[10px] text-muted-foreground">({p.code})</span>
-                                )}
                                 {offeringProfs.length > 1 && idx === 0 && (
                                   <Badge variant="outline" className="text-[9px] px-1 py-0 text-primary border-primary/30 bg-primary/5">
                                     اصلی

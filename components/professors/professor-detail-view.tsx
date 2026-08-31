@@ -333,8 +333,16 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4 max-w-3xl">
             {/* Avatar */}
-            <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-primary/10 text-primary flex items-center justify-center font-black text-2xl sm:text-3xl shrink-0 border-2 border-primary/30 shadow-xs">
-              {professor.name[0] || "ا"}
+            <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-primary/10 text-primary flex items-center justify-center font-black text-2xl sm:text-3xl shrink-0 border-2 border-primary/30 shadow-xs overflow-hidden">
+              {professor.avatarUrl ? (
+                <img
+                  src={professor.avatarUrl}
+                  alt={professor.name}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span>{professor.name ? professor.name.charAt(0) : "ا"}</span>
+              )}
             </div>
 
             <div className="space-y-2">
