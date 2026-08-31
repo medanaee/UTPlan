@@ -151,6 +151,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
         setCourseForm({
           name: "",
           code: "",
+          abbreviation: "",
           units: 3,
           facultyId: selectedFacultyId,
           offeredIn: "both",
@@ -443,6 +444,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                         setCourseForm({
                           name: course.name,
                           code: course.code,
+                          abbreviation: course.abbreviation || "",
                           units: course.units,
                           facultyId: course.facultyId || selectedFacultyId,
                           offeredIn: course.offeredIn || "both",
