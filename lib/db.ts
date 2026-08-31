@@ -2415,11 +2415,20 @@ export async function getOfferings(filter?: {
         const primaryProf = finalProfs.find((p: any) => p.isPrimary) || finalProfs[0];
         const profNames = finalProfs.map((p: any) => p.name).join(" و ");
 
+        let finSems: string[] = [];
+        try {
+          if (r.finalized_semesters) {
+            const parsed = JSON.parse(r.finalized_semesters);
+            if (Array.isArray(parsed)) finSems = parsed;
+          }
+        } catch (e) {}
+
         return {
           id: r.id,
           code: r.code || undefined,
           courseId: r.course_id,
           description: r.description || undefined,
+          finalizedSemesters: finSems,
           professorId: primaryProf?.id || r.professor_id || "",
           professorIds: finalProfs.map((p: any) => p.id),
           professors: finalProfs,
@@ -2482,6 +2491,7 @@ export async function getOfferings(filter?: {
     return {
       ...o,
       description: o.description || undefined,
+      finalizedSemesters: o.finalizedSemesters || [],
       professorId: primaryProf?.id || o.professorId || "",
       professorIds: profs.map((p) => p.id),
       professors: profs,
@@ -2591,11 +2601,20 @@ export async function getOfferingById(id: string): Promise<CourseOffering | null
             : 0;
       } catch (e) {}
 
+      let finSems: string[] = [];
+      try {
+        if ((row as any).finalized_semesters) {
+          const parsed = JSON.parse((row as any).finalized_semesters);
+          if (Array.isArray(parsed)) finSems = parsed;
+        }
+      } catch (e) {}
+
       return {
         id: (row as any).id,
         code: (row as any).code || undefined,
         courseId: (row as any).course_id,
         description: (row as any).description || "",
+        finalizedSemesters: finSems,
         professorId: primaryProf?.id || (row as any).professor_id,
         professorIds: finalProfs.map((p: any) => p.id),
         professors: finalProfs,
@@ -2687,6 +2706,7 @@ export async function createOffering(
         professorIds?: string[];
         code?: string;
         description?: string;
+        finalizedSemesters?: string[];
         id?: string;
       },
   professorIdArg?: string,
@@ -2714,6 +2734,11 @@ export async function createOffering(
     typeof courseIdOrData === "object" && courseIdOrData.description
       ? courseIdOrData.description.trim()
       : null;
+  const finalizedSemesters =
+    typeof courseIdOrData === "object" && Array.isArray(courseIdOrData.finalizedSemesters)
+      ? courseIdOrData.finalizedSemesters
+      : [];
+  const finalizedSemestersStr = JSON.stringify(finalizedSemesters);
   const id =
     typeof courseIdOrData === "object" && courseIdOrData.id
       ? courseIdOrData.id.trim()
@@ -2724,8 +2749,8 @@ export async function createOffering(
   if (d1) {
     try {
       await d1
-        .prepare("INSERT INTO course_offerings (id, code, course_id, professor_id, description, created_at) VALUES (?, ?, ?, ?, ?, ?)")
-        .bind(id, code, courseId, primaryProfId, description, now)
+        .prepare("INSERT INTO course_offerings (id, code, course_id, professor_id, description, finalized_semesters, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
+        .bind(id, code, courseId, primaryProfId, description, finalizedSemestersStr, now)
         .run();
 
       // Insert junction rows for all professors
@@ -2752,6 +2777,7 @@ export async function createOffering(
           code,
           courseId,
           description: description || undefined,
+          finalizedSemesters,
           professorId: primaryProfId,
           professorIds: profIds,
           createdAt: now,
@@ -2788,6 +2814,7 @@ export async function createOffering(
     code,
     courseId,
     description: description || undefined,
+    finalizedSemesters,
     professorId: primaryProfId,
     professorIds: profIds,
     professors: profs,
@@ -2807,7 +2834,14 @@ export async function createOffering(
 
 export async function updateOffering(
   id: string,
-  data: { courseId?: string; professorId?: string; professorIds?: string[]; code?: string; description?: string }
+  data: {
+    courseId?: string;
+    professorId?: string;
+    professorIds?: string[];
+    code?: string;
+    description?: string;
+    finalizedSemesters?: string[];
+  }
 ): Promise<CourseOffering | null> {
   const d1 = getD1();
   if (d1) {
@@ -2839,6 +2873,10 @@ export async function updateOffering(
       if (data.description !== undefined) {
         sets.push("description = ?");
         params.push(data.description ? data.description.trim() : null);
+      }
+      if (data.finalizedSemesters !== undefined) {
+        sets.push("finalized_semesters = ?");
+        params.push(JSON.stringify(data.finalizedSemesters || []));
       }
 
       if (sets.length > 0) {
@@ -2883,6 +2921,7 @@ export async function updateOffering(
   if (data.courseId) o.courseId = data.courseId;
   if (data.code) o.code = data.code;
   if (data.description !== undefined) o.description = data.description ? data.description.trim() : undefined;
+  if (data.finalizedSemesters !== undefined) o.finalizedSemesters = data.finalizedSemesters;
 
   const profIds: string[] | undefined =
     Array.isArray(data.professorIds) && data.professorIds.length > 0

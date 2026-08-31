@@ -101,13 +101,13 @@ export function CourseDirectory({
   const formatTermOffered = (term?: string) => {
     switch (term) {
       case "fall":
-        return { label: "ترم مهر", color: "bg-amber-500/10 text-amber-600 border-amber-500/30" };
+        return { label: "ترم فرد", color: "bg-amber-500/10 text-amber-600 border-amber-500/30" };
       case "spring":
-        return { label: "ترم بهمن", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30" };
+        return { label: "ترم زوج", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30" };
       case "none":
-        return { label: "عدم ارائه", color: "bg-zinc-500/10 text-zinc-600 border-zinc-500/30" };
+        return { label: "عدم ارائه", color: "bg-zinc-500/10 text-zinc-500 border-zinc-500/30" };
       default:
-        return { label: "هر دو ترم", color: "bg-blue-500/10 text-blue-600 border-blue-500/30" };
+        return { label: "هر دو ترم", color: "bg-blue-500/10 text-blue-500 border-blue-500/30" };
     }
   };
 
@@ -306,7 +306,7 @@ export function CourseDirectory({
                         {course.name}
                       </h3>
                       {course.abbreviation && (
-                        <Badge variant="outline" className="text-xs font-mono font-medium px-1.5 py-0 text-primary border-primary/30 bg-primary/5">
+                        <Badge variant="outline" className="text-xs font-medium px-1.5 py-0 text-primary border-primary/30 bg-primary/5">
                           {course.abbreviation}
                         </Badge>
                       )}

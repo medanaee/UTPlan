@@ -155,6 +155,7 @@ CREATE TABLE IF NOT EXISTS course_offerings (
   course_id TEXT NOT NULL,
   professor_id TEXT NOT NULL,
   description TEXT,
+  finalized_semesters TEXT, -- JSON array of string semester codes e.g. ["1403-1", "1404-2", "1405-3"]
   created_at TEXT NOT NULL,
   deleted_at TEXT,
   FOREIGN KEY (course_id) REFERENCES courses(id),

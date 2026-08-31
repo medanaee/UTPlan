@@ -330,7 +330,7 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
 
       {/* Hero Header Card - Flat & Minimal */}
       <div className="relative overflow-hidden rounded-3xl border border-primary/20 bg-linear-to-b from-primary/10 via-background to-background p-6 sm:p-8 shadow-xs">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4 max-w-3xl">
             {/* Avatar */}
             <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-primary/10 text-primary flex items-center justify-center font-black text-2xl sm:text-3xl shrink-0 border-2 border-primary/30 shadow-xs">
@@ -355,8 +355,8 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
           </div>
 
           {/* Quick Stats Box */}
-          <div className="flex items-center gap-3 shrink-0 self-start lg:self-center">
-            <div className="rounded-2xl border border-primary/30 bg-card p-4 text-center min-w-[110px] shadow-2xs">
+          <div className="flex items-center gap-3 shrink-0 self-start lg:self-end">
+            <div className="rounded-xl border border-border/80 p-4 text-center min-w-[110px] shadow-2xs">
               <div className="flex items-center justify-center gap-1 text-primary">
                 <Star className="h-5 w-5 fill-primary text-primary" />
                 <span className="text-2xl font-black">{totalAvg || "۱۰"}</span>
@@ -366,7 +366,7 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
               </span>
             </div>
 
-            <div className="rounded-2xl border border-border/80 bg-card p-4 text-center min-w-[90px] shadow-2xs">
+            <div className="rounded-xl border border-border/80 p-4 text-center min-w-[90px] shadow-2xs">
               <span className="text-2xl font-black text-foreground block">{reviews.length}</span>
               <span className="text-[10px] text-muted-foreground font-medium mt-1 block">
                 نظر و ارزیابی
@@ -391,7 +391,7 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
                 دروسی که توسط این استاد در دانشکده ارائه و تدریس می‌شوند.
               </CardDescription>
             </CardHeader>
-            <CardContent className="pt-4 space-y-2.5">
+            <CardContent className="space-y-2.5">
               {offerings.length > 0 ? (
                 offerings.map((off) => (
                   <Link
@@ -414,7 +414,7 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
                     </div>
                     <div className="flex items-center gap-1 text-[11px] text-muted-foreground group-hover:text-primary font-semibold shrink-0">
                       <span>مشاهده صفحه ارائه و نظرات</span>
-                      <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-1" />
+                      <ArrowLeft className="h-3.5 w-3.5 transition-transform" />
                     </div>
                   </Link>
                 ))
@@ -445,7 +445,7 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
               </CardDescription>
             </CardHeader>
 
-            <CardContent className="pt-4 space-y-6">
+            <CardContent className="space-y-6">
               {/* Form to submit review */}
               <form
                 onSubmit={handleSubmitReview}
@@ -921,7 +921,7 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
                 راه‌های ارتباطی و پروفایل علمی
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-4 space-y-3">
+            <CardContent className="space-y-3">
               {professor.email ? (
                 <div className="p-3 rounded-2xl border border-border/80 bg-muted/20 space-y-1">
                   <span className="text-[11px] text-muted-foreground block">آدرس پست الکترونیکی:</span>

@@ -43,11 +43,11 @@ const PROFESSOR_SCHEMA_DESCRIPTOR = {
   type: "array",
   items: {
     type: "object",
-    required: ["firstName", "lastName"],
+    required: ["code", "firstName", "lastName"],
     properties: {
       code: {
         type: "string",
-        description: "کد شناسایی یکتای استاد (اختیاری). در صورت عدم ارسال، سیستم به طور خودکار کد یکتا تولید می‌کند.",
+        description: "کد شناسایی یکتای استاد (الزامی و تنها معیار تطبیق)",
         example: "PRF-101"
       },
       firstName: {
@@ -60,11 +60,17 @@ const PROFESSOR_SCHEMA_DESCRIPTOR = {
         description: "نام خانوادگی استاد (الزامی)",
         example: "محمدی"
       },
+      avatarUrl: {
+        type: "string",
+        format: "uri",
+        description: "آدرس اینترنتی تصویر استاد (اختیاری)",
+        example: "https://example.com/avatar.jpg"
+      },
       title: {
         type: "string",
-        description: "مرتبه علمی استاد (اختیاری: استاد تمام، دانشیار، استادیار، مربی، مدرس مدعو)",
+        description: "مرتبه علمی استاد (اختیاری - در صورت عدم ارسال، «استاد تمام» ثبت می‌شود)",
         default: "استاد تمام",
-        example: "استاد تمام"
+        example: "دانشیار"
       },
       email: {
         type: "string",
@@ -74,14 +80,12 @@ const PROFESSOR_SCHEMA_DESCRIPTOR = {
       },
       links: {
         type: "object",
-        description: "پیوندها و صفحات علمی وب استاد (اختیاری)",
+        description: "پیوندها و صفحات علمی وب استاد (اختیاری - فقط شامل website و scholar)",
         properties: {
-          website: { type: "string", format: "uri", description: "وب‌سایت شخصی" },
-          scholar: { type: "string", format: "uri", description: "صفحه Google Scholar" },
-          github: { type: "string", format: "uri", description: "اکانت GitHub" },
-          linkedin: { type: "string", format: "uri", description: "پروفایل LinkedIn" }
+          website: { type: "string", format: "uri", description: "وب‌سایت شخصی یا دانشگاهی" },
+          scholar: { type: "string", format: "uri", description: "صفحه Google Scholar" }
         },
-        additionalProperties: { type: "string" }
+        additionalProperties: false
       }
     },
     additionalProperties: false
@@ -92,6 +96,7 @@ const PROFESSOR_SCHEMA_DESCRIPTOR = {
         code: "PRF-101",
         firstName: "علی",
         lastName: "محمدی",
+        avatarUrl: "https://ece.ut.ac.ir/avatar/mohammadi.jpg",
         title: "استاد تمام",
         email: "amohammadi@ut.ac.ir",
         links: {
@@ -100,9 +105,10 @@ const PROFESSOR_SCHEMA_DESCRIPTOR = {
         }
       },
       {
+        code: "PRF-102",
         firstName: "سارا",
         lastName: "رضایی",
-        title: "استادیار",
+        title: "دانشیار",
         email: "s.rezaei@ut.ac.ir",
         links: {
           website: "https://ece.ut.ac.ir/~rezaei"
@@ -418,7 +424,7 @@ export function ProfessorImportDialog({
             <Textarea
               value={jsonText}
               onChange={(e) => handleTextChange(e.target.value)}
-              placeholder='[ { "code": "PRF-101", "firstName": "علی", "lastName": "محمدی", "title": "استاد تمام", "email": "amohammadi@ut.ac.ir" } ]'
+              placeholder='[ { "code": "PRF-101", "firstName": "علی", "lastName": "محمدی", "avatarUrl": "https://example.com/avatar.jpg", "title": "استاد تمام", "email": "amohammadi@ut.ac.ir", "links": { "website": "https://ece.ut.ac.ir/~mohammadi", "scholar": "https://scholar.google.com/citations?user=xyz" } } ]'
               rows={6}
               className="text-xs bg-background resize-none font-sans leading-relaxed"
               dir="ltr"
@@ -453,8 +459,11 @@ export function ProfessorImportDialog({
                       className="flex items-center justify-between p-2 rounded-xl bg-card border border-border/70 text-xs"
                     >
                       <div className="flex items-center gap-2 truncate">
-                        <Badge variant="outline" className="text-[10px]">
-                          {p.code || "تولید خودکار کد"}
+                        <Badge
+                          variant={p.code ? "outline" : "destructive"}
+                          className="text-[10px]"
+                        >
+                          {p.code || "فاقد کد"}
                         </Badge>
                         <span className="font-semibold truncate text-foreground">{fullName}</span>
                         <span className="text-[11px] text-muted-foreground">({p.title || "استاد تمام"})</span>

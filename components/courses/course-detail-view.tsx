@@ -134,7 +134,7 @@ export function CourseDetailView({ course }: CourseDetailViewProps) {
                 {course.name}
               </h1>
               {course.abbreviation && (
-                <Badge variant="outline" className="text-sm font-mono font-bold px-2.5 py-0.5 text-primary border-primary/30 bg-primary/5">
+                <Badge variant="outline" className="text-sm font-bold px-2.5 py-0.5 text-primary border-primary/30 bg-primary/5">
                   {course.abbreviation}
                 </Badge>
               )}
@@ -385,7 +385,7 @@ export function CourseDetailView({ course }: CourseDetailViewProps) {
                 اساتیدی که این درس را در دانشکده ارائه می‌دهند.
               </CardDescription>
             </CardHeader>
-            <CardContent className="pace-y-3">
+            <CardContent className="space-y-3">
               {offerings.length > 0 ? (
                 offerings.map((off) => (
                   <Link

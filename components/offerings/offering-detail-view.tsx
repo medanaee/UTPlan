@@ -356,7 +356,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
 
       {/* Hero Header Card - Flat & Minimal */}
       <div className="relative overflow-hidden rounded-3xl border border-primary/20 bg-linear-to-b from-primary/10 via-background to-background p-6 sm:p-8 shadow-xs">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
           <div className="space-y-4 max-w-3xl">
             {/* Badges Bar */}
             <div className="flex flex-wrap items-center gap-2">
@@ -366,9 +366,9 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
               <Badge variant="secondary" className="text-xs font-bold px-2.5 py-1">
                 {offering.courseUnits || 3} واحد تحصیلی
               </Badge>
-              <span className="text-xs font-semibold px-3 py-1 rounded-full border bg-primary/10 text-primary border-primary/30">
+              <Badge className="text-xs font-semibold px-3 py-1 rounded-full border bg-primary/10 text-primary border-primary/30">
                 ارائه فعال در دانشکده
-              </span>
+              </Badge>
             </div>
 
             {/* Course & Professor Title */}
@@ -387,8 +387,8 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
           </div>
 
           {/* Quick Score Box */}
-          <div className="flex items-center gap-3 shrink-0 self-start lg:self-center">
-            <div className="rounded-2xl border border-primary/30 bg-card p-4 text-center min-w-[110px] shadow-2xs">
+          <div className="flex items-center gap-3 shrink-0 self-start lg:self-end">
+            <div className="rounded-xl border border-border/80 p-4 text-center min-w-[110px] shadow-2xs">
               <div className="flex items-center justify-center gap-1 text-primary">
                 <Star className="h-5 w-5 fill-primary text-primary" />
                 <span className="text-2xl font-black">{totalAvg || "۱۰"}</span>
@@ -398,7 +398,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
               </span>
             </div>
 
-            <div className="rounded-2xl border border-border/80 bg-card p-4 text-center min-w-[90px] shadow-2xs">
+            <div className="rounded-xl border border-border/80 p-4 text-center min-w-[90px] shadow-2xs">
               <span className="text-2xl font-black text-foreground block">{reviews.length}</span>
               <span className="text-[10px] text-muted-foreground font-medium mt-1 block">
                 نظر و تجربه
@@ -435,7 +435,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                 رویدادهای رسمی این ارائه در نیمسال‌های تحصیلی
               </CardDescription>
             </CardHeader>
-            <CardContent className="pt-4 space-y-3">
+            <CardContent className="space-y-3">
               {offering.events && offering.events.length > 0 ? (
                 offering.events.map((evt) => (
                   <div
@@ -515,7 +515,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
               </CardDescription>
             </CardHeader>
 
-            <CardContent className="pt-4 space-y-6">
+            <CardContent className="space-y-6">
               {/* Form to submit review */}
               <form
                 onSubmit={handleSubmitReview}
@@ -1024,15 +1024,15 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
         <div className="space-y-6">
           {/* Offering Specific Description Card */}
           {offering.description && (
-            <Card className="border-primary/30 bg-primary/5 shadow-xs">
-              <CardHeader className="pb-3 border-b border-primary/20">
-                <CardTitle className="text-sm font-bold flex items-center gap-2 text-primary">
+            <Card className="border-primary/30 shadow-xs">
+              <CardHeader className="pb-3 border-b border-border/50">
+                <CardTitle className="text-sm font-bold flex items-center gap-2">
                   <FileText className="h-4 w-4 text-primary" />
                   توضیحات و نکات این ارائه
                 </CardTitle>
               </CardHeader>
-              <CardContent className="pt-4">
-                <p className="text-xs text-foreground/90 leading-relaxed whitespace-pre-line bg-background/80 p-3.5 rounded-2xl border border-primary/20">
+              <CardContent className="">
+                <p className="text-xs text-foreground/90 leading-relaxed whitespace-pre-line">
                   {offering.description}
                 </p>
               </CardContent>
@@ -1047,7 +1047,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                 شناسنامه درس مربوطه
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-4 space-y-3">
+            <CardContent className="space-y-3">
               <Link
                 href={`/courses/${offering.courseId}`}
                 className="group flex items-center justify-between p-3.5 rounded-2xl border border-border/80 bg-card hover:border-primary/50 hover:shadow-xs transition-all text-xs"
@@ -1091,7 +1091,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                 )}
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-4 space-y-3">
+            <CardContent className="space-y-3">
               {(() => {
                 const profs =
                   offering.professors && offering.professors.length > 0

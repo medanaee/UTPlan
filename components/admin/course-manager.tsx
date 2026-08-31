@@ -373,7 +373,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <h3 className="text-xs font-bold text-foreground">{course.name}</h3>
                         {course.abbreviation && (
-                          <Badge variant="outline" className="text-[10px] font-mono font-medium px-1.5 py-0 text-primary border-primary/30 bg-primary/5">
+                          <Badge variant="outline" className="text-[10px] font-medium px-1.5 py-0 text-primary border-primary/30 bg-primary/5">
                             {course.abbreviation}
                           </Badge>
                         )}
@@ -385,7 +385,6 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                         {course.units} واحد
                       </Badge>
                       <Badge variant="outline" className="text-[11px] font-semibold">
-                        ارائه:{" "}
                         {course.offeredIn === "fall"
                           ? "فقط پاییز"
                           : course.offeredIn === "spring"
@@ -661,8 +660,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
           </div>
 
           <form onSubmit={handleSaveCourse} className="space-y-3 pt-1">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <div className="space-y-1 sm:col-span-1">
+            <div className="space-y-1 sm:col-span-1">
                 <Label className="text-xs font-semibold">نام درس:</Label>
                 <Input
                   required
@@ -671,6 +669,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                   onChange={(e) => setCourseForm({ ...courseForm, name: e.target.value })}
                 />
               </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">کد یکتای درس:</Label>
                 <Input

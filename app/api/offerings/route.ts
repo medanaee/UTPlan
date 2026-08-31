@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     if (!auth.authorized) return auth.response! as NextResponse;
 
     const body = await request.json();
-    const { courseId, professorId, professorIds, code, description } = body;
+    const { courseId, professorId, professorIds, code, description, finalizedSemesters } = body;
 
     const resolvedProfIds: string[] = Array.isArray(professorIds) && professorIds.length > 0
       ? professorIds
@@ -44,6 +44,7 @@ export async function POST(request: NextRequest) {
       professorIds: resolvedProfIds,
       code,
       description,
+      finalizedSemesters: Array.isArray(finalizedSemesters) ? finalizedSemesters : [],
     });
 
     return NextResponse.json({
@@ -66,7 +67,7 @@ export async function PUT(request: NextRequest) {
     if (!auth.authorized) return auth.response! as NextResponse;
 
     const body = await request.json();
-    const { id, courseId, professorId, professorIds, code, description } = body;
+    const { id, courseId, professorId, professorIds, code, description, finalizedSemesters } = body;
 
     const resolvedProfIds: string[] | undefined = Array.isArray(professorIds)
       ? professorIds
@@ -86,6 +87,7 @@ export async function PUT(request: NextRequest) {
       professorIds: resolvedProfIds,
       code,
       description,
+      finalizedSemesters: Array.isArray(finalizedSemesters) ? finalizedSemesters : undefined,
     });
     if (!updated) {
       return NextResponse.json(

@@ -14,9 +14,14 @@ interface ImportProfessorItem {
   firstName?: string;
   lastName?: string;
   name?: string;
+  avatarUrl?: string;
   title?: string;
   email?: string;
-  links?: Record<string, string>;
+  links?: {
+    website?: string;
+    scholar?: string;
+    [key: string]: any;
+  };
 }
 
 export async function POST(request: NextRequest) {
@@ -67,19 +72,14 @@ export async function POST(request: NextRequest) {
       await deleteProfessorsByFaculty(targetFacultyId);
     }
 
-    // 2. Fetch current professors
+    // 2. Fetch current professors of target faculty
     const currentProfs = await getProfessors(targetFacultyId);
 
+    // Code is the ONLY matching criterion
     const profCodeMap = new Map<string, typeof currentProfs[0]>(); // code -> prof
-    const profNameMap = new Map<string, typeof currentProfs[0]>(); // name -> prof
-    const profEmailMap = new Map<string, typeof currentProfs[0]>(); // email -> prof
 
     currentProfs.forEach((p) => {
       if (p.code) profCodeMap.set(p.code.trim().toUpperCase(), p);
-      if (p.name) profNameMap.set(p.name.trim().toLowerCase(), p);
-      const fullName = [p.firstName, p.lastName].filter(Boolean).join(" ").trim().toLowerCase();
-      if (fullName) profNameMap.set(fullName, p);
-      if (p.email) profEmailMap.set(p.email.trim().toLowerCase(), p);
     });
 
     let createdCount = 0;
@@ -88,51 +88,72 @@ export async function POST(request: NextRequest) {
 
     // 3. Process each professor item
     for (const item of rawList) {
-      const rawFirstName = (item.firstName || "").trim();
-      const rawLastName = (item.lastName || "").trim();
-      const rawFullName = item.name?.trim() || [rawFirstName, rawLastName].filter(Boolean).join(" ");
-
-      if (!rawFirstName && !rawLastName && !rawFullName) {
-        errors.push(`سطر بدون نام یا نام خانوادگی رد شد: ${JSON.stringify(item)}`);
+      // 3.1 Code is Mandatory and Sole Matching Key
+      const cleanCode = item.code ? String(item.code).trim().toUpperCase() : "";
+      if (!cleanCode) {
+        errors.push(`ردیف بدون کد شناسایی استاد رد شد: ${JSON.stringify(item)}`);
         continue;
       }
 
-      const cleanCode = item.code ? String(item.code).trim().toUpperCase() : null;
-      const cleanEmail = item.email ? String(item.email).trim().toLowerCase() : "";
-      const cleanTitle = item.title?.trim() || "استاد تمام";
-      const cleanLinks = item.links || {};
+      // 3.2 First Name and Last Name are Mandatory
+      const rawFirstName = (item.firstName || "").trim();
+      const rawLastName = (item.lastName || "").trim();
+      if (!rawFirstName || !rawLastName) {
+        errors.push(`استاد با کد «${cleanCode}» به دلیل عدم درج نام یا نام خانوادگی رد شد.`);
+        continue;
+      }
+      const rawFullName = item.name?.trim() || `${rawFirstName} ${rawLastName}`;
 
-      let existingMatch = null;
+      // 3.3 Optional avatarUrl
+      const cleanAvatarUrl = item.avatarUrl && typeof item.avatarUrl === "string" && item.avatarUrl.trim()
+        ? item.avatarUrl.trim()
+        : undefined;
 
-      // Match Strategy:
-      // A. If code is provided, match by code
-      if (cleanCode && profCodeMap.has(cleanCode)) {
-        existingMatch = profCodeMap.get(cleanCode);
+      // 3.4 Title: optional, default to "استاد تمام"
+      const cleanTitle = (item.title && typeof item.title === "string" && item.title.trim())
+        ? item.title.trim()
+        : "استاد تمام";
+
+      // 3.5 Optional email
+      const cleanEmail = (item.email && typeof item.email === "string")
+        ? item.email.trim().toLowerCase()
+        : "";
+
+      // 3.6 Links: optional, strictly allowed keys ["website", "scholar"]
+      let cleanLinks: Record<string, string> | undefined = undefined;
+      if (item.links && typeof item.links === "object") {
+        const filteredLinks: Record<string, string> = {};
+        if (item.links.website && typeof item.links.website === "string" && item.links.website.trim()) {
+          filteredLinks.website = item.links.website.trim();
+        }
+        if (item.links.scholar && typeof item.links.scholar === "string" && item.links.scholar.trim()) {
+          filteredLinks.scholar = item.links.scholar.trim();
+        }
+        if (Object.keys(filteredLinks).length > 0) {
+          cleanLinks = filteredLinks;
+        }
       }
-      // B. If no match by code, match by full name or email
-      if (!existingMatch && rawFullName && profNameMap.has(rawFullName.toLowerCase())) {
-        existingMatch = profNameMap.get(rawFullName.toLowerCase());
-      }
-      if (!existingMatch && cleanEmail && profEmailMap.has(cleanEmail)) {
-        existingMatch = profEmailMap.get(cleanEmail);
-      }
+
+      // 3.7 Matching strictly by Code
+      const existingMatch = profCodeMap.get(cleanCode);
 
       if (existingMatch) {
         // Update existing professor
         try {
           await updateProfessor(existingMatch.id, {
             facultyId: targetFacultyId,
-            code: cleanCode || existingMatch.code,
-            firstName: rawFirstName || existingMatch.firstName,
-            lastName: rawLastName || existingMatch.lastName,
-            name: rawFullName || existingMatch.name,
+            code: cleanCode,
+            firstName: rawFirstName,
+            lastName: rawLastName,
+            name: rawFullName,
+            avatarUrl: cleanAvatarUrl !== undefined ? cleanAvatarUrl : existingMatch.avatarUrl,
             title: cleanTitle,
             email: cleanEmail || existingMatch.email,
-            links: cleanLinks,
+            links: cleanLinks !== undefined ? cleanLinks : existingMatch.links,
           });
           updatedCount++;
         } catch (err: any) {
-          errors.push(`خطا در ویرایش استاد ${rawFullName}: ${err?.message || "خطای نامشخص"}`);
+          errors.push(`خطا در ویرایش استاد ${rawFullName} (${cleanCode}): ${err?.message || "خطای نامشخص"}`);
         }
       } else {
         // Create new professor
@@ -140,21 +161,20 @@ export async function POST(request: NextRequest) {
           const newProf = await createProfessor({
             id: item.id?.trim(),
             facultyId: targetFacultyId,
-            code: cleanCode || undefined,
+            code: cleanCode,
             firstName: rawFirstName,
             lastName: rawLastName,
             name: rawFullName,
+            avatarUrl: cleanAvatarUrl,
             title: cleanTitle,
             email: cleanEmail,
             links: cleanLinks,
           });
 
           createdCount++;
-          if (newProf.code) profCodeMap.set(newProf.code.trim().toUpperCase(), newProf);
-          if (newProf.name) profNameMap.set(newProf.name.trim().toLowerCase(), newProf);
-          if (newProf.email) profEmailMap.set(newProf.email.trim().toLowerCase(), newProf);
+          profCodeMap.set(cleanCode, newProf);
         } catch (err: any) {
-          errors.push(`خطا در ایجاد استاد ${rawFullName}: ${err?.message || "خطای نامشخص"}`);
+          errors.push(`خطا در ایجاد استاد ${rawFullName} (${cleanCode}): ${err?.message || "خطای نامشخص"}`);
         }
       }
     }

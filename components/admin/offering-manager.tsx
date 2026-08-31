@@ -27,6 +27,13 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Plus,
   Pencil,
   Trash2,
@@ -38,7 +45,23 @@ import {
   Building2,
   BookUser,
   X,
+  CheckCircle2,
+  CalendarCheck,
 } from "lucide-react";
+
+export function formatSemesterLabel(termStr: string): string {
+  if (!termStr) return "تعیین‌نشده";
+  const parts = termStr.split("-");
+  if (parts.length === 2) {
+    const year = parts[0];
+    const sem = parts[1];
+    if (sem === "1" || sem === "fall") return `پاییز ${year}`;
+    if (sem === "2" || sem === "spring") return `بهار ${year}`;
+    if (sem === "3" || sem === "summer") return `تابستان ${year}`;
+    return `${sem} ${year}`;
+  }
+  return termStr;
+}
 
 interface OfferingManagerProps {
   courses: Course[];
@@ -67,18 +90,23 @@ export function OfferingManager({
 
   const currentFaculty = faculties.find((f) => f.id === selectedFacultyId);
 
-  // Form State: Course + Multiple Professors + Description
+  // Form State: Course + Multiple Professors + Description + Finalized Semesters
   const [form, setForm] = useState<{
     code: string;
     courseId: string;
     description: string;
     professorIds: string[];
+    finalizedSemesters: string[];
   }>({
     code: "",
     courseId: "",
     description: "",
     professorIds: [],
+    finalizedSemesters: [],
   });
+
+  const [newSemYear, setNewSemYear] = useState("1404");
+  const [newSemType, setNewSemType] = useState("2");
 
   const loadOfferings = async () => {
     try {
@@ -104,11 +132,14 @@ export function OfferingManager({
   const handleOpenCreateModal = () => {
     setEditingOffering(null);
     setModalProfSearch("");
+    setNewSemYear("1404");
+    setNewSemType("2");
     setForm({
       code: "",
       courseId: courses[0]?.id || "",
       description: "",
       professorIds: professors[0] ? [professors[0].id] : [],
+      finalizedSemesters: [],
     });
     setIsModalOpen(true);
   };
@@ -116,6 +147,8 @@ export function OfferingManager({
   const handleOpenEditModal = (off: CourseOffering) => {
     setEditingOffering(off);
     setModalProfSearch("");
+    setNewSemYear("1404");
+    setNewSemType("2");
     const pIds =
       off.professors && off.professors.length > 0
         ? off.professors.map((p) => p.id)
@@ -128,6 +161,7 @@ export function OfferingManager({
       courseId: off.courseId,
       description: off.description || "",
       professorIds: pIds,
+      finalizedSemesters: off.finalizedSemesters || [],
     });
     setIsModalOpen(true);
   };
@@ -154,6 +188,40 @@ export function OfferingManager({
       ...prev,
       professorIds: prev.professorIds.filter((id) => id !== profId),
     }));
+  };
+
+  const handleAddFinalizedSemester = () => {
+    const code = `${newSemYear}-${newSemType}`;
+    if (!form.finalizedSemesters.includes(code)) {
+      setForm((prev) => ({
+        ...prev,
+        finalizedSemesters: [...prev.finalizedSemesters, code].sort(),
+      }));
+    }
+  };
+
+  const handleRemoveFinalizedSemester = (code: string) => {
+    setForm((prev) => ({
+      ...prev,
+      finalizedSemesters: prev.finalizedSemesters.filter((c) => c !== code),
+    }));
+  };
+
+  const handleToggleFinalizedSemester = (code: string) => {
+    setForm((prev) => {
+      const exists = prev.finalizedSemesters.includes(code);
+      if (exists) {
+        return {
+          ...prev,
+          finalizedSemesters: prev.finalizedSemesters.filter((c) => c !== code),
+        };
+      } else {
+        return {
+          ...prev,
+          finalizedSemesters: [...prev.finalizedSemesters, code].sort(),
+        };
+      }
+    });
   };
 
   const handleSaveOffering = async (e: React.FormEvent) => {
@@ -409,13 +477,13 @@ export function OfferingManager({
                             <div className="flex items-center gap-1.5">
                               <span className="font-bold text-foreground">{off.courseName}</span>
                               {off.courseAbbreviation && (
-                                <Badge variant="outline" className="text-[10px] font-mono text-primary border-primary/30 bg-primary/5 px-1 py-0">
+                                <Badge variant="outline" className="text-[10px] text-primary border-primary/30 bg-primary/5 px-1 py-0">
                                   {off.courseAbbreviation}
                                 </Badge>
                               )}
                             </div>
                             <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-0.5">
-                              <span className="font-mono">{off.courseCode}</span>
+                              <span>{off.courseCode}</span>
                               <span>•</span>
                               <span>{off.courseUnits} واحد</span>
                             </div>
@@ -441,7 +509,7 @@ export function OfferingManager({
                                 </div>
                                 <span className="font-semibold text-foreground text-xs">{p.name}</span>
                                 {p.code && (
-                                  <span className="text-[10px] text-muted-foreground font-mono">({p.code})</span>
+                                  <span className="text-[10px] text-muted-foreground">({p.code})</span>
                                 )}
                                 {offeringProfs.length > 1 && idx === 0 && (
                                   <Badge variant="outline" className="text-[9px] px-1 py-0 text-primary border-primary/30 bg-primary/5">
@@ -456,7 +524,7 @@ export function OfferingManager({
 
                       {/* Code */}
                       <td className="py-2.5 px-3 text-center">
-                        <Badge variant="outline" className="text-[10px] font-mono">
+                        <Badge variant="outline" className="text-[10px]">
                           {off.code || off.id}
                         </Badge>
                       </td>
@@ -547,7 +615,7 @@ export function OfferingManager({
                 placeholder="مثلاً OFF-101 یا 8101234-01"
                 value={form.code}
                 onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
-                className="h-8 text-xs font-mono"
+                className="h-8 text-xs"
                 dir="ltr"
               />
             </div>
@@ -634,7 +702,7 @@ export function OfferingManager({
               </div>
 
               {/* Professors List with Checkbox */}
-              <div className="max-h-48 overflow-y-auto rounded-xl border border-border/70 divide-y divide-border/40 bg-card">
+              <div className="max-h-40 overflow-y-auto rounded-xl border border-border/70 divide-y divide-border/40 bg-card">
                 {filteredModalProfessors.map((p) => {
                   const isSelected = form.professorIds.includes(p.id);
                   return (
@@ -682,6 +750,126 @@ export function OfferingManager({
                     استادی با این مشخصات یافت نشد.
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Finalized Semesters Manager */}
+            <div className="space-y-2.5 pt-2 border-t border-border/60">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-xs font-semibold block text-foreground flex items-center gap-1.5">
+                    <CalendarCheck className="h-3.5 w-3.5 text-primary" />
+                    <span>نیمسال‌های نهایی‌شده ثبت رویدادها:</span>
+                  </Label>
+                  <span className="text-[11px] text-muted-foreground block mt-0.5">
+                    مشخص کنید در کدام نیمسال‌ها کلیه اطلاعات کلاسی و امتحانی این ارائه نهایی و کامل ثبت شده است.
+                  </span>
+                </div>
+                <Badge variant="outline" className="text-[10px] text-primary border-primary/30 bg-primary/5 shrink-0">
+                  {form.finalizedSemesters.length} نیمسال
+                </Badge>
+              </div>
+
+              {/* Selected Semesters Chips */}
+              {form.finalizedSemesters.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5 p-2 rounded-xl bg-muted/40 border border-border/60 max-h-24 overflow-y-auto">
+                  {form.finalizedSemesters.map((semCode) => (
+                    <div
+                      key={semCode}
+                      className="flex items-center gap-1.5 bg-background px-2.5 py-1 rounded-lg border border-border/80 text-xs shadow-2xs"
+                    >
+                      <CheckCircle2 className="h-3 w-3 text-emerald-600 shrink-0" />
+                      <span className="font-semibold text-foreground">
+                        {formatSemesterLabel(semCode)}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">
+                        ({semCode})
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFinalizedSemester(semCode)}
+                        className="text-muted-foreground hover:text-destructive p-0.5 rounded-full transition-colors mr-0.5"
+                        title="حذف نیمسال"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-2.5 rounded-xl border border-dashed text-center text-xs text-muted-foreground bg-muted/20">
+                  هنوز نیمسالی به عنوان نهایی‌شده برای این ارائه ثبت نشده است.
+                </div>
+              )}
+
+              {/* Add New Semester Controls */}
+              <div className="p-2.5 rounded-xl bg-card border border-border/70 space-y-2">
+                <div className="flex items-center gap-2">
+                  {/* Year Select */}
+                  <div className="w-28 shrink-0">
+                    <Select value={newSemYear} onValueChange={setNewSemYear}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="سال" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {["1402", "1403", "1404", "1405", "1406", "1407"].map((y) => (
+                          <SelectItem key={y} value={y} className="text-xs">
+                            {y}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Term Type Select */}
+                  <div className="flex-1 min-w-0">
+                    <Select value={newSemType} onValueChange={setNewSemType}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="نوع نیمسال" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1" className="text-xs">پاییز (نیمسال اول)</SelectItem>
+                        <SelectItem value="2" className="text-xs">بهار (نیمسال دوم)</SelectItem>
+                        <SelectItem value="3" className="text-xs">تابستان</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Add Button */}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleAddFinalizedSemester}
+                    className="h-8 text-xs font-semibold gap-1 shrink-0"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    افزودن
+                  </Button>
+                </div>
+
+                {/* Quick Add Suggestions */}
+                <div className="flex flex-wrap items-center gap-1 pt-1 text-[11px] text-muted-foreground">
+                  <span className="shrink-0">پیشنهادی:</span>
+                  {["1403-1", "1403-2", "1404-1", "1404-2", "1405-1", "1405-2", "1405-3"].map((code) => {
+                    const isAdded = form.finalizedSemesters.includes(code);
+                    return (
+                      <button
+                        key={code}
+                        type="button"
+                        onClick={() => handleToggleFinalizedSemester(code)}
+                        className={`px-2 py-0.5 rounded-md border text-[10px] font-medium transition-all ${
+                          isAdded
+                            ? "bg-primary/10 border-primary text-primary font-bold"
+                            : "bg-muted/40 border-border/70 hover:bg-muted text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {isAdded ? "✓ " : "+ "}
+                        {formatSemesterLabel(code)}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
