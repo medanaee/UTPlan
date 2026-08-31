@@ -77,17 +77,19 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
   // Edit Modals
   const [vcatEditModalOpen, setVcatEditModalOpen] = useState(false);
   const [editingVcat, setEditingVcat] = useState<VisualCategory | null>(null);
-  const [vcatEditForm, setVcatEditForm] = useState({ name: "", color: "#3b82f6" });
+  const [vcatEditForm, setVcatEditForm] = useState({ code: "", name: "", color: "#3b82f6" });
 
   const [rcatEditModalOpen, setRcatEditModalOpen] = useState(false);
   const [editingRcat, setEditingRcat] = useState<RuleCategory | null>(null);
-  const [rcatEditForm, setRcatEditForm] = useState<{ name: string; parentId: string | null }>({
+  const [rcatEditForm, setRcatEditForm] = useState<{ code: string; name: string; parentId: string | null }>({
+    code: "",
     name: "",
     parentId: null,
   });
 
-  const [vcatForm, setVcatForm] = useState({ name: "", color: "#3b82f6", sortOrder: 1 });
-  const [rcatForm, setRcatForm] = useState<{ name: string; parentId: string | null }>({
+  const [vcatForm, setVcatForm] = useState({ code: "", name: "", color: "#3b82f6", sortOrder: 1 });
+  const [rcatForm, setRcatForm] = useState<{ code: string; name: string; parentId: string | null }>({
+    code: "",
     name: "",
     parentId: null,
   });
@@ -219,14 +221,16 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
       body: JSON.stringify({
         type: "visual",
         trackId: selectedTrackId,
-        ...vcatForm,
+        code: vcatForm.code.trim() || undefined,
+        name: vcatForm.name.trim(),
+        color: vcatForm.color,
         sortOrder: visualCats.length + 1,
       }),
     }).then((r) => r.json());
 
     if (res.success) {
       setVcatModalOpen(false);
-      setVcatForm({ name: "", color: "#3b82f6", sortOrder: 1 });
+      setVcatForm({ code: "", name: "", color: "#3b82f6", sortOrder: 1 });
       setActionMessage("دسته بصری جدید با موفقیت اضافه شد.");
       await loadTrackDetails(selectedTrackId);
     }
@@ -235,7 +239,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
   // Open Edit Visual Category Modal
   const handleOpenEditVcat = (cat: VisualCategory) => {
     setEditingVcat(cat);
-    setVcatEditForm({ name: cat.name, color: cat.color });
+    setVcatEditForm({ code: cat.code || "", name: cat.name, color: cat.color });
     setVcatEditModalOpen(true);
   };
 
@@ -251,7 +255,8 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
         action: "update",
         type: "visual",
         id: editingVcat.id,
-        name: vcatEditForm.name,
+        code: vcatEditForm.code.trim() || null,
+        name: vcatEditForm.name.trim(),
         color: vcatEditForm.color,
       }),
     }).then((r) => r.json());
@@ -285,13 +290,15 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
       body: JSON.stringify({
         type: "rule",
         trackId: selectedTrackId,
-        ...rcatForm,
+        code: rcatForm.code.trim() || undefined,
+        name: rcatForm.name.trim(),
+        parentId: rcatForm.parentId,
       }),
     }).then((r) => r.json());
 
     if (res.success) {
       setRcatModalOpen(false);
-      setRcatForm({ name: "", parentId: null });
+      setRcatForm({ code: "", name: "", parentId: null });
       setActionMessage("دسته قوانین با موفقیت اضافه شد.");
       await loadTrackDetails(selectedTrackId);
     }
@@ -300,7 +307,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
   // Open Edit Rule Category Modal
   const handleOpenEditRcat = (cat: RuleCategory) => {
     setEditingRcat(cat);
-    setRcatEditForm({ name: cat.name, parentId: cat.parentId || null });
+    setRcatEditForm({ code: cat.code || "", name: cat.name, parentId: cat.parentId || null });
     setRcatEditModalOpen(true);
   };
 
@@ -333,7 +340,8 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
         action: "update",
         type: "rule",
         id: editingRcat.id,
-        name: rcatEditForm.name,
+        code: rcatEditForm.code.trim() || null,
+        name: rcatEditForm.name.trim(),
         parentId: rcatEditForm.parentId || null,
       }),
     }).then((r) => r.json());
@@ -568,7 +576,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
           </Button>
         </CardHeader>
 
-        <CardContent className="p-4 space-y-3.5">
+        <CardContent className="space-y-3.5">
           {visualCats.map((cat, idx) => {
             const assignedCourses = getVisualCategoryCourses(cat.id);
             const totalUnits = assignedCourses.reduce((sum, c) => sum + (c.units || 3), 0);
@@ -610,9 +618,11 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                       style={{ backgroundColor: cat.color }}
                     />
                     <span className="font-bold text-sm text-foreground">{cat.name}</span>
-                    <Badge variant="outline" className="text-xs font-semibold px-2 py-0.5">
-                      ترتیب #{idx + 1}
-                    </Badge>
+                    {cat.code && (
+                      <Badge variant="outline" className="text-xs px-1.5 py-0.5 border-primary/40 text-primary bg-primary/5 font-semibold">
+                        {cat.code}
+                      </Badge>
+                    )}
                     <Badge variant="secondary" className="text-xs font-medium px-2 py-0.5">
                       {assignedCourses.length} درس ({totalUnits} واحد)
                     </Badge>
@@ -710,7 +720,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
           </Button>
         </CardHeader>
 
-        <CardContent className="p-4 space-y-4">
+        <CardContent className="space-y-4">
           {(() => {
             const topLevelCats = ruleCats.filter(
               (c) => !c.parentId || !ruleCats.some((p) => p.id === c.parentId)
@@ -770,6 +780,11 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                       <GripVertical className="h-4 w-4 text-muted-foreground/60 shrink-0 cursor-grab" />
                       <span className="h-3.5 w-3.5 rounded-md bg-primary shrink-0" />
                       <span className="font-bold text-sm text-foreground">{parentCat.name}</span>
+                      {parentCat.code && (
+                        <Badge variant="outline" className="text-xs px-1.5 py-0.5 border-primary/40 text-primary bg-primary/5 font-semibold">
+                          {parentCat.code}
+                        </Badge>
+                      )}
                       <Badge variant="outline" className="text-xs font-semibold px-2 py-0.5">
                         سطح ۱ (اصلی)
                       </Badge>
@@ -903,6 +918,11 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                                 <GripVertical className="h-4 w-4 text-muted-foreground/60 shrink-0 cursor-grab" />
                                 <CornerDownLeft className="h-4 w-4 text-muted-foreground/70 shrink-0" />
                                 <span className="font-bold text-sm text-foreground">{childCat.name}</span>
+                                {childCat.code && (
+                                  <Badge variant="outline" className="text-xs px-1.5 py-0.5 border-primary/40 text-primary bg-primary/5 font-semibold">
+                                    {childCat.code}
+                                  </Badge>
+                                )}
                                 <Badge variant="outline" className="text-xs font-semibold px-2 py-0.5">
                                   سطح ۲ (زیردسته)
                                 </Badge>
@@ -1029,6 +1049,11 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                                           <GripVertical className="h-4 w-4 text-muted-foreground/60 shrink-0 cursor-grab" />
                                           <CornerDownLeft className="h-4 w-4 text-muted-foreground/70 shrink-0" />
                                           <span className="font-bold text-sm text-foreground">{subChild.name}</span>
+                                          {subChild.code && (
+                                            <Badge variant="outline" className="text-xs px-1.5 py-0.5 border-primary/40 text-primary bg-primary/5 font-semibold">
+                                              {subChild.code}
+                                            </Badge>
+                                          )}
                                           <Badge variant="outline" className="text-xs font-semibold px-2 py-0.5">
                                             سطح ۳ (حداکثر عمق)
                                           </Badge>
@@ -1147,9 +1172,23 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
               رنگ و نام این دسته در پیش‌نمایش گرافیکی چارت نمایش داده خواهد شد.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleCreateVcat} className="space-y-3 pt-2">
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">نام دسته بصری</Label>
+          <form onSubmit={handleCreateVcat} className="space-y-3.5 pt-2">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold">کد دسته:</Label>
+                <span className="text-[10px] text-muted-foreground">اختیاری (تولید خودکار در صورت خالی بودن)</span>
+              </div>
+              <Input
+                placeholder="مثلاً VCAT-BASE یا BASE-01"
+                value={vcatForm.code}
+                onChange={(e) => setVcatForm({ ...vcatForm, code: e.target.value.toUpperCase() })}
+                className="h-8 text-xs"
+                dir="ltr"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">نام دسته بصری:</Label>
               <Input
                 required
                 placeholder="مثلاً ترم اول یا دروس پایه"
@@ -1159,8 +1198,8 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
               />
             </div>
 
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">رنگ شاخص دسته</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">رنگ شاخص دسته:</Label>
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {COLOR_PRESETS.map((color) => (
                   <button
@@ -1195,12 +1234,26 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
               <span>ویرایش دسته بصری چارت</span>
             </DialogTitle>
             <DialogDescription className="text-xs">
-              نام و رنگ اختصاصی این دسته بصری را تغییر دهید.
+              نام، کد و رنگ اختصاصی این دسته بصری را تغییر دهید.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleUpdateVcat} className="space-y-3.5 pt-2">
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">نام دسته بصری</Label>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold">کد دسته:</Label>
+                <span className="text-[10px] text-muted-foreground">اختیاری (تولید خودکار در صورت خالی بودن)</span>
+              </div>
+              <Input
+                placeholder="مثلاً VCAT-BASE یا BASE-01"
+                value={vcatEditForm.code}
+                onChange={(e) => setVcatEditForm({ ...vcatEditForm, code: e.target.value.toUpperCase() })}
+                className="h-8 text-xs"
+                dir="ltr"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">نام دسته بصری:</Label>
               <Input
                 required
                 placeholder="نام دسته بصری"
@@ -1210,8 +1263,8 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
               />
             </div>
 
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">رنگ شاخص دسته</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">رنگ شاخص دسته:</Label>
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {COLOR_PRESETS.map((color) => (
                   <button
@@ -1257,6 +1310,21 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                 value={rcatForm.parentId}
                 onChange={(val) => setRcatForm({ ...rcatForm, parentId: val })}
                 placeholder="دسته اصلی (بدون والد - سطح ۱)"
+                className="w-full"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold">کد دسته:</Label>
+                <span className="text-[10px] text-muted-foreground">اختیاری (تولید خودکار در صورت خالی بودن)</span>
+              </div>
+              <Input
+                placeholder="مثلاً RCAT-BASE یا CORE-CS"
+                value={rcatForm.code}
+                onChange={(e) => setRcatForm({ ...rcatForm, code: e.target.value.toUpperCase() })}
+                className="h-8 text-xs"
+                dir="ltr"
               />
             </div>
 
@@ -1267,6 +1335,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                 placeholder="مثلاً شبکه‌های کامپیوتری"
                 value={rcatForm.name}
                 onChange={(e) => setRcatForm({ ...rcatForm, name: e.target.value })}
+                className="h-8 text-xs"
               />
             </div>
 
@@ -1286,7 +1355,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
               <span>ویرایش دسته قوانین: {editingRcat?.name}</span>
             </DialogTitle>
             <DialogDescription className="text-xs">
-              نام و دسته والد این دسته‌بندی را تغییر دهید (حداکثر عمق مجاز: ۳ لایه).
+              نام، کد و دسته والد این دسته‌بندی را تغییر دهید (حداکثر عمق مجاز: ۳ لایه).
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleUpdateRcat} className="space-y-3.5 pt-2">
@@ -1304,12 +1373,27 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
             </div>
 
             <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold">کد دسته:</Label>
+                <span className="text-[10px] text-muted-foreground">اختیاری (تولید خودکار در صورت خالی بودن)</span>
+              </div>
+              <Input
+                placeholder="مثلاً RCAT-BASE یا CORE-CS"
+                value={rcatEditForm.code}
+                onChange={(e) => setRcatEditForm({ ...rcatEditForm, code: e.target.value.toUpperCase() })}
+                className="h-8 text-xs"
+                dir="ltr"
+              />
+            </div>
+
+            <div className="space-y-1.5">
               <Label className="text-xs font-semibold">نام دسته قوانین:</Label>
               <Input
                 required
                 placeholder="نام جدید دسته"
                 value={rcatEditForm.name}
                 onChange={(e) => setRcatEditForm({ ...rcatEditForm, name: e.target.value })}
+                className="h-8 text-xs"
               />
             </div>
 

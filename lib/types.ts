@@ -60,6 +60,7 @@ export interface Track {
 export interface VisualCategory {
   id: string;
   trackId: string;
+  code?: string;
   name: string;
   color: string; // e.g. "#3b82f6", "#10b981", "#f59e0b"
   sortOrder: number;
@@ -69,9 +70,9 @@ export interface VisualCategory {
 export interface RuleCategory {
   id: string;
   trackId: string;
+  code?: string;
   parentId?: string | null; // For hierarchical folder tree
   name: string;
-  minCredits?: number;
   createdAt: string;
 }
 

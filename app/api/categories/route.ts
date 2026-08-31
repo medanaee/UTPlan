@@ -52,24 +52,36 @@ export async function POST(request: Request) {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response!;
     const body = await request.json();
-    const { type, trackId, name, color, sortOrder, parentId } = body as {
+    const { type, trackId, name, color, sortOrder, parentId, code } = body as {
       type: "visual" | "rule";
       trackId: string;
       name: string;
       color?: string;
       sortOrder?: number;
       parentId?: string | null;
+      code?: string;
     };
 
     if (!trackId || !name || !type) {
-      return Response.json({ success: false, message: "اطلاعات دسته‌بندی ناقص است." }, { status: 400 });
+      return Response.json({ success: false, message: "اطلاعات دسته‌بندی ناقص است (نام و گرایش الزامی هستند)." }, { status: 400 });
     }
 
     if (type === "visual") {
-      const newCat = await createVisualCategory(trackId, name, color || "#3b82f6", sortOrder || 0);
+      const newCat = await createVisualCategory({
+        trackId,
+        name,
+        color: color || "#3b82f6",
+        sortOrder: sortOrder || 0,
+        code,
+      });
       return Response.json({ success: true, data: newCat }, { status: 201 });
     } else {
-      const newCat = await createRuleCategory(trackId, name, parentId);
+      const newCat = await createRuleCategory({
+        trackId,
+        name,
+        parentId,
+        code,
+      });
       return Response.json({ success: true, data: newCat }, { status: 201 });
     }
   } catch (error) {
@@ -104,7 +116,7 @@ export async function PUT(request: Request) {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response!;
     const body = await request.json();
-    const { action, type, items, id, name, color, sortOrder, parentId } = body as {
+    const { action, type, items, id, name, color, sortOrder, parentId, code } = body as {
       action?: "reorder" | "update";
       type: "visual" | "rule";
       items?: { id: string; sortOrder: number; parentId?: string | null }[];
@@ -113,6 +125,7 @@ export async function PUT(request: Request) {
       color?: string;
       sortOrder?: number;
       parentId?: string | null;
+      code?: string | null;
     };
 
     // Sub-action: Reorder
@@ -128,13 +141,13 @@ export async function PUT(request: Request) {
     // Sub-action: Update category
     if (id) {
       if (type === "visual") {
-        const updated = await updateVisualCategory(id, { name, color, sortOrder });
+        const updated = await updateVisualCategory(id, { name, color, sortOrder, code });
         if (!updated) {
           return Response.json({ success: false, message: "دسته بصری یافت نشد." }, { status: 404 });
         }
         return Response.json({ success: true, data: updated, message: "دسته بصری با موفقیت ویرایش شد." });
       } else {
-        const updated = await updateRuleCategory(id, { name, parentId, sortOrder });
+        const updated = await updateRuleCategory(id, { name, parentId, sortOrder, code });
         if (!updated) {
           return Response.json({ success: false, message: "دسته قوانین یافت نشد." }, { status: 404 });
         }

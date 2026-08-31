@@ -61,6 +61,7 @@ CREATE INDEX IF NOT EXISTS idx_tracks_major ON tracks(major_id);
 CREATE TABLE IF NOT EXISTS visual_categories (
   id TEXT PRIMARY KEY,
   track_id TEXT NOT NULL,
+  code TEXT,
   name TEXT NOT NULL,
   color TEXT NOT NULL DEFAULT '#3b82f6',
   sort_order INTEGER NOT NULL DEFAULT 0,
@@ -68,12 +69,14 @@ CREATE TABLE IF NOT EXISTS visual_categories (
   FOREIGN KEY (track_id) REFERENCES tracks(id)
 );
 CREATE INDEX IF NOT EXISTS idx_visual_categories_track ON visual_categories(track_id);
+CREATE INDEX IF NOT EXISTS idx_visual_categories_code ON visual_categories(code);
 
 -- 6. Rule Categories Table (Hierarchical category tree for requirements rules, per track)
 CREATE TABLE IF NOT EXISTS rule_categories (
   id TEXT PRIMARY KEY,
   track_id TEXT NOT NULL,
   parent_id TEXT,
+  code TEXT,
   name TEXT NOT NULL,
   sort_order INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
@@ -81,6 +84,7 @@ CREATE TABLE IF NOT EXISTS rule_categories (
   FOREIGN KEY (parent_id) REFERENCES rule_categories(id)
 );
 CREATE INDEX IF NOT EXISTS idx_rule_categories_track ON rule_categories(track_id);
+CREATE INDEX IF NOT EXISTS idx_rule_categories_code ON rule_categories(code);
 
 -- 7. Courses Table
 CREATE TABLE IF NOT EXISTS courses (

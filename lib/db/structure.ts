@@ -397,6 +397,7 @@ export async function getVisualCategories(trackId: string): Promise<VisualCatego
     return (results || []).map((r: any) => ({
       id: r.id,
       trackId: r.track_id,
+      code: r.code || undefined,
       name: r.name,
       color: r.color,
       sortOrder: Number(r.sort_order) || 0,
@@ -409,13 +410,37 @@ export async function getVisualCategories(trackId: string): Promise<VisualCatego
 }
 
 export async function createVisualCategory(
-  trackId: string,
-  name: string,
-  color: string,
-  sortOrder = 0
+  trackIdOrData: string | { trackId: string; name: string; color?: string; sortOrder?: number; code?: string },
+  nameArg?: string,
+  colorArg?: string,
+  sortOrderArg = 0,
+  codeArg?: string
 ): Promise<VisualCategory> {
+  let trackId: string;
+  let name: string;
+  let color: string;
+  let sortOrder: number;
+  let code: string | undefined;
+
+  if (typeof trackIdOrData === "object" && trackIdOrData !== null) {
+    trackId = trackIdOrData.trackId;
+    name = trackIdOrData.name;
+    color = trackIdOrData.color || "#3b82f6";
+    sortOrder = trackIdOrData.sortOrder ?? 0;
+    code = trackIdOrData.code?.trim() || undefined;
+  } else {
+    trackId = trackIdOrData;
+    name = nameArg!;
+    color = colorArg || "#3b82f6";
+    sortOrder = sortOrderArg;
+    code = codeArg?.trim() || undefined;
+  }
+
   const id = `vcat_${crypto.randomUUID().slice(0, 8)}`;
   const now = new Date().toISOString();
+  const cleanCode = code?.trim()
+    ? code.trim().toUpperCase()
+    : `VCAT-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
 
   const d1 = getD1();
   if (!d1) throw new Error("پایگاه‌داده در دسترس نیست.");
@@ -423,9 +448,9 @@ export async function createVisualCategory(
   try {
     await d1
       .prepare(
-        "INSERT INTO visual_categories (id, track_id, name, color, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+        "INSERT INTO visual_categories (id, track_id, code, name, color, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
       )
-      .bind(id, trackId, name.trim(), color || "#3b82f6", sortOrder, now)
+      .bind(id, trackId, cleanCode, name.trim(), color, sortOrder, now)
       .run();
   } catch (err) {
     console.error("D1 createVisualCategory error:", err);
@@ -435,8 +460,9 @@ export async function createVisualCategory(
   return {
     id,
     trackId,
+    code: cleanCode,
     name: name.trim(),
-    color: color || "#3b82f6",
+    color,
     sortOrder,
     createdAt: now,
   };
@@ -444,7 +470,7 @@ export async function createVisualCategory(
 
 export async function updateVisualCategory(
   id: string,
-  data: { name?: string; color?: string; sortOrder?: number }
+  data: { name?: string; color?: string; sortOrder?: number; code?: string | null }
 ): Promise<VisualCategory | null> {
   const d1 = getD1();
   if (!d1) return null;
@@ -456,15 +482,20 @@ export async function updateVisualCategory(
     const name = data.name !== undefined ? data.name.trim() : (existing as any).name;
     const color = data.color !== undefined ? data.color : (existing as any).color;
     const sortOrder = data.sortOrder !== undefined ? data.sortOrder : (existing as any).sort_order;
+    const code =
+      data.code !== undefined
+        ? (data.code?.trim() ? data.code.trim().toUpperCase() : (existing as any).code || `VCAT-${crypto.randomUUID().slice(0, 6).toUpperCase()}`)
+        : ((existing as any).code || `VCAT-${crypto.randomUUID().slice(0, 6).toUpperCase()}`);
 
     await d1
-      .prepare("UPDATE visual_categories SET name = ?, color = ?, sort_order = ? WHERE id = ?")
-      .bind(name, color, sortOrder, id)
+      .prepare("UPDATE visual_categories SET code = ?, name = ?, color = ?, sort_order = ? WHERE id = ?")
+      .bind(code, name, color, sortOrder, id)
       .run();
 
     return {
       id,
       trackId: (existing as any).track_id,
+      code,
       name,
       color,
       sortOrder,
@@ -478,7 +509,7 @@ export async function updateVisualCategory(
 
 export async function updateRuleCategory(
   id: string,
-  data: { name?: string; parentId?: string | null; sortOrder?: number }
+  data: { name?: string; parentId?: string | null; sortOrder?: number; code?: string | null }
 ): Promise<RuleCategory | null> {
   const d1 = getD1();
   if (!d1) return null;
@@ -490,18 +521,22 @@ export async function updateRuleCategory(
     const name = data.name !== undefined ? data.name.trim() : (existing as any).name;
     const parentId = data.parentId !== undefined ? (data.parentId || null) : (existing as any).parent_id;
     const sortOrder = data.sortOrder !== undefined ? data.sortOrder : (existing as any).sort_order;
+    const code =
+      data.code !== undefined
+        ? (data.code?.trim() ? data.code.trim().toUpperCase() : (existing as any).code || `RCAT-${crypto.randomUUID().slice(0, 6).toUpperCase()}`)
+        : ((existing as any).code || `RCAT-${crypto.randomUUID().slice(0, 6).toUpperCase()}`);
 
     await d1
-      .prepare("UPDATE rule_categories SET name = ?, parent_id = ?, sort_order = ? WHERE id = ?")
-      .bind(name, parentId, sortOrder, id)
+      .prepare("UPDATE rule_categories SET code = ?, name = ?, parent_id = ?, sort_order = ? WHERE id = ?")
+      .bind(code, name, parentId, sortOrder, id)
       .run();
 
     return {
       id,
       trackId: (existing as any).track_id,
+      code,
       parentId,
       name,
-      sortOrder,
       createdAt: (existing as any).created_at,
     };
   } catch (err) {
@@ -538,9 +573,9 @@ export async function getRuleCategories(trackId: string): Promise<RuleCategory[]
     return (results || []).map((r: any) => ({
       id: r.id,
       trackId: r.track_id,
+      code: r.code || undefined,
       parentId: r.parent_id || null,
       name: r.name,
-      sortOrder: Number(r.sort_order) || 0,
       createdAt: r.created_at,
     }));
   } catch (err) {
@@ -550,13 +585,37 @@ export async function getRuleCategories(trackId: string): Promise<RuleCategory[]
 }
 
 export async function createRuleCategory(
-  trackId: string,
-  name: string,
-  parentId?: string | null,
-  sortOrder = 0
+  trackIdOrData: string | { trackId: string; name: string; parentId?: string | null; sortOrder?: number; code?: string },
+  nameArg?: string,
+  parentIdArg?: string | null,
+  sortOrderArg = 0,
+  codeArg?: string
 ): Promise<RuleCategory> {
+  let trackId: string;
+  let name: string;
+  let parentId: string | null;
+  let sortOrder: number;
+  let code: string | undefined;
+
+  if (typeof trackIdOrData === "object" && trackIdOrData !== null) {
+    trackId = trackIdOrData.trackId;
+    name = trackIdOrData.name;
+    parentId = trackIdOrData.parentId || null;
+    sortOrder = trackIdOrData.sortOrder ?? 0;
+    code = trackIdOrData.code?.trim() || undefined;
+  } else {
+    trackId = trackIdOrData;
+    name = nameArg!;
+    parentId = parentIdArg || null;
+    sortOrder = sortOrderArg;
+    code = codeArg?.trim() || undefined;
+  }
+
   const id = `rcat_${crypto.randomUUID().slice(0, 8)}`;
   const now = new Date().toISOString();
+  const cleanCode = code?.trim()
+    ? code.trim().toUpperCase()
+    : `RCAT-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
 
   const d1 = getD1();
   if (!d1) throw new Error("پایگاه‌داده در دسترس نیست.");
@@ -564,9 +623,9 @@ export async function createRuleCategory(
   try {
     await d1
       .prepare(
-        "INSERT INTO rule_categories (id, track_id, parent_id, name, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+        "INSERT INTO rule_categories (id, track_id, parent_id, code, name, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
       )
-      .bind(id, trackId, parentId || null, name.trim(), sortOrder, now)
+      .bind(id, trackId, parentId, cleanCode, name.trim(), sortOrder, now)
       .run();
   } catch (err) {
     console.error("D1 createRuleCategory error:", err);
@@ -576,9 +635,9 @@ export async function createRuleCategory(
   return {
     id,
     trackId,
-    parentId: parentId || null,
+    code: cleanCode,
+    parentId,
     name: name.trim(),
-    sortOrder,
     createdAt: now,
   };
 }
@@ -719,7 +778,8 @@ export async function cloneTrackStructure(
           targetTrackId,
           vcat.name,
           vcat.color,
-          vcat.sortOrder
+          vcat.sortOrder,
+          vcat.code
         );
         visualCatMap.set(vcat.id, newVCat.id);
         stats.visualCategoriesCloned++;
@@ -744,7 +804,8 @@ export async function cloneTrackStructure(
               targetTrackId,
               rcat.name,
               null,
-              rcat.sortOrder
+              0,
+              rcat.code
             );
             ruleCatMap.set(rcat.id, newRCat.id);
             toRemove.push(i);
@@ -756,7 +817,8 @@ export async function cloneTrackStructure(
               targetTrackId,
               rcat.name,
               newParentId,
-              rcat.sortOrder
+              0,
+              rcat.code
             );
             ruleCatMap.set(rcat.id, newRCat.id);
             toRemove.push(i);
@@ -775,7 +837,8 @@ export async function cloneTrackStructure(
           targetTrackId,
           rcat.name,
           null,
-          rcat.sortOrder
+          0,
+          rcat.code
         );
         ruleCatMap.set(rcat.id, newRCat.id);
         stats.ruleCategoriesCloned++;

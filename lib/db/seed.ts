@@ -68,11 +68,11 @@ export async function seedDatabase(fullSeed = true) {
   // 5. Visual Categories
   await d1
     .prepare(
-      `INSERT INTO visual_categories (id, track_id, name, color, sort_order, created_at)
-       VALUES ('vcat_base', 'trk_software', 'دروس پایه', '#3b82f6', 1, ?),
-              ('vcat_core', 'trk_software', 'دروس اصلی', '#10b981', 2, ?),
-              ('vcat_spec', 'trk_software', 'دروس تخصصی', '#8b5cf6', 3, ?),
-              ('vcat_gen', 'trk_software', 'دروس عمومی', '#f59e0b', 4, ?)
+      `INSERT INTO visual_categories (id, track_id, code, name, color, sort_order, created_at)
+       VALUES ('vcat_base', 'trk_software', 'VCAT-BASE', 'دروس پایه', '#3b82f6', 1, ?),
+              ('vcat_core', 'trk_software', 'VCAT-CORE', 'دروس اصلی', '#10b981', 2, ?),
+              ('vcat_spec', 'trk_software', 'VCAT-SPEC', 'دروس تخصصی', '#8b5cf6', 3, ?),
+              ('vcat_gen', 'trk_software', 'VCAT-GEN', 'دروس عمومی', '#f59e0b', 4, ?)
        ON CONFLICT(id) DO NOTHING`
     )
     .bind(now, now, now, now)
@@ -81,11 +81,11 @@ export async function seedDatabase(fullSeed = true) {
   // 6. Rule Categories
   await d1
     .prepare(
-      `INSERT INTO rule_categories (id, track_id, parent_id, name, min_credits, created_at)
-       VALUES ('rcat_base', 'trk_software', NULL, 'دروس پایه', 20, ?),
-              ('rcat_core', 'trk_software', NULL, 'دروس اصلی', 60, ?),
-              ('rcat_spec', 'trk_software', NULL, 'دروس تخصصی', 25, ?),
-              ('rcat_gen', 'trk_software', NULL, 'دروس عمومی', 22, ?)
+      `INSERT INTO rule_categories (id, track_id, parent_id, code, name, sort_order, created_at)
+       VALUES ('rcat_base', 'trk_software', NULL, 'RCAT-BASE', 'دروس پایه', 1, ?),
+              ('rcat_core', 'trk_software', NULL, 'RCAT-CORE', 'دروس اصلی', 2, ?),
+              ('rcat_spec', 'trk_software', NULL, 'RCAT-SPEC', 'دروس تخصصی', 3, ?),
+              ('rcat_gen', 'trk_software', NULL, 'RCAT-GEN', 'دروس عمومی', 4, ?)
        ON CONFLICT(id) DO NOTHING`
     )
     .bind(now, now, now, now)
