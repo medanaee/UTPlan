@@ -1,11 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getEvents, createEvent, createCustomUserEvent, updateEvent, deleteEvent } from "@/lib/db";
+import { getEvents, createEvent, createCustomUserEvent, updateEvent, deleteEvent, findUserById, getD1 } from "@/lib/db";
 import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
+
+async function getEffectiveUserRole(session: any): Promise<{ isAdmin: boolean; userId: string; role: string }> {
+  if (!session?.id) return { isAdmin: false, userId: "", role: "user" };
+  try {
+    const liveUser = await findUserById(session.id);
+    const role = liveUser?.role || session.role || "user";
+    const isAdmin = role === "admin" || role === "super_admin";
+    return { isAdmin, userId: session.id, role };
+  } catch {
+    const role = session.role || "user";
+    const isAdmin = role === "admin" || role === "super_admin";
+    return { isAdmin, userId: session.id, role };
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
     const token = getAuthTokenFromRequest(request);
     const session = token ? await verifySessionToken(token) : null;
+    const { isAdmin, userId } = await getEffectiveUserRole(session);
 
     const { searchParams } = new URL(request.url);
     const offeringId = searchParams.get("offeringId") || undefined;
@@ -19,8 +34,8 @@ export async function GET(request: NextRequest) {
       term,
       facultyId,
       courseId,
-      userId: session?.id,
-      customOnly: customOnly && (session?.role === "admin" || session?.role === "super_admin"),
+      userId: userId || undefined,
+      customOnly: customOnly && isAdmin,
     });
 
     return NextResponse.json({ success: true, data });
@@ -43,6 +58,8 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
+
+    const { isAdmin, userId } = await getEffectiveUserRole(session);
 
     const body = await request.json();
     const {
@@ -70,7 +87,7 @@ export async function POST(request: NextRequest) {
       }
 
       const newCustomEvent = await createCustomUserEvent({
-        userId: session.id,
+        userId: userId,
         offeringId,
         term: term || "1403-1",
         location: location || "",
@@ -95,7 +112,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (session.role !== "admin" && session.role !== "super_admin") {
+    if (!isAdmin) {
       return NextResponse.json(
         { success: false, message: "تنها مدیران می‌توانند رویداد رسمی ثبت کنند." },
         { status: 403 }
@@ -105,6 +122,8 @@ export async function POST(request: NextRequest) {
     const newEvent = await createEvent({
       offeringId,
       term: term || "1403-1",
+      groupCode: groupCode || "01",
+      capacity: capacity !== undefined ? Number(capacity) : 40,
       location: location || "",
       examDate: examDate || "",
       examStartTime: examStartTime || "",
@@ -138,6 +157,8 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    const { isAdmin, userId } = await getEffectiveUserRole(session);
+
     const body = await request.json();
     const {
       id,
@@ -160,14 +181,14 @@ export async function PUT(request: NextRequest) {
     }
 
     // Authorization check
-    if (session.role !== "admin" && session.role !== "super_admin") {
-      const d1 = (await import("@/lib/db")).getD1();
+    if (!isAdmin) {
+      const d1 = getD1();
       if (d1) {
         const existing = await d1
           .prepare("SELECT user_id, is_user_custom FROM course_events WHERE id = ?")
           .bind(id)
           .first();
-        if (!existing || (existing as any).user_id !== session.id) {
+        if (!existing || (existing as any).user_id !== userId) {
           return NextResponse.json(
             { success: false, message: "تنها صاحب رویداد یا مدیر می‌تواند آن را ویرایش کند." },
             { status: 403 }
@@ -220,6 +241,8 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    const { isAdmin, userId } = await getEffectiveUserRole(session);
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
@@ -231,14 +254,14 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Check permissions: Admin can delete all, users can delete their own custom events
-    if (session.role !== "admin" && session.role !== "super_admin") {
-      const d1 = (await import("@/lib/db")).getD1();
+    if (!isAdmin) {
+      const d1 = getD1();
       if (d1) {
         const existing = await d1
           .prepare("SELECT user_id, is_user_custom FROM course_events WHERE id = ?")
           .bind(id)
           .first();
-        if (!existing || (existing as any).user_id !== session.id) {
+        if (!existing || (existing as any).user_id !== userId) {
           return NextResponse.json(
             { success: false, message: "تنها صاحب رویداد یا مدیر می‌تواند آن را حذف کند." },
             { status: 403 }

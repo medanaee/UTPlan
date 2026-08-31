@@ -9,7 +9,22 @@ import {
   getApprovedTrackChart,
   getApprovedTrackCharts,
   setPrimaryApprovedChart,
+  findUserById,
 } from "@/lib/db";
+
+async function getEffectiveUserRole(session: any): Promise<{ isAdmin: boolean; userId: string; role: string }> {
+  if (!session?.id) return { isAdmin: false, userId: "", role: "user" };
+  try {
+    const liveUser = await findUserById(session.id);
+    const role = liveUser?.role || session.role || "user";
+    const isAdmin = role === "admin" || role === "super_admin";
+    return { isAdmin, userId: session.id, role };
+  } catch {
+    const role = session.role || "user";
+    const isAdmin = role === "admin" || role === "super_admin";
+    return { isAdmin, userId: session.id, role };
+  }
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -53,6 +68,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const { isAdmin, userId } = await getEffectiveUserRole(session);
+
     const body = await req.json();
     const { title, trackId, cloneFromId, isApprovedDefault, semesters } = body;
 
@@ -71,11 +88,11 @@ export async function POST(req: NextRequest) {
     }
 
     const newChart = await createChart({
-      userId: session.id,
+      userId: userId,
       trackId,
       title: title || "چارت تحصیلی من",
       semesters: initialSemesters,
-      isApprovedDefault: (session.role === "super_admin" || session.role === "admin") && isApprovedDefault,
+      isApprovedDefault: isAdmin && isApprovedDefault,
     });
 
     return NextResponse.json({ success: true, data: newChart, message: "چارت جدید با موفقیت ایجاد شد." });
@@ -96,6 +113,8 @@ export async function PUT(req: NextRequest) {
       );
     }
 
+    const { isAdmin, userId } = await getEffectiveUserRole(session);
+
     const body = await req.json();
     const { id, title, trackId, semesters, isPrimaryApproved, isApprovedDefault, action } = body;
 
@@ -107,8 +126,6 @@ export async function PUT(req: NextRequest) {
     if (!existing) {
       return NextResponse.json({ success: false, message: "چارت مورد نظر یافت نشد." }, { status: 404 });
     }
-
-    const isAdmin = session.role === "super_admin" || session.role === "admin";
 
     // Strict Security Guard:
     // 1. If this is an official approved default track chart, ONLY admins can edit it!
@@ -123,7 +140,7 @@ export async function PUT(req: NextRequest) {
     }
 
     // 2. If this is a student's private chart, only the owner or admins can edit it.
-    if (!existing.isApprovedDefault && existing.userId !== session.id && !isAdmin) {
+    if (!existing.isApprovedDefault && existing.userId !== userId && !isAdmin) {
       return NextResponse.json(
         {
           success: false,
@@ -172,6 +189,8 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
+    const { isAdmin, userId } = await getEffectiveUserRole(session);
+
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
 
@@ -184,8 +203,6 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ success: false, message: "چارت یافت نشد." }, { status: 404 });
     }
 
-    const isAdmin = session.role === "super_admin" || session.role === "admin";
-
     // Strict Security Guard for DELETE:
     if (existing.isApprovedDefault && !isAdmin) {
       return NextResponse.json(
@@ -194,7 +211,7 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    if (!existing.isApprovedDefault && existing.userId !== session.id && !isAdmin) {
+    if (!existing.isApprovedDefault && existing.userId !== userId && !isAdmin) {
       return NextResponse.json(
         { success: false, message: "دسترسی غیرمجاز: شما اجازه حذف این چارت را ندارید." },
         { status: 403 }
@@ -217,6 +234,8 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ success: false, message: "عدم احراز هویت" }, { status: 401 });
     }
 
+    const { isAdmin, userId } = await getEffectiveUserRole(session);
+
     const body = await req.json();
     const { chartId, termIndex, courseId, selectedEventId } = body;
 
@@ -229,11 +248,11 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ success: false, message: "چارت یافت نشد." }, { status: 404 });
     }
 
-    const isAdmin = session.role === "super_admin" || session.role === "admin";
-    if (!chart.isApprovedDefault && chart.userId !== session.id && !isAdmin) {
+    if (!chart.isApprovedDefault && chart.userId !== userId && !isAdmin) {
       return NextResponse.json({ success: false, message: "دسترسی غیرمجاز" }, { status: 403 });
     }
 
+    const { updateChartCourseEvent } = await import("@/lib/db");
     await updateChartCourseEvent(chartId, Number(termIndex), courseId, selectedEventId || null);
     const updated = await getChartById(chartId);
 

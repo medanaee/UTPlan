@@ -1,6 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getReviews, getReviewById, createReview, updateReview, deleteReview } from "@/lib/db";
+import { getReviews, getReviewById, createReview, updateReview, deleteReview, findUserById } from "@/lib/db";
 import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
+
+async function getEffectiveUserRole(session: any): Promise<{ isAdmin: boolean; userId: string; role: string }> {
+  if (!session?.id) return { isAdmin: false, userId: "", role: "user" };
+  try {
+    const liveUser = await findUserById(session.id);
+    const role = liveUser?.role || session.role || "user";
+    const isAdmin = role === "admin" || role === "super_admin";
+    return { isAdmin, userId: session.id, role };
+  } catch {
+    const role = session.role || "user";
+    const isAdmin = role === "admin" || role === "super_admin";
+    return { isAdmin, userId: session.id, role };
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -91,6 +105,8 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    const { isAdmin, userId } = await getEffectiveUserRole(session);
+
     const body = await request.json();
     const { id, comment, isAnonymous, criteriaRatings } = body;
 
@@ -110,8 +126,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Security check: Author or Admin
-    const isAuthor = existing.userId && existing.userId === session.id;
-    const isAdmin = session.role === "admin" || session.role === "super_admin";
+    const isAuthor = existing.userId && existing.userId === userId;
 
     if (!isAuthor && !isAdmin) {
       return NextResponse.json(
@@ -168,6 +183,8 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    const { isAdmin, userId } = await getEffectiveUserRole(session);
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
@@ -187,8 +204,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Security check: Author or Admin
-    const isAuthor = existing.userId && existing.userId === session.id;
-    const isAdmin = session.role === "admin" || session.role === "super_admin";
+    const isAuthor = existing.userId && existing.userId === userId;
 
     if (!isAuthor && !isAdmin) {
       return NextResponse.json(
