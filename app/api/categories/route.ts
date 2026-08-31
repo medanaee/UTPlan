@@ -10,6 +10,7 @@ import {
   createRuleCategory,
   deleteRuleCategory,
   reorderRuleCategories,
+  syncVisualFromRuleCategories,
 } from "@/lib/db";
 
 export async function GET(request: Request) {
@@ -52,6 +53,21 @@ export async function POST(request: Request) {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response!;
     const body = await request.json();
+
+    if (body.action === "sync_from_rules") {
+      const { trackId } = body as { action: string; trackId: string };
+      if (!trackId) {
+        return Response.json({ success: false, message: "شناسه گرایش الزامی است." }, { status: 400 });
+      }
+      const success = await syncVisualFromRuleCategories(trackId);
+      return Response.json({
+        success,
+        message: success
+          ? "دسته‌های بصری با موفقیت از سطح ۱ قوانین همگام و بازتولید شدند."
+          : "خطا در همگام‌سازی دسته‌های بصری",
+      });
+    }
+
     const { type, trackId, name, color, sortOrder, parentId, code } = body as {
       type: "visual" | "rule";
       trackId: string;

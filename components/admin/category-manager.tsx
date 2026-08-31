@@ -16,6 +16,7 @@ import {
   Copy,
   FolderTree,
   Palette,
+  RefreshCw,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -87,6 +88,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
     parentId: null,
   });
 
+  const [isSyncing, setIsSyncing] = useState(false);
   const [vcatForm, setVcatForm] = useState({ code: "", name: "", color: "#3b82f6", sortOrder: 1 });
   const [rcatForm, setRcatForm] = useState<{ code: string; name: string; parentId: string | null }>({
     code: "",
@@ -356,6 +358,42 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
     }
   };
 
+  // Sync Visual Categories from Level 1 Rule Categories (Flattening & copying courses)
+  const handleSyncVisualFromRules = async () => {
+    if (!selectedTrackId) return;
+    if (
+      !confirm(
+        "آیا از پاک کردن تمام دسته‌های بصری فعلی و کپی دسته‌های سطح ۱ قوانین (به همراه کلیه دروس زیردسته‌ها) مطمئن هستید؟ این عملیات قابل بازگشت نیست."
+      )
+    ) {
+      return;
+    }
+
+    setIsSyncing(true);
+    try {
+      const res = await fetch("/api/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "sync_from_rules",
+          trackId: selectedTrackId,
+        }),
+      }).then((r) => r.json());
+
+      if (res.success) {
+        setActionMessage(res.message || "دسته‌های بصری با موفقیت از سطح ۱ قوانین بازتولید شدند.");
+        await loadTrackDetails(selectedTrackId);
+      } else {
+        alert(res.message || "خطا در همگام‌سازی دسته‌های بصری");
+      }
+    } catch (err) {
+      console.error("Sync visual categories error:", err);
+      alert("خطا در برقراری ارتباط با سرور");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   // Visual Category Drag and Drop Reorder
   const handleVcatDrop = async (targetIndex: number) => {
     if (draggedVcatIndex === null || draggedVcatIndex === targetIndex) {
@@ -565,18 +603,32 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
             </CardDescription>
           </div>
 
-          <Button
-            size="sm"
-            disabled={!selectedTrackId}
-            onClick={() => {
-              setVcatForm({ code: "", name: "", color: "#3b82f6", sortOrder: visualCats.length + 1 });
-              setVcatModalOpen(true);
-            }}
-            className="h-8 gap-1.5 text-xs shadow-xs font-semibold"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            افزودن دسته بصری جدید
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!selectedTrackId || isSyncing || ruleCats.length === 0}
+              onClick={handleSyncVisualFromRules}
+              className="h-8 gap-1.5 text-xs shadow-2xs font-semibold text-muted-foreground hover:text-foreground"
+              title="پاک کردن دسته‌های بصری فعلی و کپی دسته‌های سطح ۱ قوانین به همراه دروس زیردسته‌ها"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin text-primary" : ""}`} />
+              همگام‌سازی از قوانین (سطح ۱)
+            </Button>
+
+            <Button
+              size="sm"
+              disabled={!selectedTrackId}
+              onClick={() => {
+                setVcatForm({ code: "", name: "", color: "#3b82f6", sortOrder: visualCats.length + 1 });
+                setVcatModalOpen(true);
+              }}
+              className="h-8 gap-1.5 text-xs shadow-xs font-semibold"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              افزودن دسته بصری جدید
+            </Button>
+          </div>
         </CardHeader>
 
         <CardContent className="space-y-3.5">
@@ -769,7 +821,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                     setDraggedRcatId(null);
                     setDragOverRcatId(null);
                   }}
-                  className={"rounded-2xl border border-border/70 bg-card p-4 transition-all duration-150 space-y-3.5 shadow-2xs " + (
+                  className={"rounded-4xl border border-border/70 bg-card p-4 transition-all duration-150 space-y-3.5 shadow-2xs " + (
                     draggedRcatId === parentCat.id
                       ? "opacity-40 border-dashed border-primary bg-primary/5 scale-[0.99]"
                       : dragOverRcatId === parentCat.id
@@ -1037,7 +1089,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                                         setDraggedRcatId(null);
                                         setDragOverRcatId(null);
                                       }}
-                                      className="rounded-2xl border border-border/70 bg-card p-4 transition-all duration-150 space-y-3 shadow-2xs"
+                                      className="rounded-lg border border-border/70 bg-card p-4 transition-all duration-150 space-y-3 shadow-2xs"
                                     >
                                       {/* Level 3 Row */}
                                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 select-none">

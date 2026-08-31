@@ -1022,3 +1022,107 @@ export async function assignCategoryCourses(
   }
 }
 
+export async function syncVisualFromRuleCategories(trackId: string): Promise<boolean> {
+  const d1 = getD1();
+  if (!d1) return false;
+
+  try {
+    // 1. Fetch all rule categories for this track
+    const { results: ruleRows } = await d1
+      .prepare("SELECT * FROM rule_categories WHERE track_id = ? ORDER BY sort_order ASC, created_at ASC")
+      .bind(trackId)
+      .all();
+    const ruleCategories = ruleRows || [];
+
+    // 2. Fetch all assignments for this track
+    const { results: assignRows } = await d1
+      .prepare("SELECT * FROM track_course_assignments WHERE track_id = ?")
+      .bind(trackId)
+      .all();
+    const assignments = assignRows || [];
+
+    // 3. Clear all existing visual categories for this track and unassign their visual references
+    await d1.prepare("DELETE FROM visual_categories WHERE track_id = ?").bind(trackId).run();
+    await d1
+      .prepare("UPDATE track_course_assignments SET visual_category_id = NULL WHERE track_id = ?")
+      .bind(trackId)
+      .run();
+
+    if (ruleCategories.length === 0) {
+      return true;
+    }
+
+    // 4. Identify top-level (level 1) rule categories
+    const topLevelRules = ruleCategories.filter(
+      (r: any) => !r.parent_id || !ruleCategories.some((p: any) => p.id === r.parent_id)
+    );
+
+    const PRESET_COLORS = [
+      "#3b82f6", // blue
+      "#10b981", // green
+      "#f59e0b", // yellow/amber
+      "#ef4444", // red
+      "#8b5cf6", // purple
+      "#ec4899", // pink
+      "#f97316", // orange
+      "#6b7280", // gray
+      "#06b6d4", // cyan
+      "#14b8a6", // teal
+      "#84cc16", // lime
+      "#a855f7", // violet
+    ];
+
+    // 5. For each top-level category, find all descendant rule category IDs and flatten their assigned courses
+    for (let idx = 0; idx < topLevelRules.length; idx++) {
+      const topRule: any = topLevelRules[idx];
+      const descendantIds = new Set<string>();
+
+      const collectDescendants = (parentId: string) => {
+        descendantIds.add(parentId);
+        const children = ruleCategories.filter((r: any) => r.parent_id === parentId);
+        for (const child of children) {
+          collectDescendants((child as any).id);
+        }
+      };
+      collectDescendants(topRule.id);
+
+      // Collect all course IDs under this entire rule category tree
+      const courseIds = assignments
+        .filter((a: any) => a.rule_category_id && descendantIds.has(a.rule_category_id))
+        .map((a: any) => a.course_id);
+      const uniqueCourseIds = Array.from(new Set(courseIds));
+
+      // Create new visual category
+      const vcatId = `vcat_${crypto.randomUUID().slice(0, 8)}`;
+      const vcatCode = topRule.code || `VCAT-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
+      const color = PRESET_COLORS[idx % PRESET_COLORS.length];
+      const now = new Date().toISOString();
+
+      await d1
+        .prepare(
+          "INSERT INTO visual_categories (id, track_id, code, name, color, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        )
+        .bind(vcatId, trackId, vcatCode, topRule.name, color, idx + 1, now)
+        .run();
+
+      // Assign collected courses to the new visual category
+      for (const courseId of uniqueCourseIds) {
+        const assignId = `assign_${trackId}_${courseId}`;
+        await d1
+          .prepare(
+            `INSERT INTO track_course_assignments (id, track_id, course_id, visual_category_id)
+             VALUES (?, ?, ?, ?)
+             ON CONFLICT(track_id, course_id) DO UPDATE SET visual_category_id = excluded.visual_category_id`
+          )
+          .bind(assignId, trackId, courseId, vcatId)
+          .run();
+      }
+    }
+
+    return true;
+  } catch (err) {
+    console.error("D1 syncVisualFromRuleCategories error:", err);
+    return false;
+  }
+}
+
