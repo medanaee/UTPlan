@@ -21,6 +21,7 @@ import {
   Database,
   Check,
   BookUser,
+  DatabaseBackup,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +39,7 @@ import { ApprovedChartsManager } from "@/components/admin/approved-charts-manage
 import { RuleQueryBuilder } from "@/components/admin/rule-query-builder";
 import { RuleSandboxTester } from "@/components/admin/rule-sandbox-tester";
 import { UserManager } from "@/components/admin/user-manager";
+import { BackupManager } from "@/components/admin/backup-manager";
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -70,6 +72,7 @@ export default function AdminDashboardPage() {
     | "approved-charts"
     | "rules"
     | "users"
+    | "backup"
   >("structure");
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -162,6 +165,11 @@ export default function AdminDashboardPage() {
       id: "users" as const,
       label: "کاربران و سطوح دسترسی",
       icon: UserCheck,
+    },
+    {
+      id: "backup" as const,
+      label: "بکاپ و بازیابی پایگاه داده",
+      icon: DatabaseBackup,
     },
   ];
 
@@ -491,6 +499,9 @@ export default function AdminDashboardPage() {
 
             {/* TAB 9: USERS & PERMISSIONS */}
             {activeTab === "users" && user && <UserManager currentUser={user} />}
+
+            {/* TAB 10: DATABASE BACKUP & RESTORE */}
+            {activeTab === "backup" && <BackupManager />}
           </div>
         </main>
       </div>
