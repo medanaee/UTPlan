@@ -25,7 +25,8 @@ import { cn } from "@/lib/utils";
 export default function LoginPage() {
   const router = useRouter();
   const [mode, setMode] = useState<"login" | "register">("login");
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -38,8 +39,12 @@ export default function LoginPage() {
     setError(null);
 
     if (mode === "register") {
-      if (!name.trim()) {
-        setError("لطفاً نام و نام خانوادگی خود را وارد کنید.");
+      if (!firstName.trim()) {
+        setError("لطفاً نام خود را وارد کنید.");
+        return;
+      }
+      if (!lastName.trim()) {
+        setError("لطفاً نام خانوادگی خود را وارد کنید.");
         return;
       }
       if (password.length < 6) {
@@ -59,7 +64,13 @@ export default function LoginPage() {
       const payload =
         mode === "login"
           ? { email: email.trim().toLowerCase(), password }
-          : { name: name.trim(), email: email.trim().toLowerCase(), password };
+          : {
+              firstName: firstName.trim(),
+              lastName: lastName.trim(),
+              name: `${firstName.trim()} ${lastName.trim()}`,
+              email: email.trim().toLowerCase(),
+              password,
+            };
 
       const res = await fetch(endpoint, {
         method: "POST",
@@ -132,21 +143,35 @@ export default function LoginPage() {
                 </div>
               )}
 
-              {/* Name field (Only in Register mode) */}
+              {/* First Name and Last Name fields (Only in Register mode) */}
               {mode === "register" && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="name" className="text-xs font-medium">
-                    نام و نام خانوادگی
-                  </Label>
-                  <Input
-                    id="name"
-                    type="text"
-                    placeholder="مثلاً علی محمدی"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                    icon={<User />}
-                  />
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="firstName" className="text-xs font-medium">
+                      نام
+                    </Label>
+                    <Input
+                      id="firstName"
+                      type="text"
+                      placeholder="مثلاً علی"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="lastName" className="text-xs font-medium">
+                      نام خانوادگی
+                    </Label>
+                    <Input
+                      id="lastName"
+                      type="text"
+                      placeholder="مثلاً محمدی"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      required
+                    />
+                  </div>
                 </div>
               )}
 

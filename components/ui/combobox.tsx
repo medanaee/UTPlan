@@ -84,7 +84,7 @@ export function Combobox({
           aria-expanded={open}
           disabled={disabled}
           className={cn(
-            "w-full justify-between font-normal text-xs h-9 px-3",
+            "justify-between font-normal text-xs h-7 px-",
             !selectedItem && "text-muted-foreground",
             className
           )}
@@ -152,6 +152,7 @@ export function Combobox({
                         onChange(item.value === value && allowClear ? "" : item.value);
                         setOpen(false);
                       }}
+                      data-checked={isSelected}
                       className="flex items-center justify-between text-xs py-2 cursor-pointer"
                     >
                       <div className="flex flex-col gap-0.5 truncate flex-1 min-w-0 pr-1">
@@ -171,12 +172,6 @@ export function Combobox({
                           </span>
                         )}
                       </div>
-                      <Check
-                        className={cn(
-                          "h-3.5 w-3.5 text-primary shrink-0 mr-1",
-                          isSelected ? "opacity-100" : "opacity-0"
-                        )}
-                      />
                     </CommandItem>
                   );
                 })}

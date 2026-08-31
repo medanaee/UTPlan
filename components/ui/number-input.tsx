@@ -81,7 +81,7 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
       Number(currentValue) >= max;
 
     return (
-      <div className={cn("relative flex items-center w-full group", className)}>
+      <div className={cn("relative flex items-center group", className)}>
         <input
           ref={ref}
           type="number"

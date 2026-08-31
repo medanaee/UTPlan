@@ -462,7 +462,6 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
       <div className="flex flex-wrap items-center gap-2.5 text-xs">
         {/* Rule Type Selector */}
         <Select
-          items={RULE_TYPE_ITEMS}
           value={leaf.type}
           onValueChange={(val) =>
             val &&
@@ -472,7 +471,7 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
             })
           }
         >
-          <SelectTrigger size="sm" className="h-8 min-w-[210px] text-xs font-semibold">
+          <SelectTrigger className="min-w-[210px] font-semibold">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -488,14 +487,14 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
 
         {/* Dynamic Fields by Type */}
         {leaf.type === "MIN_CREDITS_IN_CATEGORY" && (
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 w-auto whitespace-nowrap">
             <span className="text-muted-foreground">از دسته:</span>
             <CategoryPicker
               categories={ruleCategories}
               value={leaf.ruleCategoryId || null}
               onChange={(val) => onUpdate({ ...leaf, ruleCategoryId: val || undefined })}
               placeholder="انتخاب دسته..."
-              triggerClassName="h-8 min-w-[160px] text-xs"
+              triggerClassName="h-7 min-w-[160px] text-xs"
             />
 
             <span className="text-muted-foreground">حداقل:</span>
@@ -504,7 +503,6 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
               max={150}
               value={leaf.minCredits || 20}
               onChange={(val) => onUpdate({ ...leaf, minCredits: parseInt(String(val)) || 0 })}
-              sizeVariant="sm"
               className="w-20"
             />
             <span className="text-muted-foreground">واحد</span>
@@ -512,27 +510,27 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
         )}
 
         {leaf.type === "ALL_COURSES_IN_CATEGORY" && (
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 whitespace-nowrap">
             <span className="text-muted-foreground">از دسته قوانین:</span>
             <CategoryPicker
               categories={ruleCategories}
               value={leaf.ruleCategoryId || null}
               onChange={(val) => onUpdate({ ...leaf, ruleCategoryId: val || undefined })}
               placeholder="انتخاب دسته قوانین..."
-              triggerClassName="h-8 min-w-[180px] text-xs"
+              triggerClassName="min-w-[180px] text-xs"
             />
           </div>
         )}
 
         {leaf.type === "EXACT_N_COURSES_IN_CATEGORY" && (
-          <div className="flex items-center gap-1.5">
-            <span className="text-muted-foreground">از دسته:</span>
+          <div className="flex items-center gap-1.5 whitespace-nowrap">
+            <span className="text-muted-foreground text-xs">از دسته:</span>
             <CategoryPicker
               categories={ruleCategories}
               value={leaf.ruleCategoryId || null}
               onChange={(val) => onUpdate({ ...leaf, ruleCategoryId: val || undefined })}
               placeholder="انتخاب دسته..."
-              triggerClassName="h-8 min-w-[160px] text-xs"
+              triggerClassName="h-7 min-w-[160px] text-xs"
             />
 
             <span className="text-muted-foreground">دقیقاً:</span>
@@ -541,7 +539,6 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
               max={20}
               value={leaf.exactCount || 3}
               onChange={(val) => onUpdate({ ...leaf, exactCount: parseInt(String(val)) || 1 })}
-              sizeVariant="sm"
               className="w-20"
             />
             <span className="text-muted-foreground">درس</span>
@@ -549,9 +546,9 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
         )}
 
         {leaf.type === "MIN_TOTAL_CREDITS_BEFORE_COURSE" && (
-          <div className="flex items-center gap-1.5">
-            <span className="text-muted-foreground text-xs shrink-0">قبل از درس:</span>
-            <div className="min-w-[200px]">
+          <div className="flex items-center gap-1.5 whitespace-nowrap">
+            <span className="text-muted-foreground">قبل از درس:</span>
+           
               <Combobox
                 items={courses.map((c) => ({
                   value: c.id,
@@ -563,11 +560,11 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
                 onChange={(val) => onUpdate({ ...leaf, targetCourseId: val })}
                 placeholder="-- انتخاب یا جستجوی درس --"
                 searchPlaceholder="جستجوی نام یا کد درس..."
-                className="h-8 text-xs"
+                className="h-7 text-xs max-w-[160px]"
               />
-            </div>
+           
 
-            <span className="text-muted-foreground text-xs shrink-0">حداقل:</span>
+            <span className="text-muted-foreground">حداقل:</span>
             <NumberInput
               min={1}
               max={140}
@@ -575,10 +572,9 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
               onChange={(val) =>
                 onUpdate({ ...leaf, requiredCreditsBefore: parseInt(String(val)) || 0 })
               }
-              sizeVariant="sm"
               className="w-20"
             />
-            <span className="text-muted-foreground text-xs shrink-0">واحد</span>
+            <span className="text-muted-foreground">واحد</span>
           </div>
         )}
 
@@ -602,7 +598,7 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
                 }
                 placeholder="-- انتخاب یا جستجوی درس اجباری --"
                 searchPlaceholder="جستجوی نام یا کد درس..."
-                className="h-8 text-xs"
+                className="h-7 text-xs"
               />
             </div>
           </div>

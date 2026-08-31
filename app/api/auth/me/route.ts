@@ -28,6 +28,8 @@ export async function GET(request: NextRequest) {
       authenticated: true,
       user: {
         id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
         name: user.name,
         email: user.email,
         role: user.role,
@@ -59,6 +61,8 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json();
     const {
+      firstName,
+      lastName,
       name,
       facultyId,
       majorId,
@@ -100,7 +104,9 @@ export async function PUT(request: NextRequest) {
     }
 
     const updatedUser = await updateUserProfile(session.id, {
-      name: name !== undefined ? name.trim() : user.name,
+      firstName: firstName !== undefined ? firstName.trim() : user.firstName,
+      lastName: lastName !== undefined ? lastName.trim() : user.lastName,
+      name: name !== undefined ? name.trim() : undefined,
       facultyId: facultyId !== undefined ? facultyId : user.facultyId,
       majorId: majorId !== undefined ? majorId : user.majorId,
       trackId: trackId !== undefined ? trackId : user.trackId,
@@ -113,6 +119,8 @@ export async function PUT(request: NextRequest) {
       message: "اطلاعات حساب کاربری با موفقیت به‌روزرسانی شد.",
       user: {
         id: updatedUser!.id,
+        firstName: updatedUser!.firstName,
+        lastName: updatedUser!.lastName,
         name: updatedUser!.name,
         email: updatedUser!.email,
         role: updatedUser!.role,

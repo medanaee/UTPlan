@@ -4,16 +4,22 @@ import { hashPassword, createSessionToken, createAuthCookieHeader } from "@/lib/
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, email, password, role } = body as {
+    const { firstName, lastName, name, email, password, role } = body as {
+      firstName?: string;
+      lastName?: string;
       name?: string;
       email?: string;
       password?: string;
       role?: "admin" | "user";
     };
 
-    if (!name || !email || !password) {
+    const finalFirstName = (firstName || "").trim();
+    const finalLastName = (lastName || "").trim();
+    const finalFullName = name?.trim() || [finalFirstName, finalLastName].filter(Boolean).join(" ");
+
+    if ((!finalFirstName && !finalFullName) || !email || !password) {
       return Response.json(
-        { success: false, message: "لطفاً تمام فیلدهای الزامی را تکمیل کنید." },
+        { success: false, message: "لطفاً نام، نام خانوادگی، ایمیل و رمز عبور را وارد کنید." },
         { status: 400 }
       );
     }
@@ -37,7 +43,9 @@ export async function POST(request: Request) {
     const userRole = role === "admin" ? "admin" : "user";
 
     const newUser = await createUser({
-      name,
+      firstName: finalFirstName,
+      lastName: finalLastName,
+      name: finalFullName,
       email,
       passwordHash,
       role: userRole,

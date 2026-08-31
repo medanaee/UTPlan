@@ -49,6 +49,8 @@ export default function ProfilePage() {
   const [tracks, setTracks] = useState<Track[]>([]);
 
   // Form State
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [name, setName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [facultyId, setFacultyId] = useState("");
@@ -88,6 +90,8 @@ export default function ProfilePage() {
 
         const u: UserSession = authRes.user;
         setUser(u);
+        setFirstName(u.firstName || "");
+        setLastName(u.lastName || "");
         setName(u.name || "");
         setAvatarUrl((u as any).avatarUrl || "");
         setFacultyId(u.facultyId || "");
@@ -207,7 +211,9 @@ export default function ProfilePage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: name.trim(),
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          name: [firstName.trim(), lastName.trim()].filter(Boolean).join(" "),
           avatarUrl,
           facultyId,
           majorId,
@@ -346,15 +352,26 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Name & Email */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* First Name, Last Name & Email */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">نام و نام خانوادگی</Label>
+                  <Label className="text-xs font-semibold">نام</Label>
                   <Input
                     required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="مثلاً علی رضایی"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="مثلاً علی"
+                    className="h-9 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">نام خانوادگی</Label>
+                  <Input
+                    required
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="مثلاً رضایی"
                     className="h-9 text-xs"
                   />
                 </div>

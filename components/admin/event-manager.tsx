@@ -845,6 +845,7 @@ export function EventManager({
                 onChange={(val) => setSelectedOfferingId(val)}
                 placeholder="-- انتخاب یا جستجوی ارائه درس --"
                 searchPlaceholder="جستجوی نام درس، کد یا استاد..."
+                className="w-full"
               />
             </div>
 

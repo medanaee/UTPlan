@@ -419,6 +419,7 @@ export function OfferingManager({
                 onChange={(val) => setForm({ ...form, courseId: val })}
                 placeholder="-- انتخاب یا جستجوی درس --"
                 searchPlaceholder="جستجوی نام یا کد درس..."
+                className="w-full"
               />
             </div>
 
@@ -436,6 +437,7 @@ export function OfferingManager({
                 onChange={(val) => setForm({ ...form, professorId: val })}
                 placeholder="-- انتخاب یا جستجوی استاد --"
                 searchPlaceholder="جستجوی نام استاد..."
+                className="w-full"
               />
             </div>
 

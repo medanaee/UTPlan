@@ -398,9 +398,14 @@ export async function findUserByEmail(email: string): Promise<User | null> {
         .bind(cleanEmail)
         .first();
       if (!row) return null;
+      const fName = (row as any).first_name || "";
+      const lName = (row as any).last_name || "";
+      const fullName = (row as any).name || [fName, lName].filter(Boolean).join(" ") || "کاربر";
       return {
         id: (row as any).id,
-        name: (row as any).name,
+        firstName: fName || undefined,
+        lastName: lName || undefined,
+        name: fullName,
         email: (row as any).email,
         role: (row as any).role as any,
         passwordHash: (row as any).password_hash,
@@ -426,9 +431,14 @@ export async function findUserById(id: string): Promise<User | null> {
     try {
       const row = await d1.prepare("SELECT * FROM users WHERE id = ?").bind(id).first();
       if (!row) return null;
+      const fName = (row as any).first_name || "";
+      const lName = (row as any).last_name || "";
+      const fullName = (row as any).name || [fName, lName].filter(Boolean).join(" ") || "کاربر";
       return {
         id: (row as any).id,
-        name: (row as any).name,
+        firstName: fName || undefined,
+        lastName: lName || undefined,
+        name: fullName,
         email: (row as any).email,
         role: (row as any).role as any,
         passwordHash: (row as any).password_hash,
@@ -455,19 +465,26 @@ export async function getAllUsers(): Promise<User[]> {
       const { results } = await d1
         .prepare("SELECT * FROM users ORDER BY created_at DESC")
         .all();
-      return (results || []).map((row: any) => ({
-        id: row.id,
-        name: row.name,
-        email: row.email,
-        role: row.role as any,
-        passwordHash: row.password_hash,
-        facultyId: row.faculty_id || undefined,
-        majorId: row.major_id || undefined,
-        trackId: row.track_id || undefined,
-        entrySemester: row.entry_semester || undefined,
-        avatarUrl: row.avatar_url || undefined,
-        createdAt: row.created_at,
-      }));
+      return (results || []).map((row: any) => {
+        const fName = row.first_name || "";
+        const lName = row.last_name || "";
+        const fullName = row.name || [fName, lName].filter(Boolean).join(" ") || "کاربر";
+        return {
+          id: row.id,
+          firstName: fName || undefined,
+          lastName: lName || undefined,
+          name: fullName,
+          email: row.email,
+          role: row.role as any,
+          passwordHash: row.password_hash,
+          facultyId: row.faculty_id || undefined,
+          majorId: row.major_id || undefined,
+          trackId: row.track_id || undefined,
+          entrySemester: row.entry_semester || undefined,
+          avatarUrl: row.avatar_url || undefined,
+          createdAt: row.created_at,
+        };
+      });
     } catch (err) {
       console.error("D1 getAllUsers error:", err);
     }
@@ -478,7 +495,9 @@ export async function getAllUsers(): Promise<User[]> {
 }
 
 export async function createUser(data: {
-  name: string;
+  firstName?: string;
+  lastName?: string;
+  name?: string;
   email: string;
   passwordHash: string;
   role?: "super_admin" | "admin" | "user";
@@ -493,17 +512,23 @@ export async function createUser(data: {
   const role = data.role || "user";
   const now = new Date().toISOString();
 
+  const firstName = (data.firstName || "").trim();
+  const lastName = (data.lastName || "").trim();
+  const fullName = data.name?.trim() || [firstName, lastName].filter(Boolean).join(" ") || "کاربر";
+
   const d1 = getD1();
   if (d1) {
     try {
       await d1
         .prepare(
-          `INSERT INTO users (id, name, email, password_hash, role, faculty_id, major_id, track_id, entry_semester, avatar_url, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          `INSERT INTO users (id, first_name, last_name, name, email, password_hash, role, faculty_id, major_id, track_id, entry_semester, avatar_url, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
         .bind(
           id,
-          data.name.trim(),
+          firstName,
+          lastName,
+          fullName,
           cleanEmail,
           data.passwordHash,
           role,
@@ -523,7 +548,9 @@ export async function createUser(data: {
 
   const newUser: User = {
     id,
-    name: data.name.trim(),
+    firstName,
+    lastName,
+    name: fullName,
     email: cleanEmail,
     passwordHash: data.passwordHash,
     role,
@@ -563,7 +590,7 @@ export async function updateUserRole(
 
 export async function updateUserProfile(
   userId: string,
-  data: Partial<Pick<User, "name" | "facultyId" | "majorId" | "trackId" | "entrySemester" | "avatarUrl">>
+  data: Partial<Pick<User, "firstName" | "lastName" | "name" | "facultyId" | "majorId" | "trackId" | "entrySemester" | "avatarUrl">>
 ): Promise<User | null> {
   const d1 = getD1();
   if (d1) {
@@ -571,7 +598,13 @@ export async function updateUserProfile(
       const existing = await findUserById(userId);
       if (!existing) return null;
 
-      const updatedName = data.name !== undefined ? data.name : existing.name;
+      const updatedFirstName = data.firstName !== undefined ? data.firstName.trim() : (existing.firstName || "");
+      const updatedLastName = data.lastName !== undefined ? data.lastName.trim() : (existing.lastName || "");
+      const updatedName =
+        data.name !== undefined
+          ? data.name.trim()
+          : [updatedFirstName, updatedLastName].filter(Boolean).join(" ") || existing.name;
+
       const updatedFaculty = data.facultyId !== undefined ? data.facultyId : (existing.facultyId || null);
       const updatedMajor = data.majorId !== undefined ? data.majorId : (existing.majorId || null);
       const updatedTrack = data.trackId !== undefined ? data.trackId : (existing.trackId || null);
@@ -581,10 +614,12 @@ export async function updateUserProfile(
       await d1
         .prepare(
           `UPDATE users 
-           SET name = ?, faculty_id = ?, major_id = ?, track_id = ?, entry_semester = ?, avatar_url = ?
+           SET first_name = ?, last_name = ?, name = ?, faculty_id = ?, major_id = ?, track_id = ?, entry_semester = ?, avatar_url = ?
            WHERE id = ?`
         )
         .bind(
+          updatedFirstName,
+          updatedLastName,
           updatedName,
           updatedFaculty,
           updatedMajor,

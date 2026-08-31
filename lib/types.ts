@@ -2,6 +2,8 @@ export type UserRole = "super_admin" | "admin" | "user";
 
 export interface User {
   id: string;
+  firstName?: string;
+  lastName?: string;
   name: string;
   email: string;
   role: UserRole;
@@ -16,6 +18,8 @@ export interface User {
 
 export interface UserSession {
   id: string;
+  firstName?: string;
+  lastName?: string;
   name: string;
   email: string;
   role: UserRole;
@@ -23,6 +27,7 @@ export interface UserSession {
   majorId?: string;
   trackId?: string;
   entrySemester?: string;
+  avatarUrl?: string;
 }
 
 export interface Faculty {

@@ -154,7 +154,12 @@ export function TermSchedulePlanner({
   }, [termCourses, selectedEventsMap, events]);
 
   // Conflict Detection
-  const { classConflicts, examConflicts } = useMemo(() => {
+  const {
+    classConflicts,
+    examConflicts,
+    sameHourExamConflicts,
+    sameDayExamConflicts,
+  } = useMemo(() => {
     const classConf: {
       courseA: Course;
       eventA: CourseEvent;
