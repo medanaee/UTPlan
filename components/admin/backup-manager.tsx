@@ -18,7 +18,6 @@ import {
   GraduationCap,
   Calendar,
   Building2,
-  Lock,
   ArrowDownToLine,
   ArrowUpFromLine,
   Info,
@@ -69,13 +68,12 @@ export function BackupManager() {
   const [stats, setStats] = useState<DatabaseStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
 
-  // Export states
-  const [downloadingSql, setDownloadingSql] = useState(false);
+  // Export state
   const [downloadingJson, setDownloadingJson] = useState(false);
 
   // Import / Restore states
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [sqlText, setSqlText] = useState("");
+  const [jsonText, setJsonText] = useState("");
   const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
   const [confirmationInput, setConfirmationInput] = useState("");
   const [isRestoring, setIsRestoring] = useState(false);
@@ -83,8 +81,7 @@ export function BackupManager() {
     success: boolean;
     message: string;
     stats?: {
-      totalStatements: number;
-      executedStatements: number;
+      totalInserted: number;
       restoredRecords: number;
       tableCounts: Record<string, number>;
       errors: string[];
@@ -110,20 +107,16 @@ export function BackupManager() {
     fetchStats();
   }, []);
 
-  // Handle direct download of SQL Dump
-  const handleDownloadBackup = async (format: "sql" | "json") => {
+  // Handle direct download of Full JSON Backup
+  const handleDownloadBackup = async () => {
     try {
-      if (format === "sql") setDownloadingSql(true);
-      else setDownloadingJson(true);
+      setDownloadingJson(true);
 
-      const res = await fetch(`/api/admin/backup?format=${format}`);
-      if (!res.ok) throw new Error("خطا در دریافت فایل بکاپ");
+      const res = await fetch("/api/admin/backup");
+      if (!res.ok) throw new Error("خطا در دریافت فایل بکاپ JSON");
 
       const blob = await res.blob();
-      const filename =
-        format === "sql"
-          ? `ut_ece_full_backup_${new Date().toISOString().slice(0, 10)}.sql`
-          : `ut_ece_snapshot_${new Date().toISOString().slice(0, 10)}.json`;
+      const filename = `ut_ece_full_backup_${new Date().toISOString().slice(0, 10)}.json`;
 
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -136,12 +129,11 @@ export function BackupManager() {
     } catch (err: any) {
       alert("خطا در دانلود فایل پشتیبان: " + (err?.message || "نامشخص"));
     } finally {
-      if (format === "sql") setDownloadingSql(false);
-      else setDownloadingJson(false);
+      setDownloadingJson(false);
     }
   };
 
-  // Handle File Selection
+  // Handle File Selection (.json)
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -152,15 +144,15 @@ export function BackupManager() {
     const reader = new FileReader();
     reader.onload = (event) => {
       const content = event.target?.result as string;
-      setSqlText(content);
+      setJsonText(content);
     };
     reader.readAsText(file, "UTF-8");
   };
 
   // Open Restore Confirmation Modal
   const handleOpenRestoreConfirm = () => {
-    if (!sqlText.trim()) {
-      alert("لطفاً ابتدا یک فایل بکاپ (.sql یا .json) انتخاب کنید یا متن SQL را وارد نمایید.");
+    if (!jsonText.trim()) {
+      alert("لطفاً ابتدا یک فایل بکاپ JSON انتخاب کنید یا متن JSON را وارد نمایید.");
       return;
     }
     setConfirmationInput("");
@@ -178,13 +170,13 @@ export function BackupManager() {
       setIsRestoring(true);
       setRestoreResult(null);
 
-      let payload: any = { sql: sqlText };
-      // Check if it's JSON
-      if (selectedFile?.name.endsWith(".json") || sqlText.trim().startsWith("{")) {
-        try {
-          const parsed = JSON.parse(sqlText);
-          payload = { data: parsed.data || parsed.tables || parsed };
-        } catch {}
+      let payload: any = null;
+      try {
+        payload = JSON.parse(jsonText);
+      } catch (parseErr) {
+        alert("فرمت فایل نامعتبر است. محتوا باید یک فایل استاندارد JSON باشد.");
+        setIsRestoring(false);
+        return;
       }
 
       const res = await fetch("/api/admin/backup", {
@@ -220,11 +212,11 @@ export function BackupManager() {
               <Database className="h-5 w-5" />
             </div>
             <h1 className="text-xl sm:text-2xl font-black tracking-tight text-foreground">
-              پشتیبان‌گیری و بازیابی پایگاه داده (Backup & Restore)
+              پشتیبان‌گیری و بازیابی پایگاه داده (JSON Backup & Restore)
             </h1>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            دریافت خروجی کامل و یکپارچه از کلیه جداول و داده‌های سامانه به همراه قابلیت بازنویسی و بازیابی خودکار.
+            دریافت نسخه پشتیبان کامل از تمامی ۱۷ جدول دیتابیس در یک فایل یکپارچه JSON و امکان بازیابی و بازنویسی ۱۰۰٪ داده‌ها.
           </p>
         </div>
 
@@ -291,68 +283,49 @@ export function BackupManager() {
 
       {/* Main Actions: 2 Columns (Backup vs Restore) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Card 1: Create & Download Full Backup */}
+        {/* Card 1: Create & Download Full JSON Backup */}
         <Card className="border-border/80 shadow-xs flex flex-col justify-between">
           <CardHeader className="pb-3 border-b border-border/50">
             <CardTitle className="text-sm font-bold flex items-center gap-2 text-primary">
               <ArrowDownToLine className="h-4.5 w-4.5 text-primary" />
-              تهیه و دریافت نسخه پشتیبان (Create Backup)
+              تهیه و دریافت نسخه پشتیبان JSON (Create Backup)
             </CardTitle>
             <CardDescription className="text-xs">
-              دریافت کل پایگاه داده در یک فایل یکپارچه با ساختار استاندارد
+              دریافت کل پایگاه داده در یک فایل ساختاریافته استاندارد JSON
             </CardDescription>
           </CardHeader>
 
           <CardContent className="pt-4 space-y-4 flex-1">
-            <div className="p-3 rounded-2xl bg-muted/20 border border-border/60 text-xs space-y-2 leading-relaxed">
+            <div className="p-3.5 rounded-2xl bg-muted/20 border border-border/60 text-xs space-y-2 leading-relaxed">
               <span className="font-bold text-foreground block flex items-center gap-1.5">
                 <Sparkles className="h-3.5 w-3.5 text-primary" />
-                محتویات نسخه پشتیبان:
+                محتویات فایل پشتیبان JSON:
               </span>
-              <ul className="list-disc list-inside space-y-1 text-muted-foreground pr-1 text-[11px]">
-                <li>شامل ۱۰۰٪ اطلاعات تمامی دانشکده‌ها، گرایش‌ها، دروس و اساتید</li>
-                <li>حفظ اتصالات هم‌تدریسی، پیش‌نیازها و روابط گراف درسی</li>
-                <li>شامل زمان‌بندی رویدادها، چارت‌های ثبت‌شده و نظرات دانشجویان</li>
-                <li>فرمت SQL استاندارد و آماده برای بازنویسی مستقیم روی Cloudflare D1 و SQLite</li>
+              <ul className="list-disc list-inside space-y-1.5 text-muted-foreground pr-1 text-[11px]">
+                <li>شامل ۱۰۰٪ اطلاعات تمامی دانشکده‌ها، رشته‌ها، گرایش‌ها و کاربران</li>
+                <li>دروس مصوب، پیش‌نیازها، هم‌نیازها و پیش‌نیازهای پیشنهادی</li>
+                <li>اساتید هیئت علمی، ارائه‌های درسی و هم‌تدریسی‌ها (چند استادی)</li>
+                <li>رویدادهای کلاسی، امتحانات و جلسات هفتگی</li>
+                <li>چارت‌های درسی مصوب، درخت قوانین و نظرات دانشجویان</li>
               </ul>
             </div>
 
-            <div className="space-y-2.5 pt-2">
+            <div className="pt-2">
               <Button
                 type="button"
-                onClick={() => handleDownloadBackup("sql")}
-                disabled={downloadingSql}
-                className="w-full h-10 gap-2 text-xs font-bold shadow-xs"
+                onClick={handleDownloadBackup}
+                disabled={downloadingJson}
+                className="w-full h-11 gap-2 text-xs font-bold shadow-xs"
               >
-                {downloadingSql ? (
+                {downloadingJson ? (
                   <>
                     <RefreshCw className="h-4 w-4 animate-spin" />
-                    <span>در حال تولید فایل SQL...</span>
+                    <span>در حال تولید فایل پشتیبان JSON...</span>
                   </>
                 ) : (
                   <>
                     <Download className="h-4 w-4" />
-                    <span>دانلود بکاپ کامل پایگاه داده (.sql)</span>
-                  </>
-                )}
-              </Button>
-
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handleDownloadBackup("json")}
-                disabled={downloadingJson}
-                className="w-full h-9 gap-2 text-xs font-semibold shadow-2xs hover:bg-muted/40"
-              >
-                {downloadingJson ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin text-primary" />
-                    <span>در حال تولید فایل JSON...</span>
-                  </>
-                ) : (
-                  <>
-                    <FileCode className="h-4 w-4 text-primary" />
-                    <span>دانلود داده‌ها با فرمت ساختاریافته (.json)</span>
+                    <span>دانلود فایل پشتیبان کامل (.json)</span>
                   </>
                 )}
               </Button>
@@ -360,15 +333,15 @@ export function BackupManager() {
           </CardContent>
         </Card>
 
-        {/* Card 2: Restore Full Database */}
+        {/* Card 2: Restore Full Database from JSON */}
         <Card className="border-destructive/30 bg-linear-to-b from-destructive/5 via-background to-background shadow-xs flex flex-col justify-between">
           <CardHeader className="pb-3 border-b border-destructive/20">
             <CardTitle className="text-sm font-bold flex items-center gap-2 text-destructive">
               <ArrowUpFromLine className="h-4.5 w-4.5 text-destructive" />
-              بازیابی پایگاه داده (Restore Database)
+              بازیابی پایگاه داده از JSON (Restore Database)
             </CardTitle>
             <CardDescription className="text-xs">
-              بارگذاری فایل بکاپ و بازنویسی ۱۰۰٪ دیتابیس فعلی
+              بارگذاری فایل بکاپ JSON و بازنویسی ۱۰۰٪ اطلاعات دیتابیس
             </CardDescription>
           </CardHeader>
 
@@ -380,7 +353,7 @@ export function BackupManager() {
                 <span>هشدار مهم امنیتی:</span>
               </div>
               <p className="text-[11px] leading-relaxed pr-6">
-                با اجرای بازیابی، <strong>تمامی اطلاعات قبلی دیتابیس به صورت کامل پاکسازی شده</strong> و اطلاعات موجود در این فایل جایگزین خواهند شد.
+                با اجرای بازیابی، <strong>تمامی اطلاعات فعلی دیتابیس پاکسازی شده</strong> و اطلاعات موجود در این فایل JSON جایگزین خواهند شد.
               </p>
             </div>
 
@@ -389,19 +362,19 @@ export function BackupManager() {
               <input
                 type="file"
                 ref={fileInputRef}
-                accept=".sql,.json"
+                accept=".json,application/json"
                 onChange={handleFileChange}
                 className="hidden"
               />
               <div className="flex flex-col items-center justify-center gap-1.5">
                 <FileCode className="h-7 w-7 text-muted-foreground/80" />
                 <span className="text-xs font-bold text-foreground">
-                  {selectedFile ? selectedFile.name : "انتخاب فایل پشتیبان از سیستم"}
+                  {selectedFile ? selectedFile.name : "انتخاب فایل پشتیبان JSON از سیستم"}
                 </span>
                 <span className="text-[10px] text-muted-foreground">
                   {selectedFile
                     ? `حجم فایل: ${(selectedFile.size / 1024).toFixed(1)} کیلوبایت`
-                    : "پشتیبانی از فایل‌های .sql و .json با انکودینگ UTF-8"}
+                    : "فایل‌های با پسوند .json و انکودینگ UTF-8"}
                 </span>
               </div>
 
@@ -413,27 +386,27 @@ export function BackupManager() {
                 className="h-8 text-xs font-semibold gap-1.5"
               >
                 <Upload className="h-3.5 w-3.5" />
-                {selectedFile ? "تغییر فایل انتخابی..." : "انتخاب فایل بکاپ..."}
+                {selectedFile ? "تغییر فایل JSON..." : "انتخاب فایل JSON..."}
               </Button>
             </div>
 
-            {/* Direct Textarea Toggle/Paste */}
+            {/* Direct Textarea Paste */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-xs">
-                <Label className="text-xs font-semibold">یا متن فایل SQL را مستقیماً وارد کنید:</Label>
-                {sqlText && (
+                <Label className="text-xs font-semibold">یا محتوای JSON را مستقیماً وارد کنید:</Label>
+                {jsonText && (
                   <Badge variant="outline" className="text-[10px] font-mono">
-                    {sqlText.length} کاراکتر
+                    {jsonText.length} کاراکتر
                   </Badge>
                 )}
               </div>
               <Textarea
-                value={sqlText}
+                value={jsonText}
                 onChange={(e) => {
-                  setSqlText(e.target.value);
+                  setJsonText(e.target.value);
                   setSelectedFile(null);
                 }}
-                placeholder="-- محتوای فایل SQL را اینجا قرار دهید..."
+                placeholder='{ "metadata": { ... }, "data": { ... } }'
                 rows={4}
                 className="text-xs bg-background resize-none font-mono leading-relaxed"
                 dir="ltr"
@@ -444,11 +417,11 @@ export function BackupManager() {
               type="button"
               variant="destructive"
               onClick={handleOpenRestoreConfirm}
-              disabled={!sqlText.trim() || isRestoring}
+              disabled={!jsonText.trim() || isRestoring}
               className="w-full h-10 gap-2 text-xs font-bold shadow-xs mt-2"
             >
               <Upload className="h-4 w-4" />
-              <span>شروع فرآیند بازیابی پایگاه داده...</span>
+              <span>شروع فرآیند بازیابی پایگاه داده از JSON...</span>
             </Button>
           </CardContent>
         </Card>
@@ -482,17 +455,11 @@ export function BackupManager() {
           </CardHeader>
           {restoreResult.stats && (
             <CardContent className="pt-4 space-y-3">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-center">
-                <div className="p-3 rounded-2xl bg-card border border-border/60">
-                  <span className="text-xs text-muted-foreground block">دستورات اجراشده</span>
-                  <span className="text-base font-bold text-foreground font-mono">
-                    {restoreResult.stats.executedStatements}
-                  </span>
-                </div>
+              <div className="grid grid-cols-2 gap-3 text-center">
                 <div className="p-3 rounded-2xl bg-card border border-border/60">
                   <span className="text-xs text-muted-foreground block">کل رکوردهای بازیابی‌شده</span>
                   <span className="text-base font-bold text-emerald-600 font-mono">
-                    {restoreResult.stats.restoredRecords}
+                    {restoreResult.stats.restoredRecords.toLocaleString("fa-IR")}
                   </span>
                 </div>
                 <div className="p-3 rounded-2xl bg-card border border-border/60">
@@ -521,10 +488,10 @@ export function BackupManager() {
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2 text-destructive">
               <ShieldAlert className="h-5 w-5 text-destructive" />
-              تأیید نهایی بازیابی پایگاه داده
+              تأیید نهایی بازیابی پایگاه داده از JSON
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground leading-relaxed pt-1">
-              شما در حال بازیابی پایگاه داده هستید. کلیه اطلاعات فعلی دیتابیس پاک شده و اطلاعات فایل جدید جایگزین خواهند شد.
+              شما در حال بازیابی پایگاه داده هستید. کلیه اطلاعات فعلی دیتابیس پاک شده و اطلاعات این فایل JSON جایگزین خواهند شد.
             </DialogDescription>
           </DialogHeader>
 
