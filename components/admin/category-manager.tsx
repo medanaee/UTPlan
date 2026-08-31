@@ -221,8 +221,8 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
       body: JSON.stringify({
         type: "visual",
         trackId: selectedTrackId,
-        code: vcatForm.code.trim() || undefined,
-        name: vcatForm.name.trim(),
+        code: vcatForm.code?.trim() || undefined,
+        name: (vcatForm.name || "").trim(),
         color: vcatForm.color,
         sortOrder: visualCats.length + 1,
       }),
@@ -239,7 +239,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
   // Open Edit Visual Category Modal
   const handleOpenEditVcat = (cat: VisualCategory) => {
     setEditingVcat(cat);
-    setVcatEditForm({ code: cat.code || "", name: cat.name, color: cat.color });
+    setVcatEditForm({ code: cat.code || "", name: cat.name || "", color: cat.color || "#3b82f6" });
     setVcatEditModalOpen(true);
   };
 
@@ -255,8 +255,8 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
         action: "update",
         type: "visual",
         id: editingVcat.id,
-        code: vcatEditForm.code.trim() || null,
-        name: vcatEditForm.name.trim(),
+        code: vcatEditForm.code?.trim() || null,
+        name: (vcatEditForm.name || "").trim(),
         color: vcatEditForm.color,
       }),
     }).then((r) => r.json());
@@ -290,8 +290,8 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
       body: JSON.stringify({
         type: "rule",
         trackId: selectedTrackId,
-        code: rcatForm.code.trim() || undefined,
-        name: rcatForm.name.trim(),
+        code: rcatForm.code?.trim() || undefined,
+        name: (rcatForm.name || "").trim(),
         parentId: rcatForm.parentId,
       }),
     }).then((r) => r.json());
@@ -307,7 +307,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
   // Open Edit Rule Category Modal
   const handleOpenEditRcat = (cat: RuleCategory) => {
     setEditingRcat(cat);
-    setRcatEditForm({ code: cat.code || "", name: cat.name, parentId: cat.parentId || null });
+    setRcatEditForm({ code: cat.code || "", name: cat.name || "", parentId: cat.parentId || null });
     setRcatEditModalOpen(true);
   };
 
@@ -340,8 +340,8 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
         action: "update",
         type: "rule",
         id: editingRcat.id,
-        code: rcatEditForm.code.trim() || null,
-        name: rcatEditForm.name.trim(),
+        code: rcatEditForm.code?.trim() || null,
+        name: (rcatEditForm.name || "").trim(),
         parentId: rcatEditForm.parentId || null,
       }),
     }).then((r) => r.json());
@@ -568,7 +568,10 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
           <Button
             size="sm"
             disabled={!selectedTrackId}
-            onClick={() => setVcatModalOpen(true)}
+            onClick={() => {
+              setVcatForm({ code: "", name: "", color: "#3b82f6", sortOrder: visualCats.length + 1 });
+              setVcatModalOpen(true);
+            }}
             className="h-8 gap-1.5 text-xs shadow-xs font-semibold"
           >
             <Plus className="h-3.5 w-3.5" />
@@ -710,7 +713,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
             size="sm"
             disabled={!selectedTrackId}
             onClick={() => {
-              setRcatForm({ name: "", parentId: null });
+              setRcatForm({ code: "", name: "", parentId: null });
               setRcatModalOpen(true);
             }}
             className="h-8 gap-1.5 text-xs shadow-xs font-semibold"
@@ -778,16 +781,12 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 select-none">
                     <div className="flex items-center gap-2.5 cursor-grab active:cursor-grabbing">
                       <GripVertical className="h-4 w-4 text-muted-foreground/60 shrink-0 cursor-grab" />
-                      <span className="h-3.5 w-3.5 rounded-md bg-primary shrink-0" />
                       <span className="font-bold text-sm text-foreground">{parentCat.name}</span>
                       {parentCat.code && (
                         <Badge variant="outline" className="text-xs px-1.5 py-0.5 border-primary/40 text-primary bg-primary/5 font-semibold">
                           {parentCat.code}
                         </Badge>
                       )}
-                      <Badge variant="outline" className="text-xs font-semibold px-2 py-0.5">
-                        سطح ۱ (اصلی)
-                      </Badge>
                       <Badge variant="secondary" className="text-xs font-medium px-2 py-0.5">
                         {parentAssignedCourses.length} درس ({parentUnits} واحد)
                       </Badge>
@@ -822,7 +821,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                         variant="ghost"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setRcatForm({ name: "", parentId: parentCat.id });
+                          setRcatForm({ code: "", name: "", parentId: parentCat.id });
                           setRcatModalOpen(true);
                         }}
                         className="h-8 text-xs px-2 gap-1 text-primary hover:bg-primary/10 font-medium"
@@ -923,9 +922,6 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                                     {childCat.code}
                                   </Badge>
                                 )}
-                                <Badge variant="outline" className="text-xs font-semibold px-2 py-0.5">
-                                  سطح ۲ (زیردسته)
-                                </Badge>
                                 <Badge variant="secondary" className="text-xs font-medium px-2 py-0.5">
                                   {childAssignedCourses.length} درس ({childUnits} واحد)
                                 </Badge>
@@ -960,7 +956,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                                   variant="ghost"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setRcatForm({ name: "", parentId: childCat.id });
+                                    setRcatForm({ code: "", name: "", parentId: childCat.id });
                                     setRcatModalOpen(true);
                                   }}
                                   className="h-8 text-xs px-2 gap-1 text-primary hover:bg-primary/10 font-medium"
@@ -1054,9 +1050,6 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                                               {subChild.code}
                                             </Badge>
                                           )}
-                                          <Badge variant="outline" className="text-xs font-semibold px-2 py-0.5">
-                                            سطح ۳ (حداکثر عمق)
-                                          </Badge>
                                           <Badge variant="secondary" className="text-xs font-medium px-2 py-0.5">
                                             {subAssignedCourses.length} درس ({subUnits} واحد)
                                           </Badge>
@@ -1369,6 +1362,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                 value={rcatEditForm.parentId}
                 onChange={(val) => setRcatEditForm({ ...rcatEditForm, parentId: val })}
                 placeholder="دسته اصلی (بدون والد - سطح ۱)"
+                className="w-full"
               />
             </div>
 
