@@ -1436,6 +1436,7 @@ export async function getCourses(facultyId?: string, trackId?: string): Promise<
           facultyId: c.faculty_id,
           name: c.name,
           code: c.code,
+          abbreviation: c.abbreviation || undefined,
           units: Number(c.units) || 3,
           offeredIn: c.offered_in || "both",
           description: c.description || "",
@@ -1632,8 +1633,9 @@ export async function createCourse(data: {
   facultyId: string;
   name: string;
   code: string;
+  abbreviation?: string;
   units: number;
-  offeredIn?: "fall" | "spring" | "both";
+  offeredIn?: "fall" | "spring" | "both" | "none";
   description?: string;
   trackId?: string;
   visualCategoryId?: string;
@@ -1642,6 +1644,7 @@ export async function createCourse(data: {
   const id = `crs_${crypto.randomUUID().slice(0, 8)}`;
   const now = new Date().toISOString();
   const cleanCode = data.code.trim().toUpperCase();
+  const cleanAbbr = data.abbreviation?.trim() || null;
   const units = Number(data.units) || 3;
   const offeredIn = data.offeredIn || "both";
 
@@ -1650,10 +1653,10 @@ export async function createCourse(data: {
     try {
       await d1
         .prepare(
-          `INSERT INTO courses (id, faculty_id, name, code, units, offered_in, description, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+          `INSERT INTO courses (id, faculty_id, name, code, abbreviation, units, offered_in, description, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
-        .bind(id, data.facultyId, data.name.trim(), cleanCode, units, offeredIn, data.description || "", now)
+        .bind(id, data.facultyId, data.name.trim(), cleanCode, cleanAbbr, units, offeredIn, data.description || "", now)
         .run();
 
       if (data.trackId) {
@@ -1670,6 +1673,7 @@ export async function createCourse(data: {
     facultyId: data.facultyId,
     name: data.name.trim(),
     code: cleanCode,
+    abbreviation: cleanAbbr || undefined,
     units,
     offeredIn,
     description: data.description || "",
@@ -1682,7 +1686,7 @@ export async function createCourse(data: {
 
 export async function updateCourse(
   id: string,
-  data: Partial<Pick<Course, "name" | "code" | "units" | "offeredIn" | "description" | "facultyId">> & {
+  data: Partial<Pick<Course, "name" | "code" | "abbreviation" | "units" | "offeredIn" | "description" | "facultyId">> & {
     trackId?: string;
     visualCategoryId?: string;
     ruleCategoryId?: string;
@@ -1696,6 +1700,7 @@ export async function updateCourse(
 
       const name = data.name !== undefined ? data.name.trim() : existing.name;
       const code = data.code !== undefined ? data.code.trim().toUpperCase() : existing.code;
+      const abbreviation = data.abbreviation !== undefined ? (data.abbreviation?.trim() || null) : (existing.abbreviation || null);
       const units = data.units !== undefined ? Number(data.units) : existing.units;
       const offeredIn = data.offeredIn !== undefined ? data.offeredIn : existing.offeredIn;
       const description = data.description !== undefined ? data.description : (existing.description || "");
@@ -1704,10 +1709,10 @@ export async function updateCourse(
       await d1
         .prepare(
           `UPDATE courses
-           SET name = ?, code = ?, units = ?, offered_in = ?, description = ?, faculty_id = ?
+           SET name = ?, code = ?, abbreviation = ?, units = ?, offered_in = ?, description = ?, faculty_id = ?
            WHERE id = ?`
         )
-        .bind(name, code, units, offeredIn, description, facultyId, id)
+        .bind(name, code, abbreviation, units, offeredIn, description, facultyId, id)
         .run();
 
       if (data.trackId) {
@@ -1726,6 +1731,7 @@ export async function updateCourse(
 
   if (data.name) course.name = data.name.trim();
   if (data.code) course.code = data.code.trim().toUpperCase();
+  if (data.abbreviation !== undefined) course.abbreviation = data.abbreviation?.trim() || undefined;
   if (data.units !== undefined) course.units = Number(data.units);
   if (data.offeredIn) course.offeredIn = data.offeredIn;
   if (data.description !== undefined) course.description = data.description;

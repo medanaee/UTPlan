@@ -336,6 +336,11 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
             className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl bg-muted/40 border border-border/70 text-xs hover:bg-muted/70 transition-colors shadow-2xs"
           >
             <span className="font-semibold text-foreground">{c.name}</span>
+            {c.abbreviation && (
+              <Badge variant="outline" className="text-[10px] font-mono font-medium px-1 py-0 text-primary border-primary/30 bg-primary/5">
+                {c.abbreviation}
+              </Badge>
+            )}
             <span className="text-muted-foreground font-mono text-xs">({c.code || (c.units + " واحد")})</span>
             <button
               type="button"

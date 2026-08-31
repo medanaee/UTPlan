@@ -75,7 +75,7 @@ export interface RuleCategory {
   createdAt: string;
 }
 
-export type CourseTermOffering = "fall" | "spring" | "both";
+export type CourseTermOffering = "fall" | "spring" | "both" | "none";
 
 export interface Course {
   id: string;
@@ -83,6 +83,7 @@ export interface Course {
   facultyName?: string;
   name: string;
   code: string;
+  abbreviation?: string;
   units: number;
   offeredIn: CourseTermOffering;
   description?: string;
@@ -160,6 +161,7 @@ export interface CourseOffering {
   // Joined
   courseName?: string;
   courseCode?: string;
+  courseAbbreviation?: string;
   courseUnits?: number;
   courseDescription?: string;
   facultyId?: string;

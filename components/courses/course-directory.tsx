@@ -104,6 +104,8 @@ export function CourseDirectory({
         return { label: "ترم مهر", color: "bg-amber-500/10 text-amber-600 border-amber-500/30" };
       case "spring":
         return { label: "ترم بهمن", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30" };
+      case "none":
+        return { label: "عدم ارائه", color: "bg-zinc-500/10 text-zinc-600 border-zinc-500/30" };
       default:
         return { label: "هر دو ترم", color: "bg-blue-500/10 text-blue-600 border-blue-500/30" };
     }
@@ -299,9 +301,16 @@ export function CourseDirectory({
 
                   {/* Course Title & Faculty */}
                   <div>
-                    <h3 className="font-bold text-sm text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-1">
-                      {course.name}
-                    </h3>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h3 className="font-bold text-sm text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-1">
+                        {course.name}
+                      </h3>
+                      {course.abbreviation && (
+                        <Badge variant="outline" className="text-xs font-mono font-medium px-1.5 py-0 text-primary border-primary/30 bg-primary/5">
+                          {course.abbreviation}
+                        </Badge>
+                      )}
+                    </div>
                     <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-1">
                       <Building2 className="h-3 w-3 shrink-0 opacity-60" />
                       <span className="truncate">{fac?.name || "دانشکده مهندسی برق و کامپیوتر"}</span>

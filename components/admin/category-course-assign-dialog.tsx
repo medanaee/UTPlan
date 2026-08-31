@@ -226,6 +226,11 @@ export function CategoryCourseAssignDialog({
                     <div>
                       <div className="font-bold text-foreground flex items-center gap-2">
                         <span>{c.name}</span>
+                        {c.abbreviation && (
+                          <Badge variant="outline" className="text-xs font-mono font-medium text-primary border-primary/30 bg-primary/5">
+                            {c.abbreviation}
+                          </Badge>
+                        )}
                         {c.code && (
                           <Badge variant="outline" className="text-xs font-mono font-normal">
                             {c.code}
@@ -233,7 +238,7 @@ export function CategoryCourseAssignDialog({
                         )}
                       </div>
                       <div className="text-[11px] text-muted-foreground mt-0.5">
-                        {c.units} واحد • {c.offeredIn === "both" ? "هردو ترم" : c.offeredIn === "fall" ? "ترم پاییز" : "ترم بهار"}
+                        {c.units} واحد • {c.offeredIn === "both" ? "هردو ترم" : c.offeredIn === "fall" ? "ترم پاییز" : c.offeredIn === "spring" ? "ترم بهار" : "عدم ارائه"}
                       </div>
                     </div>
                   </div>

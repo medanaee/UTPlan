@@ -34,35 +34,97 @@ interface CourseImportDialogProps {
   onSuccess?: () => void;
 }
 
-const SAMPLE_TEMPLATE = [
-  {
-    code: "8101101",
-    name: "مبانی کامپیوتر و برنامه‌سازی",
-    units: 3,
-    offeredIn: "both",
-    description: "مفاهیم پایه برنامه‌نویسی و حل مسئله.",
-    prerequisites: [],
-    corequisites: []
+const COURSE_SCHEMA_DESCRIPTOR = {
+  $schema: "https://json-schema.org/draft/2020-12/schema",
+  title: "قالب و اسناد ورود دروس (Courses JSON Schema)",
+  description: "اسکیمای استاندارد برای ورود دسته‌ای دروس و روابط پیش‌نیازی/هم‌نیازی",
+  type: "array",
+  items: {
+    type: "object",
+    properties: {
+      code: {
+        type: "string",
+        description: "کد رسمی یکتای درس (الزامی)",
+        example: "8101234"
+      },
+      name: {
+        type: "string",
+        description: "نام کامل درس (الزامی)",
+        example: "برنامه‌نویسی پیشرفته"
+      },
+      abbreviation: {
+        type: "string",
+        description: "مخفف نام درس (اختیاری)",
+        example: "AP"
+      },
+      units: {
+        type: "integer",
+        description: "تعداد واحدهای درس (اختیاری، پیش‌فرض: ۳)",
+        default: 3,
+        example: 3
+      },
+      offeredIn: {
+        type: "string",
+        enum: ["fall", "spring", "both", "none"],
+        description: "ترم ارائه درس: 'fall' (پاییز)، 'spring' (بهار)، 'both' (هردو ترم)، 'none' (عدم ارائه)",
+        default: "both",
+        example: "both"
+      },
+      description: {
+        type: "string",
+        description: "توضیحات و سرفصل درس (اختیاری)",
+        example: "مفاهیم برنامه‌نویسی شیءگرا و الگوهای طراحی."
+      },
+      prerequisites: {
+        type: "array",
+        items: { type: "string" },
+        description: "لیست کدهای دروس پیش‌نیاز (اختیاری)",
+        example: ["8101101"]
+      },
+      corequisites: {
+        type: "array",
+        items: { type: "string" },
+        description: "لیست کدهای دروس هم‌نیاز (اختیاری)",
+        example: []
+      }
+    },
+    required: ["code", "name"]
   },
-  {
-    code: "8101234",
-    name: "برنامه‌نویسی پیشرفته",
-    units: 3,
-    offeredIn: "both",
-    description: "مفاهیم برنامه‌نویسی شیءگرا و الگوهای طراحی.",
-    prerequisites: ["8101101"],
-    corequisites: []
-  },
-  {
-    code: "8101240",
-    name: "ساختمان داده‌ها و الگوریتم‌ها",
-    units: 3,
-    offeredIn: "fall",
-    description: "ساختارهای داده خطی و غیرخطی و تحلیل الگوریتم‌ها.",
-    prerequisites: ["8101234"],
-    corequisites: []
-  }
-];
+  examples: [
+    [
+      {
+        code: "8101101",
+        name: "مبانی کامپیوتر و برنامه‌سازی",
+        abbreviation: "BP",
+        units: 3,
+        offeredIn: "both",
+        description: "مفاهیم پایه برنامه‌نویسی و حل مسئله.",
+        prerequisites: [],
+        corequisites: []
+      },
+      {
+        code: "8101234",
+        name: "برنامه‌نویسی پیشرفته",
+        abbreviation: "AP",
+        units: 3,
+        offeredIn: "both",
+        description: "مفاهیم شیءگرایی و جاوا.",
+        prerequisites: ["8101101"],
+        corequisites: []
+      },
+      {
+        code: "8101999",
+        name: "سمینار تخصصی",
+        abbreviation: "SEM",
+        units: 2,
+        offeredIn: "none",
+        description: "درس غیرفعال در ترم جاری.",
+        prerequisites: [],
+        corequisites: []
+      }
+    ]
+  ]
+};
 
 export function CourseImportDialog({
   open,
@@ -119,13 +181,13 @@ export function CourseImportDialog({
     targetFaculty ||
     faculties.find((f) => f.id === (selectedFacultyId || defaultFacultyId));
 
-  const handleDownloadSample = () => {
+  const handleDownloadSchemaDescriptor = () => {
     const dataStr =
       "data:text/json;charset=utf-8," +
-      encodeURIComponent(JSON.stringify(SAMPLE_TEMPLATE, null, 2));
+      encodeURIComponent(JSON.stringify(COURSE_SCHEMA_DESCRIPTOR, null, 2));
     const downloadAnchor = document.createElement("a");
     downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", "sample-courses.json");
+    downloadAnchor.setAttribute("download", "courses-schema.json");
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
@@ -305,21 +367,21 @@ export function CourseImportDialog({
             </div>
           </div>
 
-          {/* Sample Download Action Banner */}
+          {/* Detailed Schema Descriptor Download Banner */}
           <div className="flex items-center justify-between p-3 rounded-2xl bg-primary/5 border border-primary/20">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Sparkles className="h-4 w-4 text-primary shrink-0" />
-              <span>قالب استاندارد JSON برای ورود دروس و پیش‌نیازها:</span>
+              <span>فایل توصیف‌کننده اسکیمای استاندارد JSON دروس:</span>
             </div>
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={handleDownloadSample}
+              onClick={handleDownloadSchemaDescriptor}
               className="h-7 text-xs font-medium gap-1.5 shadow-2xs hover:bg-background shrink-0"
             >
               <Download className="h-3.5 w-3.5 text-primary" />
-              دانلود قالب نمونه JSON
+              دانلود توصیف اسکیما (Schema JSON)
             </Button>
           </div>
 

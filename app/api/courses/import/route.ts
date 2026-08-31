@@ -14,9 +14,10 @@ import { wouldCreatePrerequisiteCycle } from "@/lib/graph-utils";
 
 interface ImportCourseItem {
   code: string;
+  abbreviation?: string;
   name: string;
   units?: number;
-  offeredIn?: "fall" | "spring" | "both";
+  offeredIn?: "fall" | "spring" | "both" | "none";
   description?: string;
   prerequisites?: string[];
   corequisites?: string[];
@@ -107,7 +108,16 @@ export async function POST(request: NextRequest) {
       const cleanCode = String(item.code).trim();
       const cleanName = String(item.name).trim();
       const cleanUnits = Number(item.units) || 3;
-      const cleanOffered = item.offeredIn === "fall" || item.offeredIn === "spring" ? item.offeredIn : "both";
+      const rawOff = item.offeredIn ? String(item.offeredIn).trim().toLowerCase() : "";
+      const cleanOffered =
+        rawOff === "fall" || rawOff === "پاییز"
+          ? "fall"
+          : rawOff === "spring" || rawOff === "بهار"
+          ? "spring"
+          : rawOff === "none" || rawOff === "عدم ارائه" || rawOff === "نامشخص"
+          ? "none"
+          : "both";
+      const cleanAbbr = item.abbreviation ? String(item.abbreviation).trim() : undefined;
       const cleanDesc = item.description || "";
 
       const existingCourseId = courseCodeToIdMap.get(cleanCode);
@@ -117,6 +127,7 @@ export async function POST(request: NextRequest) {
         try {
           await updateCourse(existingCourseId, {
             name: cleanName,
+            abbreviation: cleanAbbr,
             units: cleanUnits,
             offeredIn: cleanOffered,
             description: cleanDesc,
@@ -133,6 +144,7 @@ export async function POST(request: NextRequest) {
           const newCourse = await createCourse({
             facultyId: targetFacultyId,
             code: cleanCode,
+            abbreviation: cleanAbbr,
             name: cleanName,
             units: cleanUnits,
             offeredIn: cleanOffered,

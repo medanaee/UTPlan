@@ -61,9 +61,10 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
   const [courseForm, setCourseForm] = useState({
     name: "",
     code: "",
+    abbreviation: "",
     units: 3,
     facultyId: "",
-    offeredIn: "both" as "fall" | "spring" | "both",
+    offeredIn: "both" as "fall" | "spring" | "both" | "none",
     visualCategoryId: "",
     ruleCategoryId: "",
     description: "",
@@ -103,6 +104,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
           id: editingCourse.id,
           name: courseForm.name,
           code: courseForm.code,
+          abbreviation: courseForm.abbreviation?.trim() || undefined,
           units: Number(courseForm.units) || 3,
           facultyId: selectedFacultyId,
           offeredIn: courseForm.offeredIn,
@@ -116,6 +118,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
         setCourseForm({
           name: "",
           code: "",
+          abbreviation: "",
           units: 3,
           facultyId: selectedFacultyId,
           offeredIn: "both",
@@ -135,6 +138,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
         body: JSON.stringify({
           name: courseForm.name,
           code: courseForm.code,
+          abbreviation: courseForm.abbreviation?.trim() || undefined,
           units: Number(courseForm.units) || 3,
           facultyId: selectedFacultyId,
           offeredIn: courseForm.offeredIn,
@@ -210,6 +214,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
     { value: "both", label: "هردو ترم (پاییز و بهار)" },
     { value: "fall", label: "فقط ترم پاییز (فرد)" },
     { value: "spring", label: "فقط ترم بهار (زوج)" },
+    { value: "none", label: "عدم ارائه (هیچ‌ترم)" },
   ];
 
   const prereqCourseSelectItems = courses
@@ -318,6 +323,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                 setCourseForm({
                   name: "",
                   code: "",
+                  abbreviation: "",
                   units: 3,
                   facultyId: selectedFacultyId,
                   offeredIn: "both",
@@ -361,7 +367,14 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                   {/* Course header */}
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <h3 className="text-xs font-bold text-foreground">{course.name}</h3>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h3 className="text-xs font-bold text-foreground">{course.name}</h3>
+                        {course.abbreviation && (
+                          <Badge variant="outline" className="text-[10px] font-mono font-medium px-1.5 py-0 text-primary border-primary/30 bg-primary/5">
+                            {course.abbreviation}
+                          </Badge>
+                        )}
+                      </div>
                       <span className="text-[11px] text-muted-foreground">{course.code}</span>
                     </div>
                     <div className="flex items-center gap-1">
@@ -374,6 +387,8 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                           ? "فقط پاییز"
                           : course.offeredIn === "spring"
                             ? "فقط بهار"
+                            : course.offeredIn === "none"
+                            ? "عدم ارائه"
                             : "پاییز و بهار"}
                       </Badge>
                     </div>
@@ -624,8 +639,8 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
           </div>
 
           <form onSubmit={handleSaveCourse} className="space-y-3 pt-1">
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="space-y-1 sm:col-span-1">
                 <Label className="text-xs font-semibold">نام درس:</Label>
                 <Input
                   required
@@ -635,12 +650,24 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs font-semibold">کد درس:</Label>
+                <Label className="text-xs font-semibold">کد یکتای درس:</Label>
                 <Input
                   required
-                  placeholder="مثلاً MATH101"
+                  placeholder="مثلاً 8101101"
                   value={courseForm.code}
                   onChange={(e) => setCourseForm({ ...courseForm, code: e.target.value })}
+                  dir="ltr"
+                />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold">مخفف نام درس:</Label>
+                  <span className="text-[10px] text-muted-foreground">اختیاری</span>
+                </div>
+                <Input
+                  placeholder="مثلاً AP یا DS"
+                  value={courseForm.abbreviation}
+                  onChange={(e) => setCourseForm({ ...courseForm, abbreviation: e.target.value })}
                   dir="ltr"
                 />
               </div>

@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
 
       return {
         code: course.code,
+        abbreviation: course.abbreviation || undefined,
         name: course.name,
         units: course.units || 3,
         offeredIn: course.offeredIn || "both",

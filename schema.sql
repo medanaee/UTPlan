@@ -80,8 +80,9 @@ CREATE TABLE IF NOT EXISTS courses (
   faculty_id TEXT NOT NULL,
   name TEXT NOT NULL,
   code TEXT NOT NULL UNIQUE,
+  abbreviation TEXT,
   units INTEGER NOT NULL DEFAULT 3,
-  offered_in TEXT NOT NULL DEFAULT 'both', -- 'fall', 'spring', 'both'
+  offered_in TEXT NOT NULL DEFAULT 'both', -- 'fall', 'spring', 'both', 'none'
   description TEXT,
   created_at TEXT NOT NULL,
   deleted_at TEXT,
