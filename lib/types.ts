@@ -133,6 +133,7 @@ export interface ProfessorLinks {
 export interface Professor {
   id: string;
   facultyId: string;
+  code?: string;
   facultyName?: string;
   firstName?: string;
   lastName?: string;

@@ -121,6 +121,7 @@ CREATE INDEX IF NOT EXISTS idx_prereq_course ON prerequisites(course_id);
 CREATE TABLE IF NOT EXISTS professors (
   id TEXT PRIMARY KEY,
   faculty_id TEXT NOT NULL,
+  code TEXT,
   first_name TEXT,
   last_name TEXT,
   name TEXT NOT NULL,
@@ -133,6 +134,7 @@ CREATE TABLE IF NOT EXISTS professors (
   FOREIGN KEY (faculty_id) REFERENCES faculties(id)
 );
 CREATE INDEX IF NOT EXISTS idx_professors_faculty ON professors(faculty_id);
+CREATE INDEX IF NOT EXISTS idx_professors_code ON professors(code);
 
 -- Course Offerings Table (Professor + Course)
 CREATE TABLE IF NOT EXISTS course_offerings (

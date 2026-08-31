@@ -129,6 +129,11 @@ export default function AdminDashboardPage() {
       icon: BookOpen,
     },
     {
+      id: "professors" as const,
+      label: "اساتید هیئت علمی",
+      icon: Users,
+    },
+    {
       id: "offerings" as const,
       label: "ارائه‌های درسی",
       icon: BookUser,
@@ -137,11 +142,6 @@ export default function AdminDashboardPage() {
       id: "events" as const,
       label: "رویدادها و برنامه‌ریزی کلاسی",
       icon: CalendarDays,
-    },
-    {
-      id: "professors" as const,
-      label: "اساتید هیئت علمی",
-      icon: Users,
     },
     {
       id: "categories" as const,

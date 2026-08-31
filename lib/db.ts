@@ -1900,6 +1900,7 @@ export async function getProfessors(facultyId?: string): Promise<Professor[]> {
         return {
           id: p.id,
           facultyId: p.faculty_id,
+          code: p.code || undefined,
           firstName: p.first_name || undefined,
           lastName: p.last_name || undefined,
           name: p.name,
@@ -1969,6 +1970,7 @@ export async function getProfessorById(id: string): Promise<Professor | null> {
       return {
         id: (p as any).id,
         facultyId: (p as any).faculty_id,
+        code: (p as any).code || undefined,
         facultyName: (p as any).faculty_name || "دانشکده مهندسی برق و کامپیوتر",
         firstName: (p as any).first_name || undefined,
         lastName: (p as any).last_name || undefined,
@@ -3614,5 +3616,45 @@ export async function deleteCoursesByFaculty(facultyId: string): Promise<boolean
     (p) => !toDeleteIds.has(p.courseId) && !toDeleteIds.has(p.requiredCourseId)
   );
   trackAssignmentsStore = trackAssignmentsStore.filter((a) => !toDeleteIds.has(a.courseId));
+  return true;
+}
+
+export async function deleteProfessorsByFaculty(facultyId: string): Promise<boolean> {
+  const d1 = getD1();
+  if (d1) {
+    try {
+      await d1
+        .prepare(
+          `DELETE FROM reviews 
+           WHERE (target_type = 'professor' AND target_id IN (SELECT id FROM professors WHERE faculty_id = ?))
+              OR (target_type = 'offering' AND target_id IN (SELECT id FROM course_offerings WHERE professor_id IN (SELECT id FROM professors WHERE faculty_id = ?)))`
+        )
+        .bind(facultyId, facultyId)
+        .run();
+
+      await d1
+        .prepare(
+          `DELETE FROM course_offerings 
+           WHERE professor_id IN (SELECT id FROM professors WHERE faculty_id = ?)`
+        )
+        .bind(facultyId)
+        .run();
+
+      await d1
+        .prepare("DELETE FROM professors WHERE faculty_id = ?")
+        .bind(facultyId)
+        .run();
+
+      return true;
+    } catch (err) {
+      console.error("D1 deleteProfessorsByFaculty error:", err);
+      return false;
+    }
+  }
+
+  await initFallbackDevData();
+  const profIdsToDelete = new Set(professorsStore.filter((p) => p.facultyId === facultyId).map((p) => p.id));
+  professorsStore = professorsStore.filter((p) => !profIdsToDelete.has(p.id));
+  offeringsStore = offeringsStore.filter((o) => !profIdsToDelete.has(o.professorId));
   return true;
 }

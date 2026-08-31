@@ -10,6 +10,8 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ProfessorImportDialog } from "@/components/professors/professor-import-dialog";
+import { Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -62,12 +64,15 @@ export function ProfessorManager({
   const [search, setSearch] = useState("");
   const [facultyFilter, setFacultyFilter] = useState<string>("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [editingProfessor, setEditingProfessor] = useState<Professor | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form State
   const [form, setForm] = useState({
+    code: "",
     firstName: "",
     lastName: "",
     title: "استاد تمام",
@@ -81,6 +86,7 @@ export function ProfessorManager({
   const handleOpenCreateModal = () => {
     setEditingProfessor(null);
     setForm({
+      code: "",
       firstName: "",
       lastName: "",
       title: "استاد تمام",
@@ -97,6 +103,7 @@ export function ProfessorManager({
     setEditingProfessor(prof);
     const splitted = prof.name ? prof.name.split(" ") : [];
     setForm({
+      code: prof.code || "",
       firstName: prof.firstName || (splitted.length > 1 ? splitted[0] : prof.name || ""),
       lastName: prof.lastName || (splitted.length > 1 ? splitted.slice(1).join(" ") : ""),
       title: prof.title || "استاد تمام",
@@ -149,6 +156,7 @@ export function ProfessorManager({
       };
 
       const payload = {
+        code: form.code?.trim().toUpperCase() || undefined,
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
         name: fullName,
@@ -217,6 +225,39 @@ export function ProfessorManager({
 
   const currentFaculty = faculties.find((f) => f.id === selectedFacultyId);
 
+  
+  const handleExportJson = async () => {
+    try {
+      setIsExporting(true);
+      const url = selectedFacultyId
+        ? `/api/professors/export?facultyId=${selectedFacultyId}`
+        : "/api/professors/export";
+
+      const res = await fetch(url).then((r) => r.json());
+      if (res.success && Array.isArray(res.data)) {
+        const fileName = currentFaculty
+          ? `professors-${currentFaculty.code.toLowerCase()}.json`
+          : "professors-export.json";
+
+        const dataStr =
+          "data:text/json;charset=utf-8," +
+          encodeURIComponent(JSON.stringify(res.data, null, 2));
+        const downloadAnchor = document.createElement("a");
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", fileName);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+      } else {
+        alert(res.message || "خطا در خروجی گرفتن از اطلاعات اساتید");
+      }
+    } catch (err: any) {
+      alert("خطا در برقراری ارتباط با سرور: " + (err?.message || "نامشخص"));
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const facultyProfessors = professors.filter(
     (p) => !selectedFacultyId || p.facultyId === selectedFacultyId
   );
@@ -273,14 +314,39 @@ export function ProfessorManager({
               </p>
             </div>
           </div>
-          <Button
-            size="sm"
-            onClick={handleOpenCreateModal}
-            className="h-8 gap-1.5 text-xs shadow-xs"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            افزودن استاد جدید
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleExportJson}
+              disabled={isExporting}
+              className="h-8 gap-1.5 text-xs shadow-2xs font-medium"
+            >
+              <Download className="h-3.5 w-3.5 text-primary" />
+              {isExporting ? "در حال دریافت..." : "خروجی JSON"}
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setImportModalOpen(true)}
+              className="h-8 gap-1.5 text-xs shadow-2xs font-medium"
+            >
+              <Upload className="h-3.5 w-3.5 text-primary" />
+              ورود اساتید (Import JSON)
+            </Button>
+
+            <Button
+              size="sm"
+              onClick={handleOpenCreateModal}
+              className="h-8 gap-1.5 text-xs shadow-xs font-semibold"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              افزودن استاد جدید
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -349,7 +415,14 @@ export function ProfessorManager({
                       )}
                     </div>
                     <div className="min-w-0 space-y-0.5">
-                      <p className="text-xs font-bold truncate text-foreground">{displayName}</p>
+                      <div className="flex items-center gap-1.5 truncate">
+                        <p className="text-xs font-bold truncate text-foreground">{displayName}</p>
+                        {p.code && (
+                          <Badge variant="outline" className="text-[9px] px-1 py-0 font-mono h-4 font-normal text-muted-foreground">
+                            {p.code}
+                          </Badge>
+                        )}
+                      </div>
                       <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                         <span>{p.title || "استاد تمام"}</span>
                         {faculty && (
@@ -625,6 +698,15 @@ export function ProfessorManager({
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Professor Import Dialog */}
+      <ProfessorImportDialog
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
+        defaultFacultyId={selectedFacultyId}
+        targetFaculty={currentFaculty}
+        onSuccess={onDataChanged}
+      />
     </div>
   );
 }

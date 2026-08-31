@@ -73,6 +73,7 @@ export function ProfessorDirectory({
       const matchesSearch =
         searchLower === "" ||
         p.name.toLowerCase().includes(searchLower) ||
+        (p.code || "").toLowerCase().includes(searchLower) ||
         (p.title || "").toLowerCase().includes(searchLower) ||
         (p.email || "").toLowerCase().includes(searchLower);
 
@@ -203,9 +204,16 @@ export function ProfessorDirectory({
                       {prof.name[0] || "ا"}
                     </div>
                     <div className="truncate flex-1 min-w-0">
-                      <h3 className="font-bold text-sm text-foreground group-hover:text-primary transition-colors truncate">
-                        {prof.name}
-                      </h3>
+                      <div className="flex items-center gap-1.5 truncate">
+                        <h3 className="font-bold text-sm text-foreground group-hover:text-primary transition-colors truncate">
+                          {prof.name}
+                        </h3>
+                        {prof.code && (
+                          <Badge variant="outline" className="text-[9px] px-1 py-0 font-mono h-4 font-normal text-muted-foreground shrink-0">
+                            {prof.code}
+                          </Badge>
+                        )}
+                      </div>
                       <span className="text-xs text-muted-foreground block truncate">
                         {prof.title || "استاد تمام"}
                       </span>

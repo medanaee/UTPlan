@@ -429,9 +429,9 @@ export function OfferingManager({
               <Combobox
                 items={professors.map((p) => ({
                   value: p.id,
-                  label: p.name,
-                  sublabel: p.title || undefined,
-                  keywords: [p.name, p.title || ""],
+                  label: p.code ? `${p.name} (${p.code})` : p.name,
+                  sublabel: [p.title, p.code].filter(Boolean).join(" • ") || undefined,
+                  keywords: [p.name, p.title || "", p.code || ""],
                 }))}
                 value={form.professorId}
                 onChange={(val) => setForm({ ...form, professorId: val })}

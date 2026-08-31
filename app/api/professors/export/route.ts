@@ -1,0 +1,37 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getProfessors } from "@/lib/db";
+
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const facultyId = searchParams.get("facultyId") || undefined;
+
+    const professors = await getProfessors(facultyId);
+
+    // Format clean JSON schema without internal database artifacts
+    const exportData = professors.map((p) => {
+      const fName = p.firstName || "";
+      const lName = p.lastName || "";
+      return {
+        code: p.code || undefined,
+        firstName: fName || p.name || "",
+        lastName: lName || "",
+        title: p.title || "استاد تمام",
+        email: p.email || "",
+        links: p.links || {},
+      };
+    });
+
+    return NextResponse.json({
+      success: true,
+      count: exportData.length,
+      data: exportData,
+    });
+  } catch (error: any) {
+    console.error("Professors Export error:", error);
+    return NextResponse.json(
+      { success: false, message: "خطا در خروجی گرفتن از اطلاعات اساتید" },
+      { status: 500 }
+    );
+  }
+}
