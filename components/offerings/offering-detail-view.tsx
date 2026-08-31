@@ -28,6 +28,10 @@ import {
   Info,
   FileText,
   AlertCircle,
+  FolderArchive,
+  Video,
+  ExternalLink,
+  Link2,
 } from "lucide-react";
 import {
   Select,
@@ -51,7 +55,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import type { CourseOffering, ReviewItem, UserSession } from "@/lib/types";
+import type { CourseOffering, ReviewItem, UserSession, OfferingResource } from "@/lib/types";
 
 function formatSemesterLabel(termStr: string): string {
   if (!termStr) return "تعیین‌نشده";
@@ -88,6 +92,22 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
   // Reviews state
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
   const [loadingReviews, setLoadingReviews] = useState(true);
+
+  // Resources state
+  const [resources, setResources] = useState<OfferingResource[]>(offering.resources || []);
+  const [loadingResources, setLoadingResources] = useState(!offering.resources);
+
+  useEffect(() => {
+    fetch(`/api/offerings/resources?offeringId=${offering.id}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success && Array.isArray(d.data)) {
+          setResources(d.data);
+        }
+      })
+      .catch((err) => console.error("Error loading offering resources:", err))
+      .finally(() => setLoadingResources(false));
+  }, [offering.id]);
 
   // New Form state
   const [commentText, setCommentText] = useState("");
@@ -619,6 +639,104 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                   </p>
                   <p className="text-[11px]">
                     می‌توانید از منوی بالا سایر نیمسال‌های تحصیلی را برای مشاهده زمان‌بندی انتخاب کنید.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Offering Resources Card */}
+          <Card className="border-border/80 shadow-xs">
+            <CardHeader className="pb-3 border-b border-border/50">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <CardTitle className="text-sm font-bold flex items-center gap-2">
+                    <FolderArchive className="h-4 w-4 text-primary" />
+                    <span>منابع و مراجع آموزشی درس</span>
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    اسلایدها، ویدئوهای جلسات، آرشیو فایل‌ها و پیوندهای آموزشی مرتبط با این ارائه
+                  </CardDescription>
+                </div>
+                <Badge variant="outline" className="text-[11px] font-semibold">
+                  {resources.length} منبع ثبت‌شده
+                </Badge>
+              </div>
+            </CardHeader>
+
+            <CardContent className="space-y-3">
+              {loadingResources ? (
+                <div className="py-8 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <span>در حال دریافت منابع آموزشی...</span>
+                </div>
+              ) : resources.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {resources.map((res) => {
+                    const typeLabel =
+                      res.type === "video"
+                        ? "ویدئو"
+                        : res.type === "slide"
+                        ? "اسلاید"
+                        : "آرشیو";
+
+                    return (
+                      <a
+                        key={res.id}
+                        href={res.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group p-3 rounded-2xl border border-border/80 bg-card hover:bg-muted/40 hover:border-primary/40 transition-all flex items-center justify-between gap-3 shadow-2xs cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-muted text-muted-foreground group-hover:text-primary transition-colors font-semibold text-xs shrink-0 border border-border/60">
+                            {res.type === "video" ? (
+                              <Video className="h-4 w-4" />
+                            ) : res.type === "slide" ? (
+                              <FileText className="h-4 w-4" />
+                            ) : (
+                              <FolderArchive className="h-4 w-4" />
+                            )}
+                          </div>
+
+                          <div className="min-w-0 flex-1 space-y-1">
+                            <div className="font-semibold text-xs text-foreground group-hover:text-primary transition-colors truncate">
+                              {res.title}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] px-1.5 py-0 bg-muted/50 border-border text-foreground font-normal shrink-0"
+                              >
+                                {typeLabel}
+                              </Badge>
+                              {res.term && (
+                                <Badge
+                                  variant="secondary"
+                                  className="text-[10px] px-1.5 py-0 shrink-0 font-normal"
+                                >
+                                  {formatSemesterLabel(res.term)}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground group-hover:text-primary group-hover:bg-primary/10 transition-colors shrink-0">
+                          <ExternalLink className="h-4 w-4" />
+                        </div>
+                      </a>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="py-8 text-center text-xs text-muted-foreground bg-muted/20 rounded-2xl border border-dashed p-6 space-y-1.5">
+                  <FolderArchive className="h-7 w-7 mx-auto text-muted-foreground/40" />
+                  <p className="font-semibold text-foreground">
+                    هنوز منبع آموزشی برای این ارائه ثبت نشده است.
+                  </p>
+                  <p className="text-[11px]">
+                    اساتید و مدیران می‌توانند اسلایدها، ویدئوها و جزوات را در این بخش قرار دهند.
                   </p>
                 </div>
               )}

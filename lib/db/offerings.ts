@@ -1,6 +1,7 @@
 import type { CourseOffering } from "../types";
 import { getD1 } from "./client";
 import { getEvents } from "./events";
+import { getOfferingResources } from "./resources";
 
 export async function getOfferings(filter?: {
   courseId?: string;
@@ -191,6 +192,7 @@ export async function getOfferingById(id: string): Promise<CourseOffering | null
     const profNames = finalProfs.map((p: any) => p.name).join(" و ");
 
     const events = await getEvents({ offeringId: id });
+    const resources = await getOfferingResources(id);
 
     // Review stats
     let revCount = 0;
@@ -225,6 +227,7 @@ export async function getOfferingById(id: string): Promise<CourseOffering | null
       professorId: primaryProf?.id || (row as any).professor_id,
       professorIds: finalProfs.map((p: any) => p.id),
       professors: finalProfs,
+      resources,
       createdAt: (row as any).created_at,
       deletedAt: (row as any).deleted_at || null,
       courseName: (row as any).course_name,

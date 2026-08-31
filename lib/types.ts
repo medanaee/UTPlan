@@ -161,6 +161,19 @@ export interface OfferingProfessorInfo {
   isPrimary?: boolean;
 }
 
+export type OfferingResourceType = "video" | "slide" | "archive";
+
+export interface OfferingResource {
+  id: string;
+  offeringId: string;
+  title: string;
+  term?: string; // e.g. "1404-2"
+  type: OfferingResourceType;
+  url: string;
+  createdAt: string;
+  deletedAt?: string | null;
+}
+
 export interface CourseOffering {
   id: string;
   code?: string;
@@ -170,6 +183,7 @@ export interface CourseOffering {
   professorId?: string;
   professorIds?: string[];
   professors?: OfferingProfessorInfo[];
+  resources?: OfferingResource[];
   createdAt: string;
   deletedAt?: string | null;
   // Joined

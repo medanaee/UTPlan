@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import type { Course, Professor, CourseOffering, Faculty } from "@/lib/types";
+import type { Course, Professor, CourseOffering, Faculty, OfferingResource, OfferingResourceType } from "@/lib/types";
 import {
   Card,
   CardHeader,
@@ -49,6 +49,12 @@ import {
   X,
   CheckCircle2,
   CalendarCheck,
+  FolderArchive,
+  Video,
+  FileText,
+  ExternalLink,
+  Link2,
+  Loader2,
 } from "lucide-react";
 
 export function formatSemesterLabel(termStr: string): string {
@@ -109,6 +115,154 @@ export function OfferingManager({
 
   const [newSemYear, setNewSemYear] = useState("1404");
   const [newSemType, setNewSemType] = useState("2");
+
+  // Resources Modal State
+  const [resourcesOffering, setResourcesOffering] = useState<CourseOffering | null>(null);
+  const [resources, setResources] = useState<OfferingResource[]>([]);
+  const [loadingResources, setLoadingResources] = useState(false);
+  const [editingResourceId, setEditingResourceId] = useState<string | null>(null);
+  const [resTitle, setResTitle] = useState("");
+  const [resType, setResType] = useState<OfferingResourceType>("slide");
+  const [resHasTerm, setResHasTerm] = useState(false);
+  const [resTermYear, setResTermYear] = useState("1404");
+  const [resTermType, setResTermType] = useState("2");
+  const [resUrl, setResUrl] = useState("");
+  const [savingResource, setSavingResource] = useState(false);
+  const [resourceError, setResourceError] = useState<string | null>(null);
+
+  const loadResources = async (offeringId: string) => {
+    try {
+      setLoadingResources(true);
+      const res = await fetch(`/api/offerings/resources?offeringId=${offeringId}`).then((r) => r.json());
+      if (res.success) {
+        setResources(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to load resources:", err);
+    } finally {
+      setLoadingResources(false);
+    }
+  };
+
+  const handleOpenResourcesModal = (off: CourseOffering) => {
+    setResourcesOffering(off);
+    setEditingResourceId(null);
+    setResTitle("");
+    setResType("slide");
+    setResHasTerm(false);
+    setResTermYear("1404");
+    setResTermType("2");
+    setResUrl("");
+    setResourceError(null);
+    loadResources(off.id);
+  };
+
+  const handleStartEditResource = (item: OfferingResource) => {
+    setEditingResourceId(item.id);
+    setResTitle(item.title);
+    setResType(item.type);
+    if (item.term && item.term.includes("-")) {
+      const [y, t] = item.term.split("-");
+      setResHasTerm(true);
+      setResTermYear(y || "1404");
+      setResTermType(t || "2");
+    } else {
+      setResHasTerm(false);
+      setResTermYear("1404");
+      setResTermType("2");
+    }
+    setResUrl(item.url);
+    setResourceError(null);
+  };
+
+  const handleCancelEditResource = () => {
+    setEditingResourceId(null);
+    setResTitle("");
+    setResType("slide");
+    setResHasTerm(false);
+    setResTermYear("1404");
+    setResTermType("2");
+    setResUrl("");
+    setResourceError(null);
+  };
+
+  const handleSaveResource = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resourcesOffering) return;
+    if (!resTitle.trim() || !resUrl.trim()) {
+      setResourceError("نام منبع و آدرس لینک الزامی است.");
+      return;
+    }
+
+    try {
+      setSavingResource(true);
+      setResourceError(null);
+      const term = resHasTerm ? `${resTermYear}-${resTermType}` : undefined;
+
+      if (editingResourceId) {
+        const res = await fetch("/api/offerings/resources", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: editingResourceId,
+            title: resTitle.trim(),
+            term,
+            type: resType,
+            url: resUrl.trim(),
+          }),
+        }).then((r) => r.json());
+
+        if (res.success) {
+          handleCancelEditResource();
+          await loadResources(resourcesOffering.id);
+        } else {
+          setResourceError(res.message || "خطا در ویرایش منبع");
+        }
+      } else {
+        const res = await fetch("/api/offerings/resources", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            offeringId: resourcesOffering.id,
+            title: resTitle.trim(),
+            term,
+            type: resType,
+            url: resUrl.trim(),
+          }),
+        }).then((r) => r.json());
+
+        if (res.success) {
+          handleCancelEditResource();
+          await loadResources(resourcesOffering.id);
+        } else {
+          setResourceError(res.message || "خطا در ثبت منبع");
+        }
+      }
+    } catch (err) {
+      console.error("Save resource error:", err);
+      setResourceError("خطا در برقراری ارتباط با سرور.");
+    } finally {
+      setSavingResource(false);
+    }
+  };
+
+  const handleDeleteResource = async (id: string, title: string) => {
+    if (!confirm(`آیا از حذف منبع «${title}» اطمینان دارید؟`)) return;
+    try {
+      const res = await fetch(`/api/offerings/resources?id=${id}`, {
+        method: "DELETE",
+      }).then((r) => r.json());
+
+      if (res.success && resourcesOffering) {
+        await loadResources(resourcesOffering.id);
+      } else {
+        alert(res.message || "خطا در حذف منبع");
+      }
+    } catch (err) {
+      console.error("Delete resource error:", err);
+      alert("خطا در برقراری ارتباط با سرور");
+    }
+  };
 
   const loadOfferings = async () => {
     try {
@@ -537,6 +691,16 @@ export function OfferingManager({
                           <Button
                             variant="ghost"
                             size="sm"
+                            onClick={() => handleOpenResourcesModal(off)}
+                            className="h-7 px-2 gap-1 text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                            title="مدیریت منابع درس"
+                          >
+                            <FolderArchive className="h-3.5 w-3.5" />
+                            <span>منابع</span>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => handleOpenEditModal(off)}
                             className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
                             title="ویرایش ارائه"
@@ -862,6 +1026,318 @@ export function OfferingManager({
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Resources Management Dialog */}
+      <Dialog
+        open={Boolean(resourcesOffering)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setResourcesOffering(null);
+            handleCancelEditResource();
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <FolderArchive className="h-4 w-4 text-primary" />
+              <span>مدیریت منابع درسی ارائه</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              {resourcesOffering ? (
+                <span>
+                  {resourcesOffering.courseName} ({resourcesOffering.professorName})
+                </span>
+              ) : (
+                "مشاهده، افزودن، ویرایش و حذف منابع و جزوات آموزشی"
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Form to Add / Edit Resource */}
+          <form
+            onSubmit={handleSaveResource}
+            className="p-3.5 rounded-2xl border border-border/80 bg-muted/20 space-y-3"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                {editingResourceId ? (
+                  <>
+                    <Pencil className="h-3.5 w-3.5 text-primary" />
+                    <span>ویرایش منبع</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-3.5 w-3.5 text-primary" />
+                    <span>افزودن منبع جدید</span>
+                  </>
+                )}
+              </span>
+              {editingResourceId && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCancelEditResource}
+                  className="h-6 text-[10px] px-2 text-muted-foreground"
+                >
+                  انصراف از ویرایش
+                </Button>
+              )}
+            </div>
+
+            {resourceError && (
+              <div className="p-2 rounded-lg bg-destructive/10 text-destructive text-xs border border-destructive/20">
+                {resourceError}
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {/* Row 1: Title & Type */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div className="sm:col-span-2 space-y-1">
+                  <Label className="text-xs font-semibold">نام منبع:</Label>
+                  <Input
+                    placeholder="مثلاً: اسلایدهای فصل ۱ تا ۵، فیلم ضبط‌شده کلاس و ..."
+                    value={resTitle}
+                    onChange={(e) => setResTitle(e.target.value)}
+                    className="h-8 text-xs"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">نوع منبع:</Label>
+                  <Select
+                    value={resType}
+                    onValueChange={(val: OfferingResourceType) => setResType(val)}
+                  >
+                    <SelectTrigger className="w-full h-8 text-xs">
+                      <SelectValue placeholder="نوع منبع" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectItem value="slide" className="text-xs">
+                          اسلاید / جزوه
+                        </SelectItem>
+                        <SelectItem value="video" className="text-xs">
+                          ویدئو کلاسی
+                        </SelectItem>
+                        <SelectItem value="archive" className="text-xs">
+                          آرشیو / فایل
+                        </SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Row 2: Term & URL */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 items-end">
+                <div className="sm:col-span-2 space-y-1">
+                  <Label className="text-xs font-semibold">لینک منبع (URL):</Label>
+                  <Input
+                    placeholder="https://example.com/..."
+                    value={resUrl}
+                    onChange={(e) => setResUrl(e.target.value)}
+                    className="h-8 text-xs"
+                    dir="ltr"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold">نیمسال مربوطه:</Label>
+                    <button
+                      type="button"
+                      onClick={() => setResHasTerm(!resHasTerm)}
+                      className="text-[10px] text-primary hover:underline"
+                    >
+                      {resHasTerm ? "حذف نیمسال" : "تعیین نیمسال"}
+                    </button>
+                  </div>
+                  {resHasTerm ? (
+                    <div className="flex items-center gap-1.5">
+                      <NumberInput
+                        min={1350}
+                        max={1499}
+                        value={resTermYear}
+                        onChange={(val) => setResTermYear(String(val))}
+                        placeholder="سال"
+                        className="w-20 shrink-0 h-8"
+                      />
+                      <Select value={resTermType} onValueChange={setResTermType}>
+                        <SelectTrigger className="w-full h-8 text-xs">
+                          <SelectValue placeholder="نیمسال" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            <SelectItem value="1" className="text-xs">
+                              پاییز
+                            </SelectItem>
+                            <SelectItem value="2" className="text-xs">
+                              بهار
+                            </SelectItem>
+                            <SelectItem value="3" className="text-xs">
+                              تابستان
+                            </SelectItem>
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : (
+                    <div className="h-8 rounded-md border border-border/60 bg-muted/40 px-2.5 flex items-center text-[11px] text-muted-foreground">
+                      عمومی / بدون نیمسال خاص
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-1">
+              <Button
+                type="submit"
+                size="sm"
+                disabled={savingResource}
+                className="h-8 text-xs font-semibold gap-1.5"
+              >
+                {savingResource ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : editingResourceId ? (
+                  <Check className="h-3.5 w-3.5" />
+                ) : (
+                  <Plus className="h-3.5 w-3.5" />
+                )}
+                <span>{editingResourceId ? "ذخیره تغییرات" : "افزودن منبع"}</span>
+              </Button>
+            </div>
+          </form>
+
+          {/* List of Registered Resources */}
+          <div className="space-y-2 pt-2">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span className="font-semibold text-foreground">
+                منابع ثبت‌شده ({resources.length})
+              </span>
+            </div>
+
+            {loadingResources ? (
+              <div className="py-8 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <span>در حال بارگذاری منابع...</span>
+              </div>
+            ) : resources.length > 0 ? (
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-0.5">
+                {resources.map((item) => {
+                  const typeLabel =
+                    item.type === "video"
+                      ? "ویدئو"
+                      : item.type === "slide"
+                      ? "اسلاید"
+                      : "آرشیو";
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="p-2.5 rounded-xl border border-border/70 bg-card hover:bg-muted/20 transition-colors flex items-center justify-between gap-3 shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-muted text-muted-foreground font-semibold text-xs shrink-0 border border-border/60">
+                          {item.type === "video" ? (
+                            <Video className="h-3.5 w-3.5" />
+                          ) : item.type === "slide" ? (
+                            <FileText className="h-3.5 w-3.5" />
+                          ) : (
+                            <FolderArchive className="h-3.5 w-3.5" />
+                          )}
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-semibold text-xs text-foreground truncate">
+                              {item.title}
+                            </span>
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] px-1.5 py-0 bg-muted/50 border-border text-foreground font-normal shrink-0"
+                            >
+                              {typeLabel}
+                            </Badge>
+                            {item.term && (
+                              <Badge
+                                variant="secondary"
+                                className="text-[10px] px-1.5 py-0 shrink-0 font-normal"
+                              >
+                                {formatSemesterLabel(item.term)}
+                              </Badge>
+                            )}
+                          </div>
+                          <a
+                            href={item.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[11px] text-primary hover:underline truncate block mt-0.5"
+                            dir="ltr"
+                          >
+                            {item.url}
+                          </a>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        <a
+                          href={item.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="h-7 w-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                          title="مشاهده لینک"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </a>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleStartEditResource(item)}
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                          title="ویرایش منبع"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteResource(item.id, item.title)}
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                          title="حذف منبع"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="py-6 text-center text-xs text-muted-foreground border border-dashed rounded-xl bg-muted/10">
+                هنوز منبع آموزشی برای این ارائه ثبت نشده است.
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setResourcesOffering(null)}
+              className="w-full text-xs font-semibold"
+            >
+              بستن
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
