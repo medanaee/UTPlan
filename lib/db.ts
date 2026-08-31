@@ -2167,7 +2167,9 @@ export async function getProfessorById(id: string): Promise<Professor | null> {
 }
 
 export async function createProfessor(data: {
+  id?: string;
   facultyId: string;
+  code?: string;
   firstName?: string;
   lastName?: string;
   name?: string;
@@ -2176,8 +2178,9 @@ export async function createProfessor(data: {
   avatarUrl?: string;
   links?: Professor["links"];
 }): Promise<Professor> {
-  const id = `prf_${crypto.randomUUID().slice(0, 8)}`;
+  const id = data.id || `prf_${crypto.randomUUID().slice(0, 8)}`;
   const now = new Date().toISOString();
+  const code = data.code ? data.code.trim().toUpperCase() : null;
   const firstName = data.firstName?.trim() || "";
   const lastName = data.lastName?.trim() || "";
   const fullName = data.name?.trim() || [firstName, lastName].filter(Boolean).join(" ") || "استاد";
@@ -2188,12 +2191,13 @@ export async function createProfessor(data: {
     try {
       await d1
         .prepare(
-          `INSERT INTO professors (id, faculty_id, first_name, last_name, name, title, email, avatar_url, links, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          `INSERT INTO professors (id, faculty_id, code, first_name, last_name, name, title, email, avatar_url, links, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
         .bind(
           id,
           data.facultyId,
+          code,
           firstName || null,
           lastName || null,
           fullName,
@@ -2213,6 +2217,7 @@ export async function createProfessor(data: {
   const newProf: Professor = {
     id,
     facultyId: data.facultyId,
+    code: code || undefined,
     firstName: firstName || undefined,
     lastName: lastName || undefined,
     name: fullName,
@@ -2229,7 +2234,7 @@ export async function createProfessor(data: {
 
 export async function updateProfessor(
   id: string,
-  data: Partial<Pick<Professor, "firstName" | "lastName" | "name" | "title" | "email" | "avatarUrl" | "facultyId" | "links">>
+  data: Partial<Pick<Professor, "code" | "firstName" | "lastName" | "name" | "title" | "email" | "avatarUrl" | "facultyId" | "links">>
 ): Promise<Professor | null> {
   const d1 = getD1();
   if (d1) {
@@ -2237,6 +2242,7 @@ export async function updateProfessor(
       const existing = await getProfessorById(id);
       if (!existing) return null;
 
+      const code = data.code !== undefined ? (data.code?.trim().toUpperCase() || null) : (existing.code || null);
       const firstName = data.firstName !== undefined ? data.firstName.trim() : (existing.firstName || "");
       const lastName = data.lastName !== undefined ? data.lastName.trim() : (existing.lastName || "");
       let name = data.name !== undefined ? data.name.trim() : existing.name;
@@ -2253,10 +2259,11 @@ export async function updateProfessor(
       await d1
         .prepare(
           `UPDATE professors
-           SET first_name = ?, last_name = ?, name = ?, title = ?, email = ?, avatar_url = ?, faculty_id = ?, links = ?
+           SET code = ?, first_name = ?, last_name = ?, name = ?, title = ?, email = ?, avatar_url = ?, faculty_id = ?, links = ?
            WHERE id = ?`
         )
         .bind(
+          code,
           firstName || null,
           lastName || null,
           name,
@@ -2279,6 +2286,7 @@ export async function updateProfessor(
   const p = professorsStore.find((item) => item.id === id && !item.deletedAt);
   if (!p) return null;
 
+  if (data.code !== undefined) p.code = data.code?.trim().toUpperCase() || undefined;
   if (data.firstName !== undefined) p.firstName = data.firstName.trim();
   if (data.lastName !== undefined) p.lastName = data.lastName.trim();
 

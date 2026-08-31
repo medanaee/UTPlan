@@ -155,14 +155,16 @@ export function ProfessorManager({
         scholar: form.scholarLink.trim() || undefined,
       };
 
+      const cleanCode = form.code?.trim() ? form.code.trim().toUpperCase() : (editingProfessor ? null : undefined);
+
       const payload = {
-        code: form.code?.trim().toUpperCase() || undefined,
+        code: cleanCode,
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
         name: fullName,
         title: form.title,
-        email: form.email,
-        avatarUrl: form.avatarUrl,
+        email: form.email?.trim() || "",
+        avatarUrl: form.avatarUrl?.trim() || "",
         facultyId: form.facultyId,
         links: linksPayload,
       };
