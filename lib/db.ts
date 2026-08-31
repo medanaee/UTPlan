@@ -2180,7 +2180,9 @@ export async function createProfessor(data: {
 }): Promise<Professor> {
   const id = data.id || `prf_${crypto.randomUUID().slice(0, 8)}`;
   const now = new Date().toISOString();
-  const code = data.code ? data.code.trim().toUpperCase() : null;
+  const code = data.code?.trim()
+    ? data.code.trim().toUpperCase()
+    : `PRF-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
   const firstName = data.firstName?.trim() || "";
   const lastName = data.lastName?.trim() || "";
   const fullName = data.name?.trim() || [firstName, lastName].filter(Boolean).join(" ") || "استاد";
@@ -2242,7 +2244,10 @@ export async function updateProfessor(
       const existing = await getProfessorById(id);
       if (!existing) return null;
 
-      const code = data.code !== undefined ? (data.code?.trim().toUpperCase() || null) : (existing.code || null);
+      const code =
+        data.code !== undefined
+          ? (data.code?.trim() ? data.code.trim().toUpperCase() : existing.code || `PRF-${crypto.randomUUID().slice(0, 6).toUpperCase()}`)
+          : existing.code || `PRF-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
       const firstName = data.firstName !== undefined ? data.firstName.trim() : (existing.firstName || "");
       const lastName = data.lastName !== undefined ? data.lastName.trim() : (existing.lastName || "");
       let name = data.name !== undefined ? data.name.trim() : existing.name;
@@ -2476,16 +2481,36 @@ export async function getOfferingById(id: string): Promise<CourseOffering | null
 }
 
 export async function createOffering(
-  courseIdOrData: string | { courseId: string; professorId: string; code?: string; id?: string },
+  courseIdOrData:
+    | string
+    | {
+        courseId: string;
+        professorId?: string;
+        professorIds?: string[];
+        code?: string;
+        id?: string;
+      },
   professorIdArg?: string,
   codeArg?: string
 ): Promise<CourseOffering> {
   const courseId = typeof courseIdOrData === "object" ? courseIdOrData.courseId : courseIdOrData;
-  const professorId = typeof courseIdOrData === "object" ? courseIdOrData.professorId : professorIdArg!;
+  const profIds: string[] =
+    typeof courseIdOrData === "object"
+      ? Array.isArray(courseIdOrData.professorIds) && courseIdOrData.professorIds.length > 0
+        ? courseIdOrData.professorIds
+        : courseIdOrData.professorId
+        ? [courseIdOrData.professorId]
+        : []
+      : professorIdArg
+      ? [professorIdArg]
+      : [];
+
+  const primaryProfId =
+    profIds[0] || (typeof courseIdOrData === "object" ? courseIdOrData.professorId : "") || "";
   const code =
     typeof courseIdOrData === "object"
-      ? (courseIdOrData.code?.trim().toUpperCase() || `OFF-${crypto.randomUUID().slice(0, 6).toUpperCase()}`)
-      : (codeArg?.trim().toUpperCase() || `OFF-${crypto.randomUUID().slice(0, 6).toUpperCase()}`);
+      ? courseIdOrData.code?.trim().toUpperCase() || `OFF-${crypto.randomUUID().slice(0, 6).toUpperCase()}`
+      : codeArg?.trim().toUpperCase() || `OFF-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
   const id =
     typeof courseIdOrData === "object" && courseIdOrData.id
       ? courseIdOrData.id.trim()
@@ -2497,8 +2522,23 @@ export async function createOffering(
     try {
       await d1
         .prepare("INSERT INTO course_offerings (id, code, course_id, professor_id, created_at) VALUES (?, ?, ?, ?, ?)")
-        .bind(id, code, courseId, professorId, now)
+        .bind(id, code, courseId, primaryProfId, now)
         .run();
+
+      // Insert junction rows for all professors
+      for (let i = 0; i < profIds.length; i++) {
+        const pId = profIds[i];
+        const isPrimary = i === 0 ? 1 : 0;
+        const opId = `op_${id}_${pId}`;
+        await d1
+          .prepare(
+            `INSERT INTO offering_professors (id, offering_id, professor_id, is_primary, created_at)
+             VALUES (?, ?, ?, ?, ?)
+             ON CONFLICT(offering_id, professor_id) DO UPDATE SET is_primary = excluded.is_primary`
+          )
+          .bind(opId, id, pId, isPrimary, now)
+          .run();
+      }
 
       const offs = await getOfferings();
       const created = offs.find((o) => o.id === id);
@@ -2507,13 +2547,15 @@ export async function createOffering(
           id,
           code,
           courseId,
-          professorId,
+          professorId: primaryProfId,
+          professorIds: profIds,
           createdAt: now,
           deletedAt: null,
         }
       );
     } catch (err) {
       console.error("D1 createOffering error:", err);
+      throw err;
     }
   }
 
@@ -2522,7 +2564,8 @@ export async function createOffering(
     id,
     code,
     courseId,
-    professorId,
+    professorId: primaryProfId,
+    professorIds: profIds,
     createdAt: now,
     deletedAt: null,
   };
@@ -2532,26 +2575,61 @@ export async function createOffering(
 
 export async function updateOffering(
   id: string,
-  data: { courseId?: string; professorId?: string }
+  data: { courseId?: string; professorId?: string; professorIds?: string[]; code?: string }
 ): Promise<CourseOffering | null> {
   const d1 = getD1();
   if (d1) {
     try {
-      if (data.courseId && data.professorId) {
+      const profIds: string[] | undefined =
+        Array.isArray(data.professorIds) && data.professorIds.length > 0
+          ? data.professorIds
+          : data.professorId
+          ? [data.professorId]
+          : undefined;
+
+      const primaryProfId = profIds ? profIds[0] : data.professorId;
+      const code = data.code ? data.code.trim().toUpperCase() : undefined;
+
+      const sets: string[] = [];
+      const params: any[] = [];
+      if (data.courseId) {
+        sets.push("course_id = ?");
+        params.push(data.courseId);
+      }
+      if (primaryProfId) {
+        sets.push("professor_id = ?");
+        params.push(primaryProfId);
+      }
+      if (code) {
+        sets.push("code = ?");
+        params.push(code);
+      }
+
+      if (sets.length > 0) {
+        params.push(id);
         await d1
-          .prepare("UPDATE course_offerings SET course_id = ?, professor_id = ? WHERE id = ?")
-          .bind(data.courseId, data.professorId, id)
+          .prepare(`UPDATE course_offerings SET ${sets.join(", ")} WHERE id = ?`)
+          .bind(...params)
           .run();
-      } else if (data.courseId) {
-        await d1
-          .prepare("UPDATE course_offerings SET course_id = ? WHERE id = ?")
-          .bind(data.courseId, id)
-          .run();
-      } else if (data.professorId) {
-        await d1
-          .prepare("UPDATE course_offerings SET professor_id = ? WHERE id = ?")
-          .bind(data.professorId, id)
-          .run();
+      }
+
+      // If professorIds was provided, update offering_professors
+      if (profIds && profIds.length > 0) {
+        const now = new Date().toISOString();
+        await d1.prepare("DELETE FROM offering_professors WHERE offering_id = ?").bind(id).run();
+
+        for (let i = 0; i < profIds.length; i++) {
+          const pId = profIds[i];
+          const isPrimary = i === 0 ? 1 : 0;
+          const opId = `op_${id}_${pId}`;
+          await d1
+            .prepare(
+              `INSERT INTO offering_professors (id, offering_id, professor_id, is_primary, created_at)
+               VALUES (?, ?, ?, ?, ?)`
+            )
+            .bind(opId, id, pId, isPrimary, now)
+            .run();
+        }
       }
 
       const offs = await getOfferings();
@@ -2567,7 +2645,9 @@ export async function updateOffering(
   const o = offeringsStore.find((item) => item.id === id);
   if (!o) return null;
   if (data.courseId) o.courseId = data.courseId;
+  if (data.professorIds) o.professorIds = data.professorIds;
   if (data.professorId) o.professorId = data.professorId;
+  if (data.code) o.code = data.code;
   return o;
 }
 

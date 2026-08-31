@@ -150,6 +150,21 @@ CREATE TABLE IF NOT EXISTS course_offerings (
   UNIQUE(course_id, professor_id)
 );
 
+
+-- Offering Professors Junction Table (Co-teaching / Multi-professors)
+CREATE TABLE IF NOT EXISTS offering_professors (
+  id TEXT PRIMARY KEY,
+  offering_id TEXT NOT NULL,
+  professor_id TEXT NOT NULL,
+  is_primary INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (offering_id) REFERENCES course_offerings(id) ON DELETE CASCADE,
+  FOREIGN KEY (professor_id) REFERENCES professors(id) ON DELETE CASCADE,
+  UNIQUE(offering_id, professor_id)
+);
+CREATE INDEX IF NOT EXISTS idx_offering_prof_offering ON offering_professors(offering_id);
+CREATE INDEX IF NOT EXISTS idx_offering_prof_professor ON offering_professors(professor_id);
+
 -- Course Events Table
 CREATE TABLE IF NOT EXISTS course_events (
   id TEXT PRIMARY KEY,
