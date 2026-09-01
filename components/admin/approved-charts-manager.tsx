@@ -285,7 +285,7 @@ export function ApprovedChartsManager({
       {/* Current Selected Track Approved Charts Section */}
       {selectedTrackId && (
         <Card className="border-border/70 shadow-xs">
-          <CardHeader className="p-4 sm:p-5 border-b pb-3">
+          <CardHeader className="border-b">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2.5">
                 <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold">
@@ -336,7 +336,7 @@ export function ApprovedChartsManager({
             </div>
           </CardHeader>
 
-          <CardContent className="p-4 sm:p-6 space-y-4">
+          <CardContent className="space-y-4">
             {trackApprovedCharts.length > 0 ? (
               <div className="space-y-4">
                 {trackApprovedCharts.map((chart) => {
@@ -480,7 +480,7 @@ export function ApprovedChartsManager({
 
       {/* All Approved Charts List Table */}
       <Card className="border-border/70 shadow-xs">
-        <CardHeader className="p-4 border-b pb-3">
+        <CardHeader className="border-b pb-3">
           <CardTitle className="text-sm flex items-center justify-between">
             <span className="flex items-center gap-2">
               <Layers className="h-4 w-4 text-primary" />

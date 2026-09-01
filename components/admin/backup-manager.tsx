@@ -252,7 +252,7 @@ export function BackupManager() {
             )}
           </div>
         </CardHeader>
-        <CardContent className="pt-4">
+        <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {stats?.tableCounts &&
               Object.entries(stats.tableCounts).map(([table, count]) => {
@@ -271,7 +271,7 @@ export function BackupManager() {
                         {meta.label}
                       </span>
                     </div>
-                    <span className="text-xs font-bold text-foreground font-mono shrink-0">
+                    <span className="text-xs font-bold text-foreground shrink-0">
                       {count.toLocaleString("fa-IR")}
                     </span>
                   </div>
@@ -295,7 +295,7 @@ export function BackupManager() {
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="pt-4 space-y-4 flex-1">
+          <CardContent className="space-y-4 flex-1">
             <div className="p-3.5 rounded-2xl bg-muted/20 border border-border/60 text-xs space-y-2 leading-relaxed">
               <span className="font-bold text-foreground block flex items-center gap-1.5">
                 <Sparkles className="h-3.5 w-3.5 text-primary" />
@@ -345,7 +345,7 @@ export function BackupManager() {
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="pt-4 space-y-4 flex-1">
+          <CardContent className="space-y-4 flex-1">
             {/* Warning Alert */}
             <div className="p-3 rounded-2xl bg-destructive/10 border border-destructive/30 text-destructive text-xs space-y-1.5">
               <div className="flex items-center gap-2 font-bold">
@@ -394,11 +394,6 @@ export function BackupManager() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-xs">
                 <Label className="text-xs font-semibold">یا محتوای JSON را مستقیماً وارد کنید:</Label>
-                {jsonText && (
-                  <Badge variant="outline" className="text-[10px] font-mono">
-                    {jsonText.length} کاراکتر
-                  </Badge>
-                )}
               </div>
               <Textarea
                 value={jsonText}

@@ -195,7 +195,7 @@ export function RuleSandboxTester({
         </div>
       </CardHeader>
 
-      <CardContent className="p-4 space-y-5">
+      <CardContent className="space-y-5">
         {/* ========================================================================= */}
         {/* VALIDATION REPORT BANNER */}
         {/* ========================================================================= */}

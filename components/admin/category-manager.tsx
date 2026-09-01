@@ -34,6 +34,7 @@ import { CategoryPicker } from "./category-picker";
 import { useAdminStore } from "@/lib/stores/admin-store";
 import { TrackCloneDialog } from "./track-clone-dialog";
 import { CategoryCourseAssignDialog } from "./category-course-assign-dialog";
+import { RuleCategoryNode } from "./rule-category-node";
 import type { Course, VisualCategory, RuleCategory } from "@/lib/types";
 
 const COLOR_PRESETS = [
@@ -780,8 +781,6 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
             const topLevelCats = ruleCats.filter(
               (c) => !c.parentId || !ruleCats.some((p) => p.id === c.parentId)
             );
-            const getChildCats = (parentId: string) =>
-              ruleCats.filter((c) => c.parentId === parentId);
 
             if (ruleCats.length === 0) {
               return (
@@ -792,391 +791,28 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
               );
             }
 
-            return topLevelCats.map((parentCat, pIdx) => {
-              const children = getChildCats(parentCat.id);
-              const parentAssignedCourses = getRuleCategoryCourses(parentCat.id);
-              const parentUnits = parentAssignedCourses.reduce((sum, c) => sum + (c.units || 3), 0);
-
-              return (
-                <div
-                  key={parentCat.id}
-                  draggable
-                  onDragStart={(e) => {
-                    e.stopPropagation();
-                    setDraggedRcatId(parentCat.id);
-                  }}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (dragOverRcatId !== parentCat.id) setDragOverRcatId(parentCat.id);
-                  }}
-                  onDragLeave={() => {
-                    if (dragOverRcatId === parentCat.id) setDragOverRcatId(null);
-                  }}
-                  onDrop={(e) => {
-                    e.stopPropagation();
-                    handleRcatDrop(parentCat.id, null);
-                  }}
-                  onDragEnd={() => {
-                    setDraggedRcatId(null);
-                    setDragOverRcatId(null);
-                  }}
-                  className={"rounded-4xl border border-border/70 bg-card p-4 transition-all duration-150 space-y-3.5 shadow-2xs " + (
-                    draggedRcatId === parentCat.id
-                      ? "opacity-40 border-dashed border-primary bg-primary/5 scale-[0.99]"
-                      : dragOverRcatId === parentCat.id
-                      ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary/40"
-                      : "hover:border-border"
-                  )}
-                >
-                  {/* LEVEL 1: Parent Category Row */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 select-none">
-                    <div className="flex items-center gap-2.5 cursor-grab active:cursor-grabbing">
-                      <GripVertical className="h-4 w-4 text-muted-foreground/60 shrink-0 cursor-grab" />
-                      <span className="font-bold text-sm text-foreground">{parentCat.name}</span>
-                      {parentCat.code && (
-                        <Badge variant="outline" className="text-xs px-1.5 py-0.5 border-primary/40 text-primary bg-primary/5 font-semibold">
-                          {parentCat.code}
-                        </Badge>
-                      )}
-                      <Badge variant="secondary" className="text-xs font-medium px-2 py-0.5">
-                        {parentAssignedCourses.length} درس ({parentUnits} واحد)
-                      </Badge>
-                      {children.length > 0 && (
-                        <Badge variant="outline" className="text-xs px-2 py-0.5 font-normal">
-                          {children.length} زیردسته
-                        </Badge>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-1.5 self-end sm:self-auto">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          setAssignModal({
-                            open: true,
-                            type: "rule",
-                            categoryId: parentCat.id,
-                            categoryName: parentCat.name,
-                          })
-                        }
-                        className="h-8 text-xs gap-1.5 shadow-2xs font-medium"
-                      >
-                        <BookOpen className="h-3.5 w-3.5 text-primary" />
-                        تخصیص دروس
-                      </Button>
-
-                      {/* Level 1 can add Level 2 Subcategory */}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setRcatForm({ code: "", name: "", parentId: parentCat.id });
-                          setRcatModalOpen(true);
-                        }}
-                        className="h-8 text-xs px-2 gap-1 text-primary hover:bg-primary/10 font-medium"
-                        title="افزودن زیردسته (سطح ۲)"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                        زیردسته
-                      </Button>
-
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenEditRcat(parentCat);
-                        }}
-                        className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                        title="ویرایش دسته قوانین"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          if (!confirm("آیا از حذف دسته قوانین «" + parentCat.name + "» و زیردسته‌های آن مطمئن هستید؟")) return;
-                          await fetch("/api/categories?id=" + parentCat.id + "&type=rule", {
-                            method: "DELETE",
-                          });
-                          const res = await fetch(
-                            "/api/categories?trackId=" + selectedTrackId
-                          ).then((r) => r.json());
-                          if (res.success) setRuleCats(res.data.rule);
-                        }}
-                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                        title="حذف دسته"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Level 1 Assigned Courses Chips */}
-                  <div className="pt-2.5 border-t border-border/50">
-                    {renderCourseChips(parentCat.id, "rule", parentCat.name)}
-                  </div>
-
-                  {/* LEVEL 2 & LEVEL 3: Nested Children Subcategories */}
-                  {children.length > 0 && (
-                    <div className="mr-4 pr-4 border-r-2 border-primary/25 space-y-3.5 pt-2">
-                      {children.map((childCat, cIdx) => {
-                        const subChildren = getChildCats(childCat.id);
-                        const childAssignedCourses = getRuleCategoryCourses(childCat.id);
-                        const childUnits = childAssignedCourses.reduce((sum, c) => sum + (c.units || 3), 0);
-
-                        return (
-                          <div
-                            key={childCat.id}
-                            draggable
-                            onDragStart={(e) => {
-                              e.stopPropagation();
-                              setDraggedRcatId(childCat.id);
-                            }}
-                            onDragOver={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              if (dragOverRcatId !== childCat.id) setDragOverRcatId(childCat.id);
-                            }}
-                            onDragLeave={() => {
-                              if (dragOverRcatId === childCat.id) setDragOverRcatId(null);
-                            }}
-                            onDrop={(e) => {
-                              e.stopPropagation();
-                              handleRcatDrop(childCat.id, parentCat.id);
-                            }}
-                            onDragEnd={() => {
-                              setDraggedRcatId(null);
-                              setDragOverRcatId(null);
-                            }}
-                            className={"rounded-2xl border border-border/70 bg-card p-4 transition-all duration-150 space-y-3 shadow-2xs " + (
-                              draggedRcatId === childCat.id
-                                ? "opacity-40 border-dashed border-primary bg-primary/5"
-                                : dragOverRcatId === childCat.id
-                                ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary/30"
-                                : "hover:border-primary/40"
-                            )}
-                          >
-                            {/* Level 2 Row */}
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 select-none">
-                              <div className="flex items-center gap-2.5 cursor-grab active:cursor-grabbing">
-                                <GripVertical className="h-4 w-4 text-muted-foreground/60 shrink-0 cursor-grab" />
-                                <CornerDownLeft className="h-4 w-4 text-muted-foreground/70 shrink-0" />
-                                <span className="font-bold text-sm text-foreground">{childCat.name}</span>
-                                {childCat.code && (
-                                  <Badge variant="outline" className="text-xs px-1.5 py-0.5 border-primary/40 text-primary bg-primary/5 font-semibold">
-                                    {childCat.code}
-                                  </Badge>
-                                )}
-                                <Badge variant="secondary" className="text-xs font-medium px-2 py-0.5">
-                                  {childAssignedCourses.length} درس ({childUnits} واحد)
-                                </Badge>
-                                {subChildren.length > 0 && (
-                                  <Badge variant="outline" className="text-xs px-2 py-0.5 font-normal">
-                                    {subChildren.length} زیردسته
-                                  </Badge>
-                                )}
-                              </div>
-
-                              <div className="flex items-center gap-1.5 self-end sm:self-auto">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() =>
-                                    setAssignModal({
-                                      open: true,
-                                      type: "rule",
-                                      categoryId: childCat.id,
-                                      categoryName: childCat.name,
-                                    })
-                                  }
-                                  className="h-8 text-xs gap-1.5 shadow-2xs font-medium"
-                                >
-                                  <BookOpen className="h-3.5 w-3.5 text-primary" />
-                                  تخصیص دروس
-                                </Button>
-
-                                {/* Level 2 can add Level 3 Subcategory */}
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setRcatForm({ code: "", name: "", parentId: childCat.id });
-                                    setRcatModalOpen(true);
-                                  }}
-                                  className="h-8 text-xs px-2 gap-1 text-primary hover:bg-primary/10 font-medium"
-                                  title="افزودن زیردسته سطح ۳"
-                                >
-                                  <Plus className="h-3.5 w-3.5" />
-                                  زیردسته
-                                </Button>
-
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleOpenEditRcat(childCat);
-                                  }}
-                                  className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                                  title="ویرایش زیردسته"
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={async (e) => {
-                                    e.stopPropagation();
-                                    if (!confirm("آیا از حذف زیردسته «" + childCat.name + "» مطمئن هستید؟")) return;
-                                    await fetch("/api/categories?id=" + childCat.id + "&type=rule", {
-                                      method: "DELETE",
-                                    });
-                                    const res = await fetch(
-                                      "/api/categories?trackId=" + selectedTrackId
-                                    ).then((r) => r.json());
-                                    if (res.success) setRuleCats(res.data.rule);
-                                  }}
-                                  className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                                  title="حذف زیردسته"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-
-                            {/* Level 2 Assigned Courses Chips */}
-                            <div className="pt-2.5 border-t border-border/50">
-                              {renderCourseChips(childCat.id, "rule", childCat.name)}
-                            </div>
-
-                            {/* LEVEL 3: Deepest Allowed Subchildren (NO +زیردسته button here!) */}
-                            {subChildren.length > 0 && (
-                              <div className="mr-4 pr-4 border-r-2 border-primary/25 space-y-3.5 pt-2">
-                                {subChildren.map((subChild, sIdx) => {
-                                  const subAssignedCourses = getRuleCategoryCourses(subChild.id);
-                                  const subUnits = subAssignedCourses.reduce((sum, c) => sum + (c.units || 3), 0);
-
-                                  return (
-                                    <div
-                                      key={subChild.id}
-                                      draggable
-                                      onDragStart={(e) => {
-                                        e.stopPropagation();
-                                        setDraggedRcatId(subChild.id);
-                                      }}
-                                      onDragOver={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        if (dragOverRcatId !== subChild.id) setDragOverRcatId(subChild.id);
-                                      }}
-                                      onDragLeave={() => {
-                                        if (dragOverRcatId === subChild.id) setDragOverRcatId(null);
-                                      }}
-                                      onDrop={(e) => {
-                                        e.stopPropagation();
-                                        handleRcatDrop(subChild.id, childCat.id);
-                                      }}
-                                      onDragEnd={() => {
-                                        setDraggedRcatId(null);
-                                        setDragOverRcatId(null);
-                                      }}
-                                      className="rounded-lg border border-border/70 bg-card p-4 transition-all duration-150 space-y-3 shadow-2xs"
-                                    >
-                                      {/* Level 3 Row */}
-                                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 select-none">
-                                        <div className="flex items-center gap-2.5 cursor-grab active:cursor-grabbing">
-                                          <GripVertical className="h-4 w-4 text-muted-foreground/60 shrink-0 cursor-grab" />
-                                          <CornerDownLeft className="h-4 w-4 text-muted-foreground/70 shrink-0" />
-                                          <span className="font-bold text-sm text-foreground">{subChild.name}</span>
-                                          {subChild.code && (
-                                            <Badge variant="outline" className="text-xs px-1.5 py-0.5 border-primary/40 text-primary bg-primary/5 font-semibold">
-                                              {subChild.code}
-                                            </Badge>
-                                          )}
-                                          <Badge variant="secondary" className="text-xs font-medium px-2 py-0.5">
-                                            {subAssignedCourses.length} درس ({subUnits} واحد)
-                                          </Badge>
-                                        </div>
-
-                                        <div className="flex items-center gap-1.5 self-end sm:self-auto">
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() =>
-                                              setAssignModal({
-                                                open: true,
-                                                type: "rule",
-                                                categoryId: subChild.id,
-                                                categoryName: subChild.name,
-                                              })
-                                            }
-                                            className="h-8 text-xs gap-1.5 shadow-2xs font-medium"
-                                          >
-                                            <BookOpen className="h-3.5 w-3.5 text-primary" />
-                                            تخصیص دروس
-                                          </Button>
-
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleOpenEditRcat(subChild);
-                                            }}
-                                            className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                                            title="ویرایش زیردسته"
-                                          >
-                                            <Pencil className="h-4 w-4" />
-                                          </Button>
-
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={async (e) => {
-                                              e.stopPropagation();
-                                              if (!confirm("آیا از حذف زیردسته «" + subChild.name + "» مطمئن هستید؟")) return;
-                                              await fetch("/api/categories?id=" + subChild.id + "&type=rule", {
-                                                method: "DELETE",
-                                              });
-                                              const res = await fetch(
-                                                "/api/categories?trackId=" + selectedTrackId
-                                              ).then((r) => r.json());
-                                              if (res.success) setRuleCats(res.data.rule);
-                                            }}
-                                            className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                                            title="حذف زیردسته"
-                                          >
-                                            <Trash2 className="h-4 w-4" />
-                                          </Button>
-                                        </div>
-                                      </div>
-
-                                      {/* Level 3 Assigned Courses */}
-                                      <div className="pt-2.5 border-t border-border/50">
-                                        {renderCourseChips(subChild.id, "rule", subChild.name)}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            });
+            return topLevelCats.map((parentCat) => (
+              <RuleCategoryNode
+                key={parentCat.id}
+                category={parentCat}
+                depth={1}
+                maxDepth={3}
+                ruleCats={ruleCats}
+                draggedRcatId={draggedRcatId}
+                dragOverRcatId={dragOverRcatId}
+                selectedTrackId={selectedTrackId}
+                setDraggedRcatId={setDraggedRcatId}
+                setDragOverRcatId={setDragOverRcatId}
+                handleRcatDrop={handleRcatDrop}
+                handleOpenEditRcat={handleOpenEditRcat}
+                setRcatForm={setRcatForm}
+                setRcatModalOpen={setRcatModalOpen}
+                setAssignModal={setAssignModal}
+                setRuleCats={setRuleCats}
+                getRuleCategoryCourses={getRuleCategoryCourses}
+                renderCourseChips={renderCourseChips}
+              />
+            ));
           })()}
         </CardContent>
       </Card>

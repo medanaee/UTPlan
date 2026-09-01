@@ -235,7 +235,7 @@ export function RuleQueryBuilder({
         </div>
       </CardHeader>
 
-      <CardContent className="p-4 space-y-4">
+      <CardContent className="space-y-4">
         {showJsonPreview && (
           <div className="rounded-xl border border-border/80 bg-slate-950 p-3 text-emerald-400 text-[11px] overflow-x-auto max-h-60" dir="ltr">
             <pre>{JSON.stringify(tree, null, 2)}</pre>
