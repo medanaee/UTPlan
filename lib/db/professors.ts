@@ -207,6 +207,10 @@ export async function updateProfessor(
       sets.push("links = ?");
       params.push(data.links ? JSON.stringify(data.links) : null);
     }
+    if (data.deletedAt !== undefined) {
+      sets.push("deleted_at = ?");
+      params.push(data.deletedAt);
+    }
 
     if (sets.length === 0) return await getProfessorById(id);
 
@@ -242,33 +246,10 @@ export async function deleteProfessorsByFaculty(facultyId: string): Promise<bool
   if (!d1) return false;
 
   try {
+    const now = new Date().toISOString();
     await d1
-      .prepare(
-        `DELETE FROM reviews 
-         WHERE (target_type = 'professor' AND target_id IN (SELECT id FROM professors WHERE faculty_id = ?))
-            OR (target_type = 'offering' AND target_id IN (
-              SELECT o.id FROM course_offerings o
-              JOIN offering_professors op ON o.id = op.offering_id
-              WHERE op.professor_id IN (SELECT id FROM professors WHERE faculty_id = ?)
-            ))`
-      )
-      .bind(facultyId, facultyId)
-      .run();
-
-    await d1
-      .prepare(
-        `DELETE FROM course_offerings 
-         WHERE id IN (
-           SELECT op.offering_id FROM offering_professors op
-           WHERE op.professor_id IN (SELECT id FROM professors WHERE faculty_id = ?)
-         )`
-      )
-      .bind(facultyId)
-      .run();
-
-    await d1
-      .prepare("DELETE FROM professors WHERE faculty_id = ?")
-      .bind(facultyId)
+      .prepare("UPDATE professors SET deleted_at = ? WHERE faculty_id = ? AND deleted_at IS NULL")
+      .bind(now, facultyId)
       .run();
 
     return true;

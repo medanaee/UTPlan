@@ -72,13 +72,18 @@ export async function POST(request: NextRequest) {
       await deleteProfessorsByFaculty(targetFacultyId);
     }
 
-    // 2. Fetch current professors of target faculty
-    const currentProfs = await getProfessors(targetFacultyId);
+    // 2. Fetch professors of target faculty (including soft-deleted for seamless code reuse/restoration)
+    const { results: allProfRows } = await (async () => {
+      const { getD1 } = await import("@/lib/db/client");
+      const d1 = getD1();
+      if (!d1) return { results: [] };
+      return await d1.prepare("SELECT * FROM professors WHERE faculty_id = ?").bind(targetFacultyId).all();
+    })();
 
     // Code is the ONLY matching criterion
-    const profCodeMap = new Map<string, typeof currentProfs[0]>(); // code -> prof
+    const profCodeMap = new Map<string, any>(); // code -> prof
 
-    currentProfs.forEach((p) => {
+    (allProfRows || []).forEach((p: any) => {
       if (p.code) profCodeMap.set(p.code.trim().toUpperCase(), p);
     });
 
@@ -138,7 +143,7 @@ export async function POST(request: NextRequest) {
       const existingMatch = profCodeMap.get(cleanCode);
 
       if (existingMatch) {
-        // Update existing professor
+        // Update existing professor (and restore if previously soft-deleted)
         try {
           await updateProfessor(existingMatch.id, {
             facultyId: targetFacultyId,
@@ -146,10 +151,11 @@ export async function POST(request: NextRequest) {
             firstName: rawFirstName,
             lastName: rawLastName,
             name: rawFullName,
-            avatarUrl: cleanAvatarUrl !== undefined ? cleanAvatarUrl : existingMatch.avatarUrl,
+            avatarUrl: cleanAvatarUrl !== undefined ? cleanAvatarUrl : (mode === "replace" ? undefined : (existingMatch.avatar_url || existingMatch.avatarUrl)),
             title: cleanTitle,
-            email: cleanEmail || existingMatch.email,
-            links: cleanLinks !== undefined ? cleanLinks : existingMatch.links,
+            email: cleanEmail || (mode === "replace" ? "" : (existingMatch.email || "")),
+            links: cleanLinks !== undefined ? cleanLinks : (mode === "replace" ? undefined : existingMatch.links),
+            deletedAt: null,
           });
           updatedCount++;
         } catch (err: any) {
