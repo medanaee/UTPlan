@@ -20,28 +20,24 @@ export async function GET(request: NextRequest) {
 
     const exportData = offerings.map((o) => {
       const crs = courseMap.get(o.courseId);
-      const offeringProfs = (o.professors || []).map((p) => {
-        const fullProf = profMap.get(p.id);
-        return {
-          professorCode: fullProf?.code || p.code || undefined,
-          professorName: fullProf?.name || p.name || "",
-          professorEmail: fullProf?.email || p.email || undefined,
-        };
-      });
 
-      const primaryProf = offeringProfs[0];
+      // Extract all professor codes in order
+      const profCodes = (o.professors || [])
+        .map((p) => profMap.get(p.id)?.code || p.code)
+        .filter(Boolean) as string[];
+
+      const primaryProf = (o.professors || []).find((p) => p.isPrimary) || (o.professors || [])[0];
+      const mainProfCode = primaryProf ? (profMap.get(primaryProf.id)?.code || primaryProf.code || "") : "";
+
+      const finalProfCodes = profCodes.length > 0 ? profCodes : (mainProfCode ? [mainProfCode] : []);
 
       return {
-        code: o.code || undefined,
+        code: o.code || "",
         courseCode: crs?.code || o.courseCode || "",
-        courseName: crs?.name || o.courseName || "",
+        mainProfessor: mainProfCode || (finalProfCodes[0] || ""),
+        professors: finalProfCodes,
         description: o.description || undefined,
-        // Array of professors (supporting co-teaching)
-        professors: offeringProfs,
-        // Legacy single-professor fields for convenience
-        professorCode: primaryProf?.professorCode || undefined,
-        professorName: o.professorName || primaryProf?.professorName || "",
-        professorEmail: primaryProf?.professorEmail || undefined,
+        finalizedSemesters: o.finalizedSemesters && o.finalizedSemesters.length > 0 ? o.finalizedSemesters : undefined,
       };
     });
 

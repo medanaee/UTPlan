@@ -38,92 +38,63 @@ interface OfferingImportDialogProps {
 const OFFERING_SCHEMA_DESCRIPTOR = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
   title: "قالب و اسناد ورود ارائه‌های درسی (Course Offerings JSON Schema)",
-  description: "اسکیمای استاندارد برای ورود دسته‌ای ارائه‌های درسی و انتساب دروس به یک یا چند استاد (هم‌تدریس)",
+  description: "اسکیمای استاندارد برای ورود دسته‌ای ارائه‌های درسی بر اساس کدهای شناسایی",
   type: "array",
   items: {
     type: "object",
+    required: ["code", "courseCode", "mainProfessor", "professors"],
     properties: {
       code: {
         type: "string",
-        description: "کد یکتای ارائه درسی (اختیاری). در صورت عدم ارسال، سیستم خودکار تولید می‌کند.",
-        example: "OFF-101"
+        description: "کد یکتا و معیار تشخیص ارائه درسی (اجباری)",
+        example: "OFF-101",
       },
       courseCode: {
         type: "string",
-        description: "کد رسمی درس (اولویت اول برای شناسایی درس)",
-        example: "8101234"
+        description: "کد رسمی درس در سامانه (اجباری)",
+        example: "8101234",
       },
-      courseName: {
+      mainProfessor: {
         type: "string",
-        description: "نام درس (اولویت دوم در صورت نبود کد درس)",
-        example: "برنامه‌نویسی پیشرفته"
-      },
-      description: {
-        type: "string",
-        description: "توضیحات و نکات اختیاری ارائه (منابع، پیش‌نیازهای مهارتی و ...)",
-        example: "این درس به همراه کارگاه عملی و پروژه نهایی ارائه می‌شود."
+        description: "کد استاد اصلی ارائه که حتماً باید در آرایه professors نیز باشد (اجباری)",
+        example: "PRF-101",
       },
       professors: {
         type: "array",
-        description: "لیست اساتید این ارائه (برای ارائه‌های با چند استاد هم‌تدریس)",
-        items: {
-          type: "object",
-          properties: {
-            professorCode: { type: "string", description: "کد استاد (اولویت اول)" },
-            professorEmail: { type: "string", description: "ایمیل استاد (اولویت دوم)" },
-            professorName: { type: "string", description: "نام کامل استاد (اولویت سوم)" }
-          }
-        },
-        example: [
-          { professorCode: "PRF-101" },
-          { professorName: "سارا رضایی" }
-        ]
+        items: { type: "string" },
+        description: "آرایه‌ای از کدهای اساتید مدرس ارائه (شامل حداقل یک کد) (اجباری)",
+        example: ["PRF-101", "PRF-102"],
       },
-      professorCodes: {
+      description: {
+        type: "string",
+        description: "توضیحات و نکات اختیاری ارائه",
+        example: "این ارائه شامل کارگاه عملی و پروژه نهایی است.",
+      },
+      finalizedSemesters: {
         type: "array",
         items: { type: "string" },
-        description: "آرایه‌ای از کدهای اساتید (جایگزین ساده‌تر)",
-        example: ["PRF-101", "PRF-102"]
+        description: "لیست اختیاری ترم‌های ارائه",
+        example: ["1403-1", "1403-2"],
       },
-      professorCode: {
-        type: "string",
-        description: "کد یکتای استاد (برای ارائه‌های تک‌استادی)",
-        example: "PRF-101"
-      },
-      professorEmail: {
-        type: "string",
-        format: "email",
-        description: "ایمیل رسمی استاد (برای ارائه‌های تک‌استادی)",
-        example: "amohammadi@ut.ac.ir"
-      },
-      professorName: {
-        type: "string",
-        description: "نام کامل استاد (برای ارائه‌های تک‌استادی)",
-        example: "علی محمدی"
-      }
-    }
+    },
   },
   examples: [
     [
       {
         code: "OFF-101",
         courseCode: "8101234",
-        description: "ارائه ویژه به همراه تمرین‌یار و پروژه تیمی",
-        professors: [
-          { professorCode: "PRF-101" },
-          { professorName: "سارا رضایی" }
-        ]
+        mainProfessor: "PRF-101",
+        professors: ["PRF-101", "PRF-102"],
+        description: "ارائه با پروژه تیمی",
       },
       {
+        code: "OFF-102",
         courseCode: "8101101",
-        professorCodes: ["PRF-102", "PRF-103"]
+        mainProfessor: "PRF-103",
+        professors: ["PRF-103"],
       },
-      {
-        courseName: "ساختمان داده‌ها و الگوریتم‌ها",
-        professorName: "علی محمدی"
-      }
-    ]
-  ]
+    ],
+  ],
 };
 
 export function OfferingImportDialog({
@@ -178,48 +149,6 @@ export function OfferingImportDialog({
   const activeFaculty =
     targetFaculty ||
     faculties.find((f) => f.id === (selectedFacultyId || defaultFacultyId));
-
-  const handleDownloadSample = () => {
-    const sampleData = [
-      {
-        code: "OFF-101",
-        courseCode: "8101234",
-        courseName: "برنامه‌نویسی پیشرفته",
-        professors: [
-          { professorCode: "PRF-101", professorName: "علی محمدی" },
-          { professorCode: "PRF-102", professorName: "سارا رضایی" }
-        ]
-      },
-      {
-        code: "OFF-102",
-        courseCode: "8101101",
-        courseName: "مبانی کامپیوتر و برنامه‌سازی",
-        professorCode: "PRF-101",
-        professorName: "علی محمدی"
-      },
-      {
-        code: "OFF-103",
-        courseCode: "8101201",
-        courseName: "مدارهای الکتریکی ۱",
-        professorCodes: ["PRF-103", "PRF-104"]
-      },
-      {
-        code: "OFF-104",
-        courseName: "ساختمان داده‌ها و الگوریتم‌ها",
-        professorEmail: "amohammadi@ut.ac.ir"
-      }
-    ];
-
-    const dataStr =
-      "data:text/json;charset=utf-8," +
-      encodeURIComponent(JSON.stringify(sampleData, null, 2));
-    const downloadAnchor = document.createElement("a");
-    downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", "sample-offerings.json");
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
-  };
 
   const handleDownloadSchemaDescriptor = () => {
     const dataStr =
@@ -413,34 +342,22 @@ export function OfferingImportDialog({
             </div>
           </div>
 
-          {/* Detailed Schema Descriptor & Sample Download Banner */}
+          {/* Detailed Schema Descriptor Download Banner */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 p-3 rounded-2xl bg-primary/5 border border-primary/20">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Sparkles className="h-4 w-4 text-primary shrink-0" />
-              <span>فایل‌های الگو و راهنمای ساختار ارائه‌های درسی (تک‌استادی و چنداستادی):</span>
+              <span>فایل توصیف‌کننده اسکیمای استاندارد JSON ارائه‌ها:</span>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleDownloadSample}
-                className="h-7 text-xs font-medium gap-1.5 shadow-2xs hover:bg-background shrink-0"
-              >
-                <Download className="h-3.5 w-3.5 text-primary" />
-                دانلود فایل نمونه (Sample JSON)
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleDownloadSchemaDescriptor}
-                className="h-7 text-xs font-medium gap-1.5 shadow-2xs hover:bg-background shrink-0"
-              >
-                <Download className="h-3.5 w-3.5 text-primary" />
-                دانلود توصیف اسکیما (Schema JSON)
-              </Button>
-            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadSchemaDescriptor}
+              className="h-7 text-xs font-medium gap-1.5 shadow-2xs hover:bg-background shrink-0"
+            >
+              <Download className="h-3.5 w-3.5 text-primary" />
+              دانلود توصیف اسکیما (Schema JSON)
+            </Button>
           </div>
 
           {/* File Upload Area */}
@@ -486,7 +403,7 @@ export function OfferingImportDialog({
             <Textarea
               value={jsonText}
               onChange={(e) => handleTextChange(e.target.value)}
-              placeholder='[ { "code": "OFF-101", "courseCode": "8101234", "professorCode": "PRF-1" } ]'
+              placeholder='[ { "code": "OFF-101", "courseCode": "8101234", "mainProfessor": "PRF-101", "professors": ["PRF-101", "PRF-102"] } ]'
               rows={6}
               className="text-xs bg-background resize-none font-sans leading-relaxed"
               dir="ltr"
@@ -511,29 +428,23 @@ export function OfferingImportDialog({
 
               <div className="max-h-36 overflow-y-auto space-y-1.5 text-xs pr-1">
                 {parsedData.slice(0, 10).map((o, idx) => {
-                  const courseDesc = o.courseCode || o.courseName || "درس نامشخص";
+                  const courseDesc = o.courseCode || "کد درس نامشخص";
                   const profDesc =
                     Array.isArray(o.professors) && o.professors.length > 0
-                      ? o.professors
-                          .map((p: any) => p.professorName || p.professorCode || p.professorEmail || "استاد")
-                          .join(" و ")
-                      : Array.isArray(o.professorCodes) && o.professorCodes.length > 0
-                      ? o.professorCodes.join("، ")
-                      : Array.isArray(o.professorNames) && o.professorNames.length > 0
-                      ? o.professorNames.join(" و ")
-                      : o.professorCode || o.professorEmail || o.professorName || "استاد نامشخص";
+                      ? o.professors.join("، ")
+                      : o.mainProfessor || "اساتید نامشخص";
                   return (
                     <div
                       key={idx}
                       className="flex items-center justify-between p-2 rounded-xl bg-card border border-border/70 text-xs"
                     >
                       <div className="flex items-center gap-2 truncate">
-                        <Badge variant="outline" className="text-[10px] font-mono">
-                          {o.code || "تولید خودکار کد"}
+                        <Badge variant="outline" className="text-[10px] font-semibold">
+                          {o.code || "بدون کد"}
                         </Badge>
-                        <span className="font-semibold truncate text-foreground">{courseDesc}</span>
-                        <span className="text-muted-foreground text-[10px]">با</span>
-                        <span className="text-primary truncate">{profDesc}</span>
+                        <span className="font-semibold truncate text-foreground">درس: {courseDesc}</span>
+                        <span className="text-muted-foreground text-[10px]">استاد اصلی: {o.mainProfessor || "---"}</span>
+                        <span className="text-primary truncate">اساتید: {profDesc}</span>
                       </div>
                     </div>
                   );

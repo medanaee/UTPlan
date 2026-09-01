@@ -350,6 +350,10 @@ export async function updateOffering(
       sets.push("finalized_semesters = ?");
       params.push(JSON.stringify(data.finalizedSemesters || []));
     }
+    if (data.deletedAt !== undefined) {
+      sets.push("deleted_at = ?");
+      params.push(data.deletedAt);
+    }
 
     if (sets.length > 0) {
       params.push(id);
@@ -406,36 +410,13 @@ export async function deleteOfferingsByFaculty(facultyId: string): Promise<boole
   if (!d1) return false;
 
   try {
+    const now = new Date().toISOString();
     await d1
       .prepare(
-        `DELETE FROM reviews 
-         WHERE target_type = 'offering' AND target_id IN (
-           SELECT o.id FROM course_offerings o
-           JOIN courses c ON o.course_id = c.id
-           WHERE c.faculty_id = ?
-         )`
+        `UPDATE course_offerings SET deleted_at = ?
+         WHERE course_id IN (SELECT id FROM courses WHERE faculty_id = ?) AND deleted_at IS NULL`
       )
-      .bind(facultyId)
-      .run();
-
-    await d1
-      .prepare(
-        `DELETE FROM course_events 
-         WHERE offering_id IN (
-           SELECT o.id FROM course_offerings o
-           JOIN courses c ON o.course_id = c.id
-           WHERE c.faculty_id = ?
-         )`
-      )
-      .bind(facultyId)
-      .run();
-
-    await d1
-      .prepare(
-        `DELETE FROM course_offerings 
-         WHERE course_id IN (SELECT id FROM courses WHERE faculty_id = ?)`
-      )
-      .bind(facultyId)
+      .bind(now, facultyId)
       .run();
 
     return true;
