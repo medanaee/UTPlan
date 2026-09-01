@@ -280,6 +280,7 @@ export async function updateCourse(
     trackId?: string;
     visualCategoryId?: string;
     ruleCategoryId?: string;
+    deletedAt?: string | null;
   }
 ): Promise<Course | null> {
   const d1 = getD1();
@@ -297,13 +298,26 @@ export async function updateCourse(
     const description = data.description !== undefined ? data.description : (existing.description || "");
     const facultyId = data.facultyId !== undefined ? data.facultyId : existing.facultyId;
 
+    const sets: string[] = [
+      "name = ?",
+      "code = ?",
+      "abbreviation = ?",
+      "units = ?",
+      "offered_in = ?",
+      "description = ?",
+      "faculty_id = ?",
+    ];
+    const params: any[] = [name, code, abbreviation, units, offeredIn, description, facultyId];
+
+    if (data.deletedAt !== undefined) {
+      sets.push("deleted_at = ?");
+      params.push(data.deletedAt);
+    }
+
+    params.push(id);
     await d1
-      .prepare(
-        `UPDATE courses
-         SET name = ?, code = ?, abbreviation = ?, units = ?, offered_in = ?, description = ?, faculty_id = ?
-         WHERE id = ?`
-      )
-      .bind(name, code, abbreviation, units, offeredIn, description, facultyId, id)
+      .prepare(`UPDATE courses SET ${sets.join(", ")} WHERE id = ?`)
+      .bind(...params)
       .run();
 
     if (data.trackId) {
@@ -444,93 +458,10 @@ export async function deleteCoursesByFaculty(facultyId: string): Promise<boolean
   if (!d1) return false;
 
   try {
-    // 1. Delete course event slots referencing events of offerings of courses in this faculty
+    const now = new Date().toISOString();
     await d1
-      .prepare(
-        `DELETE FROM course_event_slots 
-         WHERE event_id IN (
-           SELECT id FROM course_events WHERE offering_id IN (
-             SELECT id FROM course_offerings WHERE course_id IN (SELECT id FROM courses WHERE faculty_id = ?)
-           )
-         )`
-      )
-      .bind(facultyId)
-      .run();
-
-    // 2. Delete course events of offerings of courses in this faculty
-    await d1
-      .prepare(
-        `DELETE FROM course_events 
-         WHERE offering_id IN (
-           SELECT id FROM course_offerings WHERE course_id IN (SELECT id FROM courses WHERE faculty_id = ?)
-         )`
-      )
-      .bind(facultyId)
-      .run();
-
-    // 3. Delete offering professors of offerings of courses in this faculty
-    await d1
-      .prepare(
-        `DELETE FROM offering_professors 
-         WHERE offering_id IN (
-           SELECT id FROM course_offerings WHERE course_id IN (SELECT id FROM courses WHERE faculty_id = ?)
-         )`
-      )
-      .bind(facultyId)
-      .run();
-
-    // 4. Delete offering reviews
-    await d1
-      .prepare(
-        `DELETE FROM reviews 
-         WHERE target_type = 'offering' AND target_id IN (
-           SELECT id FROM course_offerings WHERE course_id IN (SELECT id FROM courses WHERE faculty_id = ?)
-         )`
-      )
-      .bind(facultyId)
-      .run();
-
-    // 5. Delete course offerings
-    await d1
-      .prepare(
-        `DELETE FROM course_offerings 
-         WHERE course_id IN (SELECT id FROM courses WHERE faculty_id = ?)`
-      )
-      .bind(facultyId)
-      .run();
-
-    // 6. Delete chart courses
-    await d1
-      .prepare(
-        `DELETE FROM chart_courses 
-         WHERE course_id IN (SELECT id FROM courses WHERE faculty_id = ?)`
-      )
-      .bind(facultyId)
-      .run();
-
-    // 7. Delete prerequisites (both as course and as prerequisite)
-    await d1
-      .prepare(
-        `DELETE FROM prerequisites 
-         WHERE course_id IN (SELECT id FROM courses WHERE faculty_id = ?) 
-            OR required_course_id IN (SELECT id FROM courses WHERE faculty_id = ?)`
-      )
-      .bind(facultyId, facultyId)
-      .run();
-
-    // 8. Delete track course assignments
-    await d1
-      .prepare(
-        `DELETE FROM track_course_assignments 
-         WHERE course_id IN (SELECT id FROM courses WHERE faculty_id = ?)`
-      )
-      .bind(facultyId)
-      .run();
-
-    // 9. Delete courses
-    await d1
-      .prepare("DELETE FROM courses WHERE faculty_id = ?")
-      .bind(facultyId)
+      .prepare("UPDATE courses SET deleted_at = ? WHERE faculty_id = ? AND deleted_at IS NULL")
+      .bind(now, facultyId)
       .run();
 
     return true;

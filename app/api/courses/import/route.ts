@@ -122,13 +122,22 @@ export async function POST(request: NextRequest) {
 
     // 2. Wipe if mode is "replace"
     if (mode === "replace") {
-      const deleteOk = await deleteCoursesByFaculty(targetFacultyId);
-      if (!deleteOk) {
-        console.warn("deleteCoursesByFaculty encountered an issue or wiped partially");
-      }
+      await deleteCoursesByFaculty(targetFacultyId);
     }
 
-    // 3. Fetch current remaining courses across all faculties for lookup
+    // 3. Fetch courses of target faculty (including soft-deleted for code reuse/restore)
+    const { results: allFacultyCourses } = await (async () => {
+      const { getD1 } = await import("@/lib/db/client");
+      const d1 = getD1();
+      if (!d1) return { results: [] };
+      return await d1.prepare("SELECT * FROM courses WHERE faculty_id = ?").bind(targetFacultyId).all();
+    })();
+
+    const facultyCourseCodeMap = new Map<string, any>();
+    (allFacultyCourses || []).forEach((c: any) => {
+      if (c.code) facultyCourseCodeMap.set(c.code.trim().toUpperCase(), c);
+    });
+
     const currentCourses = await getCourses();
     const courseCodeToIdMap = new Map<string, string>(); // UPPER(code) -> id
     const courseNameToIdMap = new Map<string, string>(); // LOWER(name) -> id
@@ -167,22 +176,24 @@ export async function POST(request: NextRequest) {
       const cleanAbbr = item.abbreviation ? String(item.abbreviation).trim() : undefined;
       const cleanDesc = item.description || "";
 
-      const existingCourseId = courseCodeToIdMap.get(cleanCode);
+      const existingFacultyCourse = facultyCourseCodeMap.get(cleanCode);
 
-      if (existingCourseId && mode !== "replace") {
-        // Update existing course in append mode
+      if (existingFacultyCourse) {
+        // Update existing course (and restore if previously soft-deleted)
         try {
-          await updateCourse(existingCourseId, {
+          await updateCourse(existingFacultyCourse.id, {
             name: cleanName,
             abbreviation: cleanAbbr,
             units: cleanUnits,
             offeredIn: cleanOffered,
             description: cleanDesc,
             facultyId: targetFacultyId,
+            deletedAt: null,
           });
           updatedCount++;
-          courseNameToIdMap.set(cleanName.toLowerCase(), existingCourseId);
-          if (cleanAbbr) courseAbbrToIdMap.set(cleanAbbr.toUpperCase(), existingCourseId);
+          courseCodeToIdMap.set(cleanCode, existingFacultyCourse.id);
+          courseNameToIdMap.set(cleanName.toLowerCase(), existingFacultyCourse.id);
+          if (cleanAbbr) courseAbbrToIdMap.set(cleanAbbr.toUpperCase(), existingFacultyCourse.id);
         } catch (err: any) {
           errors.push(`خطا در ویرایش درس ${cleanName} (${cleanCode}): ${err?.message || "خطای نامشخص"}`);
         }
@@ -209,6 +220,17 @@ export async function POST(request: NextRequest) {
     }
 
     // 5. Step 2: Establish Prerequisites, Corequisites, and Recommended Prerequisites
+    if (mode === "replace") {
+      const { getD1 } = await import("@/lib/db/client");
+      const d1 = getD1();
+      if (d1) {
+        await d1
+          .prepare("DELETE FROM prerequisites WHERE course_id IN (SELECT id FROM courses WHERE faculty_id = ?)")
+          .bind(targetFacultyId)
+          .run();
+      }
+    }
+
     let allPrereqs = await getAllPrerequisites();
 
     // Helper: Find target course ID by reference string
