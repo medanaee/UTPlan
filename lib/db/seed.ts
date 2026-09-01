@@ -195,10 +195,21 @@ export async function seedDatabase(fullSeed = true) {
   // 11. Sample Offerings & Events
   await d1
     .prepare(
-      `INSERT INTO course_offerings (id, course_id, professor_id, created_at)
-       VALUES ('off_prog_1', 'crs_prog', 'prf_1', ?),
-              ('off_ds_1', 'crs_ds', 'prf_2', ?),
-              ('off_db_1', 'crs_db', 'prf_3', ?)
+      `INSERT INTO course_offerings (id, course_id, created_at)
+       VALUES ('off_prog_1', 'crs_prog', ?),
+              ('off_ds_1', 'crs_ds', ?),
+              ('off_db_1', 'crs_db', ?)
+       ON CONFLICT(id) DO NOTHING`
+    )
+    .bind(now, now, now)
+    .run();
+
+  await d1
+    .prepare(
+      `INSERT INTO offering_professors (id, offering_id, professor_id, is_primary, created_at)
+       VALUES ('op_prog_1_prf_1', 'off_prog_1', 'prf_1', 1, ?),
+              ('op_ds_1_prf_2', 'off_ds_1', 'prf_2', 1, ?),
+              ('op_db_1_prf_3', 'off_db_1', 'prf_3', 1, ?)
        ON CONFLICT(id) DO NOTHING`
     )
     .bind(now, now, now)

@@ -126,7 +126,7 @@ export async function getCourseById(id: string): Promise<Course | null> {
 
     const { results: offeringRows } = await d1
       .prepare(
-        `SELECT o.id, o.code, o.course_id, o.professor_id, o.created_at
+        `SELECT o.id, o.code, o.course_id, o.created_at
          FROM course_offerings o
          WHERE o.course_id = ? AND o.deleted_at IS NULL`
       )
@@ -197,7 +197,7 @@ export async function getCourseById(id: string): Promise<Course | null> {
           id: o.id,
           code: o.code || undefined,
           courseId: o.course_id,
-          professorId: primaryProf?.id || o.professor_id || "",
+          professorId: primaryProf?.id || "",
           professorIds: offProfs.map((p: any) => p.id),
           professors: offProfs,
           professorName: profNames || primaryProf?.name || "نامشخص",

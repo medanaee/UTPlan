@@ -346,6 +346,16 @@ export function OfferingManager({
     }));
   };
 
+  const handleSetPrimaryProfessor = (profId: string) => {
+    setForm((prev) => {
+      const otherIds = prev.professorIds.filter((id) => id !== profId);
+      return {
+        ...prev,
+        professorIds: [profId, ...otherIds],
+      };
+    });
+  };
+
   const handleAddFinalizedSemester = () => {
     const code = `${newSemYear}-${newSemType}`;
     if (!form.finalizedSemesters.includes(code)) {
@@ -921,26 +931,44 @@ export function OfferingManager({
 
                 {/* Selected Professors Chips */}
                 {selectedProfessorsList.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 p-2 rounded-xl bg-muted/40 border border-border/60 max-h-24 overflow-y-auto">
-                    {selectedProfessorsList.map((p, idx) => (
-                      <div
-                        key={p.id}
-                        className="flex items-center gap-1 bg-background px-2 py-1 rounded-lg border border-border/80 text-xs shadow-2xs"
-                      >
-                        <span className="font-semibold text-foreground">{p.name}</span>
-                        {idx === 0 && (
-                          <span className="text-[9px] text-primary font-bold">(اصلی)</span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveProfessor(p.id)}
-                          className="text-muted-foreground hover:text-destructive p-0.5 rounded-full"
-                          title="حذف از ارائه"
+                  <div className="flex flex-wrap gap-1.5 p-2 rounded-xl bg-muted/40 border border-border/60 max-h-28 overflow-y-auto">
+                    {selectedProfessorsList.map((p, idx) => {
+                      const isPrimary = idx === 0;
+                      return (
+                        <div
+                          key={p.id}
+                          onClick={() => {
+                            if (!isPrimary) handleSetPrimaryProfessor(p.id);
+                          }}
+                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs shadow-2xs transition-all select-none ${
+                            isPrimary
+                              ? "bg-primary/10 border-primary/50 text-primary font-bold ring-1 ring-primary/30 cursor-default"
+                              : "bg-background border-border/80 text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5 cursor-pointer"
+                          }`}
+                          title={
+                            isPrimary
+                              ? "استاد اصلی این ارائه"
+                              : "کلیک کنید تا به عنوان استاد اصلی تعیین شود"
+                          }
                         >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
+                          <span className="font-semibold text-foreground">{p.name}</span>
+                          {isPrimary && (
+                            <span className="text-[10px] text-primary font-bold">(اصلی)</span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveProfessor(p.id);
+                            }}
+                            className="text-muted-foreground hover:text-destructive p-0.5 rounded-full mr-0.5"
+                            title="حذف از ارائه"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
 

@@ -67,20 +67,18 @@ export async function getProfessorById(id: string): Promise<Professor | null> {
       } catch {}
     }
 
-    // Offerings taught by this professor (either primary or co-instructor)
     const { results: offRows } = await d1
       .prepare(
-        `SELECT DISTINCT o.id, o.code, o.course_id, o.professor_id, o.created_at,
+        `SELECT DISTINCT o.id, o.code, o.course_id, o.created_at,
                 c.name AS course_name, c.code AS course_code, c.units AS course_units
          FROM course_offerings o
          JOIN courses c ON o.course_id = c.id
-         LEFT JOIN offering_professors op ON o.id = op.offering_id
-         WHERE (o.professor_id = ? OR op.professor_id = ?) AND o.deleted_at IS NULL AND c.deleted_at IS NULL`
+         JOIN offering_professors op ON o.id = op.offering_id
+         WHERE op.professor_id = ? AND o.deleted_at IS NULL AND c.deleted_at IS NULL`
       )
-      .bind(id, id)
+      .bind(id)
       .all();
 
-    // Review stats
     const { results: revRows } = await d1
       .prepare("SELECT overall_rating FROM reviews WHERE target_type = 'professor' AND target_id = ? AND deleted_at IS NULL")
       .bind(id)
@@ -90,29 +88,26 @@ export async function getProfessorById(id: string): Promise<Professor | null> {
     const avg =
       revCount > 0
         ? (revRows || []).reduce((sum: number, r: any) => sum + Number(r.overall_rating), 0) / revCount
-        : 10;
+        : 0;
 
     return {
       id: (p as any).id,
-      facultyId: (p as any).faculty_id,
       code: (p as any).code || undefined,
-      facultyName: (p as any).faculty_name || "دانشکده مهندسی برق و کامپیوتر",
-      firstName: (p as any).first_name || undefined,
-      lastName: (p as any).last_name || undefined,
       name: (p as any).name,
-      avatarUrl: (p as any).avatar_url || "",
-      title: (p as any).title || "استاد تمام",
-      email: (p as any).email || "",
+      facultyId: (p as any).faculty_id,
+      facultyName: (p as any).faculty_name || "نامشخص",
+      title: (p as any).title || undefined,
+      email: (p as any).email || undefined,
+      avatarUrl: (p as any).avatar_url || undefined,
       links,
       offerings: (offRows || []).map((o: any) => ({
         id: o.id,
+        code: o.code || undefined,
         courseId: o.course_id,
-        professorId: o.professor_id,
         courseName: o.course_name,
         courseCode: o.course_code,
         courseUnits: Number(o.course_units) || 3,
         createdAt: o.created_at,
-        deletedAt: null,
       })),
       reviewsCount: revCount,
       averageRating: Number(avg.toFixed(1)),
@@ -126,26 +121,22 @@ export async function getProfessorById(id: string): Promise<Professor | null> {
 }
 
 export async function createProfessor(data: {
-  id?: string;
   facultyId: string;
+  name: string;
   code?: string;
-  firstName?: string;
-  lastName?: string;
-  name?: string;
   title?: string;
   email?: string;
   avatarUrl?: string;
-  links?: Professor["links"];
+  links?: Record<string, string>;
 }): Promise<Professor> {
-  const id = data.id || `prf_${crypto.randomUUID().slice(0, 8)}`;
+  const id = `prf_${crypto.randomUUID().slice(0, 8)}`;
   const now = new Date().toISOString();
-  const code = data.code?.trim()
-    ? data.code.trim().toUpperCase()
-    : `PRF-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
-  const firstName = data.firstName?.trim() || "";
-  const lastName = data.lastName?.trim() || "";
-  const fullName = data.name?.trim() || [firstName, lastName].filter(Boolean).join(" ") || "استاد";
-  const linksJson = data.links ? JSON.stringify(data.links) : null;
+  const cleanName = data.name.trim();
+  const code = data.code?.trim().toUpperCase() || `PRF-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
+  const cleanTitle = data.title?.trim() || null;
+  const cleanEmail = data.email?.trim() || null;
+  const cleanAvatarUrl = data.avatarUrl?.trim() || null;
+  const linksStr = data.links ? JSON.stringify(data.links) : null;
 
   const d1 = getD1();
   if (!d1) throw new Error("پایگاه‌داده در دسترس نیست.");
@@ -153,90 +144,76 @@ export async function createProfessor(data: {
   try {
     await d1
       .prepare(
-        `INSERT INTO professors (id, faculty_id, code, first_name, last_name, name, title, email, avatar_url, links, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO professors (id, code, faculty_id, name, title, email, avatar_url, links, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
-      .bind(
-        id,
-        data.facultyId,
-        code,
-        firstName || null,
-        lastName || null,
-        fullName,
-        data.title || "استاد تمام",
-        data.email || "",
-        data.avatarUrl || "",
-        linksJson,
-        now
-      )
+      .bind(id, code, data.facultyId, cleanName, cleanTitle, cleanEmail, cleanAvatarUrl, linksStr, now)
       .run();
+
+    return {
+      id,
+      code,
+      facultyId: data.facultyId,
+      name: cleanName,
+      title: cleanTitle || undefined,
+      email: cleanEmail || undefined,
+      avatarUrl: cleanAvatarUrl || undefined,
+      links: data.links,
+      createdAt: now,
+      deletedAt: null,
+    };
   } catch (err) {
     console.error("D1 createProfessor error:", err);
     throw err;
   }
-
-  return {
-    id,
-    facultyId: data.facultyId,
-    code: code || undefined,
-    firstName: firstName || undefined,
-    lastName: lastName || undefined,
-    name: fullName,
-    title: data.title || "استاد تمام",
-    email: data.email || "",
-    avatarUrl: data.avatarUrl || "",
-    links: data.links,
-    createdAt: now,
-    deletedAt: null,
-  };
 }
 
 export async function updateProfessor(
   id: string,
-  data: Partial<Pick<Professor, "code" | "firstName" | "lastName" | "name" | "title" | "email" | "avatarUrl" | "facultyId" | "links">>
+  data: Partial<Omit<Professor, "id" | "createdAt" | "deletedAt">>
 ): Promise<Professor | null> {
   const d1 = getD1();
   if (!d1) return null;
 
   try {
-    const existing = await getProfessorById(id);
-    if (!existing) return null;
+    const sets: string[] = [];
+    const params: any[] = [];
 
-    const code =
-      data.code !== undefined
-        ? (data.code?.trim() ? data.code.trim().toUpperCase() : existing.code || `PRF-${crypto.randomUUID().slice(0, 6).toUpperCase()}`)
-        : existing.code || `PRF-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
-    const firstName = data.firstName !== undefined ? data.firstName.trim() : (existing.firstName || "");
-    const lastName = data.lastName !== undefined ? data.lastName.trim() : (existing.lastName || "");
-    let name = data.name !== undefined ? data.name.trim() : existing.name;
-    if (data.name === undefined && (data.firstName !== undefined || data.lastName !== undefined)) {
-      name = [firstName, lastName].filter(Boolean).join(" ") || name;
+    if (data.facultyId) {
+      sets.push("faculty_id = ?");
+      params.push(data.facultyId);
     }
-    const title = data.title !== undefined ? data.title : existing.title;
-    const email = data.email !== undefined ? data.email : existing.email;
-    const avatarUrl = data.avatarUrl !== undefined ? data.avatarUrl : existing.avatarUrl;
-    const facultyId = data.facultyId !== undefined ? data.facultyId : existing.facultyId;
-    const links = data.links !== undefined ? data.links : existing.links;
-    const linksJson = links ? JSON.stringify(links) : null;
+    if (data.name) {
+      sets.push("name = ?");
+      params.push(data.name.trim());
+    }
+    if (data.code) {
+      sets.push("code = ?");
+      params.push(data.code.trim().toUpperCase());
+    }
+    if (data.title !== undefined) {
+      sets.push("title = ?");
+      params.push(data.title ? data.title.trim() : null);
+    }
+    if (data.email !== undefined) {
+      sets.push("email = ?");
+      params.push(data.email ? data.email.trim() : null);
+    }
+    if (data.avatarUrl !== undefined) {
+      sets.push("avatar_url = ?");
+      params.push(data.avatarUrl ? data.avatarUrl.trim() : null);
+    }
+    if (data.links !== undefined) {
+      sets.push("links = ?");
+      params.push(data.links ? JSON.stringify(data.links) : null);
+    }
 
+    if (sets.length === 0) return await getProfessorById(id);
+
+    params.push(id);
     await d1
-      .prepare(
-        `UPDATE professors
-         SET code = ?, first_name = ?, last_name = ?, name = ?, title = ?, email = ?, avatar_url = ?, faculty_id = ?, links = ?
-         WHERE id = ?`
-      )
-      .bind(
-        code,
-        firstName || null,
-        lastName || null,
-        name,
-        title || "استاد تمام",
-        email || "",
-        avatarUrl || "",
-        facultyId,
-        linksJson,
-        id
-      )
+      .prepare(`UPDATE professors SET ${sets.join(", ")} WHERE id = ?`)
+      .bind(...params)
       .run();
 
     return await getProfessorById(id);
@@ -269,7 +246,11 @@ export async function deleteProfessorsByFaculty(facultyId: string): Promise<bool
       .prepare(
         `DELETE FROM reviews 
          WHERE (target_type = 'professor' AND target_id IN (SELECT id FROM professors WHERE faculty_id = ?))
-            OR (target_type = 'offering' AND target_id IN (SELECT id FROM course_offerings WHERE professor_id IN (SELECT id FROM professors WHERE faculty_id = ?)))`
+            OR (target_type = 'offering' AND target_id IN (
+              SELECT o.id FROM course_offerings o
+              JOIN offering_professors op ON o.id = op.offering_id
+              WHERE op.professor_id IN (SELECT id FROM professors WHERE faculty_id = ?)
+            ))`
       )
       .bind(facultyId, facultyId)
       .run();
@@ -277,7 +258,10 @@ export async function deleteProfessorsByFaculty(facultyId: string): Promise<bool
     await d1
       .prepare(
         `DELETE FROM course_offerings 
-         WHERE professor_id IN (SELECT id FROM professors WHERE faculty_id = ?)`
+         WHERE id IN (
+           SELECT op.offering_id FROM offering_professors op
+           WHERE op.professor_id IN (SELECT id FROM professors WHERE faculty_id = ?)
+         )`
       )
       .bind(facultyId)
       .run();

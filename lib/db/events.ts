@@ -32,7 +32,8 @@ export async function getEvents(
       FROM course_events e
       JOIN course_offerings o ON e.offering_id = o.id
       JOIN courses c ON o.course_id = c.id
-      JOIN professors p ON o.professor_id = p.id
+      LEFT JOIN offering_professors op ON op.offering_id = o.id AND op.is_primary = 1
+      LEFT JOIN professors p ON op.professor_id = p.id
       WHERE o.deleted_at IS NULL
     `;
     const params: any[] = [];

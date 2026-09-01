@@ -157,17 +157,14 @@ CREATE TABLE IF NOT EXISTS course_offerings (
   id TEXT PRIMARY KEY,
   code TEXT,
   course_id TEXT NOT NULL,
-  professor_id TEXT NOT NULL,
   description TEXT,
   finalized_semesters TEXT, -- JSON array of string semester codes e.g. ["1403-1", "1404-2", "1405-3"]
   created_at TEXT NOT NULL,
   deleted_at TEXT,
-  FOREIGN KEY (course_id) REFERENCES courses(id),
-  FOREIGN KEY (professor_id) REFERENCES professors(id),
-  UNIQUE(course_id, professor_id)
+  FOREIGN KEY (course_id) REFERENCES courses(id)
 );
 CREATE INDEX IF NOT EXISTS idx_offerings_course ON course_offerings(course_id);
-CREATE INDEX IF NOT EXISTS idx_offerings_professor ON course_offerings(professor_id);
+CREATE INDEX IF NOT EXISTS idx_offerings_code ON course_offerings(code);
 
 -- 12. Offering Professors Junction Table (Co-teaching / Multi-professors)
 CREATE TABLE IF NOT EXISTS offering_professors (
