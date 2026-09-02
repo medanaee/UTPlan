@@ -21,7 +21,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { CodeEditor } from "@/components/ui/code-editor";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import type { Faculty } from "@/lib/types";
@@ -346,13 +346,13 @@ export function ProfessorImportDialog({
                 </Badge>
               )}
             </div>
-            <Textarea
+            <CodeEditor
               value={jsonText}
-              onChange={(e) => handleTextChange(e.target.value)}
+              onChange={handleTextChange}
               placeholder='[ { "code": "PRF-101", "firstName": "علی", "lastName": "محمدی", "avatarUrl": "https://example.com/avatar.jpg", "title": "استاد تمام", "email": "amohammadi@ut.ac.ir", "links": { "website": "https://ece.ut.ac.ir/~mohammadi", "scholar": "https://scholar.google.com/citations?user=xyz" } } ]'
-              rows={8}
-              className="text-xs bg-background font-mono leading-relaxed max-h-72 min-h-36 overflow-y-auto"
-              dir="ltr"
+              maxHeight="18rem"
+              minHeight="10rem"
+              title="ویرایشگر ساختار JSON اساتید"
             />
           </div>
 

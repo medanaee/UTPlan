@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Copy, Check, Sparkles, X, Code2, Maximize2, Minimize2 } from "lucide-react";
@@ -75,6 +76,11 @@ export function CodeEditor({
   const preRef = useRef<HTMLPreElement>(null);
   const [copied, setCopied] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Close fullscreen on Escape
   useEffect(() => {
@@ -165,7 +171,7 @@ export function CodeEditor({
     <div
       className={
         isFullscreen
-          ? "fixed inset-3 sm:inset-6 md:inset-8 z-50 flex flex-col rounded-3xl border border-border/80 bg-background shadow-2xl overflow-hidden focus-within:ring-2 focus-within:ring-primary/40 animate-in fade-in-50 zoom-in-95 duration-200"
+          ? "fixed inset-3 sm:inset-6 md:inset-8 z-[100] flex flex-col rounded-3xl border border-border/80 bg-background shadow-2xl overflow-hidden focus-within:ring-2 focus-within:ring-primary/40 animate-in fade-in-50 zoom-in-95 duration-200"
           : `rounded-2xl border border-border/80 bg-background overflow-hidden shadow-2xs focus-within:border-primary/60 focus-within:ring-1 focus-within:ring-primary/20 transition-all ${className}`
       }
     >
@@ -305,15 +311,29 @@ export function CodeEditor({
     </div>
   );
 
-  return (
-    <>
-      {isFullscreen && (
+  if (isFullscreen && mounted) {
+    return (
+      <>
+        {/* Placeholder in normal flow */}
         <div
-          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 transition-opacity animate-in fade-in-0 duration-200"
-          onClick={() => setIsFullscreen(false)}
-        />
-      )}
-      {editorContent}
-    </>
-  );
+          className={`rounded-2xl border border-dashed border-border/80 bg-muted/20 p-4 text-center text-xs text-muted-foreground flex items-center justify-center ${className}`}
+          style={{ minHeight }}
+        >
+          ویرایشگر کد در حالت تمام‌صفحه باز است...
+        </div>
+        {createPortal(
+          <>
+            <div
+              className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] transition-opacity animate-in fade-in-0 duration-200"
+              onClick={() => setIsFullscreen(false)}
+            />
+            {editorContent}
+          </>,
+          document.body
+        )}
+      </>
+    );
+  }
+
+  return editorContent;
 }
