@@ -304,7 +304,7 @@ export function ChartEditor({
       return {
         semesterNumber: sem.semesterNumber,
         units: semUnits,
-        isOverMax: semUnits > 20,
+        isOverMax: semUnits > 24,
         isUnderMin: sem.semesterNumber < lastNonEmptySem && semUnits > 0 && semUnits < 12,
       };
     });
@@ -941,6 +941,21 @@ export function ChartEditor({
                       <span className="rounded bg-background/80 px-1.5 py-0.5 text-[10px] font-semibold text-foreground border border-border/40">
                         {course.units} واحد
                       </span>
+                      {course.offeredIn === "fall" && (
+                        <span className="rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 px-1.5 py-0.5 text-[9px] font-semibold">
+                          فقط فرد
+                        </span>
+                      )}
+                      {course.offeredIn === "spring" && (
+                        <span className="rounded bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 px-1.5 py-0.5 text-[9px] font-semibold">
+                          فقط زوج
+                        </span>
+                      )}
+                      {course.offeredIn === "none" && (
+                        <span className="rounded bg-destructive/10 text-destructive border border-destructive/20 px-1.5 py-0.5 text-[9px] font-semibold">
+                          عدم ارائه
+                        </span>
+                      )}
                       {isPlaced && (
                         <Badge variant="secondary" className="text-[9px] h-4 px-1 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
                           ترم {placedSem}
@@ -1315,6 +1330,7 @@ export function ChartEditor({
                           );
                           const isViolation = validation.courseViolations.has(cId);
                           const isWarning = validation.courseWarnings.has(cId);
+                          const courseIssue = validation.issues.find((i) => i.courseId === cId);
                           const isHovered = hoveredCourseId === cId;
                           const isDragTarget = dragOverCardId === cId;
                           const baseColor = isViolation
@@ -1403,7 +1419,7 @@ export function ChartEditor({
                                         setIssuesModalOpen(true);
                                       }}
                                       className="inline-flex items-center text-destructive hover:scale-110 transition-transform cursor-pointer shrink-0"
-                                      title="خطای پیش‌نیاز رسمی — کلیک جهت مشاهده جزئیات"
+                                      title={courseIssue?.message || "خطای اعتبارسنجی چارت — کلیک جهت مشاهده جزئیات"}
                                     >
                                       <AlertTriangle
                                         className="h-3.5 w-3.5 text-destructive shrink-0 animate-pulse"
@@ -1455,9 +1471,26 @@ export function ChartEditor({
                                 >
                                   {vcat?.name || "عمومی"}
                                 </span>
-                                <span className="font-bold text-foreground bg-background/80 px-1.5 py-0.2 rounded border border-border/40">
-                                  {course.units} واحد
-                                </span>
+                                <div className="flex items-center gap-1">
+                                  {course.offeredIn === "fall" && (
+                                    <span className="text-[9px] px-1 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-semibold" title="ارائه فقط در نیمسال‌های فرد (پاییز)">
+                                      فرد
+                                    </span>
+                                  )}
+                                  {course.offeredIn === "spring" && (
+                                    <span className="text-[9px] px-1 py-0.2 rounded bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 font-semibold" title="ارائه فقط در نیمسال‌های زوج (بهار)">
+                                      زوج
+                                    </span>
+                                  )}
+                                  {course.offeredIn === "none" && (
+                                    <span className="text-[9px] px-1 py-0.2 rounded bg-destructive/10 text-destructive border border-destructive/20 font-semibold" title="عدم ارائه در هیچ نیمسالی">
+                                      غیرفعال
+                                    </span>
+                                  )}
+                                  <span className="font-bold text-foreground bg-background/80 px-1.5 py-0.2 rounded border border-border/40">
+                                    {course.units} واحد
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           );
@@ -1549,15 +1582,16 @@ export function ChartEditor({
 
           </div>
 
-          <DialogFooter className="p-3 border-t bg-muted/20 shrink-0">
+          <div className="p-3 sm:p-4 border-t bg-muted/30 flex items-center justify-end gap-2 shrink-0">
             <Button
+              type="button"
               size="sm"
               onClick={() => setIssuesModalOpen(false)}
-              className="w-full h-8 text-xs font-semibold"
+              className="h-8 px-5 text-xs font-semibold shadow-xs"
             >
               متوجه شدم
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -1656,16 +1690,17 @@ export function ChartEditor({
             )}
           </div>
 
-          <DialogFooter className="p-3 border-t bg-muted/20 shrink-0">
+          <div className="p-3 sm:p-4 border-t bg-muted/30 flex items-center justify-end gap-2 shrink-0">
             <Button
+              type="button"
               variant="outline"
               size="sm"
               onClick={() => setLoadApprovedModalOpen(false)}
-              className="h-8 text-xs w-full sm:w-auto"
+              className="h-8 px-4 text-xs font-medium"
             >
               انصراف
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 

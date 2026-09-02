@@ -45,7 +45,7 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
   } = input;
 
   const minCredits = constraints.minCreditsPerTerm ?? 12;
-  const maxCredits = constraints.maxCreditsPerTerm ?? 20;
+  const maxCredits = constraints.maxCreditsPerTerm ?? 24;
 
   const issues: ValidationIssue[] = [];
 
@@ -192,7 +192,43 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
     }
   }
 
-  // 4. Calculate Category Stats
+  // 4. Validate Course Offering Semesters (Odd / Even / None)
+  for (const entry of chartCourses) {
+    const course = courseMap.get(entry.courseId);
+    if (!course) continue;
+
+    const courseName = course.name || entry.courseId;
+    const isOddTerm = entry.termIndex % 2 !== 0; // 1, 3, 5, 7, ...
+    const isEvenTerm = entry.termIndex % 2 === 0; // 2, 4, 6, 8, ...
+
+    if (course.offeredIn === "none") {
+      issues.push({
+        id: `issue_offering_none_${entry.courseId}`,
+        type: "error",
+        message: `درس «${courseName}» غیرفعال بوده و در هیچ نیمسالی ارائه نمی‌شود؛ امکان اخذ آن در چارت وجود ندارد.`,
+        termIndex: entry.termIndex,
+        courseId: entry.courseId,
+      });
+    } else if (course.offeredIn === "fall" && isEvenTerm) {
+      issues.push({
+        id: `issue_offering_fall_in_even_${entry.courseId}`,
+        type: "error",
+        message: `درس «${courseName}» فقط در نیمسال‌های فرد (پاییز) ارائه می‌شود، اما در ترم ${entry.termIndex} (ترم زوج) قرار گرفته است.`,
+        termIndex: entry.termIndex,
+        courseId: entry.courseId,
+      });
+    } else if (course.offeredIn === "spring" && isOddTerm) {
+      issues.push({
+        id: `issue_offering_spring_in_odd_${entry.courseId}`,
+        type: "error",
+        message: `درس «${courseName}» فقط در نیمسال‌های زوج (بهار) ارائه می‌شود، اما در ترم ${entry.termIndex} (ترم فرد) قرار گرفته است.`,
+        termIndex: entry.termIndex,
+        courseId: entry.courseId,
+      });
+    }
+  }
+
+  // 5. Calculate Category Stats
   const categoryStats: CategoryStat[] = ruleCategories.map((rcat) => {
     // Find all courses assigned to this category
     const assignedCourses = chartCourses.filter(
