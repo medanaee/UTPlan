@@ -30,6 +30,8 @@ import {
   Shield,
   Copy,
   Minus,
+  ZoomIn,
+  ZoomOut,
   PanelRightClose,
   PanelRightOpen,
 } from "lucide-react";
@@ -199,6 +201,7 @@ export function ChartEditor({
 
   // References for SVG curve coordinates
   const canvasRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const cardElementsRef = useRef<Map<string, HTMLDivElement>>(new Map());
   const [svgCurves, setSvgCurves] = useState<
     {
@@ -212,6 +215,9 @@ export function ChartEditor({
       isDimmed: boolean;
     }[]
   >([]);
+
+  // Zoom percentage state (60% to 130%)
+  const [zoom, setZoom] = useState<number>(100);
 
   // Update track when changed
   useEffect(() => {
@@ -324,15 +330,14 @@ export function ChartEditor({
 
   // Recalculate SVG connection curves in absolute scroll content space
   const updateSvgCurves = useCallback(() => {
-    if (!canvasRef.current || !showArrows) {
+    if (!contentRef.current || !showArrows) {
       setSvgCurves([]);
       return;
     }
 
-    const canvas = canvasRef.current;
-    const canvasRect = canvas.getBoundingClientRect();
-    const scrollTop = canvas.scrollTop;
-    const scrollLeft = canvas.scrollLeft;
+    const content = contentRef.current;
+    const contentRect = content.getBoundingClientRect();
+    const zoomFactor = Math.max(0.1, zoom / 100);
     const curves: typeof svgCurves = [];
 
     chart.semesters.forEach((sem) => {
@@ -356,31 +361,31 @@ export function ChartEditor({
 
             if (isSameSemester) {
               // Same semester (e.g. corequisites): Arch curve from TOP of source to TOP of target
-              const x1 = srcRect.left - canvasRect.left + scrollLeft + srcRect.width / 2;
-              const y1 = srcRect.top - canvasRect.top + scrollTop;
+              const x1 = (srcRect.left - contentRect.left) / zoomFactor + (srcRect.width / 2) / zoomFactor;
+              const y1 = (srcRect.top - contentRect.top) / zoomFactor;
 
-              const x2 = tgtRect.left - canvasRect.left + scrollLeft + tgtRect.width / 2;
-              const y2 = tgtRect.top - canvasRect.top + scrollTop;
+              const x2 = (tgtRect.left - contentRect.left) / zoomFactor + (tgtRect.width / 2) / zoomFactor;
+              const y2 = (tgtRect.top - contentRect.top) / zoomFactor;
 
               const arcHeight = Math.min(48, Math.max(22, Math.abs(x2 - x1) * 0.18));
               pathData = `M ${x1} ${y1} C ${x1} ${y1 - arcHeight}, ${x2} ${y2 - arcHeight}, ${x2} ${y2}`;
             } else if (sourceSem < sem.semesterNumber) {
               // Standard forward: from BOTTOM of source to TOP of target
-              const x1 = srcRect.left - canvasRect.left + scrollLeft + srcRect.width / 2;
-              const y1 = srcRect.bottom - canvasRect.top + scrollTop;
+              const x1 = (srcRect.left - contentRect.left) / zoomFactor + (srcRect.width / 2) / zoomFactor;
+              const y1 = (srcRect.bottom - contentRect.top) / zoomFactor;
 
-              const x2 = tgtRect.left - canvasRect.left + scrollLeft + tgtRect.width / 2;
-              const y2 = tgtRect.top - canvasRect.top + scrollTop;
+              const x2 = (tgtRect.left - contentRect.left) / zoomFactor + (tgtRect.width / 2) / zoomFactor;
+              const y2 = (tgtRect.top - contentRect.top) / zoomFactor;
 
               const dy = Math.max(25, Math.abs(y2 - y1) * 0.4);
               pathData = `M ${x1} ${y1} C ${x1} ${y1 + dy}, ${x2} ${y2 - dy}, ${x2} ${y2}`;
             } else {
               // Backward violation: from TOP of source to BOTTOM of target
-              const x1 = srcRect.left - canvasRect.left + scrollLeft + srcRect.width / 2;
-              const y1 = srcRect.top - canvasRect.top + scrollTop;
+              const x1 = (srcRect.left - contentRect.left) / zoomFactor + (srcRect.width / 2) / zoomFactor;
+              const y1 = (srcRect.top - contentRect.top) / zoomFactor;
 
-              const x2 = tgtRect.left - canvasRect.left + scrollLeft + tgtRect.width / 2;
-              const y2 = tgtRect.bottom - canvasRect.top + scrollTop;
+              const x2 = (tgtRect.left - contentRect.left) / zoomFactor + (tgtRect.width / 2) / zoomFactor;
+              const y2 = (tgtRect.bottom - contentRect.top) / zoomFactor;
 
               const dy = Math.max(25, Math.abs(y1 - y2) * 0.4);
               pathData = `M ${x1} ${y1} C ${x1} ${y1 - dy}, ${x2} ${y2 + dy}, ${x2} ${y2}`;
@@ -413,7 +418,7 @@ export function ChartEditor({
     });
 
     setSvgCurves(curves);
-  }, [chart.semesters, allCourses, placedCourseIdMap, showArrows, hoveredCourseId]);
+  }, [chart.semesters, allCourses, placedCourseIdMap, showArrows, hoveredCourseId, zoom]);
 
   // Recalculate curves on state updates or resize
   useEffect(() => {
@@ -708,25 +713,8 @@ export function ChartEditor({
             </Button>
           </div>
 
-          {/* Real-time Validation Status & Stats (Clickable to open detailed report) */}
+          {/* Actions & Buttons */}
           <div className="flex items-center gap-2">
-            
-            {/* Toggle Arrow Layer */}
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setShowArrows(!showArrows)}
-              className={`h-8 gap-1.5 text-xs px-3 rounded-lg border transition-all shadow-2xs flex items-center ${
-                showArrows
-                  ? "bg-background/50 text-foreground border-border/90"
-                  : "bg-background/50 text-foreground border-border/80 hover:bg-muted/50"
-              }`}
-              title="نمایش / پنهان کردن فلش‌های پیش‌نیاز"
-            >
-              {showArrows ? <Eye className="h-3.5 w-3.5 text-foreground shrink-0" /> : <EyeOff className="h-3.5 w-3.5 text-foreground shrink-0" />}
-              <span className="hidden sm:inline">فلش‌های پیش‌نیاز</span>
-            </Button>
-
             {/* Load Approved Curriculum Button */}
             {!isReadOnly && (
               <Button
@@ -737,35 +725,6 @@ export function ChartEditor({
               >
                 <span className="hidden sm:inline">بارگذاری چارت مصوب / پیشنهادی</span>
               </Button>
-            )}
-
-            {/* Add / Remove Semester */}
-            {!isReadOnly && (
-              <div className="h-8 flex items-center bg-background/50 p-0.5 rounded-lg border border-border">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={addSemester}
-                  disabled={chart.semesters.length >= 12}
-                  className="h-7 w-7 text-xs rounded-md gap-1 text-foreground hover:bg-muted/80 transition-colors flex items-center"
-                  title="افزودن یک ترم جدید به انتها"
-                >
-                  <Plus className="h-3.5 w-3.5 text-foreground shrink-0" />
-                </Button>
-                <span className="text-xs font-bold text-foreground px-1 dri">{chart.semesters.length} ترم</span>
-                {(
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={removeLastSemester}
-                    disabled={chart.semesters.length <= 8}
-                    className="h-7 w-7 p-0 rounded-md text-foreground hover:text-destructive hover:bg-muted/80 transition-colors flex items-center justify-center"
-                    title="حذف آخرین ترم"
-                  >
-                    <Minus className="h-3.5 w-3.5 text-foreground shrink-0" />
-                  </Button>
-                )}
-              </div>
             )}
 
             {/* Save Button OR Clone Button */}
@@ -1020,22 +979,115 @@ export function ChartEditor({
       )}
 
         {/* ========================================================================= */}
-        {/* CENTER CANVAS: FULL-WIDTH VERTICAL STACKED SEMESTERS + SVG CONNECTOR ARROWS */}
+        {/* CENTER WORKSPACE: DEDICATED SUB-TOOLBAR + VERTICAL STACKED CANVAS */}
         {/* ========================================================================= */}
-        <main
-          ref={canvasRef}
-          className="flex-1 min-h-0 h-fit relative overflow-y-auto p-1 sm:p-2 lg:p-4 bg-muted/20"
-        >
-          {/* Dynamic SVG Connections Overlay (z-30 so it flies ABOVE semester and course card backgrounds) */}
-          {showArrows && (
-            <svg
-              className="absolute top-0 left-0 pointer-events-none z-30"
-              style={{
-                width: "100%",
-                height: `${canvasRef.current ? Math.max(canvasRef.current.scrollHeight, canvasRef.current.clientHeight) : 2500}px`,
-                minHeight: "100%",
-              }}
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-muted/20">
+          {/* Sub-toolbar row above the terms */}
+          <div className="shrink-0 h-10 border-b border-border/70 bg-card/85 backdrop-blur px-3 sm:px-4 flex items-center justify-between shadow-2xs z-20 select-none">
+            {/* Right side (start in RTL): Zoom Controller */}
+            <div className="flex items-center gap-1.5">
+              <div className="h-7 sm:h-8 flex items-center bg-background/60 p-0.5 rounded-lg border border-border/80 shadow-2xs">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setZoom((z) => Math.max(60, z - 10))}
+                  disabled={zoom <= 60}
+                  className="h-6 w-6 sm:h-7 sm:w-7 p-0 rounded-md text-foreground hover:bg-muted/80 disabled:opacity-40 transition-colors flex items-center justify-center"
+                  title="کوچک‌نمایی (Zoom Out)"
+                >
+                  <ZoomOut className="h-3.5 w-3.5 text-foreground shrink-0" />
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setZoom(100)}
+                  className="text-xs font-bold text-foreground px-2 py-0.5 rounded hover:bg-muted/70 transition-colors font-mono cursor-pointer"
+                  title="کلیک جهت بازنشانی بزرگ‌نمایی به ۱۰۰٪"
+                >
+                  {zoom}%
+                </button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setZoom((z) => Math.min(130, z + 10))}
+                  disabled={zoom >= 130}
+                  className="h-6 w-6 sm:h-7 sm:w-7 p-0 rounded-md text-foreground hover:bg-muted/80 disabled:opacity-40 transition-colors flex items-center justify-center"
+                  title="بزرگ‌نمایی (Zoom In)"
+                >
+                  <ZoomIn className="h-3.5 w-3.5 text-foreground shrink-0" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Left side (end in RTL): Prerequisite Arrows Toggle & Semester Count */}
+            <div className="flex items-center gap-2">
+              {/* Toggle Arrow Layer */}
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowArrows(!showArrows)}
+                className={`h-7 sm:h-8 gap-1.5 text-xs px-2.5 sm:px-3 rounded-lg border transition-all shadow-2xs flex items-center ${
+                  showArrows
+                    ? "bg-background/50 text-foreground border-border/90"
+                    : "bg-background/50 text-foreground border-border/80 hover:bg-muted/50"
+                }`}
+                title="نمایش / پنهان کردن فلش‌های پیش‌نیاز"
+              >
+                {showArrows ? (
+                  <Eye className="h-3.5 w-3.5 text-foreground shrink-0" />
+                ) : (
+                  <EyeOff className="h-3.5 w-3.5 text-foreground shrink-0" />
+                )}
+                <span className="hidden sm:inline">فلش‌های پیش‌نیاز</span>
+              </Button>
+
+              {/* Add / Remove Semester */}
+              {!isReadOnly && (
+                <div className="h-7 sm:h-8 flex items-center bg-background/50 p-0.5 rounded-lg border border-border">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={addSemester}
+                    disabled={chart.semesters.length >= 12}
+                    className="h-6 w-6 sm:h-7 sm:w-7 text-xs rounded-md gap-1 text-foreground hover:bg-muted/80 transition-colors flex items-center justify-center disabled:opacity-40"
+                    title="افزودن یک ترم جدید به انتها"
+                  >
+                    <Plus className="h-3.5 w-3.5 text-foreground shrink-0" />
+                  </Button>
+                  <span className="text-xs font-bold text-foreground px-1.5 dri">
+                    {chart.semesters.length} ترم
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={removeLastSemester}
+                    disabled={chart.semesters.length <= 8}
+                    className="h-6 w-6 sm:h-7 sm:w-7 p-0 rounded-md text-foreground hover:text-destructive hover:bg-muted/80 transition-colors flex items-center justify-center disabled:opacity-40"
+                    title="حذف آخرین ترم"
+                  >
+                    <Minus className="h-3.5 w-3.5 text-foreground shrink-0" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Main Scrollable Canvas */}
+          <main
+            ref={canvasRef}
+            className="flex-1 min-h-0 h-full relative overflow-y-auto p-1 sm:p-2 lg:p-4"
+          >
+            <div
+              ref={contentRef}
+              className="relative w-full min-h-full"
+              style={{ zoom: `${zoom / 100}` }}
             >
+              {/* Dynamic SVG Connections Overlay (z-30 so it flies ABOVE semester and course card backgrounds) */}
+            {showArrows && (
+              <svg
+                className="absolute inset-0 w-full h-full pointer-events-none z-30 overflow-visible"
+              >
               <defs>
                 {/* 1. Official Prerequisite (Solid Sky Blue / Red on Error) */}
                 <marker
@@ -1155,7 +1207,7 @@ export function ChartEditor({
           )}
 
           {/* Semesters Stacked Vertically (Full Width, z-10) */}
-          <div className="space-y-3 w-full relative z-10 pb-16">
+          <div className="space-y-3 w-full relative z-10 pb-6">
             {chart.semesters.map((sem) => {
               const semStats = validation.semesterCredits.find(
                 (sc) => sc.semesterNumber === sem.semesterNumber
@@ -1408,9 +1460,10 @@ export function ChartEditor({
               );
             })}
           </div>
-
-        </main>
-      </div>
+        </div>
+      </main>
+    </div>
+  </div>
 
       {/* ========================================================= */}
       {/* VALIDATION REPORT DIALOG (MODAL) */}
