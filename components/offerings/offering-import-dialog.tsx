@@ -10,8 +10,6 @@ import {
   Loader2,
   Building2,
   Sparkles,
-  PlusCircle,
-  RefreshCw,
   BookUser,
 } from "lucide-react";
 import {
@@ -110,7 +108,7 @@ export function OfferingImportDialog({
     targetFaculty?.id || defaultFacultyId || ""
   );
 
-  const [importMode, setImportMode] = useState<"append" | "replace">("append");
+  const importMode = "append";
   const [jsonText, setJsonText] = useState("");
   const [parsedData, setParsedData] = useState<any[] | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
@@ -208,17 +206,6 @@ export function OfferingImportDialog({
       return;
     }
 
-    if (
-      importMode === "replace" &&
-      !confirm(
-        `هشدار مهم: با انتخاب «جایگزینی کامل»، کلیه ارائه‌های درسی فعلی دانشکده «${
-          activeFaculty?.name || "انتخاب‌شده"
-        }» حذف شده و با اطلاعات این فایل جایگزین خواهند شد. آیا مطمئن هستید؟`
-      )
-    ) {
-      return;
-    }
-
     try {
       setLoading(true);
       setResult(null);
@@ -277,68 +264,6 @@ export function OfferingImportDialog({
               <span className="font-bold text-foreground">
                 {activeFaculty ? `${activeFaculty.name} (${activeFaculty.code})` : "انتخاب نشده"}
               </span>
-            </div>
-          </div>
-
-          {/* Import Mode Selection Options */}
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold block text-foreground">
-              نحوه ورود و همگام‌سازی ارائه‌ها:
-            </Label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {/* Option 1: Append & Update (Merge) */}
-              <div
-                onClick={() => setImportMode("append")}
-                className={`p-3 rounded-2xl border cursor-pointer transition-all flex items-start gap-2.5 ${
-                  importMode === "append"
-                    ? "border-primary bg-primary/10 ring-1 ring-primary/30"
-                    : "border-border/80 bg-muted/20 hover:bg-muted/40"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="importModeOff"
-                  checked={importMode === "append"}
-                  onChange={() => setImportMode("append")}
-                  className="mt-0.5 accent-primary cursor-pointer"
-                />
-                <div className="space-y-0.5">
-                  <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                    <PlusCircle className="h-3.5 w-3.5 text-primary" />
-                    افزودن و به‌روزرسانی (Merge)
-                  </span>
-                  <span className="text-[11px] text-muted-foreground block leading-relaxed">
-                    ارائه‌های جدید افزوده می‌شوند؛ ارائه‌های تکراری (درس + استاد یکسان) همگام شده و سایرین حفظ می‌شوند.
-                  </span>
-                </div>
-              </div>
-
-              {/* Option 2: Wipe & Replace */}
-              <div
-                onClick={() => setImportMode("replace")}
-                className={`p-3 rounded-2xl border cursor-pointer transition-all flex items-start gap-2.5 ${
-                  importMode === "replace"
-                    ? "border-destructive bg-destructive/10 ring-1 ring-destructive/30"
-                    : "border-border/80 bg-muted/20 hover:bg-muted/40"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="importModeOff"
-                  checked={importMode === "replace"}
-                  onChange={() => setImportMode("replace")}
-                  className="mt-0.5 accent-destructive cursor-pointer"
-                />
-                <div className="space-y-0.5">
-                  <span className="text-xs font-bold text-destructive flex items-center gap-1.5">
-                    <RefreshCw className="h-3.5 w-3.5 text-destructive" />
-                    جایگزینی کامل (Wipe & Replace)
-                  </span>
-                  <span className="text-[11px] text-muted-foreground block leading-relaxed">
-                    تمام ارائه‌های فعلی دروس این دانشکده حذف و با محتوای این فایل بازنویسی می‌شوند.
-                  </span>
-                </div>
-              </div>
             </div>
           </div>
 

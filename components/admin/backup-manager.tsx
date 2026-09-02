@@ -334,7 +334,7 @@ export function BackupManager() {
         </Card>
 
         {/* Card 2: Restore Full Database from JSON */}
-        <Card className="border-destructive/30 bg-linear-to-b from-destructive/5 via-background to-background shadow-xs flex flex-col justify-between">
+        <Card className="border-destructive/30 bg-linear-to-b from-destructive/5 via-card to-card shadow-xs flex flex-col justify-between">
           <CardHeader className="pb-3 border-b border-destructive/20">
             <CardTitle className="text-sm font-bold flex items-center gap-2 text-destructive">
               <ArrowUpFromLine className="h-4.5 w-4.5 text-destructive" />

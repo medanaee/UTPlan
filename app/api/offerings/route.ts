@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOfferings, createOffering, updateOffering, deleteOffering } from "@/lib/db";
+import {
+  getOfferings,
+  createOffering,
+  updateOffering,
+  deleteOffering,
+  deleteOfferingsByFaculty,
+} from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
@@ -117,6 +123,16 @@ export async function DELETE(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
+    const facultyId = searchParams.get("facultyId");
+    const all = searchParams.get("all") === "true";
+
+    if (all && facultyId) {
+      const success = await deleteOfferingsByFaculty(facultyId);
+      return NextResponse.json({
+        success,
+        message: "کلیه ارائه‌های درسی دانشکده حذف شدند.",
+      });
+    }
 
     if (!id) {
       return NextResponse.json(

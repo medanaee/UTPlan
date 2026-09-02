@@ -61,11 +61,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // If Mode is "replace", soft-delete all existing offerings in this faculty first
-    if (mode === "replace") {
-      await deleteOfferingsByFaculty(targetFacultyId);
-    }
-
     // 2. Fetch courses & professors of this faculty for code lookup
     const [allCourses, allProfessors] = await Promise.all([
       getCourses(targetFacultyId),
