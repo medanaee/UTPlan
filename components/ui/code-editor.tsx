@@ -2,6 +2,7 @@
 
 import React, { useRef, useState, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { DismissableLayerBranch } from "@radix-ui/react-dismissable-layer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Copy, Check, Sparkles, X, Code2, Maximize2, Minimize2 } from "lucide-react";
@@ -17,6 +18,7 @@ export interface CodeEditorProps {
   disabled?: boolean;
   title?: string;
   formatJson?: boolean;
+  allowFullscreen?: boolean;
 }
 
 // Lightweight, safe syntax highlighter for JSON
@@ -70,6 +72,7 @@ export function CodeEditor({
   disabled = false,
   title,
   formatJson = true,
+  allowFullscreen = false,
 }: CodeEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const gutterRef = useRef<HTMLDivElement>(null);
@@ -82,19 +85,24 @@ export function CodeEditor({
     setMounted(true);
   }, []);
 
-  // Close fullscreen on Escape
+  // Close fullscreen on Escape, intercepting before Dialog sees it
   useEffect(() => {
+    if (!allowFullscreen) return;
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isFullscreen) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
         setIsFullscreen(false);
       }
     };
-    window.addEventListener("keydown", handleGlobalKeyDown);
-    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, [isFullscreen]);
+    window.addEventListener("keydown", handleGlobalKeyDown, { capture: true });
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown, { capture: true });
+  }, [allowFullscreen, isFullscreen]);
 
   // Lock body scroll during fullscreen
   useEffect(() => {
+    if (!allowFullscreen) return;
     if (isFullscreen) {
       document.body.style.overflow = "hidden";
     } else {
@@ -103,7 +111,7 @@ export function CodeEditor({
     return () => {
       document.body.style.overflow = "";
     };
-  }, [isFullscreen]);
+  }, [allowFullscreen, isFullscreen]);
 
   // Split lines for line numbers
   const lines = useMemo(() => value.split("\n"), [value]);
@@ -169,6 +177,11 @@ export function CodeEditor({
 
   const editorContent = (
     <div
+      onPointerDown={(e) => {
+        if (isFullscreen) {
+          e.stopPropagation();
+        }
+      }}
       className={
         isFullscreen
           ? "fixed inset-3 sm:inset-6 md:inset-8 z-[100] flex flex-col rounded-3xl border border-border/80 bg-background shadow-2xl overflow-hidden focus-within:ring-2 focus-within:ring-primary/40 animate-in fade-in-50 zoom-in-95 duration-200"
@@ -228,26 +241,34 @@ export function CodeEditor({
           )}
 
           {/* Fullscreen Toggle Button */}
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsFullscreen((prev) => !prev)}
-            className="h-6 text-[11px] px-1 gap-1 text-muted-foreground hover:text-foreground rounded-lg"
-            title={isFullscreen ? "خروج از تمام‌صفحه (Esc)" : "تمام‌صفحه"}
-          >
-            {isFullscreen ? (
-              <>
-                <Minimize2 className="h-3 w-3" />
-                <span className="hidden sm:inline">کوچک‌نمایی</span>
-              </>
-            ) : (
-              <>
-                <Maximize2 className="h-3 w-3" />
-                <span className="hidden sm:inline">تمام‌صفحه</span>
-              </>
-            )}
-          </Button>
+          {allowFullscreen && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onPointerDown={(e) => {
+                e.stopPropagation();
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsFullscreen((prev) => !prev);
+              }}
+              className="h-6 text-[11px] px-1 gap-1 text-muted-foreground hover:text-foreground rounded-lg"
+              title={isFullscreen ? "خروج از تمام‌صفحه (Esc)" : "تمام‌صفحه"}
+            >
+              {isFullscreen ? (
+                <>
+                  <Minimize2 className="h-3 w-3" />
+                  <span className="hidden sm:inline">کوچک‌نمایی</span>
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="h-3 w-3" />
+                  <span className="hidden sm:inline">تمام‌صفحه</span>
+                </>
+              )}
+            </Button>
+          )}
 
         </div>
       </div>
@@ -311,7 +332,7 @@ export function CodeEditor({
     </div>
   );
 
-  if (isFullscreen && mounted) {
+  if (allowFullscreen && isFullscreen && mounted) {
     return (
       <>
         {/* Placeholder in normal flow */}
@@ -322,13 +343,19 @@ export function CodeEditor({
           ویرایشگر کد در حالت تمام‌صفحه باز است...
         </div>
         {createPortal(
-          <>
+          <DismissableLayerBranch>
             <div
               className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] transition-opacity animate-in fade-in-0 duration-200"
-              onClick={() => setIsFullscreen(false)}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsFullscreen(false);
+              }}
             />
             {editorContent}
-          </>,
+          </DismissableLayerBranch>,
           document.body
         )}
       </>

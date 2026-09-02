@@ -359,6 +359,7 @@ export function BackupManager() {
                 maxHeight="18rem"
                 minHeight="10rem"
                 title="ویرایشگر پشتیبان دیتابیس (JSON)"
+                allowFullscreen={true}
               />
             </div>
 
