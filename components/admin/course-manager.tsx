@@ -324,6 +324,37 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
 
             <Button
               type="button"
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                if (!selectedFacultyId) return;
+                if (
+                  confirm(
+                    `هشدار: آیا از حذف کلیه دروس دانشکده «${
+                      currentFaculty?.name || ""
+                    }» مطمئن هستید؟ دروس به صورت موقت (Soft Delete) حذف می‌شوند و با ثبت مجدد کدهای مشابه یا ویرایش بازگردانده خواهند شد.`
+                  )
+                ) {
+                  const res = await fetch(`/api/courses?all=true&facultyId=${selectedFacultyId}`, {
+                    method: "DELETE",
+                  }).then((r) => r.json());
+                  if (res.success) {
+                    setActionMessage("کلیه دروس دانشکده با موفقیت حذف (Soft Delete) شدند.");
+                    await loadAllData();
+                  } else {
+                    alert(res.message || "خطا در حذف دروس");
+                  }
+                }
+              }}
+              disabled={!selectedFacultyId || facultyCourses.length === 0}
+              className="h-8 gap-1.5 text-xs text-destructive border-destructive/30 hover:bg-destructive/10 shadow-2xs font-medium"
+            >
+              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+              <span>حذف همه دروس</span>
+            </Button>
+
+            <Button
+              type="button"
               size="sm"
               onClick={() => {
                 setEditingCourse(null);

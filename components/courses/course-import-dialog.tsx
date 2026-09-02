@@ -10,8 +10,6 @@ import {
   Loader2,
   Building2,
   Sparkles,
-  PlusCircle,
-  RefreshCw,
 } from "lucide-react";
 import {
   Dialog,
@@ -147,7 +145,7 @@ export function CourseImportDialog({
     targetFaculty?.id || defaultFacultyId || ""
   );
 
-  const [importMode, setImportMode] = useState<"append" | "replace">("append");
+  const importMode = "append";
   const [jsonText, setJsonText] = useState("");
   const [parsedData, setParsedData] = useState<any[] | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
@@ -247,16 +245,6 @@ export function CourseImportDialog({
       return;
     }
 
-    if (
-      importMode === "replace" &&
-      !confirm(
-        `هشدار مهم: با انتخاب «جایگزینی کامل»، کلیه دروس و پیش‌نیازهای فعلی دانشکده «${activeFaculty?.name || "انتخاب‌شده"
-        }» حذف شده و با اطلاعات این فایل جایگزین خواهند شد. آیا مطمئن هستید؟`
-      )
-    ) {
-      return;
-    }
-
     try {
       setLoading(true);
       setResult(null);
@@ -312,66 +300,6 @@ export function CourseImportDialog({
               <span className="font-bold text-foreground">
                 {activeFaculty ? `${activeFaculty.name} (${activeFaculty.code})` : "انتخاب نشده"}
               </span>
-            </div>
-          </div>
-
-          {/* Import Mode Selection Options */}
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold block text-foreground">
-              نحوه ورود و همگام‌سازی دروس:
-            </Label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {/* Option 1: Append & Update (Merge) */}
-              <div
-                onClick={() => setImportMode("append")}
-                className={`p-3 rounded-2xl border cursor-pointer transition-all flex items-start gap-2.5 ${importMode === "append"
-                    ? "border-primary bg-primary/10 ring-1 ring-primary/30"
-                    : "border-border/80 bg-muted/20 hover:bg-muted/40"
-                  }`}
-              >
-                <input
-                  type="radio"
-                  name="importMode"
-                  checked={importMode === "append"}
-                  onChange={() => setImportMode("append")}
-                  className="mt-0.5 accent-primary cursor-pointer"
-                />
-                <div className="space-y-0.5">
-                  <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                    <PlusCircle className="h-3.5 w-3.5 text-primary" />
-                    افزودن و به‌روزرسانی (Merge)
-                  </span>
-                  <span className="text-[11px] text-muted-foreground block leading-relaxed">
-                    دروس جدید افزوده می‌شوند؛ کدهای تکراری به‌روز شده و دروس قبلی دست‌نخورده باقی می‌مانند.
-                  </span>
-                </div>
-              </div>
-
-              {/* Option 2: Wipe & Replace */}
-              <div
-                onClick={() => setImportMode("replace")}
-                className={`p-3 rounded-2xl border cursor-pointer transition-all flex items-start gap-2.5 ${importMode === "replace"
-                    ? "border-destructive bg-destructive/10 ring-1 ring-destructive/30"
-                    : "border-border/80 bg-muted/20 hover:bg-muted/40"
-                  }`}
-              >
-                <input
-                  type="radio"
-                  name="importMode"
-                  checked={importMode === "replace"}
-                  onChange={() => setImportMode("replace")}
-                  className="mt-0.5 accent-destructive cursor-pointer"
-                />
-                <div className="space-y-0.5">
-                  <span className="text-xs font-bold text-destructive flex items-center gap-1.5">
-                    <RefreshCw className="h-3.5 w-3.5 text-destructive" />
-                    جایگزینی کامل (Wipe & Replace)
-                  </span>
-                  <span className="text-[11px] text-muted-foreground block leading-relaxed">
-                    تمام دروس فعلی این دانشکده حذف و با لیست موجود در این فایل بازنویسی می‌شوند.
-                  </span>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -437,8 +365,8 @@ export function CourseImportDialog({
               value={jsonText}
               onChange={(e) => handleTextChange(e.target.value)}
               placeholder='[ { "code": "8101234", "name": "برنامه‌نویسی پیشرفته", "units": 3, "prerequisites": ["8101101"] } ]'
-              rows={6}
-              className="text-xs bg-background resize-none font-sans leading-relaxed"
+              rows={8}
+              className="text-xs bg-background font-mono leading-relaxed max-h-72 min-h-36 overflow-y-auto"
               dir="ltr"
             />
           </div>

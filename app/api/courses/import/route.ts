@@ -120,12 +120,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 2. Wipe if mode is "replace"
-    if (mode === "replace") {
-      await deleteCoursesByFaculty(targetFacultyId);
-    }
-
-    // 3. Fetch courses of target faculty (including soft-deleted for code reuse/restore)
+    // 2. Fetch courses of target faculty (including soft-deleted for code reuse/restore)
     const { results: allFacultyCourses } = await (async () => {
       const { getD1 } = await import("@/lib/db/client");
       const d1 = getD1();
@@ -219,18 +214,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 5. Step 2: Establish Prerequisites, Corequisites, and Recommended Prerequisites
-    if (mode === "replace") {
-      const { getD1 } = await import("@/lib/db/client");
-      const d1 = getD1();
-      if (d1) {
-        await d1
-          .prepare("DELETE FROM prerequisites WHERE course_id IN (SELECT id FROM courses WHERE faculty_id = ?)")
-          .bind(targetFacultyId)
-          .run();
-      }
-    }
-
+    // 3. Step 2: Establish Prerequisites, Corequisites, and Recommended Prerequisites
     let allPrereqs = await getAllPrerequisites();
 
     // Helper: Find target course ID by reference string

@@ -425,8 +425,8 @@ export function ProfessorImportDialog({
               value={jsonText}
               onChange={(e) => handleTextChange(e.target.value)}
               placeholder='[ { "code": "PRF-101", "firstName": "علی", "lastName": "محمدی", "avatarUrl": "https://example.com/avatar.jpg", "title": "استاد تمام", "email": "amohammadi@ut.ac.ir", "links": { "website": "https://ece.ut.ac.ir/~mohammadi", "scholar": "https://scholar.google.com/citations?user=xyz" } } ]'
-              rows={6}
-              className="text-xs bg-background resize-none font-sans leading-relaxed"
+              rows={8}
+              className="text-xs bg-background font-mono leading-relaxed max-h-72 min-h-36 overflow-y-auto"
               dir="ltr"
             />
           </div>

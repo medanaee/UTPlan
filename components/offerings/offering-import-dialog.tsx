@@ -404,8 +404,8 @@ export function OfferingImportDialog({
               value={jsonText}
               onChange={(e) => handleTextChange(e.target.value)}
               placeholder='[ { "code": "OFF-101", "courseCode": "8101234", "mainProfessor": "PRF-101", "professors": ["PRF-101", "PRF-102"] } ]'
-              rows={6}
-              className="text-xs bg-background resize-none font-sans leading-relaxed"
+              rows={8}
+              className="text-xs bg-background font-mono leading-relaxed max-h-72 min-h-36 overflow-y-auto"
               dir="ltr"
             />
           </div>

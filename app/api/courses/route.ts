@@ -5,6 +5,7 @@ import {
   createCourse,
   updateCourse,
   deleteCourse,
+  deleteCoursesByFaculty,
   addPrerequisite,
   removePrerequisite,
   getAllPrerequisites,
@@ -143,6 +144,14 @@ export async function DELETE(request: Request) {
     if (!auth.authorized) return auth.response!;
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
+    const facultyId = searchParams.get("facultyId");
+    const all = searchParams.get("all") === "true";
+
+    if (all && facultyId) {
+      const success = await deleteCoursesByFaculty(facultyId);
+      return Response.json({ success, message: "کلیه دروس دانشکده حذف شدند." });
+    }
+
     if (!id) {
       return Response.json({ success: false, message: "شناسه درس الزامی است." }, { status: 400 });
     }
