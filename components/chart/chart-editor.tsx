@@ -306,6 +306,11 @@ export function ChartEditor({
       if (c.prerequisites) allPrereqs.push(...c.prerequisites);
     });
 
+    const maxConfiguredTerm = chart.semesters.reduce(
+      (max, s) => Math.max(max, s.semesterNumber),
+      chart.semesters.length
+    );
+
     const fullResult = validateFullChart({
       chartCourses,
       rulesTree: activeTrack?.rulesTree,
@@ -314,6 +319,7 @@ export function ChartEditor({
       allCourses,
       prerequisites: allPrereqs,
       waivedCourseIds,
+      totalTerms: maxConfiguredTerm,
     });
 
     const courseViolations = new Set<string>();
@@ -328,12 +334,6 @@ export function ChartEditor({
       }
     });
 
-    // Find last non-empty semester
-    let lastNonEmptySem = 1;
-    chart.semesters.forEach((sem) => {
-      if (sem.courseIds.length > 0) lastNonEmptySem = sem.semesterNumber;
-    });
-
     const semesterCredits = chart.semesters.map((sem) => {
       let semUnits = 0;
       sem.courseIds.forEach((cId) => {
@@ -341,11 +341,13 @@ export function ChartEditor({
         if (c) semUnits += c.units;
       });
 
+      const isLastTerm = sem.semesterNumber === maxConfiguredTerm;
+
       return {
         semesterNumber: sem.semesterNumber,
         units: semUnits,
         isOverMax: semUnits > 24,
-        isUnderMin: sem.semesterNumber < lastNonEmptySem && semUnits > 0 && semUnits < 12,
+        isUnderMin: !isLastTerm && semUnits < 12,
       };
     });
 

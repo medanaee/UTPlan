@@ -29,6 +29,7 @@ export interface ValidationEngineInput {
     maxTerms?: number;          // default 12
   };
   waivedCourseIds?: string[];
+  totalTerms?: number;
 }
 
 /**
@@ -44,6 +45,7 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
     prerequisites,
     constraints = {},
     waivedCourseIds = [],
+    totalTerms: inputTotalTerms,
   } = input;
 
   const waivedSet = new Set<string>(waivedCourseIds);
@@ -82,16 +84,17 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
     activeTermIndices.add(entry.termIndex);
   }
 
-  const maxActiveTerm = activeTermIndices.size > 0 ? Math.max(...Array.from(activeTermIndices)) : 0;
+  const totalTerms = inputTotalTerms ?? (activeTermIndices.size > 0 ? Math.max(...Array.from(activeTermIndices)) : 1);
 
   // 2. Validate Term Credit Limits (Floor & Ceiling)
   const termCreditsList: { termIndex: number; credits: number; isWithinLimits: boolean }[] = [];
 
-  for (const [termIndex, credits] of termCreditsMap.entries()) {
-    const isLastTerm = termIndex === maxActiveTerm;
+  for (let termIndex = 1; termIndex <= totalTerms; termIndex++) {
+    const credits = termCreditsMap.get(termIndex) || 0;
+    const isLastTerm = termIndex === totalTerms;
     let isWithin = true;
 
-    // Floor check (exempt for the last active term)
+    // Floor check: all terms EXCEPT the last term must have at least minCredits (12)
     if (!isLastTerm && credits < minCredits) {
       isWithin = false;
       issues.push({
