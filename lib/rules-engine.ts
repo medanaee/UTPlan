@@ -28,6 +28,7 @@ export interface ValidationEngineInput {
     maxCreditsPerTerm?: number; // default 20
     maxTerms?: number;          // default 12
   };
+  waivedCourseIds?: string[];
 }
 
 /**
@@ -42,7 +43,10 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
     allCourses,
     prerequisites,
     constraints = {},
+    waivedCourseIds = [],
   } = input;
+
+  const waivedSet = new Set<string>(waivedCourseIds);
 
   const minCredits = constraints.minCreditsPerTerm ?? 12;
   const maxCredits = constraints.maxCreditsPerTerm ?? 24;
@@ -133,6 +137,11 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
     const coursePrereqs = prerequisites.filter((p) => p.courseId === entry.courseId);
 
     for (const prereq of coursePrereqs) {
+      // If the required course was specifically marked as passed/waived, skip this prereq
+      if (waivedSet.has(prereq.requiredCourseId)) {
+        continue;
+      }
+
       const targetCourse = courseMap.get(prereq.requiredCourseId);
       const targetName = targetCourse ? targetCourse.name : prereq.requiredCourseId;
       const termP = courseTermMap.get(prereq.requiredCourseId);
@@ -146,6 +155,7 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
             message: `درس «${courseName}» دارای پیش‌نیاز پیشنهادی «${targetName}» است که در چارت قرار نگرفته است (اخذ آن اختیاری است اما پیشنهاد می‌شود).`,
             termIndex: termC,
             courseId: entry.courseId,
+            requiredCourseId: prereq.requiredCourseId,
           });
         } else {
           issues.push({
@@ -154,6 +164,7 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
             message: `درس «${courseName}» نیازمند ${prereq.type === "prerequisite" ? "پیش‌نیاز رسمی" : "هم‌نیاز رسمی"} «${targetName}» است که در چارت قرار نگرفته است.`,
             termIndex: termC,
             courseId: entry.courseId,
+            requiredCourseId: prereq.requiredCourseId,
           });
         }
       } else {
@@ -165,6 +176,7 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
               message: `درس «${targetName}» (ترم ${termP}) پیش‌نیاز رسمی «${courseName}» (ترم ${termC}) است و باید حتماً در ترم‌های قبل از آن گذرانده شود.`,
               termIndex: termC,
               courseId: entry.courseId,
+              requiredCourseId: prereq.requiredCourseId,
             });
           }
         } else if (prereq.type === "corequisite") {
@@ -175,6 +187,7 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
               message: `درس «${targetName}» (ترم ${termP}) هم‌نیاز رسمی «${courseName}» (ترم ${termC}) است و باید همزمان یا در ترم‌های قبل از آن گذرانده شود.`,
               termIndex: termC,
               courseId: entry.courseId,
+              requiredCourseId: prereq.requiredCourseId,
             });
           }
         } else if (prereq.type === "recommended") {
@@ -185,6 +198,7 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
               message: `درس «${targetName}» (ترم ${termP}) پیش‌نیاز پیشنهادی و غیررسمی «${courseName}» (ترم ${termC}) است و توصیه می‌شود قبل از آن برداشته شود.`,
               termIndex: termC,
               courseId: entry.courseId,
+              requiredCourseId: prereq.requiredCourseId,
             });
           }
         }

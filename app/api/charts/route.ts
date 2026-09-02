@@ -71,19 +71,23 @@ export async function POST(req: NextRequest) {
     const { isAdmin, userId } = await getEffectiveUserRole(session);
 
     const body = await req.json();
-    const { title, trackId, cloneFromId, isApprovedDefault, semesters } = body;
+    const { title, trackId, cloneFromId, isApprovedDefault, semesters, waivedCourseIds } = body;
 
     if (!trackId) {
       return NextResponse.json({ success: false, message: "شناسه گرایش الزامی است." }, { status: 400 });
     }
 
     let initialSemesters = semesters;
+    let initialWaived = waivedCourseIds;
 
     // Clone from an existing chart (e.g. approved curriculum)
     if (cloneFromId) {
       const sourceChart = await getChartById(cloneFromId);
       if (sourceChart) {
         initialSemesters = sourceChart.semesters;
+        if (!initialWaived) {
+          initialWaived = sourceChart.waivedCourseIds;
+        }
       }
     }
 
@@ -92,6 +96,7 @@ export async function POST(req: NextRequest) {
       trackId,
       title: title || "چارت تحصیلی من",
       semesters: initialSemesters,
+      waivedCourseIds: initialWaived,
       isApprovedDefault: isAdmin && isApprovedDefault,
     });
 
@@ -116,7 +121,7 @@ export async function PUT(req: NextRequest) {
     const { isAdmin, userId } = await getEffectiveUserRole(session);
 
     const body = await req.json();
-    const { id, title, trackId, semesters, isPrimaryApproved, isApprovedDefault, action } = body;
+    const { id, title, trackId, semesters, isPrimaryApproved, isApprovedDefault, action, waivedCourseIds } = body;
 
     if (!id) {
       return NextResponse.json({ success: false, message: "شناسه چارت الزامی است." }, { status: 400 });
@@ -167,6 +172,7 @@ export async function PUT(req: NextRequest) {
       title,
       trackId,
       semesters,
+      waivedCourseIds,
       isApprovedDefault: isAdmin ? isApprovedDefault : undefined,
       isPrimaryApproved: isAdmin ? isPrimaryApproved : undefined,
     });

@@ -314,6 +314,7 @@ export interface ValidationIssue {
   message: string;
   termIndex?: number;
   courseId?: string;
+  requiredCourseId?: string;
   ruleNodeId?: string;
 }
 
@@ -349,6 +350,7 @@ export interface StudentChart {
   isApprovedDefault?: boolean;
   isPrimaryApproved?: boolean;
   semesters: ChartSemester[];
+  waivedCourseIds?: string[];
   createdAt: string;
   updatedAt: string;
 }

@@ -28,6 +28,7 @@ import {
   EyeOff,
   Lock,
   Shield,
+  ShieldCheck,
   Copy,
   Minus,
   ZoomIn,
@@ -54,6 +55,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Combobox } from "@/components/ui/combobox";
 import { validateFullChart } from "@/lib/rules-engine";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { TermSchedulePlanner } from "./term-schedule-planner";
@@ -222,8 +224,39 @@ export function ChartEditor({
     }[]
   >([]);
 
-  // Zoom percentage state (60% to 130%)
+  // Zoom percentage state (70% to 130%)
   const [zoom, setZoom] = useState<number>(100);
+
+  // Waived courses state (prerequisites assumed to be satisfied)
+  const [waivedCourseIds, setWaivedCourseIds] = useState<string[]>(initialChart.waivedCourseIds || []);
+  const [waivedModalOpen, setWaivedModalOpen] = useState<boolean>(false);
+  const [courseToAddWaived, setCourseToAddWaived] = useState<string>("");
+
+  const handleWaiveCourse = (courseId: string) => {
+    if (isReadOnly) return;
+    setWaivedCourseIds((prev) => {
+      if (prev.includes(courseId)) return prev;
+      return [...prev, courseId];
+    });
+  };
+
+  const handleUnwaiveCourse = (courseId: string) => {
+    if (isReadOnly) return;
+    setWaivedCourseIds((prev) => prev.filter((id) => id !== courseId));
+  };
+
+  // Combobox items for passed courses selection
+  const waivedComboboxItems = useMemo(() => {
+    return allCourses
+      .filter((c) => !waivedCourseIds.includes(c.id))
+      .map((c) => ({
+        value: c.id,
+        label: c.name,
+        sublabel: `${c.units} واحد`,
+        badge: c.code,
+        keywords: [c.name, c.code, ...(c.abbreviation ? [c.abbreviation] : [])],
+      }));
+  }, [allCourses, waivedCourseIds]);
 
   // Update track when changed
   useEffect(() => {
@@ -280,6 +313,7 @@ export function ChartEditor({
       trackAssignments: allTrackAssignments,
       allCourses,
       prerequisites: allPrereqs,
+      waivedCourseIds,
     });
 
     const courseViolations = new Set<string>();
@@ -332,7 +366,7 @@ export function ChartEditor({
       errorCount,
       warningCount,
     };
-  }, [chart.semesters, allCourses, placedCourseIdMap, activeTrack, ruleCategories, totalChartCredits]);
+  }, [chart.semesters, allCourses, placedCourseIdMap, activeTrack, ruleCategories, totalChartCredits, waivedCourseIds]);
 
   // Recalculate SVG connection curves in absolute scroll content space
   const updateSvgCurves = useCallback(() => {
@@ -397,12 +431,15 @@ export function ChartEditor({
               pathData = `M ${x1} ${y1} C ${x1} ${y1 - dy}, ${x2} ${y2 + dy}, ${x2} ${y2}`;
             }
 
-            const isViolation =
-              pr.type === "prerequisite"
-                ? sourceSem >= sem.semesterNumber
-                : pr.type === "corequisite"
-                ? sourceSem > sem.semesterNumber
-                : sourceSem >= sem.semesterNumber;
+            const isPrereqPassed = waivedCourseIds.includes(sourceCourseId);
+
+            const isViolation = isPrereqPassed
+              ? false
+              : pr.type === "prerequisite"
+              ? sourceSem >= sem.semesterNumber
+              : pr.type === "corequisite"
+              ? sourceSem > sem.semesterNumber
+              : sourceSem >= sem.semesterNumber;
 
             const isHighlighted =
               hoveredCourseId === targetCourseId || hoveredCourseId === sourceCourseId;
@@ -424,7 +461,7 @@ export function ChartEditor({
     });
 
     setSvgCurves(curves);
-  }, [chart.semesters, allCourses, placedCourseIdMap, showArrows, hoveredCourseId, zoom]);
+  }, [chart.semesters, allCourses, placedCourseIdMap, showArrows, hoveredCourseId, zoom, waivedCourseIds]);
 
   // Recalculate curves on state updates or resize
   useEffect(() => {
@@ -567,6 +604,7 @@ export function ChartEditor({
           title,
           trackId: selectedTrackId,
           semesters: chart.semesters,
+          waivedCourseIds,
         }),
       }).then((r) => r.json());
 
@@ -736,6 +774,26 @@ export function ChartEditor({
 
           {/* Actions & Buttons */}
           <div className="flex items-center gap-2">
+            {/* Waived Prerequisites / Ignored Errors Manager */}
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setWaivedModalOpen(true)}
+              className="h-8 gap-1.5 text-xs px-2.5 sm:px-3 rounded-lg border border-border bg-background/50 text-foreground hover:bg-muted/70 transition-all shadow-2xs flex items-center"
+              title="مدیریت دروس پاس‌شده و معاف از پیش‌نیاز"
+            >
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span className="hidden sm:inline">دروس پاس‌شده</span>
+              {waivedCourseIds.length > 0 && (
+                <Badge
+                  variant="secondary"
+                  className="h-4 px-1 text-[10px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-bold"
+                >
+                  {waivedCourseIds.length}
+                </Badge>
+              )}
+            </Button>
+
             {/* Load Approved Curriculum Button */}
             {!isReadOnly && (
               <Button
@@ -1606,6 +1664,21 @@ export function ChartEditor({
                             </span>
                           )}
                         </div>
+
+                        {/* Action: "پاس کردم" for prerequisite / corequisite issues */}
+                        {issue.requiredCourseId && !isReadOnly && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleWaiveCourse(issue.requiredCourseId!)}
+                            className="h-7 px-2.5 text-[11px] font-bold gap-1 shrink-0 bg-background/90 text-emerald-700 dark:text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/15 hover:border-emerald-500 transition-colors shadow-2xs cursor-pointer"
+                            title="ثبت درس پیش‌نیاز/هم‌نیاز به عنوان درس پاس‌شده"
+                          >
+                            <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                            <span>پاس کردم</span>
+                          </Button>
+                        )}
                       </div>
                     );
                   })}
@@ -1629,6 +1702,153 @@ export function ChartEditor({
               className="h-8 px-5 text-xs font-semibold shadow-xs"
             >
               متوجه شدم
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ========================================================= */}
+      {/* 1.5. WAIVED PREREQUISITES / PASSED COURSES MODAL */}
+      {/* ========================================================= */}
+      <Dialog open={waivedModalOpen} onOpenChange={setWaivedModalOpen}>
+        <DialogContent className="sm:max-w-xl max-h-[85vh] flex flex-col p-0 overflow-hidden" dir="rtl">
+          <DialogHeader className="p-4 sm:p-5 border-b shrink-0 bg-card/60">
+            <DialogTitle className="text-sm sm:text-base font-bold flex items-center gap-2 text-foreground">
+              <ShieldCheck className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              مدیریت دروس گذرانده‌شده و معاف از پیش‌نیاز
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground mt-1 leading-relaxed">
+              دروسی که در این لیست ثبت می‌شوند، به عنوان دروس پاس‌شده (مانند تطبیق واحد یا گذرانده‌شده در گذشته) در نظر گرفته می‌شوند و نیاز پیش‌نیاز سایر دروس به آن‌ها برطرف خواهد شد.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-4 text-xs">
+            {/* Search & Add Course Section with Combobox */}
+            {!isReadOnly && (
+              <div className="p-3 rounded-xl border border-border/80 bg-muted/20 space-y-2">
+                <p className="font-bold text-foreground flex items-center gap-1.5">
+                  <Plus className="h-3.5 w-3.5 text-primary" />
+                  ثبت درس جدید به عنوان درس پاس‌شده:
+                </p>
+                <div className="flex items-center gap-2 w-full">
+                  <div className="flex-1 min-w-0">
+                    <Combobox
+                      items={waivedComboboxItems}
+                      value={courseToAddWaived}
+                      onChange={setCourseToAddWaived}
+                      placeholder="جستجو و انتخاب درس گذرانده‌شده..."
+                      searchPlaceholder="نام یا کد درس را جستجو کنید..."
+                      emptyText="درسی یافت نشد."
+                      className="w-full h-8 text-xs bg-background"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={!courseToAddWaived}
+                    onClick={() => {
+                      if (courseToAddWaived) {
+                        handleWaiveCourse(courseToAddWaived);
+                        setCourseToAddWaived("");
+                      }
+                    }}
+                    className="h-8 px-3.5 text-xs font-bold gap-1 shrink-0 whitespace-nowrap shadow-2xs"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    افزودن
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* List of currently waived courses */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="font-bold text-foreground">
+                  دروس گذرانده‌شده خارج از چارت ({waivedCourseIds.length} درس):
+                </p>
+                {waivedCourseIds.length > 0 && !isReadOnly && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setWaivedCourseIds([])}
+                    className="h-6 text-[11px] text-destructive hover:text-destructive/80 px-2"
+                  >
+                    حذف همه
+                  </Button>
+                )}
+              </div>
+
+              {waivedCourseIds.length > 0 ? (
+                <div className="space-y-2">
+                  {waivedCourseIds.map((cId) => {
+                    const course = allCourses.find((c) => c.id === cId);
+                    const courseName = course ? course.name : cId;
+                    const courseCode = course?.code;
+                    const units = course?.units;
+
+                    return (
+                      <div
+                        key={cId}
+                        className="p-3 rounded-xl border border-border/80 bg-card flex items-center justify-between gap-3 shadow-2xs hover:border-border transition-colors"
+                      >
+                        <div className="space-y-0.5 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-xs text-foreground">{courseName}</span>
+                            {courseCode && (
+                              <Badge variant="outline" className="text-[10px] font-mono">
+                                {courseCode}
+                              </Badge>
+                            )}
+                            {units !== undefined && (
+                              <span className="text-[10px] text-muted-foreground font-semibold">
+                                ({units} واحد)
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-emerald-600 dark:text-emerald-400">
+                            این درس پاس‌شده تلقی شده و وابستگی سایر دروس به آن ارضا است.
+                          </div>
+                        </div>
+
+                        {!isReadOnly && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleUnwaiveCourse(cId)}
+                            className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 transition-colors"
+                            title="حذف از لیست دروس گذرانده‌شده"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="p-8 rounded-2xl border border-dashed border-border/80 bg-muted/10 text-center space-y-2">
+                  <ShieldCheck className="h-9 w-9 text-muted-foreground/40 mx-auto" />
+                  <p className="font-bold text-foreground text-xs">هنوز درسی به عنوان گذرانده‌شده ثبت نشده است</p>
+                  <p className="text-[11px] text-muted-foreground max-w-sm mx-auto leading-relaxed">
+                    می‌توانید درس پیش‌نیاز را از کادر بالا انتخاب و ثبت کنید، یا در پنجره خطاهای چارت روی دکمه «پاس کردم» کلیک نمایید.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Dialog Footer */}
+          <div className="p-3 sm:p-4 border-t bg-muted/30 flex items-center justify-end gap-2 shrink-0">
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setWaivedModalOpen(false)}
+              className="h-8 px-5 text-xs font-semibold shadow-xs"
+            >
+              تأیید و بستن
             </Button>
           </div>
         </DialogContent>

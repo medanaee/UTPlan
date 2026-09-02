@@ -233,6 +233,7 @@ CREATE TABLE IF NOT EXISTS charts (
   track_id TEXT NOT NULL,
   title TEXT NOT NULL,
   description TEXT,
+  waived_course_ids TEXT,
   is_approved_template INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,

@@ -48,6 +48,13 @@ export async function getCharts(userId?: string, trackId?: string): Promise<Stud
         };
       });
 
+      let waivedCourseIds: string[] = [];
+      if (c.waived_course_ids) {
+        try {
+          waivedCourseIds = JSON.parse(c.waived_course_ids);
+        } catch {}
+      }
+
       return {
         id: c.id,
         userId: c.user_id,
@@ -55,6 +62,7 @@ export async function getCharts(userId?: string, trackId?: string): Promise<Stud
         title: c.title,
         isApprovedDefault: Boolean(c.is_approved_template),
         semesters,
+        waivedCourseIds,
         createdAt: c.created_at,
         updatedAt: c.updated_at,
       };
@@ -148,6 +156,13 @@ export async function getChartById(id: string): Promise<StudentChart | null> {
       };
     });
 
+    let waivedCourseIds: string[] = [];
+    if ((c as any).waived_course_ids) {
+      try {
+        waivedCourseIds = JSON.parse((c as any).waived_course_ids);
+      } catch {}
+    }
+
     return {
       id: (c as any).id,
       userId: (c as any).user_id,
@@ -155,6 +170,7 @@ export async function getChartById(id: string): Promise<StudentChart | null> {
       title: (c as any).title,
       isApprovedDefault: Boolean((c as any).is_approved_template),
       semesters,
+      waivedCourseIds,
       createdAt: (c as any).created_at,
       updatedAt: (c as any).updated_at,
     };
@@ -170,10 +186,12 @@ export async function createChart(data: {
   title: string;
   isApprovedDefault?: boolean;
   semesters?: ChartSemester[];
+  waivedCourseIds?: string[];
 }): Promise<StudentChart> {
   const chartId = `ch_${crypto.randomUUID().slice(0, 8)}`;
   const now = new Date().toISOString();
   const isApproved = data.isApprovedDefault ? 1 : 0;
+  const waivedCourseIdsJson = JSON.stringify(data.waivedCourseIds || []);
 
   // Default to 8 empty semesters if not provided or empty
   const defaultSemesters: ChartSemester[] = [1, 2, 3, 4, 5, 6, 7, 8].map((num) => ({
@@ -188,12 +206,16 @@ export async function createChart(data: {
   if (!d1) throw new Error("پایگاه‌داده در دسترس نیست.");
 
   try {
+    try {
+      await d1.prepare("ALTER TABLE charts ADD COLUMN waived_course_ids TEXT").run();
+    } catch {}
+
     await d1
       .prepare(
-        `INSERT INTO charts (id, user_id, track_id, title, is_approved_template, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO charts (id, user_id, track_id, title, is_approved_template, waived_course_ids, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
       )
-      .bind(chartId, data.userId, data.trackId, data.title, isApproved, now, now)
+      .bind(chartId, data.userId, data.trackId, data.title, isApproved, waivedCourseIdsJson, now, now)
       .run();
 
     for (const s of semesters) {
@@ -221,12 +243,13 @@ export async function createChart(data: {
   }
 
   return {
-    id,
+    id: chartId,
     userId: data.userId,
     trackId: data.trackId,
     title: data.title,
     isApprovedDefault: Boolean(data.isApprovedDefault),
     semesters,
+    waivedCourseIds: data.waivedCourseIds || [],
     createdAt: now,
     updatedAt: now,
   };
@@ -241,13 +264,23 @@ export async function updateChart(
   if (!d1) return null;
 
   try {
-    if (data.title !== undefined || data.trackId !== undefined || data.isApprovedDefault !== undefined) {
+    try {
+      await d1.prepare("ALTER TABLE charts ADD COLUMN waived_course_ids TEXT").run();
+    } catch {}
+
+    if (
+      data.title !== undefined ||
+      data.trackId !== undefined ||
+      data.isApprovedDefault !== undefined ||
+      data.waivedCourseIds !== undefined
+    ) {
       await d1
         .prepare(
           `UPDATE charts
            SET title = COALESCE(?, title),
                track_id = COALESCE(?, track_id),
                is_approved_template = COALESCE(?, is_approved_template),
+               waived_course_ids = COALESCE(?, waived_course_ids),
                updated_at = ?
            WHERE id = ?`
         )
@@ -255,6 +288,7 @@ export async function updateChart(
           data.title || null,
           data.trackId || null,
           data.isApprovedDefault !== undefined ? (data.isApprovedDefault ? 1 : 0) : null,
+          data.waivedCourseIds !== undefined ? JSON.stringify(data.waivedCourseIds) : null,
           now,
           id
         )
