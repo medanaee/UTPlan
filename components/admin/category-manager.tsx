@@ -17,6 +17,7 @@ import {
   FolderTree,
   Palette,
   RefreshCw,
+  Eraser,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -653,6 +654,9 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                 setRuleCats={setRuleCats}
                 getRuleCategoryCourses={getRuleCategoryCourses}
                 renderCourseChips={renderCourseChips}
+                onAssignmentsChanged={async () => {
+                  if (selectedTrackId) await loadTrackDetails(selectedTrackId);
+                }}
               />
             ));
           })()}
@@ -771,6 +775,32 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                       تخصیص دروس
                     </Button>
 
+                    {/* Eraser Button: Clear all assigned courses inside this visual category */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={async () => {
+                        if (!confirm(`آیا از حذف تمام دروس داخل دسته بصری «${cat.name}» مطمئن هستید؟`)) return;
+                        await fetch("/api/tracks/assignments", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            action: "clear_category_courses",
+                            trackId: selectedTrackId,
+                            type: "visual",
+                            categoryId: cat.id,
+                          }),
+                        });
+                        if (selectedTrackId) await loadTrackDetails(selectedTrackId);
+                        setActionMessage(`تمام دروس دسته بصری «${cat.name}» با موفقیت پاک شدند.`);
+                      }}
+                      disabled={assignedCourses.length === 0}
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-amber-600 hover:bg-amber-500/10 shrink-0"
+                      title="پاک کردن تمام دروس این دسته بصری"
+                    >
+                      <Eraser className="h-4 w-4" />
+                    </Button>
+
                     <Button
                       variant="ghost"
                       size="sm"
@@ -787,10 +817,8 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                       onClick={async () => {
                         if (!confirm("آیا از حذف دسته بصری «" + cat.name + "» مطمئن هستید؟")) return;
                         await fetch("/api/categories?id=" + cat.id + "&type=visual", { method: "DELETE" });
-                        const res = await fetch("/api/categories?trackId=" + selectedTrackId).then((r) =>
-                          r.json()
-                        );
-                        if (res.success) setVisualCats(res.data.visual);
+                        if (selectedTrackId) await loadTrackDetails(selectedTrackId);
+                        setActionMessage(`دسته بصری «${cat.name}» با موفقیت حذف شد.`);
                       }}
                       className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive shrink-0"
                       title="حذف دسته"

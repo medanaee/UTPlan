@@ -1,7 +1,7 @@
-﻿"use client";
+"use client";
 
 import React from "react";
-import { GripVertical, CornerDownLeft, BookOpen, Plus, Pencil, Trash2 } from "lucide-react";
+import { GripVertical, CornerDownLeft, BookOpen, Plus, Pencil, Trash2, Eraser } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { Course, RuleCategory } from "@/lib/types";
@@ -30,6 +30,7 @@ export interface RuleCategoryNodeProps {
   setRuleCats: (cats: RuleCategory[]) => void;
   getRuleCategoryCourses: (catId: string) => Course[];
   renderCourseChips: (catId: string, type: "visual" | "rule", name: string, color?: string) => React.ReactNode;
+  onAssignmentsChanged?: () => Promise<void>;
 }
 
 export function RuleCategoryNode({
@@ -50,6 +51,7 @@ export function RuleCategoryNode({
   setRuleCats,
   getRuleCategoryCourses,
   renderCourseChips,
+  onAssignmentsChanged,
 }: RuleCategoryNodeProps) {
   const children = ruleCats.filter((c) => c.parentId === category.id);
   const assignedCourses = getRuleCategoryCourses(category.id);
@@ -103,22 +105,12 @@ export function RuleCategoryNode({
               {category.code}
             </Badge>
           )}
-          {depth > 1 && (
-            <Badge variant="outline" className="text-xs font-semibold px-2 py-0.5">
-              سطح {depth} (زیردسته)
-            </Badge>
-          )}
           <Badge variant="secondary" className="text-xs font-medium px-2 py-0.5">
             {assignedCourses.length} درس ({totalUnits} واحد)
           </Badge>
-          {children.length > 0 && depth < maxDepth && (
-            <Badge variant="outline" className="text-xs px-2 py-0.5 font-normal">
-              {children.length} زیردسته
-            </Badge>
-          )}
         </div>
 
-        <div className="flex items-center gap-1.5 self-end sm:self-auto">
+        <div className="flex items-center gap-0.5 self-end sm:self-auto">
           <Button
             size="sm"
             variant="outline"
@@ -135,6 +127,8 @@ export function RuleCategoryNode({
             <BookOpen className="h-3.5 w-3.5 text-primary" />
             تخصیص دروس
           </Button>
+
+          
 
           {/* Render subcategory button only if depth is below maxDepth */}
           {depth < maxDepth && (
@@ -153,6 +147,34 @@ export function RuleCategoryNode({
               زیردسته
             </Button>
           )}
+
+          {/* Eraser Button: Clear all assigned courses inside this rule category */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={async (e) => {
+              e.stopPropagation();
+              if (!confirm(`آیا از حذف تمام دروس داخل دسته قوانین «${category.name}» مطمئن هستید؟`)) return;
+              await fetch("/api/tracks/assignments", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  action: "clear_category_courses",
+                  trackId: selectedTrackId,
+                  type: "rule",
+                  categoryId: category.id,
+                }),
+              });
+              if (onAssignmentsChanged) {
+                await onAssignmentsChanged();
+              }
+            }}
+            disabled={assignedCourses.length === 0}
+            className="h-8 w-8 p-0 text-muted-foreground hover:text-amber-600 hover:bg-amber-500/10 shrink-0"
+            title="پاک کردن تمام دروس این دسته قوانین"
+          >
+            <Eraser className="h-4 w-4" />
+          </Button>
 
           <Button
             variant="ghost"
@@ -182,6 +204,9 @@ export function RuleCategoryNode({
               });
               const res = await fetch("/api/categories?trackId=" + selectedTrackId).then((r) => r.json());
               if (res.success) setRuleCats(res.data.rule);
+              if (onAssignmentsChanged) {
+                await onAssignmentsChanged();
+              }
             }}
             className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
             title="حذف دسته"
@@ -218,6 +243,7 @@ export function RuleCategoryNode({
               setRuleCats={setRuleCats}
               getRuleCategoryCourses={getRuleCategoryCourses}
               renderCourseChips={renderCourseChips}
+              onAssignmentsChanged={onAssignmentsChanged}
             />
           ))}
         </div>

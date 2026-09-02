@@ -1,5 +1,11 @@
 import { requireAdminSession } from "@/lib/auth";
-import { getTrackAssignments, assignCourseToCategories, bulkAssignTrackCourses, assignCategoryCourses } from "@/lib/db";
+import {
+  getTrackAssignments,
+  assignCourseToCategories,
+  bulkAssignTrackCourses,
+  assignCategoryCourses,
+  clearCategoryCourses,
+} from "@/lib/db";
 
 export async function GET(request: Request) {
   try {
@@ -27,6 +33,13 @@ export async function POST(request: Request) {
 
     if (!trackId) {
       return Response.json({ success: false, message: "شناسه گرایش الزامی است." }, { status: 400 });
+    }
+
+    // Clear all courses from specific category (visual or rule)
+    if (body.action === "clear_category_courses" && body.categoryId && body.type) {
+      await clearCategoryCourses(trackId, body.type, body.categoryId);
+      const updated = await getTrackAssignments(trackId);
+      return Response.json({ success: true, data: updated, message: "دروس داخل این دسته با موفقیت پاک شدند." });
     }
 
     // Assign courses to specific category (visual or rule)
