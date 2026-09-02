@@ -39,11 +39,11 @@ export async function getOfferings(filter?: {
     try {
       const { results: allProfLinks } = await d1
         .prepare(`
-          SELECT op.offering_id, op.is_primary, p.id, p.name, p.code, p.title, p.avatar_url, p.email
+          SELECT op.offering_id, op.is_primary, p.id, p.first_name, p.last_name, p.code, p.title, p.avatar_url, p.email
           FROM offering_professors op
           JOIN professors p ON op.professor_id = p.id
           WHERE p.deleted_at IS NULL
-          ORDER BY op.is_primary DESC, p.name ASC
+          ORDER BY op.is_primary DESC, p.last_name ASC, p.first_name ASC
         `)
         .all();
       profLinksList = allProfLinks || [];
@@ -54,15 +54,22 @@ export async function getOfferings(filter?: {
     let list = offeringRows.map((r: any) => {
       const finalProfs = profLinksList
         .filter((lp: any) => lp.offering_id === r.id)
-        .map((lp: any) => ({
-          id: lp.id,
-          name: lp.name,
-          code: lp.code || undefined,
-          title: lp.title || undefined,
-          avatarUrl: lp.avatar_url || undefined,
-          email: lp.email || undefined,
-          isPrimary: Boolean(lp.is_primary),
-        }));
+        .map((lp: any) => {
+          const fName = lp.first_name || "";
+          const lName = lp.last_name || "";
+          const fullName = [fName, lName].filter(Boolean).join(" ") || "استاد";
+          return {
+            id: lp.id,
+            firstName: fName || undefined,
+            lastName: lName || undefined,
+            name: fullName,
+            code: lp.code || undefined,
+            title: lp.title || undefined,
+            avatarUrl: lp.avatar_url || undefined,
+            email: lp.email || undefined,
+            isPrimary: Boolean(lp.is_primary),
+          };
+        });
 
       const primaryProf = finalProfs.find((p: any) => p.isPrimary) || finalProfs[0];
       const profNames = finalProfs.map((p: any) => p.name).join(" و ");
@@ -130,11 +137,11 @@ export async function getOfferingById(id: string): Promise<CourseOffering | null
     try {
       const { results } = await d1
         .prepare(`
-          SELECT op.is_primary, p.id, p.name, p.code, p.title, p.avatar_url, p.email
+          SELECT op.is_primary, p.id, p.first_name, p.last_name, p.code, p.title, p.avatar_url, p.email
           FROM offering_professors op
           JOIN professors p ON op.professor_id = p.id
           WHERE op.offering_id = ? AND p.deleted_at IS NULL
-          ORDER BY op.is_primary DESC, p.name ASC
+          ORDER BY op.is_primary DESC, p.last_name ASC, p.first_name ASC
         `)
         .bind(id)
         .all();
@@ -143,15 +150,22 @@ export async function getOfferingById(id: string): Promise<CourseOffering | null
       // Safe fallback
     }
 
-    const finalProfs = (profRows || []).map((lp: any) => ({
-      id: lp.id,
-      name: lp.name,
-      code: lp.code || undefined,
-      title: lp.title || undefined,
-      avatarUrl: lp.avatar_url || undefined,
-      email: lp.email || undefined,
-      isPrimary: Boolean(lp.is_primary),
-    }));
+    const finalProfs = (profRows || []).map((lp: any) => {
+      const fName = lp.first_name || "";
+      const lName = lp.last_name || "";
+      const fullName = [fName, lName].filter(Boolean).join(" ") || "استاد";
+      return {
+        id: lp.id,
+        firstName: fName || undefined,
+        lastName: lName || undefined,
+        name: fullName,
+        code: lp.code || undefined,
+        title: lp.title || undefined,
+        avatarUrl: lp.avatar_url || undefined,
+        email: lp.email || undefined,
+        isPrimary: Boolean(lp.is_primary),
+      };
+    });
 
     const primaryProf = finalProfs.find((p: any) => p.isPrimary) || finalProfs[0];
     const profNames = finalProfs.map((p: any) => p.name).join(" و ");

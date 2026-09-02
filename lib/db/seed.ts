@@ -174,11 +174,11 @@ export async function seedDatabase(fullSeed = true) {
   for (const p of profs) {
     await d1
       .prepare(
-        `INSERT INTO professors (id, faculty_id, first_name, last_name, name, title, email, links, created_at)
-         VALUES (?, 'fac_ece', ?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO professors (id, faculty_id, first_name, last_name, title, email, links, created_at)
+         VALUES (?, 'fac_ece', ?, ?, ?, ?, ?, ?)
          ON CONFLICT(id) DO NOTHING`
       )
-      .bind(p.id, p.first_name, p.last_name, p.name, p.title, p.email, p.links, now)
+      .bind(p.id, p.first_name, p.last_name, p.title, p.email, p.links, now)
       .run();
   }
 

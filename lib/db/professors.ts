@@ -12,7 +12,7 @@ export async function getProfessors(facultyId?: string): Promise<Professor[]> {
       query += " AND faculty_id = ?";
       params.push(facultyId);
     }
-    query += " ORDER BY name ASC";
+    query += " ORDER BY last_name ASC, first_name ASC";
     const { results } = await d1.prepare(query).bind(...params).all();
     return (results || []).map((p: any) => {
       let links: any = undefined;
@@ -23,13 +23,16 @@ export async function getProfessors(facultyId?: string): Promise<Professor[]> {
           links = undefined;
         }
       }
+      const firstName = p.first_name || "";
+      const lastName = p.last_name || "";
+      const fullName = [firstName, lastName].filter(Boolean).join(" ");
       return {
         id: p.id,
         facultyId: p.faculty_id,
         code: p.code || undefined,
-        firstName: p.first_name || undefined,
-        lastName: p.last_name || undefined,
-        name: p.name,
+        firstName: firstName || undefined,
+        lastName: lastName || undefined,
+        name: fullName || "استاد",
         avatarUrl: p.avatar_url || "",
         title: p.title || "استاد تمام",
         email: p.email || "",
@@ -90,10 +93,16 @@ export async function getProfessorById(id: string): Promise<Professor | null> {
         ? (revRows || []).reduce((sum: number, r: any) => sum + Number(r.overall_rating), 0) / revCount
         : 0;
 
+    const firstName = (p as any).first_name || "";
+    const lastName = (p as any).last_name || "";
+    const fullName = [firstName, lastName].filter(Boolean).join(" ");
+
     return {
       id: (p as any).id,
       code: (p as any).code || undefined,
-      name: (p as any).name,
+      firstName: firstName || undefined,
+      lastName: lastName || undefined,
+      name: fullName || "استاد",
       facultyId: (p as any).faculty_id,
       facultyName: (p as any).faculty_name || "نامشخص",
       title: (p as any).title || undefined,
@@ -122,7 +131,9 @@ export async function getProfessorById(id: string): Promise<Professor | null> {
 
 export async function createProfessor(data: {
   facultyId: string;
-  name: string;
+  firstName?: string;
+  lastName?: string;
+  name?: string;
   code?: string;
   title?: string;
   email?: string;
@@ -131,7 +142,20 @@ export async function createProfessor(data: {
 }): Promise<Professor> {
   const id = `prf_${crypto.randomUUID().slice(0, 8)}`;
   const now = new Date().toISOString();
-  const cleanName = data.name.trim();
+  let firstName = (data.firstName || "").trim();
+  let lastName = (data.lastName || "").trim();
+
+  if ((!firstName || !lastName) && data.name) {
+    const parts = data.name.trim().split(/\s+/);
+    if (!firstName && parts.length > 0) firstName = parts[0];
+    if (!lastName && parts.length > 1) lastName = parts.slice(1).join(" ");
+    if (!lastName && firstName) lastName = firstName;
+  }
+
+  if (!firstName) firstName = "استاد";
+  if (!lastName) lastName = "نامشخص";
+
+  const fullName = [firstName, lastName].filter(Boolean).join(" ");
   const code = data.code?.trim().toUpperCase() || `PRF-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
   const cleanTitle = data.title?.trim() || null;
   const cleanEmail = data.email?.trim() || null;
@@ -144,17 +168,19 @@ export async function createProfessor(data: {
   try {
     await d1
       .prepare(
-        `INSERT INTO professors (id, code, faculty_id, name, title, email, avatar_url, links, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO professors (id, code, faculty_id, first_name, last_name, title, email, avatar_url, links, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
-      .bind(id, code, data.facultyId, cleanName, cleanTitle, cleanEmail, cleanAvatarUrl, linksStr, now)
+      .bind(id, code, data.facultyId, firstName, lastName, cleanTitle, cleanEmail, cleanAvatarUrl, linksStr, now)
       .run();
 
     return {
       id,
       code,
       facultyId: data.facultyId,
-      name: cleanName,
+      firstName,
+      lastName,
+      name: fullName,
       title: cleanTitle || undefined,
       email: cleanEmail || undefined,
       avatarUrl: cleanAvatarUrl || undefined,
@@ -170,7 +196,7 @@ export async function createProfessor(data: {
 
 export async function updateProfessor(
   id: string,
-  data: Partial<Omit<Professor, "id" | "createdAt" | "deletedAt">>
+  data: Partial<Omit<Professor, "id" | "createdAt">>
 ): Promise<Professor | null> {
   const d1 = getD1();
   if (!d1) return null;
@@ -183,9 +209,22 @@ export async function updateProfessor(
       sets.push("faculty_id = ?");
       params.push(data.facultyId);
     }
-    if (data.name) {
-      sets.push("name = ?");
-      params.push(data.name.trim());
+    if (data.firstName !== undefined) {
+      sets.push("first_name = ?");
+      params.push(data.firstName.trim());
+    }
+    if (data.lastName !== undefined) {
+      sets.push("last_name = ?");
+      params.push(data.lastName.trim());
+    }
+    if (data.name && data.firstName === undefined && data.lastName === undefined) {
+      const parts = data.name.trim().split(/\s+/);
+      const fName = parts[0] || "";
+      const lName = parts.slice(1).join(" ") || fName;
+      sets.push("first_name = ?");
+      params.push(fName);
+      sets.push("last_name = ?");
+      params.push(lName);
     }
     if (data.code) {
       sets.push("code = ?");

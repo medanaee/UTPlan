@@ -138,9 +138,8 @@ CREATE TABLE IF NOT EXISTS professors (
   id TEXT PRIMARY KEY,
   faculty_id TEXT NOT NULL,
   code TEXT,
-  first_name TEXT,
-  last_name TEXT,
-  name TEXT NOT NULL,
+  first_name TEXT NOT NULL,
+  last_name TEXT NOT NULL,
   avatar_url TEXT,
   title TEXT,
   email TEXT,
@@ -151,6 +150,7 @@ CREATE TABLE IF NOT EXISTS professors (
 );
 CREATE INDEX IF NOT EXISTS idx_professors_faculty ON professors(faculty_id);
 CREATE INDEX IF NOT EXISTS idx_professors_code ON professors(code);
+CREATE INDEX IF NOT EXISTS idx_professors_name ON professors(last_name, first_name);
 
 -- 11. Course Offerings Table (Course offering entity)
 CREATE TABLE IF NOT EXISTS course_offerings (

@@ -28,7 +28,7 @@ export async function getEvents(
       SELECT e.id, e.offering_id, e.term, e.location, e.exam_date, e.exam_start_time, e.exam_end_time,
              e.is_user_custom, e.user_id, e.global_event_id, e.created_at,
              c.id AS course_id, c.name AS course_name, c.code AS course_code, c.units AS course_units,
-             p.id AS professor_id, p.name AS professor_name, p.title AS professor_title, p.avatar_url AS professor_avatar_url
+             p.id AS professor_id, (p.first_name || ' ' || p.last_name) AS professor_name, p.title AS professor_title, p.avatar_url AS professor_avatar_url
       FROM course_events e
       JOIN course_offerings o ON e.offering_id = o.id
       JOIN courses c ON o.course_id = c.id
@@ -77,11 +77,11 @@ export async function getEvents(
     // Fetch professor links for all offerings
     const { results: allProfLinks } = await d1
       .prepare(`
-        SELECT op.offering_id, op.is_primary, p.id, p.name, p.code, p.title, p.avatar_url, p.email
+        SELECT op.offering_id, op.is_primary, p.id, p.first_name, p.last_name, p.code, p.title, p.avatar_url, p.email
         FROM offering_professors op
         JOIN professors p ON op.professor_id = p.id
         WHERE p.deleted_at IS NULL
-        ORDER BY op.is_primary DESC, p.name ASC
+        ORDER BY op.is_primary DESC, p.last_name ASC, p.first_name ASC
       `)
       .all();
     const profLinksList = allProfLinks || [];
@@ -99,7 +99,12 @@ export async function getEvents(
 
       const offProfs = profLinksList.filter((lp: any) => lp.offering_id === e.offering_id);
       const primaryProf = offProfs.find((p: any) => p.is_primary) || offProfs[0];
-      const profNames = offProfs.length > 0 ? offProfs.map((p: any) => p.name).join(" و ") : e.professor_name;
+      const profNames =
+        offProfs.length > 0
+          ? offProfs
+              .map((p: any) => [p.first_name, p.last_name].filter(Boolean).join(" ") || "استاد")
+              .join(" و ")
+          : e.professor_name || "نامشخص";
 
       return {
         id: e.id,
