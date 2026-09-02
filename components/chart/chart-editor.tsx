@@ -609,6 +609,20 @@ export function ChartEditor({
     });
   }, [allCourses, drawerSearch, selectedCategoryFilter, selectedTrackId, placedCourseIdMap]);
 
+  // Dynamic grid column count based on zoom level:
+  // Base (90%+): 3 -> 8 cols
+  // 80%: +1 col (4 -> 9 cols)
+  // 70% (zoom floor): +2 cols (5 -> 10 cols)
+  const gridColsClass = useMemo(() => {
+    if (zoom <= 70) {
+      return "grid-cols-5 sm:grid-cols-6 md:grid-cols-7 lg:grid-cols-8 xl:grid-cols-9 2xl:grid-cols-10";
+    }
+    if (zoom <= 80) {
+      return "grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 2xl:grid-cols-9";
+    }
+    return "grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8";
+  }, [zoom]);
+
   return (
     <div className="flex flex-col h-full overflow-hidden bg-background text-foreground select-none">
       {/* ========================================================================= */}
@@ -991,8 +1005,8 @@ export function ChartEditor({
                   type="button"
                   size="sm"
                   variant="ghost"
-                  onClick={() => setZoom((z) => Math.max(60, z - 10))}
-                  disabled={zoom <= 60}
+                  onClick={() => setZoom((z) => Math.max(70, z - 10))}
+                  disabled={zoom <= 70}
                   className="h-6 w-6 sm:h-7 sm:w-7 p-0 rounded-md text-foreground hover:bg-muted/80 disabled:opacity-40 transition-colors flex items-center justify-center"
                   title="کوچک‌نمایی (Zoom Out)"
                 >
@@ -1288,7 +1302,7 @@ export function ChartEditor({
                   {/* Semester Course Cards Grid (Drop Zone with Reordering) */}
                   <div className="p-2.5 sm:p-3 min-h-[60px]">
                     {sem.courseIds.length > 0 ? (
-                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-2.5">
+                      <div className={`grid ${gridColsClass} gap-2.5`}>
                         {sem.courseIds.map((cId) => {
                           const course = allCourses.find((c) => c.id === cId);
                           if (!course) return null;
