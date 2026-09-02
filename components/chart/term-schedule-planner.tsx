@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import Link from "next/link";
+import { calculateSemesterForTerm, formatSemesterLabel } from "@/lib/semester-utils";
 import {
   Calendar,
   Clock,
@@ -110,9 +112,18 @@ export function TermSchedulePlanner({
   onClose,
   user,
 }: TermSchedulePlannerProps) {
+  const calculatedSemester = useMemo(() => {
+    return calculateSemesterForTerm(user?.entrySemester, termIndex);
+  }, [user?.entrySemester, termIndex]);
+
   const [events, setEvents] = useState<CourseEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTerm, setActiveTerm] = useState<string>("1403-1");
+  const [activeTerm, setActiveTerm] = useState<string>(calculatedSemester);
+
+  // Sync activeTerm when calculatedSemester changes
+  useEffect(() => {
+    setActiveTerm(calculatedSemester);
+  }, [calculatedSemester]);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedCourseId, setExpandedCourseId] = useState<string | null>(
     termCourses[0]?.id || null
@@ -319,9 +330,10 @@ export function TermSchedulePlanner({
             </div>
             <div>
               <h1 className="text-sm font-bold text-foreground flex items-center gap-2">
-                برنامه‌ریزی زمانی ترم {termIndex}
-                <Badge variant="secondary" className="text-[10px] ">
-                  {activeTerm}
+                <span>برنامه‌ریزی زمانی ترم {termIndex}</span>
+                <Badge variant="secondary" className="text-xs font-bold gap-1 px-2.5 py-0.5">
+                  <span>{formatSemesterLabel(activeTerm)}</span>
+                  <span className="text-[10px] text-muted-foreground font-mono">({activeTerm})</span>
                 </Badge>
               </h1>
             </div>
@@ -352,11 +364,11 @@ export function TermSchedulePlanner({
 
           {sameDayExamConflicts.length > 0 && (
             <Badge
-              variant="outline"
-              className="text-xs gap-1 text-amber-700 dark:text-amber-300 border-amber-500/40 bg-amber-500/10 py-1 px-2.5 shadow-2xs"
+              variant="destructive"
+              className="text-xs gap-1 py-1 px-2.5 shadow-2xs animate-pulse"
             >
               <AlertTriangle className="h-3.5 w-3.5" />
-              <span>همزمانی روز امتحان ({sameDayExamConflicts.length})</span>
+              <span>تداخل روز امتحان ({sameDayExamConflicts.length})</span>
             </Badge>
           )}
 
@@ -396,6 +408,30 @@ export function TermSchedulePlanner({
           </Button>
         </div>
       </header>
+
+      {/* Missing Entry Semester Warning Alert Banner */}
+      {!user?.entrySemester && (
+        <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 sm:px-6 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs text-amber-800 dark:text-amber-300 shrink-0">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span>
+              نیمسال ورود شما در پروفایل مشخص نشده است. برای تطابق و نمایش صحیح برنامه زمانی هر ترم، لطفاً ابتدا در پروفایل سال و دوره ورود خود را تنظیم کنید.
+            </span>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            asChild
+            className="h-7 text-xs border-amber-500/40 text-amber-800 dark:text-amber-300 hover:bg-amber-500/20 shrink-0 gap-1.5 font-bold"
+          >
+            <Link href="/profile" target="_blank">
+              <ExternalLink className="h-3.5 w-3.5" />
+              <span>تنظیم در پروفایل</span>
+            </Link>
+          </Button>
+        </div>
+      )}
 
       {/* Main Workspace (Sidebar + Timetable Grid) */}
       <div className="flex-1 flex overflow-hidden">

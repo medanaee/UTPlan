@@ -59,7 +59,7 @@ export default function ProfilePage() {
 
   // Entry Semester split into Year + Type
   const [entryYear, setEntryYear] = useState("1402");
-  const [entryType, setEntryType] = useState("1"); // 1 = fall, 2 = spring
+  const [entryType, setEntryType] = useState("2"); // 1 = spring, 2 = fall
 
   // Password Change
   const [currentPassword, setCurrentPassword] = useState("");
@@ -144,8 +144,8 @@ export default function ProfilePage() {
   );
   const semesterTypeOptions = useMemo(
     () => [
-      { value: "1", label: "پاییز (نیمسال اول)" },
-      { value: "2", label: "بهار (نیمسال دوم)" },
+      { value: "1", label: "بهار" },
+      { value: "2", label: "پاییز" },
     ],
     []
   );
@@ -533,7 +533,7 @@ export default function ProfilePage() {
               <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-[11px] text-muted-foreground flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-primary shrink-0" />
                 <span>
-                  با ثبت ورودی <strong>{entryType === "1" ? "پاییز" : "بهار"} {entryYear}</strong>، ترم ۱ چارت شما متناظر با {entryType === "1" ? "پاییز" : "بهار"} {entryYear} و ترم ۲ متناظر با {entryType === "1" ? "بهار" : "پاییز"} {entryType === "1" ? Number(entryYear) + 1 : entryYear} در تقویم هفتگی قرار خواهد گرفت.
+                  با ثبت ورودی <strong>{entryType === "1" ? "بهار" : "پاییز"} {entryYear}</strong>، ترم ۱ چارت شما متناظر با {entryType === "1" ? "بهار" : "پاییز"} {entryYear} و ترم ۲ متناظر با {entryType === "1" ? `پاییز ${entryYear}` : `بهار ${Number(entryYear) + 1}`} در تقویم هفتگی قرار خواهد گرفت.
                 </span>
               </div>
             </CardContent>

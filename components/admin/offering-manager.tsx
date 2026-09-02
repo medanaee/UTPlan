@@ -63,9 +63,8 @@ export function formatSemesterLabel(termStr: string): string {
   if (parts.length === 2) {
     const year = parts[0];
     const sem = parts[1];
-    if (sem === "1" || sem === "fall") return `پاییز ${year}`;
-    if (sem === "2" || sem === "spring") return `بهار ${year}`;
-    if (sem === "3" || sem === "summer") return `تابستان ${year}`;
+    if (sem === "1" || sem === "spring") return `بهار ${year}`;
+    if (sem === "2" || sem === "fall") return `پاییز ${year}`;
     return `${sem} ${year}`;
   }
   return termStr;
@@ -924,9 +923,8 @@ export function OfferingManager({
                           </SelectTrigger>
                           <SelectContent>
                             <SelectGroup>
-                              <SelectItem value="1" className="text-xs">پاییز (نیمسال اول)</SelectItem>
-                              <SelectItem value="2" className="text-xs">بهار (نیمسال دوم)</SelectItem>
-                              <SelectItem value="3" className="text-xs">تابستان</SelectItem>
+                              <SelectItem value="1" className="text-xs">بهار</SelectItem>
+                              <SelectItem value="2" className="text-xs">پاییز</SelectItem>
                             </SelectGroup>
                           </SelectContent>
                         </Select>
@@ -1231,13 +1229,10 @@ export function OfferingManager({
                         <SelectContent>
                           <SelectGroup>
                             <SelectItem value="1" className="text-xs">
-                              پاییز
-                            </SelectItem>
-                            <SelectItem value="2" className="text-xs">
                               بهار
                             </SelectItem>
-                            <SelectItem value="3" className="text-xs">
-                              تابستان
+                            <SelectItem value="2" className="text-xs">
+                              پاییز
                             </SelectItem>
                           </SelectGroup>
                         </SelectContent>

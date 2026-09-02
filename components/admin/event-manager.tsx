@@ -69,9 +69,8 @@ const DAYS_OF_WEEK = [
 ];
 
 const SEMESTER_TYPES = [
-  { value: "fall", label: "پاییز (نیمسال اول)", code: "1" },
-  { value: "spring", label: "بهار (نیمسال دوم)", code: "2" },
-  { value: "summer", label: "تابستان", code: "3" },
+  { value: "spring", label: "بهار", code: "1" },
+  { value: "fall", label: "پاییز", code: "2" },
 ];
 
 export function formatSemesterLabel(termStr: string): string {
@@ -80,9 +79,8 @@ export function formatSemesterLabel(termStr: string): string {
   if (parts.length === 2) {
     const year = parts[0];
     const sem = parts[1];
-    if (sem === "1" || sem === "fall") return `پاییز ${year}`;
-    if (sem === "2" || sem === "spring") return `بهار ${year}`;
-    if (sem === "3" || sem === "summer") return `تابستان ${year}`;
+    if (sem === "1" || sem === "spring") return `بهار ${year}`;
+    if (sem === "2" || sem === "fall") return `پاییز ${year}`;
     return `${sem} ${year}`;
   }
   return termStr;
@@ -118,7 +116,7 @@ export function EventManager({
 
   // New Term Form state
   const [newTermYear, setNewTermYear] = useState("1404");
-  const [newTermType, setNewTermType] = useState<"fall" | "spring" | "summer">("fall");
+  const [newTermType, setNewTermType] = useState<"fall" | "spring">("fall");
 
   // Clone Form state
   const [cloneSourceTerm, setCloneSourceTerm] = useState<string>("");
@@ -382,7 +380,7 @@ export function EventManager({
 
   const handleCreateNewTerm = (e: React.FormEvent) => {
     e.preventDefault();
-    const semCode = newTermType === "fall" ? "1" : newTermType === "spring" ? "2" : "3";
+    const semCode = newTermType === "spring" ? "1" : "2";
     const generatedTerm = `${newTermYear}-${semCode}`;
     setActiveTerm(generatedTerm);
     setIsNewTermModalOpen(false);

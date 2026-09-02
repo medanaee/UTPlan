@@ -63,9 +63,8 @@ function formatSemesterLabel(termStr: string): string {
   if (parts.length === 2) {
     const year = parts[0];
     const sem = parts[1];
-    if (sem === "1" || sem === "fall") return `پاییز ${year}`;
-    if (sem === "2" || sem === "spring") return `بهار ${year}`;
-    if (sem === "3" || sem === "summer") return `تابستان ${year}`;
+    if (sem === "1" || sem === "spring") return `بهار ${year}`;
+    if (sem === "2" || sem === "fall") return `پاییز ${year}`;
     return `${sem} ${year}`;
   }
   return termStr;
