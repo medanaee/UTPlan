@@ -18,6 +18,8 @@ import {
   Palette,
   RefreshCw,
   Eraser,
+  Download,
+  Upload,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,6 +38,7 @@ import { useAdminStore } from "@/lib/stores/admin-store";
 import { TrackCloneDialog } from "./track-clone-dialog";
 import { CategoryCourseAssignDialog } from "./category-course-assign-dialog";
 import { RuleCategoryNode } from "./rule-category-node";
+import { RuleCategoryImportDialog } from "./rule-category-import-dialog";
 import type { Course, VisualCategory, RuleCategory } from "@/lib/types";
 
 const COLOR_PRESETS = [
@@ -97,6 +100,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
     name: "",
     parentId: null,
   });
+  const [rcatImportModalOpen, setRcatImportModalOpen] = useState(false);
 
   // Assign Modal State
   const [assignModal, setAssignModal] = useState<{
@@ -605,18 +609,47 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
             </CardDescription>
           </div>
 
-          <Button
-            size="sm"
-            disabled={!selectedTrackId}
-            onClick={() => {
-              setRcatForm({ code: "", name: "", parentId: null });
-              setRcatModalOpen(true);
-            }}
-            className="h-8 gap-1.5 text-xs shadow-xs font-semibold"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            افزودن دسته اصلی قوانین
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (!selectedTrackId) return;
+                window.open(`/api/tracks/rule-categories/export?trackId=${selectedTrackId}`, "_blank");
+              }}
+              disabled={!selectedTrackId || ruleCats.length === 0}
+              className="h-8 gap-1.5 text-xs shadow-2xs font-semibold"
+            >
+              <Download className="h-3.5 w-3.5 text-primary" />
+              <span>خروجی دسته‌ها (Export JSON)</span>
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setRcatImportModalOpen(true)}
+              disabled={!selectedTrackId}
+              className="h-8 gap-1.5 text-xs shadow-2xs font-semibold"
+            >
+              <Upload className="h-3.5 w-3.5 text-primary" />
+              <span>ورود دسته‌ای (Import JSON)</span>
+            </Button>
+
+            <Button
+              size="sm"
+              disabled={!selectedTrackId}
+              onClick={() => {
+                setRcatForm({ code: "", name: "", parentId: null });
+                setRcatModalOpen(true);
+              }}
+              className="h-8 gap-1.5 text-xs shadow-xs font-semibold"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              افزودن دسته اصلی قوانین
+            </Button>
+          </div>
         </CardHeader>
 
         <CardContent className="space-y-4">
@@ -1126,6 +1159,19 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
         onSuccess={() => {
           if (selectedTrackId) {
             loadTrackDetails(selectedTrackId);
+          }
+        }}
+      />
+
+      {/* Rule Categories Import Dialog */}
+      <RuleCategoryImportDialog
+        open={rcatImportModalOpen}
+        onOpenChange={setRcatImportModalOpen}
+        trackId={selectedTrackId || undefined}
+        trackName={currentTrack?.name || ""}
+        onSuccess={async () => {
+          if (selectedTrackId) {
+            await loadTrackDetails(selectedTrackId);
           }
         }}
       />

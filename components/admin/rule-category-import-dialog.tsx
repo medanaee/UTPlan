@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useRef, useMemo } from "react";
 import {
@@ -21,6 +21,7 @@ import {
   Sparkles,
   Layers,
   BookOpen,
+  Building2,
 } from "lucide-react";
 
 interface RuleCategoryImportDialogProps {
@@ -237,28 +238,31 @@ export function RuleCategoryImportDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto p-4 sm:p-6 rounded-2xl">
-        <DialogHeader className="space-y-1">
+      <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto" dir="rtl">
+        <DialogHeader>
           <DialogTitle className="text-base font-bold flex items-center gap-2">
             <FolderTree className="h-5 w-5 text-primary" />
             <span>ورود دسته‌ای دسته‌های قوانین (Import JSON)</span>
           </DialogTitle>
-          <DialogDescription className="text-xs">
+          <DialogDescription className="text-xs text-muted-foreground">
             ورود ساختار درختی دسته‌های قوانین و انتساب دروس به صورت فایل JSON سلسله‌مراتبی
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
-          {/* Target Track Info Bar */}
-          <div className="flex items-center justify-between p-3 rounded-2xl bg-muted/40 border border-border/80 text-xs">
-            <span className="text-muted-foreground font-medium">گرایش هدف:</span>
-            <Badge variant="secondary" className="text-xs font-bold px-2.5 py-0.5">
-              {trackName || "گرایش انتخابی"}
-            </Badge>
+          {/* Target Track Fixed Card */}
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs">
+              <Building2 className="h-4 w-4 text-primary shrink-0" />
+              <span className="text-muted-foreground">گرایش هدف:</span>
+              <span className="font-bold text-foreground">
+                {trackName ? trackName : "انتخاب نشده"}
+              </span>
+            </div>
           </div>
 
-          {/* Schema Download Banner */}
-          <div className="flex items-center justify-between p-3 rounded-2xl bg-primary/5 border border-primary/20">
+          {/* Detailed Schema Descriptor Download Banner */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 p-3 rounded-2xl bg-primary/5 border border-primary/20">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Sparkles className="h-4 w-4 text-primary shrink-0" />
               <span>فایل توصیف‌کننده ساختار درختی JSON دسته‌ها:</span>
