@@ -48,6 +48,12 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { validateFullChart } from "@/lib/rules-engine";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { TermSchedulePlanner } from "./term-schedule-planner";
@@ -624,7 +630,8 @@ export function ChartEditor({
   }, [zoom]);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-background text-foreground select-none">
+    <TooltipProvider delayDuration={300}>
+      <div className="flex flex-col h-full overflow-hidden bg-background text-foreground select-none">
       {/* ========================================================================= */}
       {/* 0. READ-ONLY MODE BANNER */}
       {/* ========================================================================= */}
@@ -1012,7 +1019,7 @@ export function ChartEditor({
         {/* ========================================================================= */}
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-muted/20">
           {/* Sub-toolbar row above the terms */}
-          <div className="shrink-0 h-10 border-b border-border/70 bg-card/85 backdrop-blur px-3 sm:px-4 flex items-center justify-between shadow-2xs z-20 select-none">
+          <div className="shrink-0 h-10 border-b border-border/70 bg-card/85 backdrop-blur px-1 sm:px-1 flex items-center justify-between shadow-2xs z-20 select-none">
             {/* Right side (start in RTL): Zoom Controller */}
             <div className="flex items-center gap-1.5">
               <div className="h-7 sm:h-8 flex items-center bg-background/60 p-0.5 rounded-lg border border-border/80 shadow-2xs">
@@ -1030,7 +1037,7 @@ export function ChartEditor({
                 <button
                   type="button"
                   onClick={() => setZoom(100)}
-                  className="text-xs font-bold text-foreground px-2 py-0.5 rounded hover:bg-muted/70 transition-colors font-mono cursor-pointer"
+                  className="text-xs font-bold text-foreground px-2 py-0.5 rounded hover:bg-muted/70 transition-colors cursor-pointer"
                   title="کلیک جهت بازنشانی بزرگ‌نمایی به ۱۰۰٪"
                 >
                   {zoom}%
@@ -1412,33 +1419,65 @@ export function ChartEditor({
                                 <div className="flex items-center gap-1.5 min-w-0">
                                   <p className="text-xs font-bold leading-snug">{course.name}</p>
                                   {isViolation ? (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setIssuesModalOpen(true);
-                                      }}
-                                      className="inline-flex items-center text-destructive hover:scale-110 transition-transform cursor-pointer shrink-0"
-                                      title={courseIssue?.message || "خطای اعتبارسنجی چارت — کلیک جهت مشاهده جزئیات"}
-                                    >
-                                      <AlertTriangle
-                                        className="h-3.5 w-3.5 text-destructive shrink-0 animate-pulse"
-                                      />
-                                    </button>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setIssuesModalOpen(true);
+                                          }}
+                                          className="inline-flex items-center text-destructive hover:scale-110 transition-transform cursor-pointer shrink-0"
+                                        >
+                                          <AlertTriangle
+                                            className="h-3.5 w-3.5 text-destructive shrink-0 animate-pulse"
+                                          />
+                                        </button>
+                                      </TooltipTrigger>
+                                      <TooltipContent
+                                        side="top"
+                                        sideOffset={5}
+                                        className="max-w-[280px] bg-red-500 text-destructive-foreground p-2.5 text-xs text-right leading-relaxed shadow-lg rounded-lg border border-destructive/20 z-50"
+                                        dir="rtl"
+                                      >
+                                        <div className="flex items-start gap-1.5">
+                                          <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                                          <span>
+                                            {courseIssue?.message || "خطای اعتبارسنجی چارت (کلیک جهت مشاهده جزئیات)"}
+                                          </span>
+                                        </div>
+                                      </TooltipContent>
+                                    </Tooltip>
                                   ) : isWarning ? (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setIssuesModalOpen(true);
-                                      }}
-                                      className="inline-flex items-center text-violet-600 dark:text-violet-400 hover:scale-110 transition-transform cursor-pointer shrink-0"
-                                      title="توصیه پیش‌نیاز پیشنهادی — کلیک جهت مشاهده جزئیات"
-                                    >
-                                      <Sparkles
-                                        className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0"
-                                      />
-                                    </button>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setIssuesModalOpen(true);
+                                          }}
+                                          className="inline-flex items-center text-violet-600 dark:text-violet-400 hover:scale-110 transition-transform cursor-pointer shrink-0"
+                                        >
+                                          <Sparkles
+                                            className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0"
+                                          />
+                                        </button>
+                                      </TooltipTrigger>
+                                      <TooltipContent
+                                        side="top"
+                                        sideOffset={5}
+                                        className="max-w-[280px] bg-violet-600 text-white p-2.5 text-xs text-right leading-relaxed shadow-lg rounded-lg border border-violet-500/20 z-50"
+                                        dir="rtl"
+                                      >
+                                        <div className="flex items-start gap-1.5">
+                                          <Sparkles className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                                          <span>
+                                            {courseIssue?.message || "توصیه پیش‌نیاز پیشنهادی (کلیک جهت مشاهده جزئیات)"}
+                                          </span>
+                                        </div>
+                                      </TooltipContent>
+                                    </Tooltip>
                                   ) : null}
                                 </div>
 
@@ -1725,6 +1764,7 @@ export function ChartEditor({
           user={user}
         />
       )}
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }
