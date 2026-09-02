@@ -26,6 +26,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { CodeEditor } from "@/components/ui/code-editor";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -232,54 +233,7 @@ export function BackupManager() {
         </Button>
       </div>
 
-      {/* Live Database Statistics Grid */}
-      <Card className="border-border/80 shadow-xs">
-        <CardHeader className="pb-3 border-b border-border/50">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-sm font-bold flex items-center gap-2">
-                <Server className="h-4 w-4 text-primary" />
-                وضعیت و آمار رکوردهای فعال در پایگاه داده
-              </CardTitle>
-              <CardDescription className="text-xs">
-                تعداد کل رکوردهای ذخیره‌شده در ۱۷ جدول پایگاه داده سامانه
-              </CardDescription>
-            </div>
-            {stats && (
-              <Badge variant="secondary" className="text-xs font-bold px-2.5 py-1">
-                مجموع {stats.totalRecords.toLocaleString("fa-IR")} رکورد
-              </Badge>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {stats?.tableCounts &&
-              Object.entries(stats.tableCounts).map(([table, count]) => {
-                const meta = TABLE_LABELS[table] || { label: table, icon: Layers };
-                const IconComponent = meta.icon;
-                return (
-                  <div
-                    key={table}
-                    className="p-3 rounded-2xl border border-border/70 bg-card/60 flex items-center justify-between gap-2 shadow-2xs"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="h-7 w-7 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                        <IconComponent className="h-3.5 w-3.5" />
-                      </div>
-                      <span className="text-xs font-medium text-muted-foreground truncate">
-                        {meta.label}
-                      </span>
-                    </div>
-                    <span className="text-xs font-bold text-foreground shrink-0">
-                      {count.toLocaleString("fa-IR")}
-                    </span>
-                  </div>
-                );
-              })}
-          </div>
-        </CardContent>
-      </Card>
+
 
       {/* Main Actions: 2 Columns (Backup vs Restore) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -390,21 +344,21 @@ export function BackupManager() {
               </Button>
             </div>
 
-            {/* Direct Textarea Paste */}
+            {/* Direct Code Editor Paste */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-xs">
-                <Label className="text-xs font-semibold">یا محتوای JSON را مستقیماً وارد کنید:</Label>
+                <Label className="text-xs font-semibold">یا محتوای JSON را مستقیماً وارد یا ویرایش کنید:</Label>
               </div>
-              <Textarea
+              <CodeEditor
                 value={jsonText}
-                onChange={(e) => {
-                  setJsonText(e.target.value);
+                onChange={(val) => {
+                  setJsonText(val);
                   setSelectedFile(null);
                 }}
                 placeholder='{ "metadata": { ... }, "data": { ... } }'
-                rows={4}
-                className="text-xs bg-background resize-none font-mono leading-relaxed"
-                dir="ltr"
+                maxHeight="18rem"
+                minHeight="10rem"
+                title="ویرایشگر پشتیبان دیتابیس (JSON)"
               />
             </div>
 
