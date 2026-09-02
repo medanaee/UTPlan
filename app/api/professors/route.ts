@@ -1,5 +1,11 @@
 import { requireAdminSession } from "@/lib/auth";
-import { getProfessors, createProfessor, updateProfessor, deleteProfessor } from "@/lib/db";
+import {
+  getProfessors,
+  createProfessor,
+  updateProfessor,
+  deleteProfessor,
+  deleteProfessorsByFaculty,
+} from "@/lib/db";
 
 export async function GET(request: Request) {
   try {
@@ -83,6 +89,14 @@ export async function DELETE(request: Request) {
     if (!auth.authorized) return auth.response!;
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
+    const facultyId = searchParams.get("facultyId");
+    const all = searchParams.get("all") === "true";
+
+    if (all && facultyId) {
+      const success = await deleteProfessorsByFaculty(facultyId);
+      return Response.json({ success, message: "کلیه اساتید دانشکده حذف شدند." });
+    }
+
     if (!id) {
       return Response.json({ success: false, message: "شناسه استاد الزامی است." }, { status: 400 });
     }

@@ -358,6 +358,36 @@ export function ProfessorManager({
 
             <Button
               type="button"
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                if (!selectedFacultyId) return;
+                if (
+                  confirm(
+                    `هشدار: آیا از حذف کلیه اساتید دانشکده «${
+                      currentFaculty?.name || ""
+                    }» مطمئن هستید؟ اساتید به صورت موقت (Soft Delete) حذف می‌شوند و با ثبت مجدد کدهای مشابه یا ویرایش بازگردانده خواهند شد.`
+                  )
+                ) {
+                  const res = await fetch(`/api/professors?all=true&facultyId=${selectedFacultyId}`, {
+                    method: "DELETE",
+                  }).then((r) => r.json());
+                  if (res.success) {
+                    await onDataChanged();
+                  } else {
+                    alert(res.message || "خطا در حذف اساتید");
+                  }
+                }
+              }}
+              disabled={!selectedFacultyId || facultyProfessors.length === 0}
+              className="h-8 gap-1.5 text-xs text-destructive border-destructive/30 hover:bg-destructive/10 shadow-2xs font-medium"
+            >
+              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+              <span>حذف همه اساتید</span>
+            </Button>
+
+            <Button
+              type="button"
               size="sm"
               onClick={handleOpenCreateModal}
               disabled={!selectedFacultyId}

@@ -67,11 +67,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // If Mode is "replace", wipe all existing professors in this faculty first
-    if (mode === "replace") {
-      await deleteProfessorsByFaculty(targetFacultyId);
-    }
-
     // 2. Fetch professors of target faculty (including soft-deleted for seamless code reuse/restoration)
     const { results: allProfRows } = await (async () => {
       const { getD1 } = await import("@/lib/db/client");
@@ -151,10 +146,10 @@ export async function POST(request: NextRequest) {
             firstName: rawFirstName,
             lastName: rawLastName,
             name: rawFullName,
-            avatarUrl: cleanAvatarUrl !== undefined ? cleanAvatarUrl : (mode === "replace" ? undefined : (existingMatch.avatar_url || existingMatch.avatarUrl)),
+            avatarUrl: cleanAvatarUrl !== undefined ? cleanAvatarUrl : (existingMatch.avatar_url || existingMatch.avatarUrl),
             title: cleanTitle,
-            email: cleanEmail || (mode === "replace" ? "" : (existingMatch.email || "")),
-            links: cleanLinks !== undefined ? cleanLinks : (mode === "replace" ? undefined : existingMatch.links),
+            email: cleanEmail || existingMatch.email || "",
+            links: cleanLinks !== undefined ? cleanLinks : existingMatch.links,
             deletedAt: null,
           });
           updatedCount++;

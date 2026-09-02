@@ -591,7 +591,75 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
         </div>
       </div>
 
-      {/* 1. VISUAL CATEGORIES (STACKED FULL-WIDTH CARD) */}
+      {/* 1. RULE CATEGORIES (STACKED FULL-WIDTH CARD WITH TREE & DEPTH 3 LIMIT) */}
+      <Card className="rounded-2xl border-border/80 shadow-xs">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <FolderTree className="h-4 w-4 text-primary" />
+              <span>دسته‌های قوانین آموزشی و فارغ‌التحصیلی (ساختار درختی تا ۳ لایه)</span>
+            </CardTitle>
+            <CardDescription className="text-xs">
+              ساختار درختی و دسته‌های والد و زیردسته جهت انتساب دروس و ساخت قوانین فارغ‌التحصیلی (حداکثر عمق: ۳ لایه)
+            </CardDescription>
+          </div>
+
+          <Button
+            size="sm"
+            disabled={!selectedTrackId}
+            onClick={() => {
+              setRcatForm({ code: "", name: "", parentId: null });
+              setRcatModalOpen(true);
+            }}
+            className="h-8 gap-1.5 text-xs shadow-xs font-semibold"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            افزودن دسته اصلی قوانین
+          </Button>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          {(() => {
+            const topLevelCats = ruleCats.filter(
+              (c) => !c.parentId || !ruleCats.some((p) => p.id === c.parentId)
+            );
+
+            if (ruleCats.length === 0) {
+              return (
+                <div className="text-center py-8 text-xs text-muted-foreground space-y-1">
+                  <FolderTree className="h-8 w-8 text-muted-foreground/40 mx-auto" />
+                  <p>دسته قوانینی برای این گرایش تعریف نشده است.</p>
+                </div>
+              );
+            }
+
+            return topLevelCats.map((parentCat) => (
+              <RuleCategoryNode
+                key={parentCat.id}
+                category={parentCat}
+                depth={1}
+                maxDepth={3}
+                ruleCats={ruleCats}
+                draggedRcatId={draggedRcatId}
+                dragOverRcatId={dragOverRcatId}
+                selectedTrackId={selectedTrackId}
+                setDraggedRcatId={setDraggedRcatId}
+                setDragOverRcatId={setDragOverRcatId}
+                handleRcatDrop={handleRcatDrop}
+                handleOpenEditRcat={handleOpenEditRcat}
+                setRcatForm={setRcatForm}
+                setRcatModalOpen={setRcatModalOpen}
+                setAssignModal={setAssignModal}
+                setRuleCats={setRuleCats}
+                getRuleCategoryCourses={getRuleCategoryCourses}
+                renderCourseChips={renderCourseChips}
+              />
+            ));
+          })()}
+        </CardContent>
+      </Card>
+
+      {/* 2. VISUAL CATEGORIES (STACKED FULL-WIDTH CARD) */}
       <Card className="rounded-2xl border-border/80 shadow-xs">
         <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
           <div>
@@ -749,73 +817,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
         </CardContent>
       </Card>
 
-      {/* 2. RULE CATEGORIES (STACKED FULL-WIDTH CARD WITH TREE & DEPTH 3 LIMIT) */}
-      <Card className="rounded-2xl border-border/80 shadow-xs">
-        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
-          <div>
-            <CardTitle className="text-base flex items-center gap-2">
-              <FolderTree className="h-4 w-4 text-primary" />
-              <span>دسته‌های قوانین آموزشی و فارغ‌التحصیلی (ساختار درختی تا ۳ لایه)</span>
-            </CardTitle>
-            <CardDescription className="text-xs">
-              ساختار درختی و دسته‌های والد و زیردسته جهت انتساب دروس و ساخت قوانین فارغ‌التحصیلی (حداکثر عمق: ۳ لایه)
-            </CardDescription>
-          </div>
-
-          <Button
-            size="sm"
-            disabled={!selectedTrackId}
-            onClick={() => {
-              setRcatForm({ code: "", name: "", parentId: null });
-              setRcatModalOpen(true);
-            }}
-            className="h-8 gap-1.5 text-xs shadow-xs font-semibold"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            افزودن دسته اصلی قوانین
-          </Button>
-        </CardHeader>
-
-        <CardContent className="space-y-4">
-          {(() => {
-            const topLevelCats = ruleCats.filter(
-              (c) => !c.parentId || !ruleCats.some((p) => p.id === c.parentId)
-            );
-
-            if (ruleCats.length === 0) {
-              return (
-                <div className="text-center py-8 text-xs text-muted-foreground space-y-1">
-                  <FolderTree className="h-8 w-8 text-muted-foreground/40 mx-auto" />
-                  <p>دسته قوانینی برای این گرایش تعریف نشده است.</p>
-                </div>
-              );
-            }
-
-            return topLevelCats.map((parentCat) => (
-              <RuleCategoryNode
-                key={parentCat.id}
-                category={parentCat}
-                depth={1}
-                maxDepth={3}
-                ruleCats={ruleCats}
-                draggedRcatId={draggedRcatId}
-                dragOverRcatId={dragOverRcatId}
-                selectedTrackId={selectedTrackId}
-                setDraggedRcatId={setDraggedRcatId}
-                setDragOverRcatId={setDragOverRcatId}
-                handleRcatDrop={handleRcatDrop}
-                handleOpenEditRcat={handleOpenEditRcat}
-                setRcatForm={setRcatForm}
-                setRcatModalOpen={setRcatModalOpen}
-                setAssignModal={setAssignModal}
-                setRuleCats={setRuleCats}
-                getRuleCategoryCourses={getRuleCategoryCourses}
-                renderCourseChips={renderCourseChips}
-              />
-            ));
-          })()}
-        </CardContent>
-      </Card>
+      
 
       {/* Direct Category Course Assign Modal */}
       {selectedTrackId && assignModal.open && (
