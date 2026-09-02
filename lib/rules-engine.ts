@@ -29,6 +29,7 @@ export interface ValidationEngineInput {
     maxTerms?: number;          // default 12
   };
   waivedCourseIds?: string[];
+  startTerm?: number;
   totalTerms?: number;
 }
 
@@ -45,6 +46,7 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
     prerequisites,
     constraints = {},
     waivedCourseIds = [],
+    startTerm = 1,
     totalTerms: inputTotalTerms,
   } = input;
 
@@ -89,7 +91,7 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
   // 2. Validate Term Credit Limits (Floor & Ceiling)
   const termCreditsList: { termIndex: number; credits: number; isWithinLimits: boolean }[] = [];
 
-  for (let termIndex = 1; termIndex <= totalTerms; termIndex++) {
+  for (let termIndex = startTerm; termIndex <= totalTerms; termIndex++) {
     const credits = termCreditsMap.get(termIndex) || 0;
     const isLastTerm = termIndex === totalTerms;
     let isWithin = true;

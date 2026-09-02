@@ -258,6 +258,19 @@ export function ChartEditor({
       }));
   }, [allCourses, waivedCourseIds]);
 
+  // Derived start and end semester numbers
+  const startSem = useMemo(() => {
+    return chart.semesters.length > 0
+      ? Math.min(...chart.semesters.map((s) => s.semesterNumber))
+      : 1;
+  }, [chart.semesters]);
+
+  const endSem = useMemo(() => {
+    return chart.semesters.length > 0
+      ? Math.max(...chart.semesters.map((s) => s.semesterNumber))
+      : 8;
+  }, [chart.semesters]);
+
   // Update track when changed
   useEffect(() => {
     const t = allTracks.find((track) => track.id === selectedTrackId) || null;
@@ -306,11 +319,6 @@ export function ChartEditor({
       if (c.prerequisites) allPrereqs.push(...c.prerequisites);
     });
 
-    const maxConfiguredTerm = chart.semesters.reduce(
-      (max, s) => Math.max(max, s.semesterNumber),
-      chart.semesters.length
-    );
-
     const fullResult = validateFullChart({
       chartCourses,
       rulesTree: activeTrack?.rulesTree,
@@ -319,7 +327,8 @@ export function ChartEditor({
       allCourses,
       prerequisites: allPrereqs,
       waivedCourseIds,
-      totalTerms: maxConfiguredTerm,
+      startTerm: startSem,
+      totalTerms: endSem,
     });
 
     const courseViolations = new Set<string>();
@@ -341,7 +350,7 @@ export function ChartEditor({
         if (c) semUnits += c.units;
       });
 
-      const isLastTerm = sem.semesterNumber === maxConfiguredTerm;
+      const isLastTerm = sem.semesterNumber === endSem;
 
       return {
         semesterNumber: sem.semesterNumber,
@@ -531,23 +540,54 @@ export function ChartEditor({
     }));
   };
 
-  // Add new semester (up to 12)
-  const addSemester = () => {
-    if (isReadOnly || chart.semesters.length >= 12) return;
+  // Increase start term (remove first semester, e.g. 1 -> 2)
+  const increaseStartSemester = () => {
+    if (isReadOnly || startSem >= endSem - 1) return;
+    const firstSem = chart.semesters[0];
+    if (firstSem && firstSem.courseIds.length > 0) {
+      if (
+        !confirm(
+          `ترم ${firstSem.semesterNumber} دارای درس است. با افزایش ترم شروع، این ترم از چارت حذف خواهد شد. آیا مطمئن هستید؟`
+        )
+      ) {
+        return;
+      }
+    }
+    setChart((prev) => ({
+      ...prev,
+      semesters: prev.semesters.slice(1),
+    }));
+  };
+
+  // Decrease start term (prepend new semester, e.g. 2 -> 1)
+  const decreaseStartSemester = () => {
+    if (isReadOnly || startSem <= 1) return;
     setChart((prev) => ({
       ...prev,
       semesters: [
+        { semesterNumber: startSem - 1, courseIds: [] },
         ...prev.semesters,
-        { semesterNumber: prev.semesters.length + 1, courseIds: [] },
       ],
     }));
   };
 
-  // Remove last semester (if empty)
+  // Add new semester to the end (up to 12)
+  const addSemester = () => {
+    if (isReadOnly || endSem >= 12) return;
+    setChart((prev) => ({
+      ...prev,
+      semesters: [
+        ...prev.semesters,
+        { semesterNumber: endSem + 1, courseIds: [] },
+      ],
+    }));
+  };
+
+  // Remove last semester (down to startSem + 1)
   const removeLastSemester = () => {
-    if (isReadOnly || chart.semesters.length <= 8) return;
+    if (isReadOnly || endSem <= startSem + 1) return;
     const lastSem = chart.semesters[chart.semesters.length - 1];
-    if (lastSem.courseIds.length > 0) {
+    if (lastSem && lastSem.courseIds.length > 0) {
       if (!confirm(`ترم ${lastSem.semesterNumber} دارای درس است. آیا از حذف آن مطمئن هستید؟`)) {
         return;
       }
@@ -1138,32 +1178,74 @@ export function ChartEditor({
                 <span className="hidden sm:inline">فلش‌های پیش‌نیاز</span>
               </Button>
 
-              {/* Add / Remove Semester */}
+              {/* Start Term & End Term Controls */}
               {!isReadOnly && (
-                <div className="h-7 sm:h-8 flex items-center bg-background/50 p-0.5 rounded-lg border border-border">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={addSemester}
-                    disabled={chart.semesters.length >= 12}
-                    className="h-6 w-6 sm:h-7 sm:w-7 text-xs rounded-md gap-1 text-foreground hover:bg-muted/80 transition-colors flex items-center justify-center disabled:opacity-40"
-                    title="افزودن یک ترم جدید به انتها"
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  {/* Start Semester Pill */}
+                  <div
+                    className="h-7 sm:h-8 flex items-center bg-background/50 p-0.5 rounded-lg border border-border"
+                    title="تنظیم ترم شروع چارت"
                   >
-                    <Plus className="h-3.5 w-3.5 text-foreground shrink-0" />
-                  </Button>
-                  <span className="text-xs font-bold text-foreground px-1.5 dri">
-                    {chart.semesters.length} ترم
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={removeLastSemester}
-                    disabled={chart.semesters.length <= 8}
-                    className="h-6 w-6 sm:h-7 sm:w-7 p-0 rounded-md text-foreground hover:text-destructive hover:bg-muted/80 transition-colors flex items-center justify-center disabled:opacity-40"
-                    title="حذف آخرین ترم"
+                    <span className="text-[11px] font-semibold text-muted-foreground px-1.5 hidden md:inline">
+                      شروع:
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={increaseStartSemester}
+                      disabled={startSem >= endSem - 1}
+                      className="h-6 w-6 sm:h-7 sm:w-7 text-xs rounded-md text-foreground hover:bg-muted/80 transition-colors flex items-center justify-center disabled:opacity-40"
+                      title="افزایش ترم شروع (حذف ترم قبل)"
+                    >
+                      <Plus className="h-3.5 w-3.5 text-foreground shrink-0" />
+                    </Button>
+                    <span className="text-xs font-bold text-foreground px-1.5 min-w-[42px] text-center">
+                      ترم {startSem}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={decreaseStartSemester}
+                      disabled={startSem <= 1}
+                      className="h-6 w-6 sm:h-7 sm:w-7 p-0 rounded-md text-foreground hover:bg-muted/80 transition-colors flex items-center justify-center disabled:opacity-40"
+                      title="کاهش ترم شروع (افزودن ترم قبل)"
+                    >
+                      <Minus className="h-3.5 w-3.5 text-foreground shrink-0" />
+                    </Button>
+                  </div>
+
+                  {/* End Semester Pill */}
+                  <div
+                    className="h-7 sm:h-8 flex items-center bg-background/50 p-0.5 rounded-lg border border-border"
+                    title="تنظیم حداکثر ترم چارت"
                   >
-                    <Minus className="h-3.5 w-3.5 text-foreground shrink-0" />
-                  </Button>
+                    <span className="text-[11px] font-semibold text-muted-foreground px-1.5 hidden md:inline">
+                      پایان:
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={addSemester}
+                      disabled={endSem >= 12}
+                      className="h-6 w-6 sm:h-7 sm:w-7 text-xs rounded-md text-foreground hover:bg-muted/80 transition-colors flex items-center justify-center disabled:opacity-40"
+                      title="افزودن یک ترم جدید به انتها"
+                    >
+                      <Plus className="h-3.5 w-3.5 text-foreground shrink-0" />
+                    </Button>
+                    <span className="text-xs font-bold text-foreground px-1.5 min-w-[42px] text-center">
+                      ترم {endSem}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={removeLastSemester}
+                      disabled={endSem <= startSem + 1}
+                      className="h-6 w-6 sm:h-7 sm:w-7 p-0 rounded-md text-foreground hover:text-destructive hover:bg-muted/80 transition-colors flex items-center justify-center disabled:opacity-40"
+                      title="حذف آخرین ترم"
+                    >
+                      <Minus className="h-3.5 w-3.5 text-foreground shrink-0" />
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
