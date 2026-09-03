@@ -23,6 +23,10 @@ import {
   Info,
   Link2,
   FolderArchive,
+  Skull,
+  Flame,
+  Trash2,
+  AlertOctagon,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -93,6 +97,53 @@ export function BackupManager() {
       errors: string[];
     };
   } | null>(null);
+
+  // Danger Zone Purge states
+  const [isPurgeModalOpen, setIsPurgeModalOpen] = useState(false);
+  const [purgeConfirmationInput, setPurgeConfirmationInput] = useState("");
+  const [isPurging, setIsPurging] = useState(false);
+  const [purgeResult, setPurgeResult] = useState<{
+    success: boolean;
+    message: string;
+    totalPurged?: number;
+    purgedCounts?: Record<string, number>;
+  } | null>(null);
+
+  const handleOpenPurgeModal = () => {
+    setPurgeConfirmationInput("");
+    setIsPurgeModalOpen(true);
+  };
+
+  const handleExecutePurge = async () => {
+    if (purgeConfirmationInput.trim() !== "پاکسازی کامل") {
+      alert("لطفاً عبارت دقیق «پاکسازی کامل» را برای تأیید تایپ کنید.");
+      return;
+    }
+
+    try {
+      setIsPurging(true);
+      setPurgeResult(null);
+
+      const res = await fetch("/api/admin/backup", {
+        method: "DELETE",
+      }).then((r) => r.json());
+
+      setPurgeResult(res);
+      setIsPurgeModalOpen(false);
+
+      if (res.success) {
+        await fetchStats();
+      }
+    } catch (err: any) {
+      setPurgeResult({
+        success: false,
+        message: "خطا در برقراری ارتباط با سرور: " + (err?.message || "نامشخص"),
+      });
+      setIsPurgeModalOpen(false);
+    } finally {
+      setIsPurging(false);
+    }
+  };
 
   // Load database live stats
   const fetchStats = async () => {
@@ -437,6 +488,121 @@ export function BackupManager() {
         </Card>
       )}
 
+      {/* Purge Results Breakdown */}
+      {purgeResult && (
+        <Card
+          className={`border shadow-xs ${
+            purgeResult.success
+              ? "border-emerald-500/30 bg-emerald-500/5"
+              : "border-destructive/30 bg-destructive/5"
+          }`}
+        >
+          <CardHeader className="pb-3 border-b border-border/40">
+            <div className="flex items-center gap-2">
+              {purgeResult.success ? (
+                <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+              ) : (
+                <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
+              )}
+              <div>
+                <CardTitle className="text-sm font-bold">
+                  {purgeResult.success ? "نتیجه پاکسازی: با موفقیت انجام شد" : "نتیجه پاکسازی: خطا"}
+                </CardTitle>
+                <CardDescription className="text-xs text-foreground font-medium mt-0.5">
+                  {purgeResult.message}
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          {purgeResult.purgedCounts && (
+            <CardContent className="pt-4 space-y-3">
+              <div className="text-xs text-muted-foreground mb-1">
+                تعداد رکوردهای حذف‌شده به تفکیک جداول:
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                {Object.entries(purgeResult.purgedCounts).map(([tbl, cnt]) => (
+                  <div key={tbl} className="p-2.5 rounded-xl bg-card border border-border/60 text-center">
+                    <span className="text-[11px] text-muted-foreground block truncate" title={tbl}>
+                      {TABLE_LABELS[tbl]?.label || tbl}
+                    </span>
+                    <span className="text-sm font-bold text-foreground font-mono">
+                      {cnt.toLocaleString("fa-IR")}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      )}
+
+      {/* ========================================================================= */}
+      {/* Red Danger Zone: Purge All Data Except Users & University Structure      */}
+      {/* ========================================================================= */}
+      <div className="rounded-3xl border border-red-300 dark:border-red-900/70 bg-red-50/70 dark:bg-red-950/25 p-5 sm:p-6 shadow-xs">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-red-200 dark:border-red-900/40">
+          <div className="flex items-center gap-3.5">
+            <div className="h-11 w-11 rounded-2xl bg-red-100 text-red-600 dark:bg-red-950/60 dark:text-red-400 border border-red-200 dark:border-red-800/60 flex items-center justify-center shrink-0">
+              <Skull className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-black text-red-700 dark:text-red-400 flex items-center gap-2">
+                  <AlertOctagon className="h-5 w-5 text-red-600 shrink-0" />
+                  منطقه فوق خطرناک: پاکسازی کامل دیتابیس (Danger Zone)
+                </h2>
+                <Badge variant="destructive" className="bg-red-600 text-white font-bold text-[10px] px-2 py-0.5 uppercase tracking-wider">
+                  غیرقابل بازگشت
+                </Badge>
+              </div>
+              <p className="text-xs text-red-900/80 dark:text-red-200/80 mt-1 leading-relaxed">
+                حذف کلیه ارائه‌ها، اساتید، دروس، رویدادها، چارت‌ها و نظرات، با حفظ قطعی و ۱۰۰٪ ساختار دانشگاه و کاربران
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="pt-4 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+            <div className="p-3.5 rounded-2xl bg-white/90 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 space-y-1.5 shadow-2xs">
+              <div className="flex items-center gap-1.5 font-bold text-red-700 dark:text-red-400">
+                <Flame className="h-4 w-4 text-red-600 dark:text-red-400" />
+                <span>داده‌هایی که به صورت کامل پاکسازی و صفر می‌شوند:</span>
+              </div>
+              <p className="text-[11px] text-red-900/75 dark:text-red-200/70 leading-relaxed">
+                تمامی ارائه‌های درسی، لیست اساتید، دروس مصوب، جلسات و برنامه‌های هفتگی، امتحانات، چارت‌های درسی، پیش‌نیازها، دسته‌بندی‌ها، منابع آموزشی و نظرات.
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-white/90 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 space-y-1.5 shadow-2xs">
+              <div className="flex items-center gap-1.5 font-bold text-emerald-700 dark:text-emerald-400">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                <span>داده‌هایی که با تضمین ۱۰۰٪ دست‌نخورده باقی می‌مانند:</span>
+              </div>
+              <p className="text-[11px] text-emerald-950/80 dark:text-emerald-200/80 leading-relaxed">
+                حساب‌های کاربری و لاگین ادمین (<code className="px-1 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 font-mono font-bold">users</code>) و ساختار اصلی دانشگاه شامل دانشکده‌ها، رشته‌ها و گرایش‌ها (<code className="px-1 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 font-mono">faculties, majors, tracks</code>).
+              </p>
+            </div>
+          </div>
+
+          <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+            <p className="text-[11px] text-red-900/70 dark:text-red-300/70 leading-relaxed max-w-xl">
+              ⚠️ این دستور مستقیماً دیتابیس را پاک می‌کند. در صورتی که به داده‌های فعلی نیاز دارید، ابتدا دکمه «دانلود فایل پشتیبان کامل» را در بالا بزنید.
+            </p>
+
+            <Button
+              type="button"
+              onClick={handleOpenPurgeModal}
+              disabled={isPurging}
+              className="h-11 px-5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs gap-2 shadow-xs shrink-0 transition-all hover:opacity-90"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span>پاکسازی کامل همه چیز (بجز کاربران و ساختار)</span>
+            </Button>
+          </div>
+        </div>
+      </div>
+
       {/* Confirmation Modal Before Restore */}
       <Dialog open={isRestoreModalOpen} onOpenChange={setIsRestoreModalOpen}>
         <DialogContent className="sm:max-w-md" dir="rtl">
@@ -496,6 +662,73 @@ export function BackupManager() {
                 </>
               ) : (
                 <span>تأیید و اجرای بازیابی</span>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation Modal Before PURGE (DANGER ZONE) */}
+      <Dialog open={isPurgeModalOpen} onOpenChange={setIsPurgeModalOpen}>
+        <DialogContent className="sm:max-w-md border border-destructive/40 bg-card" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2 text-destructive">
+              <Skull className="h-5 w-5 text-destructive" />
+              تأیید اخطار بحرانی: پاکسازی داده‌های دیتابیس
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground leading-relaxed pt-1">
+              با اجرای این عملیات، کلیه دروس، اساتید، ارائه‌ها، رویدادها، چارت‌ها و نظرات برای همیشه حذف خواهند شد. <strong>حساب‌های کاربری و ساختار دانشگاه دست‌نخورده باقی می‌مانند.</strong>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            <div className="p-3.5 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-xs space-y-1.5">
+              <span className="font-bold block">برای تأیید نهایی، لطفاً عبارت زیر را دقیقاً در کادر بنویسید:</span>
+              <span className="font-black text-sm block text-center py-1 select-all text-destructive">
+                پاکسازی کامل
+              </span>
+            </div>
+
+            <div className="space-y-1.5">
+              <Input
+                placeholder="پاکسازی کامل"
+                value={purgeConfirmationInput}
+                onChange={(e) => setPurgeConfirmationInput(e.target.value)}
+                className="text-center font-bold text-sm border-destructive/30 focus-visible:ring-destructive"
+                autoFocus
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsPurgeModalOpen(false)}
+              disabled={isPurging}
+              className="text-xs"
+            >
+              انصراف و لغو
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              onClick={handleExecutePurge}
+              disabled={purgeConfirmationInput.trim() !== "پاکسازی کامل" || isPurging}
+              className="text-xs font-bold gap-1.5"
+            >
+              {isPurging ? (
+                <>
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                  <span>در حال پاکسازی دیتابیس...</span>
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>بله، پاکسازی قطعی انجام شود</span>
+                </>
               )}
             </Button>
           </DialogFooter>

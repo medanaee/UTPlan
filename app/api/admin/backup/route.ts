@@ -208,3 +208,74 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const auth = await requireAdminSession(request);
+    if (!auth.authorized) return auth.response! as NextResponse;
+
+    const d1 = getD1();
+    if (!d1) {
+      return NextResponse.json(
+        { success: false, message: "پایگاه داده D1 در دسترس نیست." },
+        { status: 500 }
+      );
+    }
+
+    // Tables to purge (excluding users, faculties, majors, tracks)
+    const TABLES_TO_PURGE = [
+      "chart_courses",
+      "chart_terms",
+      "charts",
+      "reviews",
+      "course_event_slots",
+      "course_events",
+      "offering_resources",
+      "offering_professors",
+      "course_offerings",
+      "professors",
+      "track_course_assignments",
+      "prerequisites",
+      "courses",
+      "rule_categories",
+      "visual_categories",
+      "faculty_links",
+    ];
+
+    // Disable foreign keys for safe batch purge
+    await d1.prepare("PRAGMA foreign_keys = OFF;").run();
+
+    let totalPurged = 0;
+    const purgedCounts: Record<string, number> = {};
+
+    for (const table of TABLES_TO_PURGE) {
+      try {
+        const countRes: any = await d1.prepare(`SELECT count(*) as cnt FROM ${table}`).first();
+        const cnt = Number(countRes?.cnt || 0);
+        await d1.prepare(`DELETE FROM ${table}`).run();
+        purgedCounts[table] = cnt;
+        totalPurged += cnt;
+      } catch (err) {
+        console.warn(`Could not purge table ${table}:`, err);
+        purgedCounts[table] = 0;
+      }
+    }
+
+    // Re-enable foreign keys
+    await d1.prepare("PRAGMA foreign_keys = ON;").run();
+
+    return NextResponse.json({
+      success: true,
+      message: `پاکسازی کامل با موفقیت انجام شد: ${totalPurged} رکورد از ۱۶ جدول دیتابیس حذف شدند. اطلاعات کاربران و ساختار دانشگاه بدون تغییر حفظ گردیدند.`,
+      purgedCounts,
+      totalPurged,
+    });
+  } catch (error: any) {
+    console.error("Purge DELETE error:", error);
+    return NextResponse.json(
+      { success: false, message: "خطا در فرآیند پاکسازی دیتابیس: " + (error?.message || "نامشخص") },
+      { status: 500 }
+    );
+  }
+}
+
