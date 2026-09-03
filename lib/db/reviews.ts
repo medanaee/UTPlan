@@ -11,7 +11,7 @@ export async function getReviews(targetType: "professor" | "offering", targetId:
         `SELECT r.*, u.name AS author_name 
          FROM reviews r
          LEFT JOIN users u ON r.user_id = u.id
-         WHERE r.target_type = ? AND r.target_id = ? AND r.deleted_at IS NULL
+         WHERE r.target_type = ? AND r.target_id = ?
          ORDER BY r.created_at DESC`
       )
       .bind(targetType, targetId)
@@ -36,7 +36,6 @@ export async function getReviews(targetType: "professor" | "offering", targetId:
         criteriaRatings,
         studentGrade: r.student_grade !== null && r.student_grade !== undefined ? Number(r.student_grade) : null,
         createdAt: r.created_at,
-        deletedAt: r.deleted_at || null,
       };
     });
   } catch (err) {
@@ -55,7 +54,7 @@ export async function getReviewById(id: string): Promise<Review | null> {
         `SELECT r.*, u.name AS author_name 
          FROM reviews r
          LEFT JOIN users u ON r.user_id = u.id
-         WHERE r.id = ? AND r.deleted_at IS NULL`
+         WHERE r.id = ?`
       )
       .bind(id)
       .first();
@@ -83,7 +82,6 @@ export async function getReviewById(id: string): Promise<Review | null> {
       criteriaRatings,
       studentGrade: (r as any).student_grade !== null && (r as any).student_grade !== undefined ? Number((r as any).student_grade) : null,
       createdAt: (r as any).created_at,
-      deletedAt: (r as any).deleted_at || null,
     };
   } catch (err) {
     console.error("D1 getReviewById error:", err);
@@ -194,12 +192,11 @@ export async function updateReview(
 }
 
 export async function deleteReview(id: string): Promise<boolean> {
-  const now = new Date().toISOString();
   const d1 = getD1();
   if (!d1) return false;
 
   try {
-    await d1.prepare("UPDATE reviews SET deleted_at = ? WHERE id = ?").bind(now, id).run();
+    await d1.prepare("DELETE FROM reviews WHERE id = ?").bind(id).run();
     return true;
   } catch (err) {
     console.error("D1 deleteReview error:", err);

@@ -27,7 +27,7 @@ export async function getEvents(
   try {
     let query = `
       SELECT e.id, e.code, e.offering_id, e.term, e.location, e.exam_date, e.exam_start_time, e.exam_end_time,
-             e.is_user_custom, e.user_id, e.global_event_id, e.created_at,
+             e.is_user_custom, e.user_id, e.global_event_id, e.created_at, e.deleted_at,
              c.id AS course_id, c.name AS course_name, c.units AS course_units,
              c.faculty_id AS faculty_id, f.name AS faculty_name,
              p.id AS professor_id, (p.first_name || ' ' || p.last_name) AS professor_name, p.title AS professor_title, p.avatar_url AS professor_avatar_url
@@ -37,7 +37,7 @@ export async function getEvents(
       LEFT JOIN faculties f ON c.faculty_id = f.id
       LEFT JOIN offering_professors op ON op.offering_id = o.id AND op.is_primary = 1
       LEFT JOIN professors p ON op.professor_id = p.id
-      WHERE o.deleted_at IS NULL
+      WHERE o.deleted_at IS NULL AND e.deleted_at IS NULL
     `;
     const params: any[] = [];
     if (eventId) {
@@ -124,6 +124,7 @@ export async function getEvents(
         userId: e.user_id || null,
         globalEventId: e.global_event_id || null,
         createdAt: e.created_at,
+        deletedAt: e.deleted_at || null,
         courseId: e.course_id,
         courseName: e.course_name,
         courseUnits: Number(e.course_units) || 3,
@@ -154,8 +155,6 @@ export async function createEvent(data: {
   userId?: string | null;
   slots: { dayOfWeek: number; startTime: string; endTime: string }[];
 }): Promise<CourseEvent> {
-  const eventId = `evt_${crypto.randomUUID().slice(0, 8)}`;
-  const now = new Date().toISOString();
   const cleanCode = data.code?.trim()
     ? data.code.trim().toUpperCase()
     : `EVT-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
@@ -164,26 +163,60 @@ export async function createEvent(data: {
   if (!d1) throw new Error("پایگاه‌داده در دسترس نیست.");
 
   try {
-    await d1
-      .prepare(
-        `INSERT INTO course_events (id, code, offering_id, term, location, exam_date, exam_start_time, exam_end_time, is_user_custom, user_id, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-      .bind(
-        eventId,
-        cleanCode,
-        data.offeringId,
-        data.term,
-        data.location || "",
-        data.examDate || "",
-        data.examStartTime || "",
-        data.examEndTime || "",
-        data.isUserCustom ? 1 : 0,
-        data.userId || null,
-        now
-      )
-      .run();
+    // Check if an event with this code already exists in this term (including soft-deleted)
+    const existing = await d1
+      .prepare("SELECT id FROM course_events WHERE code = ? AND term = ?")
+      .bind(cleanCode, data.term)
+      .first();
 
+    let eventId: string;
+    const now = new Date().toISOString();
+
+    if (existing && (existing as any).id) {
+      eventId = (existing as any).id;
+      await d1
+        .prepare(
+          `UPDATE course_events
+           SET offering_id = ?, location = ?, exam_date = ?, exam_start_time = ?, exam_end_time = ?,
+               is_user_custom = ?, user_id = ?, deleted_at = NULL
+           WHERE id = ?`
+        )
+        .bind(
+          data.offeringId,
+          data.location || "",
+          data.examDate || "",
+          data.examStartTime || "",
+          data.examEndTime || "",
+          data.isUserCustom ? 1 : 0,
+          data.userId || null,
+          eventId
+        )
+        .run();
+    } else {
+      eventId = `evt_${crypto.randomUUID().slice(0, 8)}`;
+      await d1
+        .prepare(
+          `INSERT INTO course_events (id, code, offering_id, term, location, exam_date, exam_start_time, exam_end_time, is_user_custom, user_id, created_at, deleted_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`
+        )
+        .bind(
+          eventId,
+          cleanCode,
+          data.offeringId,
+          data.term,
+          data.location || "",
+          data.examDate || "",
+          data.examStartTime || "",
+          data.examEndTime || "",
+          data.isUserCustom ? 1 : 0,
+          data.userId || null,
+          now
+        )
+        .run();
+    }
+
+    // Refresh slots
+    await d1.prepare("DELETE FROM course_event_slots WHERE event_id = ?").bind(eventId).run();
     for (const slot of data.slots || []) {
       const slotId = `slot_${crypto.randomUUID().slice(0, 8)}`;
       await d1
@@ -291,7 +324,8 @@ export async function updateEvent(
                location = COALESCE(?, location),
                exam_date = COALESCE(?, exam_date),
                exam_start_time = COALESCE(?, exam_start_time),
-               exam_end_time = COALESCE(?, exam_end_time)
+               exam_end_time = COALESCE(?, exam_end_time),
+               deleted_at = NULL
            WHERE id = ?`
         )
         .bind(
@@ -330,8 +364,8 @@ export async function deleteEvent(id: string): Promise<boolean> {
   if (!d1) return false;
 
   try {
-    await d1.prepare("DELETE FROM course_event_slots WHERE event_id = ?").bind(id).run();
-    await d1.prepare("DELETE FROM course_events WHERE id = ?").bind(id).run();
+    const now = new Date().toISOString();
+    await d1.prepare("UPDATE course_events SET deleted_at = ? WHERE id = ?").bind(now, id).run();
     return true;
   } catch (err) {
     console.error("D1 deleteEvent error:", err);

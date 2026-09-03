@@ -8,7 +8,7 @@ export async function getOfferingResources(offeringId: string): Promise<Offering
   try {
     const { results } = await d1
       .prepare(
-        "SELECT * FROM offering_resources WHERE offering_id = ? AND deleted_at IS NULL ORDER BY created_at DESC"
+        "SELECT * FROM offering_resources WHERE offering_id = ? ORDER BY created_at DESC"
       )
       .bind(offeringId)
       .all();
@@ -21,7 +21,6 @@ export async function getOfferingResources(offeringId: string): Promise<Offering
       type: r.type as OfferingResourceType,
       url: r.url,
       createdAt: r.created_at,
-      deletedAt: r.deleted_at || null,
     }));
   } catch (err) {
     console.error("D1 getOfferingResources error:", err);
@@ -35,7 +34,7 @@ export async function createOfferingResource(data: {
   term?: string;
   type: OfferingResourceType;
   url: string;
-}): Promise<OfferingResource> {
+  }): Promise<OfferingResource> {
   const id = `res_${crypto.randomUUID().slice(0, 8)}`;
   const now = new Date().toISOString();
   const cleanTitle = data.title.trim();
@@ -66,7 +65,6 @@ export async function createOfferingResource(data: {
     type: data.type,
     url: cleanUrl,
     createdAt: now,
-    deletedAt: null,
   };
 }
 
@@ -79,7 +77,7 @@ export async function updateOfferingResource(
 
   try {
     const existing = await d1
-      .prepare("SELECT * FROM offering_resources WHERE id = ? AND deleted_at IS NULL")
+      .prepare("SELECT * FROM offering_resources WHERE id = ?")
       .bind(id)
       .first();
     if (!existing) return null;
@@ -106,7 +104,6 @@ export async function updateOfferingResource(
       type,
       url,
       createdAt: (existing as any).created_at,
-      deletedAt: (existing as any).deleted_at || null,
     };
   } catch (err) {
     console.error("D1 updateOfferingResource error:", err);
@@ -115,15 +112,11 @@ export async function updateOfferingResource(
 }
 
 export async function deleteOfferingResource(id: string): Promise<boolean> {
-  const now = new Date().toISOString();
   const d1 = getD1();
   if (!d1) return false;
 
   try {
-    await d1
-      .prepare("UPDATE offering_resources SET deleted_at = ? WHERE id = ?")
-      .bind(now, id)
-      .run();
+    await d1.prepare("DELETE FROM offering_resources WHERE id = ?").bind(id).run();
     return true;
   } catch (err) {
     console.error("D1 deleteOfferingResource error:", err);

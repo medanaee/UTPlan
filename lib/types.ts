@@ -182,7 +182,6 @@ export interface OfferingResource {
   type: OfferingResourceType;
   url: string;
   createdAt: string;
-  deletedAt?: string | null;
 }
 
 export interface CourseOffering {
@@ -235,7 +234,6 @@ export interface ReviewItem {
   criteriaRatings?: ReviewCriteria;
   studentGrade?: number | null; // e.g. 18.5 out of 20
   createdAt: string;
-  deletedAt?: string | null;
 }
 
 export interface CourseEvent {
@@ -253,6 +251,7 @@ export interface CourseEvent {
   userId?: string | null;
   globalEventId?: string | null;
   createdAt: string;
+  deletedAt?: string | null;
   // Joined
   courseName?: string;
   courseUnits?: number;

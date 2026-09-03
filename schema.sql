@@ -194,11 +194,13 @@ CREATE TABLE IF NOT EXISTS course_events (
   user_id TEXT,
   global_event_id TEXT,
   created_at TEXT NOT NULL,
+  deleted_at TEXT,
   FOREIGN KEY (offering_id) REFERENCES course_offerings(id)
 );
 CREATE INDEX IF NOT EXISTS idx_events_code ON course_events(code);
 CREATE INDEX IF NOT EXISTS idx_events_offering ON course_events(offering_id);
 CREATE INDEX IF NOT EXISTS idx_events_term ON course_events(term);
+CREATE INDEX IF NOT EXISTS idx_events_deleted ON course_events(deleted_at);
 
 -- 14. Course Event Slots Table (Weekly recurring slots)
 CREATE TABLE IF NOT EXISTS course_event_slots (
@@ -222,8 +224,7 @@ CREATE TABLE IF NOT EXISTS reviews (
   comment TEXT NOT NULL,
   overall_rating REAL NOT NULL DEFAULT 10,
   criteria_ratings TEXT, -- JSON
-  created_at TEXT NOT NULL,
-  deleted_at TEXT
+  created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_reviews_target ON reviews(target_type, target_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_user ON reviews(user_id);
@@ -277,7 +278,6 @@ CREATE TABLE IF NOT EXISTS offering_resources (
   type TEXT NOT NULL, -- 'video' | 'slide' | 'archive'
   url TEXT NOT NULL,
   created_at TEXT NOT NULL,
-  deleted_at TEXT,
   FOREIGN KEY (offering_id) REFERENCES course_offerings(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_offering_resources_offering ON offering_resources(offering_id);
