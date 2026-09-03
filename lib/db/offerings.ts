@@ -2,6 +2,7 @@ import type { CourseOffering } from "../types";
 import { getD1 } from "./client";
 import { getEvents } from "./events";
 import { getOfferingResources } from "./resources";
+import { getEffectiveFacultyIds } from "./structure";
 
 export async function getOfferings(filter?: {
   courseId?: string;
@@ -15,9 +16,11 @@ export async function getOfferings(filter?: {
   try {
     let query = `
       SELECT o.*,
-             c.name AS course_name, c.code AS course_code, c.units AS course_units, c.faculty_id AS course_faculty_id
+             c.name AS course_name, c.code AS course_code, c.units AS course_units, c.faculty_id AS course_faculty_id,
+             f.name AS course_faculty_name
       FROM course_offerings o
       JOIN courses c ON o.course_id = c.id
+      LEFT JOIN faculties f ON c.faculty_id = f.id
       WHERE o.deleted_at IS NULL
     `;
     const params: any[] = [];
@@ -26,8 +29,10 @@ export async function getOfferings(filter?: {
       params.push(normFilter.courseId);
     }
     if (normFilter?.facultyId) {
-      query += " AND c.faculty_id = ?";
-      params.push(normFilter.facultyId);
+      const effectiveIds = await getEffectiveFacultyIds(normFilter.facultyId);
+      const placeholders = effectiveIds.map(() => "?").join(",");
+      query += ` AND c.faculty_id IN (${placeholders})`;
+      params.push(...effectiveIds);
     }
     query += " ORDER BY c.name ASC";
 
@@ -97,6 +102,7 @@ export async function getOfferings(filter?: {
         courseCode: r.course_code,
         courseUnits: Number(r.course_units) || 3,
         facultyId: r.course_faculty_id,
+        facultyName: r.course_faculty_name || undefined,
         professorName: profNames || "استاد نامشخص",
         professorTitle: primaryProf?.title,
         professorAvatarUrl: primaryProf?.avatarUrl,

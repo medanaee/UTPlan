@@ -1,6 +1,6 @@
 import type { Course, PrerequisiteRelation, PrerequisiteType } from "../types";
 import { getD1 } from "./client";
-import { assignCourseToCategories } from "./structure";
+import { assignCourseToCategories, getEffectiveFacultyIds } from "./structure";
 
 // ----------------------------------------------------
 // COURSES CRUD
@@ -10,13 +10,20 @@ export async function getCourses(facultyId?: string, trackId?: string): Promise<
   if (!d1) return [];
 
   try {
-    let query = "SELECT * FROM courses WHERE deleted_at IS NULL";
+    let query = `
+      SELECT c.*, f.name AS faculty_name
+      FROM courses c
+      LEFT JOIN faculties f ON c.faculty_id = f.id
+      WHERE c.deleted_at IS NULL
+    `;
     const params: any[] = [];
     if (facultyId) {
-      query += " AND faculty_id = ?";
-      params.push(facultyId);
+      const effectiveIds = await getEffectiveFacultyIds(facultyId);
+      const placeholders = effectiveIds.map(() => "?").join(",");
+      query += ` AND c.faculty_id IN (${placeholders})`;
+      params.push(...effectiveIds);
     }
-    query += " ORDER BY name ASC";
+    query += " ORDER BY c.name ASC";
     const { results: courseRows } = await d1.prepare(query).bind(...params).all();
     const coursesList = courseRows || [];
 
@@ -68,6 +75,7 @@ export async function getCourses(facultyId?: string, trackId?: string): Promise<
       return {
         id: c.id,
         facultyId: c.faculty_id,
+        facultyName: c.faculty_name || undefined,
         name: c.name,
         code: c.code,
         abbreviation: c.abbreviation || undefined,

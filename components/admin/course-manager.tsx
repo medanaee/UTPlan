@@ -8,6 +8,8 @@ import {
   Pencil,
   Trash2,
   Link as LinkIcon,
+  Link2,
+  Lock,
   AlertTriangle,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -78,10 +80,12 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
   const [prereqError, setPrereqError] = useState<string | null>(null);
 
   const currentFaculty = faculties.find((f) => f.id === selectedFacultyId);
+  const linkedFacultyIds = currentFaculty?.linkedFacultyIds || [];
 
-  const facultyCourses = courses.filter(
-    (c) => !selectedFacultyId || c.facultyId === selectedFacultyId
-  );
+  const facultyCourses = courses.filter((c) => {
+    if (!selectedFacultyId) return true;
+    return c.facultyId === selectedFacultyId || linkedFacultyIds.includes(c.facultyId);
+  });
 
   const filteredCourses = facultyCourses.filter((c) => {
     const q = courseSearch.trim().toLowerCase();
@@ -396,133 +400,160 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
 
           {/* Courses Grid */}
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {filteredCourses.map((course) => (
-              <div
-                key={course.id}
-                className="flex flex-col justify-between rounded-xl border border-border/80 bg-card p-3.5 shadow-2xs hover:border-primary/40 transition-colors"
-              >
-                <div className="space-y-2">
-                  {/* Course header */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <h3 className="text-xs font-bold text-foreground">{course.name}</h3>
-                        {course.abbreviation && (
-                          <Badge variant="outline" className="text-[10px] font-medium px-1.5 py-0 text-primary border-primary/30 bg-primary/5">
-                            {course.abbreviation}
-                          </Badge>
-                        )}
+            {filteredCourses.map((course) => {
+              const isLinked = Boolean(selectedFacultyId && course.facultyId !== selectedFacultyId);
+              return (
+                <div
+                  key={course.id}
+                  className={`flex flex-col justify-between rounded-xl border p-3.5 shadow-2xs transition-colors ${
+                    isLinked
+                      ? "border-amber-500/40 bg-amber-500/[0.02]"
+                      : "border-border/80 bg-card hover:border-primary/40"
+                  }`}
+                >
+                  <div className="space-y-2">
+                    {/* Course header */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h3 className="text-xs font-bold text-foreground">{course.name}</h3>
+                          {course.abbreviation && (
+                            <Badge variant="outline" className="text-[10px] font-medium px-1.5 py-0 text-primary border-primary/30 bg-primary/5">
+                              {course.abbreviation}
+                            </Badge>
+                          )}
+                          {isLinked && (
+                            <Badge variant="outline" className="text-[10px] font-medium px-1.5 py-0 text-amber-600 border-amber-500/30 bg-amber-500/10 gap-0.5">
+                              <Link2 className="h-2.5 w-2.5" />
+                              {course.facultyName || "لینک‌شده"}
+                            </Badge>
+                          )}
+                        </div>
+                        <span className="text-[11px] text-muted-foreground">{course.code}</span>
                       </div>
-                      <span className="text-[11px] text-muted-foreground">{course.code}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Badge variant="outline" className="text-[11px] font-semibold">
-                        {course.units} واحد
-                      </Badge>
-                      <Badge variant="outline" className="text-[11px] font-semibold">
-                        {course.offeredIn === "fall"
-                          ? "فقط پاییز"
-                          : course.offeredIn === "spring"
-                            ? "فقط بهار"
-                            : course.offeredIn === "none"
-                            ? "عدم ارائه"
-                            : "پاییز و بهار"}
-                      </Badge>
+                      <div className="flex items-center gap-1">
+                        <Badge variant="outline" className="text-[11px] font-semibold">
+                          {course.units} واحد
+                        </Badge>
+                        <Badge variant="outline" className="text-[11px] font-semibold">
+                          {course.offeredIn === "fall"
+                            ? "فقط پاییز"
+                            : course.offeredIn === "spring"
+                              ? "فقط بهار"
+                              : course.offeredIn === "none"
+                              ? "عدم ارائه"
+                              : "پاییز و بهار"}
+                        </Badge>
+                      </div>
                     </div>
 
+                    {/* Prerequisites & Corequisites */}
+                    <div className="space-y-1 pt-3 border-t border-border/50">
+                      <p className="text-[10px] font-semibold text-muted-foreground">وابستگی‌ها:</p>
+                      {!course.prerequisites || course.prerequisites.length === 0 ? (
+                        <span className="text-[10px] text-muted-foreground/70 italic">بدون پیش‌نیاز</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {course.prerequisites.map((p) => (
+                            <span
+                              key={p.id}
+                              className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-medium border ${
+                                p.type === "prerequisite"
+                                  ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20"
+                                  : p.type === "corequisite"
+                                  ? "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/20"
+                                  : "bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/20"
+                              }`}
+                            >
+                              {p.type === "prerequisite"
+                                ? "پیش‌نیاز:"
+                                : p.type === "corequisite"
+                                ? "هم‌نیاز:"
+                                : "پیشنهادی:"}{" "}
+                              {p.requiredCourseName}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Prerequisites & Corequisites */}
-                  <div className="space-y-1 pt-3 border-t border-border/50">
-                    <p className="text-[10px] font-semibold text-muted-foreground">وابستگی‌ها:</p>
-                    {!course.prerequisites || course.prerequisites.length === 0 ? (
-                      <span className="text-[10px] text-muted-foreground/70 italic">بدون پیش‌نیاز</span>
-                    ) : (
-                      <div className="flex flex-wrap gap-1">
-                        {course.prerequisites.map((p) => (
-                          <span
-                            key={p.id}
-                            className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-medium border ${
-                              p.type === "prerequisite"
-                                ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20"
-                                : p.type === "corequisite"
-                                ? "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/20"
-                                : "bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/20"
-                            }`}
-                          >
-                            {p.type === "prerequisite"
-                              ? "پیش‌نیاز:"
-                              : p.type === "corequisite"
-                              ? "هم‌نیاز:"
-                              : "پیشنهادی:"}{" "}
-                            {p.requiredCourseName}
-                          </span>
-                        ))}
+                  {/* Card Actions */}
+                  <div className="mt-3 flex items-center justify-between">
+                    {isLinked ? (
+                      <div className="flex items-center justify-between w-full pt-1 text-[11px] text-amber-700 dark:text-amber-300">
+                        <span className="flex items-center gap-1 font-medium">
+                          <Link2 className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                          <span>لینک‌شده از {course.facultyName || "دانشکده مبدأ"}</span>
+                        </span>
+                        <Badge variant="secondary" className="text-[10px] gap-1 text-muted-foreground select-none">
+                          <Lock className="h-3 w-3" />
+                          فقط‌خواندنی
+                        </Badge>
                       </div>
+                    ) : (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedCourseForPrereq(course);
+                            setPrereqError(null);
+                            setPrereqModalOpen(true);
+                          }}
+                          className="h-7 gap-1 text-[11px]"
+                        >
+                          <LinkIcon className="h-3 w-3" />
+                          پیش‌نیازها ({course.prerequisites?.length || 0})
+                        </Button>
+
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setEditingCourse(course);
+                              setCourseForm({
+                                name: course.name,
+                                code: course.code,
+                                abbreviation: course.abbreviation || "",
+                                units: course.units,
+                                facultyId: course.facultyId || selectedFacultyId,
+                                offeredIn: course.offeredIn || "both",
+                                visualCategoryId: "",
+                                ruleCategoryId: "",
+                                description: course.description || "",
+                              });
+                              setCourseModalOpen(true);
+                            }}
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                            title="ویرایش مشخصات درس"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={async () => {
+                              if (confirm(`آیا از حذف درس ${course.name} مطمئن هستید؟`)) {
+                                await fetch(`/api/courses?id=${course.id}`, { method: "DELETE" });
+                                setActionMessage(`درس «${course.name}» حذف شد.`);
+                                await loadAllData();
+                              }
+                            }}
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            title="حذف درس"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </>
                     )}
                   </div>
                 </div>
-
-                {/* Card Actions */}
-                <div className="mt-3 flex items-center justify-between">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedCourseForPrereq(course);
-                      setPrereqError(null);
-                      setPrereqModalOpen(true);
-                    }}
-                    className="h-7 gap-1 text-[11px]"
-                  >
-                    <LinkIcon className="h-3 w-3" />
-                    پیش‌نیازها ({course.prerequisites?.length || 0})
-                  </Button>
-
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setEditingCourse(course);
-                        setCourseForm({
-                          name: course.name,
-                          code: course.code,
-                          abbreviation: course.abbreviation || "",
-                          units: course.units,
-                          facultyId: course.facultyId || selectedFacultyId,
-                          offeredIn: course.offeredIn || "both",
-                          visualCategoryId: "",
-                          ruleCategoryId: "",
-                          description: course.description || "",
-                        });
-                        setCourseModalOpen(true);
-                      }}
-                      className="h-7 w-7 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                      title="ویرایش مشخصات درس"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={async () => {
-                        if (confirm(`آیا از حذف درس ${course.name} مطمئن هستید؟`)) {
-                          await fetch(`/api/courses?id=${course.id}`, { method: "DELETE" });
-                          setActionMessage(`درس «${course.name}» حذف شد.`);
-                          await loadAllData();
-                        }
-                      }}
-                      className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                      title="حذف درس"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           {filteredCourses.length === 0 && (
             <p className="text-center text-xs text-muted-foreground py-8">

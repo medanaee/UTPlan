@@ -1,5 +1,6 @@
 import type { CourseEvent, CourseEventSlot } from "../types";
 import { getD1 } from "./client";
+import { getEffectiveFacultyIds } from "./structure";
 
 export async function getEvents(
   filterOrTerm?: string | {
@@ -28,10 +29,12 @@ export async function getEvents(
       SELECT e.id, e.offering_id, e.term, e.location, e.exam_date, e.exam_start_time, e.exam_end_time,
              e.is_user_custom, e.user_id, e.global_event_id, e.created_at,
              c.id AS course_id, c.name AS course_name, c.code AS course_code, c.units AS course_units,
+             c.faculty_id AS faculty_id, f.name AS faculty_name,
              p.id AS professor_id, (p.first_name || ' ' || p.last_name) AS professor_name, p.title AS professor_title, p.avatar_url AS professor_avatar_url
       FROM course_events e
       JOIN course_offerings o ON e.offering_id = o.id
       JOIN courses c ON o.course_id = c.id
+      LEFT JOIN faculties f ON c.faculty_id = f.id
       LEFT JOIN offering_professors op ON op.offering_id = o.id AND op.is_primary = 1
       LEFT JOIN professors p ON op.professor_id = p.id
       WHERE o.deleted_at IS NULL
@@ -54,8 +57,10 @@ export async function getEvents(
       params.push(courseId);
     }
     if (facultyId) {
-      query += " AND c.faculty_id = ?";
-      params.push(facultyId);
+      const effectiveIds = await getEffectiveFacultyIds(facultyId);
+      const placeholders = effectiveIds.map(() => "?").join(",");
+      query += ` AND c.faculty_id IN (${placeholders})`;
+      params.push(...effectiveIds);
     }
 
     if (customOnly) {
@@ -122,6 +127,8 @@ export async function getEvents(
         courseName: e.course_name,
         courseCode: e.course_code,
         courseUnits: Number(e.course_units) || 3,
+        facultyId: e.faculty_id,
+        facultyName: e.faculty_name || undefined,
         professorId: primaryProf?.id || e.professor_id,
         professorName: profNames || e.professor_name || "استاد نامشخص",
         professorTitle: primaryProf?.title || e.professor_title,

@@ -52,6 +52,8 @@ import {
   CalendarRange,
   Building2,
   AlertTriangle,
+  Link2,
+  Lock,
 } from "lucide-react";
 
 interface EventManagerProps {
@@ -663,122 +665,155 @@ export function EventManager({
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
-                {filteredEvents.map((evt) => (
-                  <tr key={evt.id} className="hover:bg-muted/20 transition-colors">
-                    {/* Course & Prof */}
-                    <td className="py-2.5 px-3">
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-500/10 text-sky-600 font-bold text-xs shrink-0">
-                          <BookOpen className="h-3.5 w-3.5" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-1.5 font-bold text-foreground">
-                            <span>{evt.courseName}</span>
-                            {evt.isUserCustom && (
-                              <Badge
-                                variant="secondary"
-                                className="text-[9px] px-1.5 py-0 bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30"
-                              >
-                                ثبت کاربر
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-muted-foreground">
-                            {evt.professorName} ({evt.professorTitle || "استاد"})
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Group */}
-                    <td className="py-2.5 px-3 text-center">
-                      <Badge variant="secondary" className="text-[10px] px-1.5">
-                        گروه {evt.groupCode || "01"}
-                      </Badge>
-                    </td>
-
-                    {/* Slots */}
-                    <td className="py-2.5 px-3">
-                      <div className="flex flex-wrap gap-1">
-                        {(evt.slots || []).map((slot) => {
-                          const dayName =
-                            DAYS_OF_WEEK.find((d) => d.value === slot.dayOfWeek)?.label || "";
-                          return (
-                            <Badge
-                              key={slot.id}
-                              variant="secondary"
-                              className="text-[10px] gap-1"
-                            >
-                              <span>{dayName}</span>
-                              <span>
-                                {slot.startTime}-{slot.endTime}
-                              </span>
-                            </Badge>
-                          );
-                        })}
-                      </div>
-                    </td>
-
-                    {/* Location */}
-                    <td className="py-2.5 px-3">
-                      <div className="flex items-center gap-1 text-muted-foreground text-[11px]">
-                        <MapPin className="h-3 w-3 shrink-0 text-muted-foreground/70" />
-                        <span>{evt.location || "تعیین‌نشده"}</span>
-                      </div>
-                    </td>
-
-                    {/* Exam */}
-                    <td className="py-2.5 px-3 text-[11px]">
-                      {evt.examDate ? (
-                        <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
-                          <Calendar className="h-3 w-3 shrink-0" />
-                          <span>
-                            {evt.examDate} ({evt.examStartTime || ""}-{evt.examEndTime || ""})
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground/60 text-[10px]">بدون امتحان</span>
-                      )}
-                    </td>
-
-                    {/* Actions */}
-                    <td className="py-2.5 px-3 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        {evt.isUserCustom && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handlePromoteEvent(evt.id)}
-                            className="h-7 px-2 text-[11px] text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 gap-1"
-                            title="تأیید و تبدیل به رویداد رسمی سراسری"
+                {filteredEvents.map((evt) => {
+                  const isLinked = Boolean(
+                    selectedFacultyId && evt.facultyId && evt.facultyId !== selectedFacultyId
+                  );
+                  return (
+                    <tr
+                      key={evt.id}
+                      className={`transition-colors ${
+                        isLinked ? "bg-amber-500/[0.02] hover:bg-amber-500/[0.04]" : "hover:bg-muted/20"
+                      }`}
+                    >
+                      {/* Course & Prof */}
+                      <td className="py-2.5 px-3">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`flex h-7 w-7 items-center justify-center rounded-lg font-bold text-xs shrink-0 ${
+                              isLinked
+                                ? "bg-amber-500/10 text-amber-600"
+                                : "bg-sky-500/10 text-sky-600"
+                            }`}
                           >
-                            <Sparkles className="h-3 w-3" />
-                            <span>تأیید سراسری</span>
-                          </Button>
-                        )}
+                            <BookOpen className="h-3.5 w-3.5" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5 font-bold text-foreground flex-wrap">
+                              <span>{evt.courseName}</span>
+                              {evt.isUserCustom && (
+                                <Badge
+                                  variant="secondary"
+                                  className="text-[9px] px-1.5 py-0 bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30"
+                                >
+                                  ثبت کاربر
+                                </Badge>
+                              )}
+                              {isLinked && (
+                                <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500/30 bg-amber-500/10 gap-0.5">
+                                  <Link2 className="h-2.5 w-2.5" />
+                                  {evt.facultyName || "لینک‌شده"}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-muted-foreground">
+                              {evt.professorName} ({evt.professorTitle || "استاد"})
+                            </div>
+                          </div>
+                        </div>
+                      </td>
 
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenEditModal(evt)}
-                          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-                          title="ویرایش رویداد"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteEvent(evt.id)}
-                          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                          title="حذف رویداد"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      {/* Group */}
+                      <td className="py-2.5 px-3 text-center">
+                        <Badge variant="secondary" className="text-[10px] px-1.5">
+                          گروه {evt.groupCode || "01"}
+                        </Badge>
+                      </td>
+
+                      {/* Slots */}
+                      <td className="py-2.5 px-3">
+                        <div className="flex flex-wrap gap-1">
+                          {(evt.slots || []).map((slot) => {
+                            const dayName =
+                              DAYS_OF_WEEK.find((d) => d.value === slot.dayOfWeek)?.label || "";
+                            return (
+                              <Badge
+                                key={slot.id}
+                                variant="secondary"
+                                className="text-[10px] gap-1"
+                              >
+                                <span>{dayName}</span>
+                                <span>
+                                  {slot.startTime}-{slot.endTime}
+                                </span>
+                              </Badge>
+                            );
+                          })}
+                        </div>
+                      </td>
+
+                      {/* Location */}
+                      <td className="py-2.5 px-3">
+                        <div className="flex items-center gap-1 text-muted-foreground text-[11px]">
+                          <MapPin className="h-3 w-3 shrink-0 text-muted-foreground/70" />
+                          <span>{evt.location || "تعیین‌نشده"}</span>
+                        </div>
+                      </td>
+
+                      {/* Exam */}
+                      <td className="py-2.5 px-3 text-[11px]">
+                        {evt.examDate ? (
+                          <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                            <Calendar className="h-3 w-3 shrink-0" />
+                            <span>
+                              {evt.examDate} ({evt.examStartTime || ""}-{evt.examEndTime || ""})
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground/60 text-[10px]">بدون امتحان</span>
+                        )}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="py-2.5 px-3 text-center">
+                        {isLinked ? (
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] gap-1 text-muted-foreground select-none"
+                            title={`این رویداد متعلق به دانشکده ${evt.facultyName || "مبدأ"} است و فقط از همان پنل قابل ویرایش است.`}
+                          >
+                            <Lock className="h-3 w-3" />
+                            فقط‌خواندنی
+                          </Badge>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1">
+                            {evt.isUserCustom && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handlePromoteEvent(evt.id)}
+                                className="h-7 px-2 text-[11px] text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 gap-1"
+                                title="تأیید و تبدیل به رویداد رسمی سراسری"
+                              >
+                                <Sparkles className="h-3 w-3" />
+                                <span>تأیید سراسری</span>
+                              </Button>
+                            )}
+
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenEditModal(evt)}
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                              title="ویرایش رویداد"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteEvent(evt.id)}
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                              title="حذف رویداد"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
 
                 {filteredEvents.length === 0 && (
                   <tr>

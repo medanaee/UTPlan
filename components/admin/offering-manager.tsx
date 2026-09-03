@@ -54,6 +54,7 @@ import {
   FileText,
   ExternalLink,
   Link2,
+  Lock,
   Loader2,
 } from "lucide-react";
 
@@ -96,6 +97,21 @@ export function OfferingManager({
   const [modalProfSearch, setModalProfSearch] = useState("");
 
   const currentFaculty = faculties.find((f) => f.id === selectedFacultyId);
+  const linkedFacultyIds = currentFaculty?.linkedFacultyIds || [];
+
+  const availableCourses = React.useMemo(() => {
+    if (!selectedFacultyId) return courses;
+    return courses.filter(
+      (c) => c.facultyId === selectedFacultyId || linkedFacultyIds.includes(c.facultyId)
+    );
+  }, [courses, selectedFacultyId, linkedFacultyIds]);
+
+  const availableProfessors = React.useMemo(() => {
+    if (!selectedFacultyId) return professors;
+    return professors.filter(
+      (p) => p.facultyId === selectedFacultyId || linkedFacultyIds.includes(p.facultyId)
+    );
+  }, [professors, selectedFacultyId, linkedFacultyIds]);
 
   // Form State: Course + Multiple Professors + Description + Finalized Semesters
   const [form, setForm] = useState<{
@@ -291,9 +307,9 @@ export function OfferingManager({
     setNewSemType("2");
     setForm({
       code: "",
-      courseId: courses[0]?.id || "",
+      courseId: availableCourses[0]?.id || "",
       description: "",
-      professorIds: professors[0] ? [professors[0].id] : [],
+      professorIds: availableProfessors[0] ? [availableProfessors[0].id] : [],
       finalizedSemesters: [],
     });
     setIsModalOpen(true);
@@ -501,20 +517,26 @@ export function OfferingManager({
 
   const filteredModalProfessors = useMemo(() => {
     const q = modalProfSearch.trim().toLowerCase();
-    if (!q) return professors;
-    return professors.filter((p) => {
+    if (!q) return availableProfessors;
+    return availableProfessors.filter((p) => {
       const name = (p.name || "").toLowerCase();
       const code = (p.code || "").toLowerCase();
       const title = (p.title || "").toLowerCase();
-      return name.includes(q) || code.includes(q) || title.includes(q);
+      const facName = (p.facultyName || "").toLowerCase();
+      return (
+        name.includes(q) ||
+        code.includes(q) ||
+        title.includes(q) ||
+        facName.includes(q)
+      );
     });
-  }, [professors, modalProfSearch]);
+  }, [availableProfessors, modalProfSearch]);
 
   const selectedProfessorsList = useMemo(() => {
     return form.professorIds
-      .map((id) => professors.find((p) => p.id === id))
+      .map((id) => availableProfessors.find((p) => p.id === id) || professors.find((p) => p.id === id))
       .filter(Boolean) as Professor[];
-  }, [form.professorIds, professors]);
+  }, [form.professorIds, availableProfessors, professors]);
 
   return (
     <div className="space-y-6">
@@ -656,24 +678,44 @@ export function OfferingManager({
               </thead>
               <tbody className="divide-y divide-border/40">
                 {filteredOfferings.map((off) => {
+                  const isLinked = Boolean(
+                    selectedFacultyId && off.facultyId && off.facultyId !== selectedFacultyId
+                  );
                   const offeringProfs = off.professors && off.professors.length > 0
                     ? off.professors
                     : [{ id: off.professorId || "p1", name: off.professorName || "استاد درس", title: off.professorTitle, avatarUrl: off.professorAvatarUrl }];
 
                   return (
-                    <tr key={off.id} className="hover:bg-muted/20 transition-colors">
+                    <tr
+                      key={off.id}
+                      className={`transition-colors ${
+                        isLinked ? "bg-amber-500/[0.02] hover:bg-amber-500/[0.04]" : "hover:bg-muted/20"
+                      }`}
+                    >
                       {/* Course */}
                       <td className="py-2.5 px-3">
                         <div className="flex items-center gap-2">
-                          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 font-bold text-xs shrink-0">
+                          <div
+                            className={`flex h-7 w-7 items-center justify-center rounded-lg font-bold text-xs shrink-0 ${
+                              isLinked
+                                ? "bg-amber-500/10 text-amber-600"
+                                : "bg-emerald-500/10 text-emerald-600"
+                            }`}
+                          >
                             <BookOpen className="h-3.5 w-3.5" />
                           </div>
                           <div>
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="font-bold text-foreground">{off.courseName}</span>
                               {off.courseAbbreviation && (
                                 <Badge variant="outline" className="text-[10px] text-primary border-primary/30 bg-primary/5 px-1 py-0">
                                   {off.courseAbbreviation}
+                                </Badge>
+                              )}
+                              {isLinked && (
+                                <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500/30 bg-amber-500/10 gap-0.5">
+                                  <Link2 className="h-2.5 w-2.5" />
+                                  {off.facultyName || "لینک‌شده"}
                                 </Badge>
                               )}
                             </div>
@@ -723,38 +765,49 @@ export function OfferingManager({
 
                       {/* Actions */}
                       <td className="py-2.5 px-3 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleOpenResourcesModal(off)}
-                            className="h-7 px-2 gap-1 text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                            title="مدیریت منابع درس"
+                        {isLinked ? (
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] gap-1 text-muted-foreground select-none"
+                            title={`این ارائه متعلق به دانشکده ${off.facultyName || "مبدأ"} است و فقط از همان پنل قابل ویرایش است.`}
                           >
-                            <FolderArchive className="h-3.5 w-3.5" />
-                            <span>منابع</span>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleOpenEditModal(off)}
-                            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-                            title="ویرایش ارائه"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              handleDeleteOffering(off.id, `${off.courseName} (${off.professorName})`)
-                            }
-                            className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                            title="حذف ارائه"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
+                            <Lock className="h-3 w-3" />
+                            فقط‌خواندنی
+                          </Badge>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenResourcesModal(off)}
+                              className="h-7 px-2 gap-1 text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                              title="مدیریت منابع درس"
+                            >
+                              <FolderArchive className="h-3.5 w-3.5" />
+                              <span>منابع</span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenEditModal(off)}
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                              title="ویرایش ارائه"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                handleDeleteOffering(off.id, `${off.courseName} (${off.professorName})`)
+                              }
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                              title="حذف ارائه"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );
@@ -815,13 +868,16 @@ export function OfferingManager({
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold">انتخاب درس:</Label>
                   <Combobox
-                    items={courses.map((c) => ({
-                      value: c.id,
-                      label: c.name,
-                      badge: c.code,
-                      sublabel: `${c.units} واحد`,
-                      keywords: [c.name, c.code, c.abbreviation || ""],
-                    }))}
+                    items={availableCourses.map((c) => {
+                      const isCourseLinked = Boolean(selectedFacultyId && c.facultyId !== selectedFacultyId);
+                      return {
+                        value: c.id,
+                        label: isCourseLinked ? `${c.name} (${c.facultyName || "لینک‌شده"})` : c.name,
+                        badge: c.code,
+                        sublabel: `${c.units} واحد${isCourseLinked ? ` • لینک‌شده از ${c.facultyName || "دانشکده دیگر"}` : ""}`,
+                        keywords: [c.name, c.code, c.abbreviation || "", c.facultyName || ""],
+                      };
+                    })}
                     value={form.courseId}
                     onChange={(val) => setForm({ ...form, courseId: val })}
                     placeholder="-- انتخاب یا جستجوی درس --"
@@ -1037,9 +1093,17 @@ export function OfferingManager({
                             )}
                           </div>
                           <div className="truncate">
-                            <span className="font-semibold text-xs text-foreground block truncate">
-                              {p.name}
-                            </span>
+                            <div className="flex items-center gap-1.5 truncate">
+                              <span className="font-semibold text-xs text-foreground block truncate">
+                                {p.name}
+                              </span>
+                              {Boolean(selectedFacultyId && p.facultyId !== selectedFacultyId) && (
+                                <Badge variant="outline" className="text-[9px] px-1 py-0 text-amber-600 border-amber-500/30 bg-amber-500/10 gap-0.5">
+                                  <Link2 className="h-2.5 w-2.5" />
+                                  {p.facultyName || "لینک‌شده"}
+                                </Badge>
+                              )}
+                            </div>
                             <span className="text-[10px] text-muted-foreground block truncate">
                               {[p.title, p.code].filter(Boolean).join(" • ") || "عضو هیئت علمی"}
                             </span>

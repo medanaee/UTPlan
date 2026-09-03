@@ -99,6 +99,28 @@ export async function POST(request: NextRequest) {
       if (o.code) offeringCodeMap.set(o.code.trim().toUpperCase(), o);
     });
 
+    // Fetch existing offerings outside target faculty to protect against overwriting
+    const { results: otherOfferingRows } = await (async () => {
+      const { getD1 } = await import("@/lib/db/client");
+      const d1 = getD1();
+      if (!d1) return { results: [] };
+      return await d1
+        .prepare(
+          `SELECT o.code, f.name AS faculty_name
+           FROM course_offerings o
+           JOIN courses c ON o.course_id = c.id
+           JOIN faculties f ON c.faculty_id = f.id
+           WHERE c.faculty_id != ? AND o.deleted_at IS NULL`
+        )
+        .bind(targetFacultyId)
+        .all();
+    })();
+
+    const otherOfferingCodeMap = new Map<string, string>();
+    (otherOfferingRows || []).forEach((o: any) => {
+      if (o.code) otherOfferingCodeMap.set(o.code.trim().toUpperCase(), o.faculty_name || "دانشکده دیگر");
+    });
+
     let createdCount = 0;
     let updatedCount = 0;
     const errors: string[] = [];
@@ -112,6 +134,16 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
+      // Check if code belongs to another faculty
+      if (otherOfferingCodeMap.has(offeringCode)) {
+        errors.push(
+          `کد ارائه «${offeringCode}» متعلق به ${otherOfferingCodeMap.get(
+            offeringCode
+          )} است و از طریق ایمپورت دانشکده دیگر قابل تغییر نیست.`
+        );
+        continue;
+      }
+
       // 3.2 Course Code is Mandatory
       const courseCode = item.courseCode ? String(item.courseCode).trim().toUpperCase() : "";
       if (!courseCode) {
@@ -121,7 +153,7 @@ export async function POST(request: NextRequest) {
 
       const matchedCourse = courseByCode.get(courseCode);
       if (!matchedCourse) {
-        errors.push(`درس با کد «${courseCode}» در این دانشکده یافت نشد.`);
+        errors.push(`درس با کد «${courseCode}» در این دانشکده یا دانشکده‌های متصل به آن یافت نشد.`);
         continue;
       }
 

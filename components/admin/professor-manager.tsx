@@ -46,6 +46,8 @@ import {
   GraduationCap,
   ExternalLink,
   UsersRound,
+  Link2,
+  Lock,
 } from "lucide-react";
 
 interface ProfessorManagerProps {
@@ -225,9 +227,6 @@ export function ProfessorManager({
     }
   };
 
-  const currentFaculty = faculties.find((f) => f.id === selectedFacultyId);
-
-  
   const handleExportJson = async () => {
     try {
       setIsExporting(true);
@@ -260,9 +259,13 @@ export function ProfessorManager({
     }
   };
 
-  const facultyProfessors = professors.filter(
-    (p) => !selectedFacultyId || p.facultyId === selectedFacultyId
-  );
+  const currentFaculty = faculties.find((f) => f.id === selectedFacultyId);
+  const linkedFacultyIds = currentFaculty?.linkedFacultyIds || [];
+
+  const facultyProfessors = professors.filter((p) => {
+    if (!selectedFacultyId) return true;
+    return p.facultyId === selectedFacultyId || linkedFacultyIds.includes(p.facultyId);
+  });
 
   const filteredProfessors = facultyProfessors.filter((p) => {
     const q = search.toLowerCase().trim();
@@ -424,10 +427,15 @@ export function ProfessorManager({
             {filteredProfessors.map((p) => {
               const faculty = faculties.find((f) => f.id === p.facultyId);
               const displayName = p.firstName && p.lastName ? `${p.firstName} ${p.lastName}` : p.name;
+              const isLinked = Boolean(selectedFacultyId && p.facultyId !== selectedFacultyId);
               return (
                 <div
                   key={p.id}
-                  className="flex items-center justify-between rounded-xl border border-border/80 bg-card p-3.5 shadow-2xs hover:border-primary/30 transition-colors"
+                  className={`flex items-center justify-between rounded-xl border p-3.5 shadow-2xs transition-colors ${
+                    isLinked
+                      ? "border-amber-500/40 bg-amber-500/[0.02]"
+                      : "border-border/80 bg-card hover:border-primary/30"
+                  }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs overflow-hidden border border-border/70 shadow-2xs">
@@ -447,6 +455,12 @@ export function ProfessorManager({
                         {p.code && (
                           <Badge variant="outline" className="text-[11px] px-1 py-0 font-mono h-4 font-normal text-muted-foreground">
                             {p.code}
+                          </Badge>
+                        )}
+                        {isLinked && (
+                          <Badge variant="outline" className="text-[10px] font-medium px-1.5 py-0 text-amber-600 border-amber-500/30 bg-amber-500/10 gap-0.5">
+                            <Link2 className="h-2.5 w-2.5" />
+                            لینک‌شده
                           </Badge>
                         )}
                       </div>
@@ -501,24 +515,37 @@ export function ProfessorManager({
 
                   {/* Actions (Edit + Delete) */}
                   <div className="flex items-center gap-1 shrink-0 mr-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleOpenEditModal(p)}
-                      className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
-                      title="ویرایش استاد"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(p)}
-                      className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                      title="حذف استاد"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    {isLinked ? (
+                      <Badge
+                        variant="secondary"
+                        className="text-[10px] gap-1 text-muted-foreground select-none"
+                        title={`این استاد متعلق به دانشکده ${faculty?.name || p.facultyName || "مبدأ"} است و فقط از همان پنل قابل ویرایش است.`}
+                      >
+                        <Lock className="h-3 w-3" />
+                        فقط‌خواندنی
+                      </Badge>
+                    ) : (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenEditModal(p)}
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
+                          title="ویرایش استاد"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(p)}
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                          title="حذف استاد"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
               );

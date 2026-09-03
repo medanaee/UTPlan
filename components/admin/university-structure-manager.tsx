@@ -9,17 +9,20 @@ import {
   Pencil,
   Trash2,
   ChevronLeft,
+  Link2,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import type { Faculty, Major, Track } from "@/lib/types";
@@ -44,6 +47,10 @@ export function UniversityStructureManager() {
   const [facultyModalOpen, setFacultyModalOpen] = useState(false);
   const [majorModalOpen, setMajorModalOpen] = useState(false);
   const [trackModalOpen, setTrackModalOpen] = useState(false);
+  const [linksModalOpen, setLinksModalOpen] = useState(false);
+  const [linkingFaculty, setLinkingFaculty] = useState<Faculty | null>(null);
+  const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
+  const [savingLinks, setSavingLinks] = useState(false);
 
   // Editing states
   const [editingFaculty, setEditingFaculty] = useState<Faculty | null>(null);
@@ -106,6 +113,45 @@ export function UniversityStructureManager() {
       await loadAllData();
     } else {
       alert(res.message || "خطا در حذف دانشکده");
+    }
+  };
+
+  const handleOpenLinksModal = (f: Faculty) => {
+    setLinkingFaculty(f);
+    setSelectedSourceIds(f.linkedFacultyIds || []);
+    setLinksModalOpen(true);
+  };
+
+  const handleToggleSourceId = (id: string) => {
+    setSelectedSourceIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleSaveFacultyLinks = async () => {
+    if (!linkingFaculty) return;
+    try {
+      setSavingLinks(true);
+      const res = await fetch("/api/faculties/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          targetFacultyId: linkingFaculty.id,
+          sourceFacultyIds: selectedSourceIds,
+        }),
+      }).then((r) => r.json());
+
+      if (res.success) {
+        setLinksModalOpen(false);
+        setActionMessage("اتصالات دانشکده با موفقیت ذخیره شد.");
+        await loadAllData();
+      } else {
+        alert(res.message || "خطا در ذخیره اتصالات");
+      }
+    } catch (err: any) {
+      alert("خطا در برقراری ارتباط با سرور: " + (err?.message || "نامشخص"));
+    } finally {
+      setSavingLinks(false);
     }
   };
 
@@ -287,9 +333,31 @@ export function UniversityStructureManager() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
+                    {Boolean(f.linkedFacultyIds && f.linkedFacultyIds.length > 0) && (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] h-4.5 px-1.5 font-normal text-amber-600 bg-amber-500/10 border-amber-500/30 gap-0.5"
+                        title={`${f.linkedFacultyIds!.length} دانشکده ارائه‌دهنده متصل`}
+                      >
+                        <Link2 className="h-2.5 w-2.5" />
+                        {f.linkedFacultyIds!.length} متصل
+                      </Badge>
+                    )}
                     <Badge variant="secondary" className="text-[10px] h-4.5 px-1.5 font-normal">
                       {relatedMajorCount} رشته
                     </Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenLinksModal(f);
+                      }}
+                      className="h-6 w-6 p-0 text-muted-foreground hover:text-amber-600 hover:bg-amber-500/10"
+                      title="اتصال به دانشکده‌های دیگر (اشتراک‌گذاری دروس، اساتید و ارائه‌ها)"
+                    >
+                      <Link2 className="h-3 w-3" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -657,6 +725,84 @@ export function UniversityStructureManager() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Faculty Links Modal */}
+      <Dialog open={linksModalOpen} onOpenChange={setLinksModalOpen}>
+        <DialogContent className="sm:max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+              <Link2 className="h-4 w-4 text-amber-600" />
+              <span>اتصال دانشکده‌های ارائه‌دهنده به «{linkingFaculty?.name}»</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground leading-relaxed pt-1">
+              دروس، اساتید، ارائه‌ها و رویدادهای دانشکده‌های انتخاب‌شده در این دانشکده به صورت اشتراکی در دسترس خواهند بود.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-2 space-y-2 max-h-72 overflow-y-auto">
+            {faculties
+              .filter((f) => f.id !== linkingFaculty?.id)
+              .map((f) => {
+                const isChecked = selectedSourceIds.includes(f.id);
+                return (
+                  <div
+                    key={f.id}
+                    onClick={() => handleToggleSourceId(f.id)}
+                    className={`flex items-center justify-between p-2.5 rounded-xl border text-xs cursor-pointer transition-colors ${
+                      isChecked
+                        ? "bg-primary/10 border-primary/40 font-semibold"
+                        : "bg-muted/20 border-border/60 hover:bg-muted/40"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Checkbox
+                        checked={isChecked}
+                        onCheckedChange={() => handleToggleSourceId(f.id)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <div>
+                        <p className="text-foreground">{f.name}</p>
+                        <span className="text-[10px] font-normal text-muted-foreground">کد: {f.code}</span>
+                      </div>
+                    </div>
+                    {isChecked && (
+                      <Badge variant="secondary" className="text-[10px] gap-1 bg-primary/15 text-primary">
+                        متصل
+                      </Badge>
+                    )}
+                  </div>
+                );
+              })}
+            {faculties.filter((f) => f.id !== linkingFaculty?.id).length === 0 && (
+              <p className="text-center text-xs text-muted-foreground py-6">
+                دانشکده دیگری برای اتصال به این دانشکده وجود ندارد.
+              </p>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setLinksModalOpen(false)}
+              className="text-xs"
+            >
+              انصراف
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleSaveFacultyLinks}
+              disabled={savingLinks}
+              className="text-xs font-semibold gap-1.5"
+            >
+              <Link2 className="h-3.5 w-3.5" />
+              {savingLinks ? "در حال ذخیره..." : "ذخیره اتصالات"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

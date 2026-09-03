@@ -1,5 +1,6 @@
 import type {
   Faculty,
+  FacultyLink,
   Major,
   Track,
   VisualCategory,
@@ -17,19 +18,191 @@ export async function getFaculties(): Promise<Faculty[]> {
   if (!d1) return [];
 
   try {
+    try {
+      await d1
+        .prepare(
+          `CREATE TABLE IF NOT EXISTS faculty_links (
+            id TEXT PRIMARY KEY,
+            target_faculty_id TEXT NOT NULL,
+            source_faculty_id TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (target_faculty_id) REFERENCES faculties(id) ON DELETE CASCADE,
+            FOREIGN KEY (source_faculty_id) REFERENCES faculties(id) ON DELETE CASCADE,
+            UNIQUE(target_faculty_id, source_faculty_id)
+          )`
+        )
+        .run();
+    } catch {}
+
     const { results } = await d1
       .prepare("SELECT * FROM faculties WHERE deleted_at IS NULL ORDER BY name ASC")
       .all();
-    return (results || []).map((r: any) => ({
-      id: r.id,
-      name: r.name,
-      code: r.code,
-      createdAt: r.created_at,
-      deletedAt: r.deleted_at || null,
-    }));
+
+    let allLinks: any[] = [];
+    try {
+      const { results: linkRows } = await d1
+        .prepare("SELECT target_faculty_id, source_faculty_id FROM faculty_links")
+        .all();
+      allLinks = linkRows || [];
+    } catch {}
+
+    return (results || []).map((r: any) => {
+      const linkedFacultyIds = allLinks
+        .filter((l: any) => l.target_faculty_id === r.id)
+        .map((l: any) => l.source_faculty_id);
+
+      return {
+        id: r.id,
+        name: r.name,
+        code: r.code,
+        createdAt: r.created_at,
+        deletedAt: r.deleted_at || null,
+        linkedFacultyIds,
+      };
+    });
   } catch (err) {
     console.error("D1 getFaculties error:", err);
     return [];
+  }
+}
+
+export async function getFacultyLinks(targetFacultyId?: string): Promise<FacultyLink[]> {
+  const d1 = getD1();
+  if (!d1) return [];
+
+  try {
+    try {
+      await d1
+        .prepare(
+          `CREATE TABLE IF NOT EXISTS faculty_links (
+            id TEXT PRIMARY KEY,
+            target_faculty_id TEXT NOT NULL,
+            source_faculty_id TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (target_faculty_id) REFERENCES faculties(id) ON DELETE CASCADE,
+            FOREIGN KEY (source_faculty_id) REFERENCES faculties(id) ON DELETE CASCADE,
+            UNIQUE(target_faculty_id, source_faculty_id)
+          )`
+        )
+        .run();
+    } catch {}
+
+    let query = `
+      SELECT fl.id, fl.target_faculty_id, fl.source_faculty_id, fl.created_at,
+             sf.name AS source_faculty_name, sf.code AS source_faculty_code
+      FROM faculty_links fl
+      JOIN faculties sf ON fl.source_faculty_id = sf.id
+      WHERE sf.deleted_at IS NULL
+    `;
+    const params: any[] = [];
+    if (targetFacultyId) {
+      query += " AND fl.target_faculty_id = ?";
+      params.push(targetFacultyId);
+    }
+    query += " ORDER BY sf.name ASC";
+
+    const { results } = await d1.prepare(query).bind(...params).all();
+    return (results || []).map((r: any) => ({
+      id: r.id,
+      targetFacultyId: r.target_faculty_id,
+      sourceFacultyId: r.source_faculty_id,
+      sourceFacultyName: r.source_faculty_name,
+      sourceFacultyCode: r.source_faculty_code,
+      createdAt: r.created_at,
+    }));
+  } catch (err) {
+    console.error("D1 getFacultyLinks error:", err);
+    return [];
+  }
+}
+
+export async function setFacultyLinks(
+  targetFacultyId: string,
+  sourceFacultyIds: string[]
+): Promise<void> {
+  const d1 = getD1();
+  if (!d1) return;
+
+  try {
+    try {
+      await d1
+        .prepare(
+          `CREATE TABLE IF NOT EXISTS faculty_links (
+            id TEXT PRIMARY KEY,
+            target_faculty_id TEXT NOT NULL,
+            source_faculty_id TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (target_faculty_id) REFERENCES faculties(id) ON DELETE CASCADE,
+            FOREIGN KEY (source_faculty_id) REFERENCES faculties(id) ON DELETE CASCADE,
+            UNIQUE(target_faculty_id, source_faculty_id)
+          )`
+        )
+        .run();
+    } catch {}
+
+    // Delete existing links for this target faculty
+    await d1
+      .prepare("DELETE FROM faculty_links WHERE target_faculty_id = ?")
+      .bind(targetFacultyId)
+      .run();
+
+    // Insert new links (filtering out self-links and duplicates)
+    const validSources = Array.from(
+      new Set(sourceFacultyIds.filter((id) => id && id !== targetFacultyId))
+    );
+    const now = new Date().toISOString();
+
+    for (const sourceId of validSources) {
+      const linkId = `flink_${crypto.randomUUID().slice(0, 8)}`;
+      await d1
+        .prepare(
+          "INSERT INTO faculty_links (id, target_faculty_id, source_faculty_id, created_at) VALUES (?, ?, ?, ?)"
+        )
+        .bind(linkId, targetFacultyId, sourceId, now)
+        .run();
+    }
+  } catch (err) {
+    console.error("D1 setFacultyLinks error:", err);
+    throw err;
+  }
+}
+
+export async function getEffectiveFacultyIds(targetFacultyId: string): Promise<string[]> {
+  const d1 = getD1();
+  if (!d1 || !targetFacultyId) return targetFacultyId ? [targetFacultyId] : [];
+
+  try {
+    try {
+      await d1
+        .prepare(
+          `CREATE TABLE IF NOT EXISTS faculty_links (
+            id TEXT PRIMARY KEY,
+            target_faculty_id TEXT NOT NULL,
+            source_faculty_id TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (target_faculty_id) REFERENCES faculties(id) ON DELETE CASCADE,
+            FOREIGN KEY (source_faculty_id) REFERENCES faculties(id) ON DELETE CASCADE,
+            UNIQUE(target_faculty_id, source_faculty_id)
+          )`
+        )
+        .run();
+    } catch {}
+
+    const { results } = await d1
+      .prepare(
+        `SELECT source_faculty_id
+         FROM faculty_links fl
+         JOIN faculties sf ON fl.source_faculty_id = sf.id
+         WHERE fl.target_faculty_id = ? AND sf.deleted_at IS NULL`
+      )
+      .bind(targetFacultyId)
+      .all();
+
+    const linkedIds = (results || []).map((r: any) => r.source_faculty_id as string);
+    return Array.from(new Set([targetFacultyId, ...linkedIds]));
+  } catch (err) {
+    console.error("D1 getEffectiveFacultyIds error:", err);
+    return [targetFacultyId];
   }
 }
 

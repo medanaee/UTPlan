@@ -1,18 +1,26 @@
 import type { Professor } from "../types";
 import { getD1 } from "./client";
+import { getEffectiveFacultyIds } from "./structure";
 
 export async function getProfessors(facultyId?: string): Promise<Professor[]> {
   const d1 = getD1();
   if (!d1) return [];
 
   try {
-    let query = "SELECT * FROM professors WHERE deleted_at IS NULL";
+    let query = `
+      SELECT p.*, f.name AS faculty_name
+      FROM professors p
+      LEFT JOIN faculties f ON p.faculty_id = f.id
+      WHERE p.deleted_at IS NULL
+    `;
     const params: any[] = [];
     if (facultyId) {
-      query += " AND faculty_id = ?";
-      params.push(facultyId);
+      const effectiveIds = await getEffectiveFacultyIds(facultyId);
+      const placeholders = effectiveIds.map(() => "?").join(",");
+      query += ` AND p.faculty_id IN (${placeholders})`;
+      params.push(...effectiveIds);
     }
-    query += " ORDER BY last_name ASC, first_name ASC";
+    query += " ORDER BY p.last_name ASC, p.first_name ASC";
     const { results } = await d1.prepare(query).bind(...params).all();
     return (results || []).map((p: any) => {
       let links: any = undefined;
@@ -29,6 +37,7 @@ export async function getProfessors(facultyId?: string): Promise<Professor[]> {
       return {
         id: p.id,
         facultyId: p.faculty_id,
+        facultyName: p.faculty_name || undefined,
         code: p.code || undefined,
         firstName: firstName || undefined,
         lastName: lastName || undefined,

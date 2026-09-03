@@ -36,6 +36,16 @@ export interface Faculty {
   code: string;
   createdAt: string;
   deletedAt?: string | null;
+  linkedFacultyIds?: string[];
+}
+
+export interface FacultyLink {
+  id: string;
+  targetFacultyId: string;
+  sourceFacultyId: string;
+  sourceFacultyName?: string;
+  sourceFacultyCode?: string;
+  createdAt: string;
 }
 
 export interface Major {
@@ -246,6 +256,8 @@ export interface CourseEvent {
   courseName?: string;
   courseCode?: string;
   courseUnits?: number;
+  facultyId?: string;
+  facultyName?: string;
   professorName?: string;
   professorTitle?: string;
   // Slots
