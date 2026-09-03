@@ -43,6 +43,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { getRandomPersianPhrase } from "@/lib/persian-words";
 
 interface DatabaseStats {
   tableCounts: Record<string, number>;
@@ -101,6 +102,7 @@ export function BackupManager() {
   // Danger Zone Purge states
   const [isPurgeModalOpen, setIsPurgeModalOpen] = useState(false);
   const [purgeConfirmationInput, setPurgeConfirmationInput] = useState("");
+  const [expectedPurgePhrase, setExpectedPurgePhrase] = useState("");
   const [isPurging, setIsPurging] = useState(false);
   const [purgeResult, setPurgeResult] = useState<{
     success: boolean;
@@ -111,12 +113,15 @@ export function BackupManager() {
 
   const handleOpenPurgeModal = () => {
     setPurgeConfirmationInput("");
+    setExpectedPurgePhrase(getRandomPersianPhrase(3));
     setIsPurgeModalOpen(true);
   };
 
   const handleExecutePurge = async () => {
-    if (purgeConfirmationInput.trim() !== "پاکسازی کامل") {
-      alert("لطفاً عبارت دقیق «پاکسازی کامل» را برای تأیید تایپ کنید.");
+    const cleanInput = purgeConfirmationInput.trim().replace(/\s+/g, " ");
+    const cleanExpected = expectedPurgePhrase.trim().replace(/\s+/g, " ");
+    if (cleanInput !== cleanExpected) {
+      alert(`لطفاً عبارت دقیق «${expectedPurgePhrase}» را تایپ کنید.`);
       return;
     }
 
@@ -681,19 +686,24 @@ export function BackupManager() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3 py-2">
-            <div className="p-3.5 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-xs space-y-1.5">
-              <span className="font-bold block">برای تأیید نهایی، لطفاً عبارت زیر را دقیقاً در کادر بنویسید:</span>
-              <span className="font-black text-sm block text-center py-1 select-all text-destructive">
-                پاکسازی کامل
+          <div className="space-y-4">
+            <div className="p-3 bg-destructive/10 rounded-2xl text-destructive text-center space-y-2">
+              <span className="font-semibold block text-xs text-muted-foreground">
+                برای تأیید، لطفاً این ۳ کلمه را در کادر زیر تایپ کنید:
               </span>
+              <div className="select-none pointer-events-none py-1">
+                <span className="font-black text-lg tracking-wide text-destructive select-none">
+                  {expectedPurgePhrase}
+                </span>
+              </div>
             </div>
 
             <div className="space-y-1.5">
               <Input
-                placeholder="پاکسازی کامل"
+                placeholder="۳ کلمه بالا را تایپ کنید..."
                 value={purgeConfirmationInput}
                 onChange={(e) => setPurgeConfirmationInput(e.target.value)}
+                onPaste={(e) => e.preventDefault()}
                 className="text-center font-bold text-sm border-destructive/30 focus-visible:ring-destructive"
                 autoFocus
               />
@@ -716,7 +726,10 @@ export function BackupManager() {
               variant="destructive"
               size="sm"
               onClick={handleExecutePurge}
-              disabled={purgeConfirmationInput.trim() !== "پاکسازی کامل" || isPurging}
+              disabled={
+                purgeConfirmationInput.trim().replace(/\s+/g, " ") !==
+                  expectedPurgePhrase.trim().replace(/\s+/g, " ") || isPurging
+              }
               className="text-xs font-bold gap-1.5"
             >
               {isPurging ? (
