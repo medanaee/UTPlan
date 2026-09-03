@@ -452,6 +452,16 @@ export function DependencyResolutionDialog({
                           </div>
                         </div>
 
+                        {conflict.sourceEntityName && (
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/60 px-2.5 py-1.5 rounded-lg border border-border/60">
+                            <Layers className="h-3.5 w-3.5 text-primary shrink-0" />
+                            <span className="text-[11px] font-medium shrink-0">مربوط به آیتم در حال حذف:</span>
+                            <span className="font-semibold text-foreground text-[11px] break-words">
+                              {conflict.sourceEntityName}
+                            </span>
+                          </div>
+                        )}
+
                         <p className="text-[11px] text-muted-foreground leading-relaxed break-words">
                           {conflict.description}
                         </p>

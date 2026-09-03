@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
           .prepare("SELECT id, name, code, faculty_id FROM courses WHERE id = ?")
           .bind(entityId)
           .first();
-        const courseName = courseRow ? `${courseRow.name} (${courseRow.code || "بدون کد"})` : "این درس";
+        const courseName = courseRow ? `${(courseRow as any).name} (کد درس: ${(courseRow as any).code || "-"})` : "این درس";
 
         // Candidate courses (excluding all items currently in delete batch)
         const { results: otherCourses } = await d1
@@ -98,10 +98,10 @@ export async function POST(request: NextRequest) {
             relationType: "offering",
             dependentEntityType: "offering",
             dependentEntityId: off.id as string,
-            dependentEntityName: `ارائه با کد ${off.code || "بدون کد"} (${off.description || "بدون توضیحات"})`,
+            dependentEntityName: `ارائه با کد ${off.code || "-"} (درس ${courseName})`,
             description: isTrashed
-              ? `این درس دارای ارائه با کد «${off.code || "بدون کد"}» است که هم‌اکنون در سطل بازیافت قرار دارد. می‌توانید آن را نیز مستقیماً به طور دائمی پاک کنید.`
-              : `این درس دارای ارائه درسی فعال با کد «${off.code || "بدون کد"}» است. برای حذف درس، این ارائه باید با درس دیگری جایگزین شود یا خود ارائه نیز حذف گردد.`,
+              ? `درس «${courseName}» دارای ارائه با کد «${off.code || "-"}» است که هم‌اکنون در سطل بازیافت قرار دارد. می‌توانید آن را نیز مستقیماً به طور دائمی پاک کنید.`
+              : `درس «${courseName}» دارای ارائه درسی فعال با کد «${off.code || "-"}» است. برای حذف درس، این ارائه باید با درس دیگری جایگزین شود یا خود ارائه نیز حذف گردد.`,
             allowedActions,
             requiresCascadeInspection: !isTrashed,
             isDependentInTrash: isTrashed,
@@ -139,8 +139,8 @@ export async function POST(request: NextRequest) {
             relationType: "prerequisite",
             dependentEntityType: "prerequisite",
             dependentEntityId: pr.id as string,
-            dependentEntityName: `${typeLabel} برای درس ${pr.dependent_course_name} (${pr.dependent_course_code || "-"})`,
-            description: `این درس به عنوان ${typeLabel} برای درس «${pr.dependent_course_name}» تعریف شده است.`,
+            dependentEntityName: `${typeLabel} برای درس ${pr.dependent_course_name} (کد: ${pr.dependent_course_code || "-"})`,
+            description: `درس «${courseName}» به عنوان ${typeLabel} برای درس «${pr.dependent_course_name}» (${pr.dependent_course_code || "-"}) تعریف شده است.`,
             allowedActions: ["replace", "unlink"],
             requiresCascadeInspection: false,
             isDependentInTrash: isTrashed,
@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
             dependentEntityType: "track_assignment",
             dependentEntityId: ta.id as string,
             dependentEntityName: `چارت گرایش ${ta.track_name} (رشته ${ta.major_name})`,
-            description: `این درس در چارت گرایش «${ta.track_name}» انتساب داده شده است.`,
+            description: `درس «${courseName}» در چارت گرایش «${ta.track_name}» (رشته ${ta.major_name}) انتساب داده شده است.`,
             allowedActions: ["replace", "unlink"],
             requiresCascadeInspection: false,
             replacementCandidates: courseCandidates,
@@ -201,7 +201,7 @@ export async function POST(request: NextRequest) {
               dependentEntityType: "chart_course",
               dependentEntityId: entityId,
               dependentEntityName: `انتخاب توسط دانشجویان (${chartCount} چارت دانشجو)`,
-              description: `این درس در چارت تحصیلی ${chartCount} دانشجو انتخاب شده است.`,
+              description: `درس «${courseName}» در چارت تحصیلی ${chartCount} دانشجو انتخاب شده است.`,
               allowedActions: ["replace", "unlink"],
               requiresCascadeInspection: false,
               replacementCandidates: courseCandidates,
@@ -218,7 +218,7 @@ export async function POST(request: NextRequest) {
           .prepare("SELECT id, first_name, last_name, code FROM professors WHERE id = ?")
           .bind(entityId)
           .first();
-        const profName = profRow ? `${profRow.first_name} ${profRow.last_name}` : "این استاد";
+        const profName = profRow ? `${(profRow as any).first_name} ${(profRow as any).last_name} (کد: ${(profRow as any).code || "-"})` : "این استاد";
 
         // Offerings taught
         const { results: offProfs } = await d1
@@ -263,8 +263,8 @@ export async function POST(request: NextRequest) {
             relationType: "offering_professor",
             dependentEntityType: "offering_professor",
             dependentEntityId: op.id as string,
-            dependentEntityName: `تدریس در ارائه درس ${op.course_name} (${op.offering_code || "کد نامشخص"})`,
-            description: `این استاد مدرس ارائه «${op.course_name} (${op.offering_code || "-"})» است.${
+            dependentEntityName: `تدریس در ارائه درس ${op.course_name} (کد ارائه: ${op.offering_code || "-"} | کد درس: ${op.course_code || "-"})`,
+            description: `استاد «${profName}» مدرس ارائه درس «${op.course_name}» (کد ارائه: ${op.offering_code || "-"}) است.${
               isOfferingTrashed ? " (این ارائه در سطل بازیافت قرار دارد)" : ""
             }`,
             allowedActions: ["replace", "unlink"],
@@ -281,22 +281,23 @@ export async function POST(request: NextRequest) {
       else if (entityType === "offering") {
         const offRow = await d1
           .prepare(
-            `SELECT o.id, o.code, o.course_id, c.name as course_name
+            `SELECT o.id, o.code, o.course_id, c.name as course_name, c.code as course_code
              FROM course_offerings o
-             JOIN courses c ON o.course_id = c.id
+             LEFT JOIN courses c ON o.course_id = c.id
              WHERE o.id = ?`
           )
           .bind(entityId)
           .first();
 
-        const offeringName = offRow
-          ? `ارائه درس ${(offRow as any).course_name} (کد ${(offRow as any).code || "-"})`
-          : "این ارائه";
+        const courseName = (offRow as any)?.course_name || "نامشخص";
+        const courseCode = (offRow as any)?.course_code;
+        const offCode = (offRow as any)?.code || "-";
+        const offeringName = `ارائه درس ${courseName} (کد ارائه: ${offCode}${courseCode ? ` | کد درس: ${courseCode}` : ""})`;
 
         // Candidate offerings
         const { results: otherOfferings } = await d1
           .prepare(
-            `SELECT o.id, o.code, c.name as course_name
+            `SELECT o.id, o.code, c.name as course_name, c.code as course_code
              FROM course_offerings o
              JOIN courses c ON o.course_id = c.id
              WHERE o.deleted_at IS NULL
@@ -308,7 +309,7 @@ export async function POST(request: NextRequest) {
           .filter((o: any) => !selectedDeleteKeys.has(`offering:${o.id}`))
           .map((o: any) => ({
             id: o.id as string,
-            label: `ارائه ${o.course_name} (کد: ${o.code || "ندارد"})`,
+            label: `ارائه ${o.course_name} (کد ارائه: ${o.code || "-"}${o.course_code ? ` | کد درس: ${o.course_code}` : ""})`,
             code: o.code as string,
           }));
 
@@ -341,8 +342,8 @@ export async function POST(request: NextRequest) {
             dependentEntityId: evt.id as string,
             dependentEntityName: `رویداد کلاسی کد ${evt.code || "بدون کد"} (نیمسال ${evt.term})`,
             description: isEventTrashed
-              ? `این ارائه دارای رویداد کلاسی با کد «${evt.code || "-"}» در نیمسال «${evt.term}» است که در سطل بازیافت قرار دارد. می‌توانید آن را نیز پاک کنید.`
-              : `این ارائه دارای رویداد کلاسی فعال در نیمسال «${evt.term}» (محل: ${evt.location || "نامشخص"}) است. با حذف ارائه، این رویداد باید به ارائه دیگری منتقل شود یا حذف گردد.`,
+              ? `ارائه «${offeringName}» دارای رویداد کلاسی با کد «${evt.code || "-"}» در نیمسال «${evt.term}» است که در سطل بازیافت قرار دارد. می‌توانید آن را نیز مستقیماً پاک کنید.`
+              : `ارائه «${offeringName}» دارای رویداد کلاسی فعال با کد «${evt.code || "-"}» در نیمسال «${evt.term}» (محل: ${evt.location || "نامشخص"}) است. با حذف این ارائه، این رویداد کلاسی باید به ارائه دیگری منتقل شود یا حذف گردد.`,
             allowedActions,
             requiresCascadeInspection: !isEventTrashed,
             isDependentInTrash: isEventTrashed,
@@ -357,7 +358,7 @@ export async function POST(request: NextRequest) {
       else if (entityType === "event") {
         const evtRow = await d1
           .prepare(
-            `SELECT e.id, e.code, e.term, e.offering_id, c.name as course_name
+            `SELECT e.id, e.code, e.term, e.offering_id, o.code as offering_code, c.name as course_name, c.code as course_code
              FROM course_events e
              JOIN course_offerings o ON e.offering_id = o.id
              JOIN courses c ON o.course_id = c.id
@@ -366,9 +367,11 @@ export async function POST(request: NextRequest) {
           .bind(entityId)
           .first();
 
-        const eventName = evtRow
-          ? `رویداد کلاسی ${(evtRow as any).course_name} (کد ${(evtRow as any).code || "-"})`
-          : "این رویداد";
+        const courseName = (evtRow as any)?.course_name || "نامشخص";
+        const courseCode = (evtRow as any)?.course_code;
+        const offCode = (evtRow as any)?.offering_code || "-";
+        const evtCode = (evtRow as any)?.code || "-";
+        const eventName = `رویداد کلاسی درس ${courseName} (کد رویداد: ${evtCode} | کد ارائه: ${offCode}${courseCode ? ` | کد درس: ${courseCode}` : ""})`;
         const term = evtRow ? (evtRow as any).term : "";
 
         // Student chart selections of this event
@@ -381,7 +384,7 @@ export async function POST(request: NextRequest) {
         if (chartEventCount > 0) {
           const { results: otherEvents } = await d1
             .prepare(
-              `SELECT e.id, e.code, e.location, c.name as course_name
+              `SELECT e.id, e.code, e.location, o.code as offering_code, c.name as course_name, c.code as course_code
                FROM course_events e
                JOIN course_offerings o ON e.offering_id = o.id
                JOIN courses c ON o.course_id = c.id
@@ -394,7 +397,7 @@ export async function POST(request: NextRequest) {
             .filter((e: any) => !selectedDeleteKeys.has(`event:${e.id}`))
             .map((e: any) => ({
               id: e.id as string,
-              label: `${e.course_name} - کد: ${e.code || "-"} (${e.location || "بدون محل"})`,
+              label: `${e.course_name} (کد رویداد: ${e.code || "-"} | ارائه: ${e.offering_code || "-"} | محل: ${e.location || "نامشخص"})`,
               code: e.code as string,
             }));
 
@@ -410,7 +413,7 @@ export async function POST(request: NextRequest) {
               dependentEntityType: "chart_course",
               dependentEntityId: entityId,
               dependentEntityName: `انتخاب برنامه هفتگی دانشجویان (${chartEventCount} دانشجو)`,
-              description: `این رویداد در برنامه هفتگی و چارت ${chartEventCount} دانشجو انتخاب شده است. می‌توانید آن را با رویداد دیگری جایگزین کنید یا انتخاب دانشجو را خالی نمایید.`,
+              description: `رویداد «${eventName}» در برنامه هفتگی و چارت تحصیلی ${chartEventCount} دانشجو انتخاب شده است. می‌توانید آن را با رویداد دیگری جایگزین کنید یا انتخاب دانشجو را خالی نمایید.`,
               allowedActions: ["replace", "unlink"],
               requiresCascadeInspection: false,
               replacementCandidates: eventCandidates,
