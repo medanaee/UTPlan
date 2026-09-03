@@ -183,6 +183,7 @@ CREATE INDEX IF NOT EXISTS idx_offering_prof_professor ON offering_professors(pr
 -- 13. Course Events Table (Class schedule & exam slots)
 CREATE TABLE IF NOT EXISTS course_events (
   id TEXT PRIMARY KEY,
+  code TEXT,
   offering_id TEXT NOT NULL,
   term TEXT NOT NULL,
   location TEXT,
@@ -195,6 +196,7 @@ CREATE TABLE IF NOT EXISTS course_events (
   created_at TEXT NOT NULL,
   FOREIGN KEY (offering_id) REFERENCES course_offerings(id)
 );
+CREATE INDEX IF NOT EXISTS idx_events_code ON course_events(code);
 CREATE INDEX IF NOT EXISTS idx_events_offering ON course_events(offering_id);
 CREATE INDEX IF NOT EXISTS idx_events_term ON course_events(term);
 

@@ -312,7 +312,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
               className="h-8 gap-1.5 text-xs shadow-2xs"
             >
               <Download className="h-3.5 w-3.5 text-primary" />
-              <span>خروجی دروس (Export JSON)</span>
+              <span>خروجی JSON</span>
             </Button>
 
             <Button
@@ -323,7 +323,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
               className="h-8 gap-1.5 text-xs shadow-2xs font-semibold"
             >
               <Upload className="h-3.5 w-3.5 text-primary" />
-              <span>ورود دسته‌ای (Import JSON)</span>
+              <span>ورودی JSON</span>
             </Button>
 
             <Button

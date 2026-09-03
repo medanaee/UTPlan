@@ -54,7 +54,10 @@ import {
   AlertTriangle,
   Link2,
   Lock,
+  Download,
+  Upload,
 } from "lucide-react";
+import { EventImportDialog } from "./event-import-dialog";
 
 interface EventManagerProps {
   offerings?: CourseOffering[];
@@ -114,6 +117,8 @@ export function EventManager({
   const [editingEvent, setEditingEvent] = useState<CourseEvent | null>(null);
   const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
   const [isNewTermModalOpen, setIsNewTermModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // New Term Form state
@@ -127,7 +132,7 @@ export function EventManager({
   // Event Form state (Term is omitted because it's locked to activeTerm)
   const [selectedOfferingId, setSelectedOfferingId] = useState("");
   const [isTermFinalized, setIsTermFinalized] = useState(false);
-  const [groupCode, setGroupCode] = useState("01");
+  const [code, setCode] = useState("");
   const [location, setLocation] = useState("دانشکده فنی - کلاس ۱۰۲");
   const [examDate, setExamDate] = useState("1403/10/22");
   const [examStartTime, setExamStartTime] = useState("08:30");
@@ -175,7 +180,7 @@ export function EventManager({
     setSelectedOfferingId(initialOffId);
     const off = offerings.find((o) => o.id === initialOffId);
     setIsTermFinalized(off?.finalizedSemesters?.includes(activeTerm) || false);
-    setGroupCode("01");
+    setCode("");
     setLocation("دانشکده فنی - کلاس ۱۰۲");
     setExamDate("1403/10/22");
     setExamStartTime("08:30");
@@ -193,7 +198,7 @@ export function EventManager({
     setSelectedOfferingId(offId);
     const off = offerings.find((o) => o.id === offId);
     setIsTermFinalized(off?.finalizedSemesters?.includes(activeTerm) || false);
-    setGroupCode(evt.groupCode || "01");
+    setCode(evt.code || "");
     setLocation(evt.location || "");
     setExamDate(evt.examDate || "");
     setExamStartTime(evt.examStartTime || "08:30");
@@ -299,9 +304,9 @@ export function EventManager({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             id: editingEvent.id,
+            code: code.trim() || undefined,
             offeringId: selectedOfferingId,
             term: activeTerm,
-            groupCode,
             location,
             examDate,
             examStartTime,
@@ -322,9 +327,9 @@ export function EventManager({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            code: code.trim() || undefined,
             offeringId: selectedOfferingId,
             term: activeTerm,
-            groupCode,
             location,
             examDate,
             examStartTime,
@@ -431,6 +436,18 @@ export function EventManager({
     }
   };
 
+  const handleExportJson = () => {
+    try {
+      setIsExporting(true);
+      const url = `/api/events/export?term=${encodeURIComponent(activeTerm)}${
+        selectedFacultyId ? `&facultyId=${encodeURIComponent(selectedFacultyId)}` : ""
+      }`;
+      window.open(url, "_blank");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   // Distinct terms collected from events plus defaults and activeTerm
   const existingTerms = Array.from(new Set([...events.map((e) => e.term), activeTerm, "1403-1", "1403-2"].filter(Boolean)));
 
@@ -441,12 +458,13 @@ export function EventManager({
     if (customFilter === "official" && evt.isUserCustom) return false;
     if (customFilter === "custom" && !evt.isUserCustom) return false;
 
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
     return (
-      (evt.courseName || "").toLowerCase().includes(search.toLowerCase()) ||
-      (evt.courseCode || "").toLowerCase().includes(search.toLowerCase()) ||
-      (evt.professorName || "").toLowerCase().includes(search.toLowerCase()) ||
-      (evt.location || "").toLowerCase().includes(search.toLowerCase()) ||
-      (evt.groupCode || "").includes(search)
+      (evt.courseName || "").toLowerCase().includes(q) ||
+      (evt.code || "").toLowerCase().includes(q) ||
+      (evt.professorName || "").toLowerCase().includes(q) ||
+      (evt.location || "").toLowerCase().includes(q)
     );
   });
 
@@ -566,7 +584,32 @@ export function EventManager({
             </CardDescription>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Export JSON Button */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleExportJson}
+              disabled={isExporting}
+              className="h-8 gap-1.5 text-xs shadow-2xs"
+            >
+              <Download className="h-3.5 w-3.5 text-primary" />
+              <span>خروجی JSON</span>
+            </Button>
+
+            {/* Import JSON Button */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsImportModalOpen(true)}
+              className="h-8 gap-1.5 text-xs shadow-2xs font-semibold"
+            >
+              <Upload className="h-3.5 w-3.5 text-primary" />
+              <span>ورودی JSON</span>
+            </Button>
+
             {/* Clone Button */}
             {cloneableSourceTerms.length > 0 && (
               <Button
@@ -657,7 +700,7 @@ export function EventManager({
               <thead>
                 <tr className="border-b bg-muted/40 text-muted-foreground font-semibold">
                   <th className="py-2.5 px-3 text-right">نام درس و استاد</th>
-                  <th className="py-2.5 px-3 text-center">کد گروه</th>
+                  <th className="py-2.5 px-3 text-center">کد رویداد</th>
                   <th className="py-2.5 px-3 text-right">جلسات هفتگی کلاس</th>
                   <th className="py-2.5 px-3 text-right">محل تشکیل</th>
                   <th className="py-2.5 px-3 text-right">آزمون پایان‌ترم</th>
@@ -713,10 +756,10 @@ export function EventManager({
                         </div>
                       </td>
 
-                      {/* Group */}
+                      {/* Code */}
                       <td className="py-2.5 px-3 text-center">
-                        <Badge variant="secondary" className="text-[10px] px-1.5">
-                          گروه {evt.groupCode || "01"}
+                        <Badge variant="outline" className="text-[11px] font-mono font-medium px-2 py-0.5">
+                          {evt.code || "---"}
                         </Badge>
                       </td>
 
@@ -888,7 +931,7 @@ export function EventManager({
                   </Badge>
                 </DialogTitle>
                 <DialogDescription className="text-xs">
-                  مشخصات ارائه درس، کد گروه، محل تشکیل و زمان‌بندی جلسات هفتگی را وارد کنید.
+                  مشخصات ارائه درس، کد رویداد، محل تشکیل و زمان‌بندی جلسات هفتگی را وارد کنید.
                 </DialogDescription>
               </div>
             </div>
@@ -947,16 +990,18 @@ export function EventManager({
               />
             </div>
 
-            {/* Group Code & Location */}
+            {/* Event Code & Location */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">کد گروه درسی *</Label>
+                <Label className="text-xs font-semibold flex items-center justify-between">
+                  <span>کد رویداد</span>
+                  <span className="text-[10px] text-muted-foreground font-normal">(اختیاری - خودکار)</span>
+                </Label>
                 <Input
-                  value={groupCode}
-                  onChange={(e) => setGroupCode(e.target.value)}
-                  placeholder="مثلاً ۰۱"
-                  required
-                  className="text-xs"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder="مثلاً EVT-101"
+                  className="text-xs font-mono"
                 />
               </div>
 
@@ -1274,6 +1319,16 @@ export function EventManager({
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Import Events Dialog */}
+      <EventImportDialog
+        open={isImportModalOpen}
+        onOpenChange={setIsImportModalOpen}
+        activeTerm={activeTerm}
+        selectedFacultyId={selectedFacultyId}
+        facultyName={currentFaculty?.name}
+        onSuccess={loadData}
+      />
     </div>
   );
 }

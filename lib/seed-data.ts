@@ -185,9 +185,9 @@ export function getUTECEDemoSeed() {
   const events: CourseEvent[] = [
     {
       id: "evt_ds_1",
+      code: "EVT-DS-01",
       offeringId: "off_ds_rameshfar",
       term: "1403-1",
-      groupCode: "01",
       capacity: 45,
       location: "دانشکده فنی - کلاس ۱۰۲",
       examDate: "1403/10/22",
@@ -204,9 +204,9 @@ export function getUTECEDemoSeed() {
     },
     {
       id: "evt_ap_1",
+      code: "EVT-AP-01",
       offeringId: "off_ap_khosravi",
       term: "1403-1",
-      groupCode: "01",
       capacity: 50,
       location: "دانشکده فنی - کلاس ۲۰۴",
       examDate: "1403/10/25",
@@ -223,9 +223,9 @@ export function getUTECEDemoSeed() {
     },
     {
       id: "evt_algo_1",
+      code: "EVT-ALGO-01",
       offeringId: "off_algo_sedighi",
       term: "1403-1",
-      groupCode: "01",
       capacity: 40,
       location: "دانشکده فنی - تالار ۱",
       examDate: "1403/10/28",
@@ -242,9 +242,9 @@ export function getUTECEDemoSeed() {
     },
     {
       id: "evt_db_1",
+      code: "EVT-DB-01",
       offeringId: "off_db_movahedi",
       term: "1403-1",
-      groupCode: "01",
       capacity: 45,
       location: "دانشکده فنی - کلاس ۱۰۵",
       examDate: "1403/11/02",

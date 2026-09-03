@@ -63,11 +63,10 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const {
+      code,
       offeringId,
-      courseId,
       professorName,
       term,
-      groupCode,
       capacity,
       location,
       examDate,
@@ -88,6 +87,7 @@ export async function POST(request: NextRequest) {
 
       const newCustomEvent = await createCustomUserEvent({
         userId: userId,
+        code,
         offeringId,
         term: term || "1403-1",
         location: location || "",
@@ -120,9 +120,9 @@ export async function POST(request: NextRequest) {
     }
 
     const newEvent = await createEvent({
+      code,
       offeringId,
       term: term || "1403-1",
-      groupCode: groupCode || "01",
       capacity: capacity !== undefined ? Number(capacity) : 40,
       location: location || "",
       examDate: examDate || "",
@@ -162,9 +162,9 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const {
       id,
+      code,
       offeringId,
       term,
-      groupCode,
       capacity,
       location,
       examDate,
@@ -198,9 +198,9 @@ export async function PUT(request: NextRequest) {
     }
 
     const updated = await updateEvent(id, {
+      code,
       offeringId,
       term,
-      groupCode,
       capacity: capacity !== undefined ? Number(capacity) : undefined,
       location,
       examDate,

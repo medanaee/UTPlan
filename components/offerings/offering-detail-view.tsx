@@ -566,9 +566,15 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-2">
                       <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-xs font-bold">
-                          {evt.groupCode ? `گروه درسی ${evt.groupCode}` : "گروه درسی اصلی"}
-                        </Badge>
+                        {evt.code ? (
+                          <Badge variant="outline" className="text-xs font-mono font-bold">
+                            {evt.code}
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-xs font-bold">
+                            رویداد کلاس
+                          </Badge>
+                        )}
                         <span className="text-xs text-muted-foreground">
                           نیمسال {formatSemesterLabel(evt.term)}
                         </span>

@@ -37,7 +37,6 @@ export async function POST(request: NextRequest) {
       await createEvent({
         offeringId: evt.offeringId,
         term: targetTerm,
-        groupCode: evt.groupCode || "01",
         capacity: evt.capacity || 40,
         location: evt.location || "",
         examDate: resetExamDates ? "" : evt.examDate || "",

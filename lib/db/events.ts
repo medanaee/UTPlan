@@ -26,9 +26,9 @@ export async function getEvents(
 
   try {
     let query = `
-      SELECT e.id, e.offering_id, e.term, e.location, e.exam_date, e.exam_start_time, e.exam_end_time,
+      SELECT e.id, e.code, e.offering_id, e.term, e.location, e.exam_date, e.exam_start_time, e.exam_end_time,
              e.is_user_custom, e.user_id, e.global_event_id, e.created_at,
-             c.id AS course_id, c.name AS course_name, c.code AS course_code, c.units AS course_units,
+             c.id AS course_id, c.name AS course_name, c.units AS course_units,
              c.faculty_id AS faculty_id, f.name AS faculty_name,
              p.id AS professor_id, (p.first_name || ' ' || p.last_name) AS professor_name, p.title AS professor_title, p.avatar_url AS professor_avatar_url
       FROM course_events e
@@ -113,6 +113,7 @@ export async function getEvents(
 
       return {
         id: e.id,
+        code: e.code || undefined,
         offeringId: e.offering_id,
         term: e.term,
         location: e.location || "",
@@ -125,7 +126,6 @@ export async function getEvents(
         createdAt: e.created_at,
         courseId: e.course_id,
         courseName: e.course_name,
-        courseCode: e.course_code,
         courseUnits: Number(e.course_units) || 3,
         facultyId: e.faculty_id,
         facultyName: e.faculty_name || undefined,
@@ -143,6 +143,7 @@ export async function getEvents(
 }
 
 export async function createEvent(data: {
+  code?: string;
   offeringId: string;
   term: string;
   location?: string;
@@ -155,6 +156,9 @@ export async function createEvent(data: {
 }): Promise<CourseEvent> {
   const eventId = `evt_${crypto.randomUUID().slice(0, 8)}`;
   const now = new Date().toISOString();
+  const cleanCode = data.code?.trim()
+    ? data.code.trim().toUpperCase()
+    : `EVT-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
 
   const d1 = getD1();
   if (!d1) throw new Error("پایگاه‌داده در دسترس نیست.");
@@ -162,11 +166,12 @@ export async function createEvent(data: {
   try {
     await d1
       .prepare(
-        `INSERT INTO course_events (id, offering_id, term, location, exam_date, exam_start_time, exam_end_time, is_user_custom, user_id, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO course_events (id, code, offering_id, term, location, exam_date, exam_start_time, exam_end_time, is_user_custom, user_id, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .bind(
         eventId,
+        cleanCode,
         data.offeringId,
         data.term,
         data.location || "",
@@ -267,16 +272,22 @@ export async function updateEvent(
 
   try {
     if (
+      data.code !== undefined ||
       data.offeringId !== undefined ||
       data.location !== undefined ||
       data.examDate !== undefined ||
       data.examStartTime !== undefined ||
       data.examEndTime !== undefined
     ) {
+      const cleanCode = data.code !== undefined
+        ? (data.code?.trim() ? data.code.trim().toUpperCase() : null)
+        : undefined;
+
       await d1
         .prepare(
           `UPDATE course_events
-           SET offering_id = COALESCE(?, offering_id),
+           SET code = COALESCE(?, code),
+               offering_id = COALESCE(?, offering_id),
                location = COALESCE(?, location),
                exam_date = COALESCE(?, exam_date),
                exam_start_time = COALESCE(?, exam_start_time),
@@ -284,6 +295,7 @@ export async function updateEvent(
            WHERE id = ?`
         )
         .bind(
+          cleanCode !== undefined ? cleanCode : null,
           data.offeringId || null,
           data.location !== undefined ? data.location : null,
           data.examDate !== undefined ? data.examDate : null,

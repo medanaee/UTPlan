@@ -519,7 +519,7 @@ export function TermSchedulePlanner({
                             {selectedEvent ? (
                               <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1 truncate">
                                 <Check className="h-3 w-3 shrink-0" />
-                                {selectedEvent.professorName} (گروه {selectedEvent.groupCode || "۰۱"})
+                                {selectedEvent.professorName} {selectedEvent.code ? `(${selectedEvent.code})` : ""}
                               </span>
                             ) : (
                               <span className="text-[11px] text-amber-600 dark:text-amber-400">
@@ -596,12 +596,12 @@ export function TermSchedulePlanner({
                                       <span className="font-bold text-xs text-foreground truncate">
                                         {evt.professorName}
                                       </span>
-                                      {evt.groupCode && (
+                                      {evt.code && (
                                         <Badge
                                           variant="outline"
-                                          className="text-[9px]  px-1 py-0"
+                                          className="text-[9px] font-mono px-1 py-0"
                                         >
-                                          گروه {evt.groupCode}
+                                          {evt.code}
                                         </Badge>
                                       )}
                                       {evt.isUserCustom && (

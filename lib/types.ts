@@ -240,9 +240,10 @@ export interface ReviewItem {
 
 export interface CourseEvent {
   id: string;
+  code?: string; // e.g. "EVT-101"
   offeringId: string;
   term: string; // e.g. "1403-1"
-  groupCode?: string; // e.g. "01", "02"
+  groupCode?: string; // e.g. "01" (legacy fallback)
   capacity?: number; // e.g. 40
   location?: string; // e.g. "دانشکده فنی - کلاس ۱۰۲"
   examDate?: string; // e.g. "1403/10/22"
@@ -254,7 +255,6 @@ export interface CourseEvent {
   createdAt: string;
   // Joined
   courseName?: string;
-  courseCode?: string;
   courseUnits?: number;
   facultyId?: string;
   facultyName?: string;
