@@ -311,7 +311,7 @@ export function UniversityStructureManager() {
               <Plus className="h-3 w-3" /> افزودن
             </Button>
           </CardHeader>
-          <CardContent className="p-3 space-y-1.5">
+          <CardContent className="space-y-1.5">
             {faculties.map((f) => {
               const isSelected = f.id === selectedFacultyId;
               const relatedMajorCount = majors.filter((m) => m.facultyId === f.id).length;
@@ -416,7 +416,7 @@ export function UniversityStructureManager() {
               <Plus className="h-3 w-3" /> افزودن
             </Button>
           </CardHeader>
-          <CardContent className="p-3 space-y-1.5">
+          <CardContent className="space-y-1.5">
             {majors
               .filter((m) => m.facultyId === selectedFacultyId)
               .map((m) => {
@@ -518,7 +518,7 @@ export function UniversityStructureManager() {
               <Plus className="h-3 w-3" /> افزودن
             </Button>
           </CardHeader>
-          <CardContent className="p-3 space-y-1.5">
+          <CardContent className="space-y-1.5">
             {tracks
               .filter((t) => t.majorId === selectedMajorId)
               .map((t) => {

@@ -10,17 +10,20 @@ import {
   Users,
   BookUser,
   CalendarDays,
-  Layers,
-  AlertCircle,
   Clock,
-  Sparkles,
   Building2,
   CheckCircle2,
+  CheckSquare,
+  Square,
+  Layers,
+  X,
+  Loader2,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { TrashItem } from "@/app/api/admin/trash/route";
 import { DependencyResolutionDialog } from "./dependency-resolution-dialog";
 
@@ -42,10 +45,15 @@ export function RecycleBinManager({ onDataChanged, selectedFacultyId }: RecycleB
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [bulkRestoring, setBulkRestoring] = useState(false);
   const [actionSuccessMessage, setActionSuccessMessage] = useState<string | null>(null);
 
-  // Selected item for permanent delete wizard
+  // Multi-selection state: keys in format `${item.type}:${item.id}`
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+
+  // Selected item(s) for permanent delete wizard
   const [selectedItemForDelete, setSelectedItemForDelete] = useState<TrashItem | null>(null);
+  const [selectedItemsForBulkDelete, setSelectedItemsForBulkDelete] = useState<TrashItem[]>([]);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const fetchTrashItems = async () => {
@@ -68,8 +76,57 @@ export function RecycleBinManager({ onDataChanged, selectedFacultyId }: RecycleB
 
   useEffect(() => {
     fetchTrashItems();
+    setSelectedKeys(new Set());
   }, [activeTab, selectedFacultyId]);
 
+  const filteredItems = useMemo(() => {
+    if (!searchQuery.trim()) return items;
+    const q = searchQuery.trim().toLowerCase();
+    return items.filter((it) => {
+      const matchTitle = it.title.toLowerCase().includes(q);
+      const matchCode = it.code?.toLowerCase().includes(q);
+      const matchDetails = it.details?.toLowerCase().includes(q);
+      const matchFaculty = it.facultyName?.toLowerCase().includes(q);
+      return matchTitle || matchCode || matchDetails || matchFaculty;
+    });
+  }, [items, searchQuery]);
+
+  // Selected items array
+  const selectedItemsList = useMemo(() => {
+    return items.filter((it) => selectedKeys.has(`${it.type}:${it.id}`));
+  }, [items, selectedKeys]);
+
+  const isAllSelected =
+    filteredItems.length > 0 &&
+    filteredItems.every((it) => selectedKeys.has(`${it.type}:${it.id}`));
+
+  const isSomeSelected =
+    filteredItems.some((it) => selectedKeys.has(`${it.type}:${it.id}`)) && !isAllSelected;
+
+  const handleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedKeys(new Set());
+    } else {
+      const next = new Set(selectedKeys);
+      for (const it of filteredItems) {
+        next.add(`${it.type}:${it.id}`);
+      }
+      setSelectedKeys(next);
+    }
+  };
+
+  const handleToggleSelect = (item: TrashItem) => {
+    const key = `${item.type}:${item.id}`;
+    const next = new Set(selectedKeys);
+    if (next.has(key)) {
+      next.delete(key);
+    } else {
+      next.add(key);
+    }
+    setSelectedKeys(next);
+  };
+
+  // Single restore
   const handleRestore = async (item: TrashItem) => {
     try {
       setRestoringId(item.id);
@@ -86,6 +143,9 @@ export function RecycleBinManager({ onDataChanged, selectedFacultyId }: RecycleB
 
       if (res.success) {
         setActionSuccessMessage(res.message || "آیتم با موفقیت بازیابی شد.");
+        const next = new Set(selectedKeys);
+        next.delete(`${item.type}:${item.id}`);
+        setSelectedKeys(next);
         await fetchTrashItems();
         if (onDataChanged) onDataChanged();
       } else {
@@ -98,22 +158,51 @@ export function RecycleBinManager({ onDataChanged, selectedFacultyId }: RecycleB
     }
   };
 
+  // Bulk restore
+  const handleBulkRestore = async () => {
+    if (selectedItemsList.length === 0) return;
+
+    try {
+      setBulkRestoring(true);
+      setActionSuccessMessage(null);
+
+      const res = await fetch("/api/admin/trash/restore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: selectedItemsList.map((it) => ({ type: it.type, id: it.id })),
+        }),
+      }).then((r) => r.json());
+
+      if (res.success) {
+        setActionSuccessMessage(res.message || `${selectedItemsList.length} مورد با موفقیت بازیابی شدند.`);
+        setSelectedKeys(new Set());
+        await fetchTrashItems();
+        if (onDataChanged) onDataChanged();
+      } else {
+        alert(res.message || "خطا در بازیابی گروهی");
+      }
+    } catch (err: any) {
+      alert("خطا در برقراری ارتباط با سرور: " + (err?.message || "نامشخص"));
+    } finally {
+      setBulkRestoring(false);
+    }
+  };
+
+  // Single permanent delete click
   const handleOpenPermanentDelete = (item: TrashItem) => {
     setSelectedItemForDelete(item);
+    setSelectedItemsForBulkDelete([]);
     setIsDeleteModalOpen(true);
   };
 
-  const filteredItems = useMemo(() => {
-    if (!searchQuery.trim()) return items;
-    const q = searchQuery.trim().toLowerCase();
-    return items.filter((it) => {
-      const matchTitle = it.title.toLowerCase().includes(q);
-      const matchCode = it.code?.toLowerCase().includes(q);
-      const matchDetails = it.details?.toLowerCase().includes(q);
-      const matchFaculty = it.facultyName?.toLowerCase().includes(q);
-      return matchTitle || matchCode || matchDetails || matchFaculty;
-    });
-  }, [items, searchQuery]);
+  // Bulk permanent delete click
+  const handleOpenBulkPermanentDelete = () => {
+    if (selectedItemsList.length === 0) return;
+    setSelectedItemForDelete(null);
+    setSelectedItemsForBulkDelete(selectedItemsList);
+    setIsDeleteModalOpen(true);
+  };
 
   const getEntityIcon = (type: TrashItem["type"]) => {
     switch (type) {
@@ -167,6 +256,68 @@ export function RecycleBinManager({ onDataChanged, selectedFacultyId }: RecycleB
         </div>
       )}
 
+      {/* Floating / Sticky Bulk Action Bar */}
+      {selectedKeys.size > 0 && (
+        <div className="rounded-2xl border border-primary/30 bg-card p-3 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-primary text-primary-foreground font-mono text-xs font-bold shadow-xs">
+              {selectedKeys.size}
+            </div>
+            <div>
+              <span className="text-xs font-bold text-foreground">
+                {selectedKeys.size} مورد برای عملیات گروهی انتخاب شده است
+              </span>
+              <span className="text-[11px] text-muted-foreground block">
+                می‌توانید تمام موارد انتخاب‌شده را به طور همزمان بازیابی یا به صورت دائمی حذف کنید.
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Bulk Restore Button */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleBulkRestore}
+              disabled={bulkRestoring}
+              className="h-8 text-xs gap-1.5 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10 shadow-2xs font-semibold"
+            >
+              {bulkRestoring ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RotateCcw className="h-3.5 w-3.5" />
+              )}
+              <span>بازیابی گروهی ({selectedKeys.size})</span>
+            </Button>
+
+            {/* Bulk Permanent Delete Button */}
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              onClick={handleOpenBulkPermanentDelete}
+              className="h-8 text-xs gap-1.5 shadow-2xs font-bold"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>حذف قطعی گروهی ({selectedKeys.size})</span>
+            </Button>
+
+            {/* Deselect all */}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedKeys(new Set())}
+              className="h-8 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+              <span>لغو انتخاب</span>
+            </Button>
+          </div>
+        </div>
+      )}
+
       <Card className="rounded-2xl border-border/80 shadow-xs">
         <CardHeader className="pb-3 border-b">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -176,7 +327,7 @@ export function RecycleBinManager({ onDataChanged, selectedFacultyId }: RecycleB
                 <span>سطل بازیافت و حذف نهایی (Recycle Bin)</span>
               </CardTitle>
               <CardDescription className="text-xs pt-1">
-                مشاهده اقلام حذف‌شده موقت، امکان بازگردانی سریع به حالت فعال یا حذف نهایی فیزیکی به همراه مدیریت زنجیره‌ای وابستگی‌ها
+                مشاهده اقلام حذف‌شده موقت، امکان بازگردانی سریع یا حذف نهایی فیزیکی به همراه مدیریت زنجیره‌ای و تجمیعی وابستگی‌ها
               </CardDescription>
             </div>
 
@@ -194,7 +345,7 @@ export function RecycleBinManager({ onDataChanged, selectedFacultyId }: RecycleB
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 pt-4">
           {/* Filter Tabs and Search Bar */}
           <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
             {/* Filter Tabs */}
@@ -313,7 +464,17 @@ export function RecycleBinManager({ onDataChanged, selectedFacultyId }: RecycleB
                 <table className="w-full text-xs text-right border-collapse">
                   <thead>
                     <tr className="bg-muted/40 border-b border-border/60 text-muted-foreground font-semibold">
-                      <th className="p-3 w-16 text-center">نوع</th>
+                      {/* Checkbox All */}
+                      <th className="p-3 w-10 text-center">
+                        <div className="flex items-center justify-center">
+                          <Checkbox
+                            checked={isAllSelected ? true : isSomeSelected ? "indeterminate" : false}
+                            onCheckedChange={handleSelectAll}
+                            aria-label="انتخاب همه ردیف‌ها"
+                          />
+                        </div>
+                      </th>
+                      <th className="p-3 w-14 text-center">نوع</th>
                       <th className="p-3">عنوان و نام موجودیت</th>
                       <th className="p-3">کد شناسایی</th>
                       <th className="p-3">جزئیات و مشخصات</th>
@@ -323,90 +484,110 @@ export function RecycleBinManager({ onDataChanged, selectedFacultyId }: RecycleB
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/40 bg-card">
-                    {filteredItems.map((item) => (
-                      <tr key={`${item.type}_${item.id}`} className="hover:bg-muted/20 transition-colors">
-                        {/* Type Icon */}
-                        <td className="p-3 text-center">
-                          <div
-                            className="inline-flex p-1.5 rounded-lg bg-muted/60"
-                            title={getEntityLabel(item.type)}
-                          >
-                            {getEntityIcon(item.type)}
-                          </div>
-                        </td>
+                    {filteredItems.map((item) => {
+                      const isSelected = selectedKeys.has(`${item.type}:${item.id}`);
 
-                        {/* Title */}
-                        <td className="p-3">
-                          <span className="font-bold text-foreground block truncate max-w-xs">
-                            {item.title}
-                          </span>
-                        </td>
+                      return (
+                        <tr
+                          key={`${item.type}_${item.id}`}
+                          className={`transition-colors ${
+                            isSelected ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-muted/20"
+                          }`}
+                        >
+                          {/* Row Checkbox */}
+                          <td className="p-3 text-center">
+                            <div className="flex items-center justify-center">
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => handleToggleSelect(item)}
+                                aria-label={`انتخاب ${item.title}`}
+                              />
+                            </div>
+                          </td>
 
-                        {/* Code */}
-                        <td className="p-3">
-                          <Badge variant="outline" className="font-mono text-[10px]">
-                            {item.code || "ندارد"}
-                          </Badge>
-                        </td>
+                          {/* Type Icon */}
+                          <td className="p-3 text-center">
+                            <div
+                              className="inline-flex p-1.5 rounded-lg bg-muted/60"
+                              title={getEntityLabel(item.type)}
+                            >
+                              {getEntityIcon(item.type)}
+                            </div>
+                          </td>
 
-                        {/* Details */}
-                        <td className="p-3 text-muted-foreground text-[11px]">
-                          {item.details || "-"}
-                        </td>
-
-                        {/* Faculty */}
-                        <td className="p-3 text-muted-foreground text-[11px]">
-                          {item.facultyName ? (
-                            <span className="flex items-center gap-1">
-                              <Building2 className="h-3 w-3 text-muted-foreground/70" />
-                              {item.facultyName}
+                          {/* Title */}
+                          <td className="p-3">
+                            <span className="font-bold text-foreground block truncate max-w-xs">
+                              {item.title}
                             </span>
-                          ) : (
-                            "-"
-                          )}
-                        </td>
+                          </td>
 
-                        {/* Deleted Date */}
-                        <td className="p-3 text-muted-foreground text-[11px]" dir="ltr">
-                          <div className="flex items-center gap-1 justify-end">
-                            <span>{formatPersianDate(item.deletedAt)}</span>
-                            <Clock className="h-3 w-3 text-muted-foreground/60" />
-                          </div>
-                        </td>
+                          {/* Code */}
+                          <td className="p-3">
+                            <Badge variant="outline" className="font-mono text-[10px]">
+                              {item.code || "ندارد"}
+                            </Badge>
+                          </td>
 
-                        {/* Actions */}
-                        <td className="p-3 text-center">
-                          <div className="flex items-center justify-center gap-1.5">
-                            {/* Restore Button */}
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleRestore(item)}
-                              disabled={restoringId === item.id}
-                              className="h-7 text-xs gap-1 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10 shadow-2xs font-medium"
-                              title="بازیابی و بازگردانی به لیست فعال"
-                            >
-                              <RotateCcw className={`h-3 w-3 ${restoringId === item.id ? "animate-spin" : ""}`} />
-                              <span>بازیابی</span>
-                            </Button>
+                          {/* Details */}
+                          <td className="p-3 text-muted-foreground text-[11px]">
+                            {item.details || "-"}
+                          </td>
 
-                            {/* Permanent Delete Button */}
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleOpenPermanentDelete(item)}
-                              className="h-7 text-xs gap-1 border-destructive/30 text-destructive hover:bg-destructive/10 shadow-2xs font-medium"
-                              title="حذف قطعی فیزیکی با بررسی وابستگی‌ها"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                              <span>حذف دائمی</span>
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                          {/* Faculty */}
+                          <td className="p-3 text-muted-foreground text-[11px]">
+                            {item.facultyName ? (
+                              <span className="flex items-center gap-1">
+                                <Building2 className="h-3 w-3 text-muted-foreground/70" />
+                                {item.facultyName}
+                              </span>
+                            ) : (
+                              "-"
+                            )}
+                          </td>
+
+                          {/* Deleted Date */}
+                          <td className="p-3 text-muted-foreground text-[11px]" dir="ltr">
+                            <div className="flex items-center gap-1 justify-end">
+                              <span>{formatPersianDate(item.deletedAt)}</span>
+                              <Clock className="h-3 w-3 text-muted-foreground/60" />
+                            </div>
+                          </td>
+
+                          {/* Actions */}
+                          <td className="p-3 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              {/* Restore Button */}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleRestore(item)}
+                                disabled={restoringId === item.id}
+                                className="h-7 text-xs gap-1 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10 shadow-2xs font-medium"
+                                title="بازیابی و بازگردانی به لیست فعال"
+                              >
+                                <RotateCcw className={`h-3 w-3 ${restoringId === item.id ? "animate-spin" : ""}`} />
+                                <span>بازیابی</span>
+                              </Button>
+
+                              {/* Permanent Delete Button */}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleOpenPermanentDelete(item)}
+                                className="h-7 text-xs gap-1 border-destructive/30 text-destructive hover:bg-destructive/10 shadow-2xs font-medium"
+                                title="حذف قطعی فیزیکی با بررسی وابستگی‌ها"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                                <span>حذف دائمی</span>
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -415,13 +596,15 @@ export function RecycleBinManager({ onDataChanged, selectedFacultyId }: RecycleB
         </CardContent>
       </Card>
 
-      {/* Cascading Dependency Resolution Wizard Dialog */}
+      {/* Cascading Dependency Resolution Wizard Dialog (Single or Bulk) */}
       <DependencyResolutionDialog
         open={isDeleteModalOpen}
         onOpenChange={setIsDeleteModalOpen}
         item={selectedItemForDelete}
+        items={selectedItemsForBulkDelete}
         onSuccess={async () => {
-          setActionSuccessMessage("موجودیت با موفقیت به همراه تمام وابستگی‌های تعیین‌شده حذف فیزیکی گردید.");
+          setActionSuccessMessage("موجودیت‌های انتخابی با موفقیت به همراه تمام وابستگی‌های تعیین‌شده حذف فیزیکی گردیدند.");
+          setSelectedKeys(new Set());
           await fetchTrashItems();
           if (onDataChanged) onDataChanged();
         }}

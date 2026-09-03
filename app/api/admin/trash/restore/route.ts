@@ -10,10 +10,11 @@ export async function POST(request: NextRequest) {
     if (!auth.authorized) return auth.response! as NextResponse;
 
     const body = await request.json();
-    const { type, id } = body || {};
+    const rawItems: Array<{ type: string; id: string }> =
+      body?.items || (body?.type && body?.id ? [{ type: body.type, id: body.id }] : []);
 
-    if (!type || !id) {
-      return NextResponse.json({ success: false, message: "نوع و شناسه موجودیت الزامی است." }, { status: 400 });
+    if (rawItems.length === 0) {
+      return NextResponse.json({ success: false, message: "هیچ موجودیتی برای بازیابی مشخص نشده است." }, { status: 400 });
     }
 
     const d1 = getD1();
@@ -21,38 +22,37 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: "پایگاه داده در دسترس نیست." }, { status: 500 });
     }
 
-    let tableName = "";
-    let label = "";
+    const idsByType: Record<string, string[]> = {
+      courses: [],
+      professors: [],
+      course_offerings: [],
+      course_events: [],
+    };
 
-    switch (type) {
-      case "course":
-        tableName = "courses";
-        label = "درس";
-        break;
-      case "professor":
-        tableName = "professors";
-        label = "استاد";
-        break;
-      case "offering":
-        tableName = "course_offerings";
-        label = "ارائه درسی";
-        break;
-      case "event":
-        tableName = "course_events";
-        label = "رویداد کلاسی";
-        break;
-      default:
-        return NextResponse.json({ success: false, message: "نوع موجودیت نامعتبر است." }, { status: 400 });
+    for (const it of rawItems) {
+      if (it.type === "course") idsByType.courses.push(it.id);
+      else if (it.type === "professor") idsByType.professors.push(it.id);
+      else if (it.type === "offering") idsByType.course_offerings.push(it.id);
+      else if (it.type === "event") idsByType.course_events.push(it.id);
     }
 
-    await d1.prepare(`UPDATE ${tableName} SET deleted_at = NULL WHERE id = ?`).bind(id).run();
+    let restoredCount = 0;
+    for (const [table, ids] of Object.entries(idsByType)) {
+      if (ids.length > 0) {
+        for (const id of ids) {
+          await d1.prepare(`UPDATE ${table} SET deleted_at = NULL WHERE id = ?`).bind(id).run();
+          restoredCount++;
+        }
+      }
+    }
 
     return NextResponse.json({
       success: true,
-      message: `${label} با موفقیت بازیابی شد و به لیست فعال بازگشت.`,
+      message: `${restoredCount} مورد با موفقیت بازیابی شدند و به لیست فعال بازگشتند.`,
+      restoredCount,
     });
   } catch (err: any) {
     console.error("Trash restore error:", err);
-    return NextResponse.json({ success: false, message: "خطا در بازیابی موجودیت: " + err?.message }, { status: 500 });
+    return NextResponse.json({ success: false, message: "خطا در بازیابی موجودیت‌ها: " + err?.message }, { status: 500 });
   }
 }
