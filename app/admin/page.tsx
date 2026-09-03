@@ -22,6 +22,7 @@ import {
   Check,
   BookUser,
   DatabaseBackup,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +41,7 @@ import { RuleQueryBuilder } from "@/components/admin/rule-query-builder";
 import { RuleSandboxTester } from "@/components/admin/rule-sandbox-tester";
 import { UserManager } from "@/components/admin/user-manager";
 import { BackupManager } from "@/components/admin/backup-manager";
+import { RecycleBinManager } from "@/components/admin/recycle-bin-manager";
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -73,6 +75,7 @@ export default function AdminDashboardPage() {
     | "rules"
     | "users"
     | "backup"
+    | "trash"
   >("structure");
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -170,6 +173,11 @@ export default function AdminDashboardPage() {
       id: "backup" as const,
       label: "بکاپ و بازیابی پایگاه داده",
       icon: DatabaseBackup,
+    },
+    {
+      id: "trash" as const,
+      label: "سطل بازیافت (حذف نهایی)",
+      icon: Trash2,
     },
   ];
 
@@ -502,6 +510,14 @@ export default function AdminDashboardPage() {
 
             {/* TAB 10: DATABASE BACKUP & RESTORE */}
             {activeTab === "backup" && <BackupManager />}
+
+            {/* TAB 11: RECYCLE BIN & CASCADE RESOLUTION */}
+            {activeTab === "trash" && (
+              <RecycleBinManager
+                onDataChanged={loadAllData}
+                selectedFacultyId={selectedFacultyId}
+              />
+            )}
           </div>
         </main>
       </div>
