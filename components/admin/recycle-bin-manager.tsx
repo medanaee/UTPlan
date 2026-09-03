@@ -194,7 +194,7 @@ export function RecycleBinManager({ onDataChanged, selectedFacultyId }: RecycleB
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-4 pt-4">
+        <CardContent className="space-y-4">
           {/* Filter Tabs and Search Bar */}
           <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
             {/* Filter Tabs */}
