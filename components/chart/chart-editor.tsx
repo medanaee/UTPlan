@@ -1113,16 +1113,16 @@ export function ChartEditor({
           {/* ========================================================================= */}
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-muted/20">
             {/* Sub-toolbar row above the terms */}
-            <div className="shrink-0 h-9 sm:h-10 border-b border-border/80 bg-card/90 backdrop-blur flex items-stretch justify-between z-20 select-none p-0 overflow-x-auto overflow-y-hidden">
+            <div className="shrink-0 h-8 sm:h-8.5 border-b border-border/70 bg-card/90 backdrop-blur flex items-stretch justify-between z-20 select-none p-0 overflow-x-auto overflow-y-hidden">
               {/* Right side (start in RTL): Zoom Controller */}
-              <div className="flex items-stretch h-full">
+              <div className="flex items-center px-1.5 sm:px-2 gap-1 h-full border-l border-border/70">
                 <Button
                   type="button"
                   size="sm"
                   variant="ghost"
                   onClick={() => setZoom((z) => Math.max(70, z - 10))}
                   disabled={zoom <= 70}
-                  className="h-full px-2.5 sm:px-3 rounded-none text-foreground hover:bg-muted/80 disabled:opacity-40 transition-colors flex items-center justify-center border-l border-border/70"
+                  className="h-6 w-6 p-0 rounded-md text-foreground hover:bg-muted/80 disabled:opacity-40 transition-colors flex items-center justify-center"
                   title="کوچک‌نمایی (Zoom Out)"
                 >
                   <ZoomOut className="h-3.5 w-3.5 text-foreground shrink-0" />
@@ -1130,7 +1130,7 @@ export function ChartEditor({
                 <button
                   type="button"
                   onClick={() => setZoom(100)}
-                  className="h-full px-2.5 sm:px-3 text-xs font-bold text-foreground hover:bg-muted/70 transition-colors cursor-pointer rounded-none flex items-center justify-center border-l border-border/70"
+                  className="h-6 px-1.5 text-xs font-bold text-foreground hover:bg-muted/70 transition-colors cursor-pointer rounded-md flex items-center justify-center"
                   title="کلیک جهت بازنشانی بزرگ‌نمایی به ۱۰۰٪"
                 >
                   {zoom}%
@@ -1141,7 +1141,7 @@ export function ChartEditor({
                   variant="ghost"
                   onClick={() => setZoom((z) => Math.min(130, z + 10))}
                   disabled={zoom >= 130}
-                  className="h-full px-2.5 sm:px-3 rounded-none text-foreground hover:bg-muted/80 disabled:opacity-40 transition-colors flex items-center justify-center border-l border-border/70"
+                  className="h-6 w-6 p-0 rounded-md text-foreground hover:bg-muted/80 disabled:opacity-40 transition-colors flex items-center justify-center"
                   title="بزرگ‌نمایی (Zoom In)"
                 >
                   <ZoomIn className="h-3.5 w-3.5 text-foreground shrink-0" />
@@ -1155,7 +1155,7 @@ export function ChartEditor({
                   size="sm"
                   variant="ghost"
                   onClick={() => setShowArrows(!showArrows)}
-                  className={`h-full px-2.5 sm:px-3.5 text-xs gap-1.5 rounded-none border-r border-border/70 transition-colors flex items-center ${
+                  className={`h-full px-2.5 sm:px-3 text-xs gap-1.5 rounded-none border-r border-border/70 transition-colors flex items-center ${
                     showArrows
                       ? "bg-accent/40 text-foreground"
                       : "text-foreground hover:bg-muted/60"
@@ -1175,10 +1175,10 @@ export function ChartEditor({
                   <div className="flex items-stretch h-full">
                     {/* Start Semester Group */}
                     <div
-                      className="flex items-stretch h-full border-r border-border/70"
+                      className="flex items-center px-1.5 sm:px-2 gap-1 h-full border-r border-border/70"
                       title="تنظیم ترم شروع چارت"
                     >
-                      <span className="text-[11px] font-semibold text-muted-foreground px-2 hidden md:flex items-center bg-muted/20 border-l border-border/60">
+                      <span className="text-[11px] font-semibold text-muted-foreground px-1 hidden md:inline">
                         شروع:
                       </span>
                       <Button
@@ -1186,12 +1186,12 @@ export function ChartEditor({
                         variant="ghost"
                         onClick={increaseStartSemester}
                         disabled={startSem >= endSem - 1}
-                        className="h-full px-2 sm:px-2.5 rounded-none text-foreground hover:bg-muted/80 transition-colors flex items-center justify-center disabled:opacity-40 border-l border-border/60"
+                        className="h-6 w-6 p-0 rounded-md text-foreground hover:bg-muted/80 transition-colors flex items-center justify-center disabled:opacity-40"
                         title="افزایش ترم شروع (حذف ترم قبل)"
                       >
                         <Plus className="h-3.5 w-3.5 text-foreground shrink-0" />
                       </Button>
-                      <span className="text-xs font-bold text-foreground px-2 sm:px-2.5 min-w-[42px] flex items-center justify-center border-l border-border/60">
+                      <span className="text-xs font-bold text-foreground px-1 min-w-[38px] text-center">
                         ترم {startSem}
                       </span>
                       <Button
@@ -1199,7 +1199,7 @@ export function ChartEditor({
                         variant="ghost"
                         onClick={decreaseStartSemester}
                         disabled={startSem <= 1}
-                        className="h-full px-2 sm:px-2.5 rounded-none text-foreground hover:bg-muted/80 transition-colors flex items-center justify-center disabled:opacity-40"
+                        className="h-6 w-6 p-0 rounded-md text-foreground hover:bg-muted/80 transition-colors flex items-center justify-center disabled:opacity-40"
                         title="کاهش ترم شروع (افزودن ترم قبل)"
                       >
                         <Minus className="h-3.5 w-3.5 text-foreground shrink-0" />
@@ -1208,10 +1208,10 @@ export function ChartEditor({
 
                     {/* End Semester Group */}
                     <div
-                      className="flex items-stretch h-full border-r border-border/70"
+                      className="flex items-center px-1.5 sm:px-2 gap-1 h-full border-r border-border/70"
                       title="تنظیم حداکثر ترم چارت"
                     >
-                      <span className="text-[11px] font-semibold text-muted-foreground px-2 hidden md:flex items-center bg-muted/20 border-l border-border/60">
+                      <span className="text-[11px] font-semibold text-muted-foreground px-1 hidden md:inline">
                         پایان:
                       </span>
                       <Button
@@ -1219,12 +1219,12 @@ export function ChartEditor({
                         variant="ghost"
                         onClick={addSemester}
                         disabled={endSem >= 12}
-                        className="h-full px-2 sm:px-2.5 rounded-none text-foreground hover:bg-muted/80 transition-colors flex items-center justify-center disabled:opacity-40 border-l border-border/60"
+                        className="h-6 w-6 p-0 rounded-md text-foreground hover:bg-muted/80 transition-colors flex items-center justify-center disabled:opacity-40"
                         title="افزودن یک ترم جدید به انتها"
                       >
                         <Plus className="h-3.5 w-3.5 text-foreground shrink-0" />
                       </Button>
-                      <span className="text-xs font-bold text-foreground px-2 sm:px-2.5 min-w-[42px] flex items-center justify-center border-l border-border/60">
+                      <span className="text-xs font-bold text-foreground px-1 min-w-[38px] text-center">
                         ترم {endSem}
                       </span>
                       <Button
@@ -1232,7 +1232,7 @@ export function ChartEditor({
                         variant="ghost"
                         onClick={removeLastSemester}
                         disabled={endSem <= 8}
-                        className="h-full px-2 sm:px-2.5 rounded-none text-foreground hover:text-destructive hover:bg-muted/80 transition-colors flex items-center justify-center disabled:opacity-40"
+                        className="h-6 w-6 p-0 rounded-md text-foreground hover:text-destructive hover:bg-muted/80 transition-colors flex items-center justify-center disabled:opacity-40"
                         title="حذف آخرین ترم"
                       >
                         <Minus className="h-3.5 w-3.5 text-foreground shrink-0" />
