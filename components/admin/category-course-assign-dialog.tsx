@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, BookOpen, CheckSquare, Square, Loader2, Sparkles, Scale } from "lucide-react";
+import { Search, BookOpen, CheckSquare, Square, Loader2, Sparkles, Scale, Link2 } from "lucide-react";
 import type { Course } from "@/lib/types";
 
 interface CategoryCourseAssignDialogProps {
@@ -25,6 +25,7 @@ interface CategoryCourseAssignDialogProps {
   categoryColor?: string;
   allCourses: Course[];
   currentAssignedCourseIds: string[];
+  currentFacultyId?: string;
   onSuccess: () => void;
 }
 
@@ -38,6 +39,7 @@ export function CategoryCourseAssignDialog({
   categoryColor,
   allCourses,
   currentAssignedCourseIds,
+  currentFacultyId,
   onSuccess,
 }: CategoryCourseAssignDialogProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -184,7 +186,7 @@ export function CategoryCourseAssignDialog({
 
           <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
             <span>
-              نمایش <b className="text-foreground">{filteredCourses.length}</b> درس از مجموع {allCourses.length} درس دانشکده
+              نمایش <b className="text-foreground">{filteredCourses.length}</b> درس از مجموع {allCourses.length} درس مجاز دانشکده و لینک‌ها
             </span>
             <div className="flex items-center gap-2">
               <span className="font-medium text-primary">
@@ -208,6 +210,7 @@ export function CategoryCourseAssignDialog({
           ) : (
             filteredCourses.map((c) => {
               const isSelected = selectedIds.has(c.id);
+              const isLinked = Boolean(currentFacultyId && c.facultyId && c.facultyId !== currentFacultyId);
               return (
                 <div
                   key={c.id}
@@ -215,6 +218,8 @@ export function CategoryCourseAssignDialog({
                   className={"flex items-center justify-between p-2.5 rounded-xl border text-xs cursor-pointer transition-all " + (
                     isSelected
                       ? "border-primary bg-primary/10 ring-1 ring-primary/30 shadow-2xs"
+                      : isLinked
+                      ? "border-amber-500/30 bg-amber-500/[0.02] hover:bg-amber-500/[0.05]"
                       : "border-border/60 bg-card hover:bg-muted/30 hover:border-border"
                   )}
                 >
@@ -227,6 +232,15 @@ export function CategoryCourseAssignDialog({
                     <div>
                       <div className="font-bold text-foreground flex items-center gap-2">
                         <span>{c.name}</span>
+                        {isLinked && (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 gap-1 font-normal"
+                          >
+                            <Link2 className="h-2.5 w-2.5" />
+                            {c.facultyName || "لینک‌شده"}
+                          </Badge>
+                        )}
                         {c.abbreviation && (
                           <Badge variant="outline" className="text-xs font-mono font-medium text-primary border-primary/30 bg-primary/5">
                             {c.abbreviation}
@@ -240,6 +254,7 @@ export function CategoryCourseAssignDialog({
                       </div>
                       <div className="text-[11px] text-muted-foreground mt-0.5">
                         {c.units} واحد • {c.offeredIn === "both" ? "هردو ترم" : c.offeredIn === "fall" ? "ترم پاییز" : c.offeredIn === "spring" ? "ترم بهار" : "عدم ارائه"}
+                        {isLinked && ` • لینک‌شده از ${c.facultyName || "دانشکده دیگر"}`}
                       </div>
                     </div>
                   </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Layers,
   Building2,
@@ -20,6 +20,7 @@ import {
   Eraser,
   Download,
   Upload,
+  Link2,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -126,6 +127,16 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
   const currentFaculty = faculties.find((f) => f.id === selectedFacultyId);
   const currentMajor = majors.find((m) => m.id === selectedMajorId);
   const currentTrack = tracks.find((t) => t.id === selectedTrackId);
+
+  const effectiveFacultyId = selectedFacultyId || currentMajor?.facultyId || currentFaculty?.id || "";
+  const linkedFacultyIds = currentFaculty?.linkedFacultyIds || [];
+
+  const facultyCourses = useMemo(() => {
+    if (!effectiveFacultyId) return courses;
+    return courses.filter(
+      (c) => c.facultyId === effectiveFacultyId || linkedFacultyIds.includes(c.facultyId)
+    );
+  }, [courses, effectiveFacultyId, linkedFacultyIds]);
 
   // Helper: Get courses assigned to a visual category
   const getVisualCategoryCourses = (catId: string): Course[] => {
@@ -513,28 +524,44 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
 
     return (
       <div className="flex flex-wrap gap-2 items-center">
-        {assignedCourses.map((c) => (
-          <div
-            key={c.id}
-            className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl bg-muted/40 border border-border/70 text-xs hover:bg-muted/70 transition-colors shadow-2xs"
-          >
-            <span className="font-semibold text-foreground">{c.name}</span>
-            {c.abbreviation && (
-              <Badge variant="outline" className="text-[10px] font-mono font-medium px-1 py-0 text-primary border-primary/30 bg-primary/5">
-                {c.abbreviation}
-              </Badge>
-            )}
-            <span className="text-muted-foreground font-mono text-xs">({c.code || (c.units + " واحد")})</span>
-            <button
-              type="button"
-              onClick={() => (type === "visual" ? handleQuickUnassignVisual(catId, c.id) : handleQuickUnassignRule(catId, c.id))}
-              className="text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 rounded-full p-0.5 transition-colors"
-              title="حذف این درس از دسته"
+        {assignedCourses.map((c) => {
+          const isLinked = Boolean(effectiveFacultyId && c.facultyId && c.facultyId !== effectiveFacultyId);
+          return (
+            <div
+              key={c.id}
+              className={`flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl border text-xs transition-colors shadow-2xs ${
+                isLinked
+                  ? "bg-amber-500/5 border-amber-500/30 hover:bg-amber-500/10"
+                  : "bg-muted/40 border-border/70 hover:bg-muted/70"
+              }`}
             >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        ))}
+              <span className="font-semibold text-foreground">{c.name}</span>
+              {isLinked && (
+                <Badge
+                  variant="outline"
+                  className="text-[9px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 px-1 py-0 gap-0.5"
+                >
+                  <Link2 className="h-2.5 w-2.5" />
+                  {c.facultyName || "لینک‌شده"}
+                </Badge>
+              )}
+              {c.abbreviation && (
+                <Badge variant="outline" className="text-[10px] font-mono font-medium px-1 py-0 text-primary border-primary/30 bg-primary/5">
+                  {c.abbreviation}
+                </Badge>
+              )}
+              <span className="text-muted-foreground font-mono text-xs">({c.code || (c.units + " واحد")})</span>
+              <button
+                type="button"
+                onClick={() => (type === "visual" ? handleQuickUnassignVisual(catId, c.id) : handleQuickUnassignRule(catId, c.id))}
+                className="text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 rounded-full p-0.5 transition-colors"
+                title="حذف این درس از دسته"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          );
+        })}
       </div>
     );
   };
@@ -890,7 +917,8 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
           categoryId={assignModal.categoryId}
           categoryName={assignModal.categoryName}
           categoryColor={assignModal.categoryColor}
-          allCourses={courses}
+          allCourses={facultyCourses}
+          currentFacultyId={effectiveFacultyId}
           currentAssignedCourseIds={
             assignModal.type === "visual"
               ? getVisualCategoryCourses(assignModal.categoryId).map((c) => c.id)
