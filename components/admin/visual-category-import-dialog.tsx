@@ -14,17 +14,16 @@ import { Badge } from "@/components/ui/badge";
 import {
   Download,
   Upload,
-  FolderTree,
+  Palette,
   AlertTriangle,
   CheckCircle2,
   FileCode,
   Sparkles,
   Layers,
-  BookOpen,
   Building2,
 } from "lucide-react";
 
-interface RuleCategoryImportDialogProps {
+interface VisualCategoryImportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   trackId?: string;
@@ -32,86 +31,74 @@ interface RuleCategoryImportDialogProps {
   onSuccess?: () => void;
 }
 
-export const RULE_CATEGORY_SCHEMA_DESCRIPTOR = {
+export const VISUAL_CATEGORY_SCHEMA_DESCRIPTOR = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
-  title: "قالب و اسناد ورود دسته‌های قوانین (Rule Categories JSON Schema)",
-  description: "اسکیمای استاندارد برای ورود دسته‌ای ساختار درختی دسته‌های قوانین چارت و انتساب دروس (حداکثر عمق: ۳ لایه)",
+  title: "قالب و اسناد ورود دسته‌های بصری (Visual Categories JSON Schema)",
+  description: "اسکیمای استاندارد برای ورود دسته‌ای دسته‌های بصری چارت (تخت و بدون سلسله‌مراتب) و انتساب دروس",
   type: "array",
   items: {
-    $ref: "#/$defs/ruleCategoryNode",
-  },
-  $defs: {
-    ruleCategoryNode: {
-      type: "object",
-      required: ["code", "name"],
-      properties: {
-        code: {
-          type: "string",
-          description: "کد شناسایی یکتای دسته قوانین (الزامی و معیار تطبیق)",
-          example: "RC-CORE",
-        },
-        name: {
-          type: "string",
-          description: "نام کامل دسته قوانین (الزامی)",
-          example: "دروس تخصصی و اصلی",
-        },
-        courses: {
-          type: "array",
-          items: {
-            type: "string",
-          },
-          description: "لیست کدهای رسمی دروسی که مستقیماً به این دسته قوانین اختصاص می‌یابند (اختیاری)",
-          example: ["8101234", "8101567"],
-        },
-        children: {
-          type: "array",
-          items: {
-            $ref: "#/$defs/ruleCategoryNode",
-          },
-          description: "لیست زیردسته‌های این دسته به صورت بازگشتی تا حداکثر ۳ لایه (اختیاری)",
-        },
+    type: "object",
+    required: ["code", "name"],
+    properties: {
+      code: {
+        type: "string",
+        description: "کد شناسایی یکتای دسته بصری (الزامی و معیار تطبیق)",
+        example: "VC-TERM-1",
       },
-      additionalProperties: false,
+      name: {
+        type: "string",
+        description: "نام کامل دسته بصری (الزامی)",
+        example: "ترم اول (دروس پایه)",
+      },
+      color: {
+        type: "string",
+        pattern: "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$",
+        description: "کد رنگ هگزادسیمال شاخص دسته در سایدبار چارت (اختیاری، پیش‌فرض: #3b82f6)",
+        default: "#3b82f6",
+        example: "#3b82f6",
+      },
+      courses: {
+        type: "array",
+        items: {
+          type: "string",
+        },
+        description: "لیست کدهای رسمی دروسی که به این دسته بصری منتسب می‌شوند (اختیاری)",
+        example: ["8101101", "8101102"],
+      },
     },
+    additionalProperties: false,
   },
   examples: [
     [
       {
-        code: "RC-CORE",
-        name: "دروس تخصصی و اصلی",
-        courses: ["8101234", "8101567"],
-        children: [
-          {
-            code: "RC-CORE-MATH",
-            name: "ریاضیات و علوم پایه",
-            courses: ["8101101", "8101102"],
-            children: [],
-          },
-          {
-            code: "RC-CORE-ELEC",
-            name: "مدارهای الکتریکی و الکترونیک",
-            courses: ["8101201"],
-            children: [],
-          },
-        ],
+        code: "VC-TERM-1",
+        name: "ترم اول (دروس پایه)",
+        color: "#3b82f6",
+        courses: ["8101101", "8101102"],
       },
       {
-        code: "RC-GEN",
-        name: "دروس عمومی",
-        courses: ["8101001", "8101002"],
-        children: [],
+        code: "VC-TERM-2",
+        name: "ترم دوم",
+        color: "#10b981",
+        courses: ["8101201", "8101202"],
+      },
+      {
+        code: "VC-ELECTIVES",
+        name: "دروس اختیاری",
+        color: "#f59e0b",
+        courses: ["8101301"],
       },
     ],
   ],
 };
 
-export function RuleCategoryImportDialog({
+export function VisualCategoryImportDialog({
   open,
   onOpenChange,
   trackId,
   trackName,
   onSuccess,
-}: RuleCategoryImportDialogProps) {
+}: VisualCategoryImportDialogProps) {
   const [jsonText, setJsonText] = useState("");
   const [parsedData, setParsedData] = useState<any[] | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
@@ -131,45 +118,36 @@ export function RuleCategoryImportDialog({
 
   // Download Schema Descriptor File
   const handleDownloadSchema = () => {
-    const jsonStr = JSON.stringify(RULE_CATEGORY_SCHEMA_DESCRIPTOR, null, 2);
+    const jsonStr = JSON.stringify(VISUAL_CATEGORY_SCHEMA_DESCRIPTOR, null, 2);
     const blob = new Blob([jsonStr], { type: "application/json;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "rule-categories-schema.json";
+    link.download = "visual-categories-schema.json";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
 
-  // Helper to count statistics from hierarchical tree
-  const treeStats = useMemo(() => {
+  // Helper to count statistics from flat categories list
+  const listStats = useMemo(() => {
     if (!parsedData || !Array.isArray(parsedData)) return null;
 
     let totalCategories = 0;
     let totalCourses = 0;
-    let maxDepth = 0;
 
-    function traverse(nodes: any[], currentDepth: number) {
-      if (currentDepth > maxDepth) maxDepth = currentDepth;
-      for (const node of nodes) {
-        if (node && typeof node === "object") {
-          totalCategories++;
-          const courses = node.courses ?? node.courseCodes;
-          if (Array.isArray(courses)) {
-            totalCourses += courses.length;
-          }
-          const children = node.children ?? node.subcategories;
-          if (Array.isArray(children) && children.length > 0) {
-            traverse(children, currentDepth + 1);
-          }
+    for (const node of parsedData) {
+      if (node && typeof node === "object") {
+        totalCategories++;
+        const courses = node.courses ?? node.courseCodes;
+        if (Array.isArray(courses)) {
+          totalCourses += courses.length;
         }
       }
     }
 
-    traverse(parsedData, 1);
-    return { totalCategories, totalCourses, maxDepth };
+    return { totalCategories, totalCourses };
   }, [parsedData]);
 
   // Handle Text/Editor Change & Live Validation
@@ -187,18 +165,18 @@ export function RuleCategoryImportDialog({
       const parsed = JSON.parse(text);
       const list = Array.isArray(parsed)
         ? parsed
-        : (parsed.categories || parsed.ruleCategories || (parsed.examples && parsed.examples[0]));
+        : (parsed.categories || parsed.visualCategories || (parsed.examples && parsed.examples[0]));
 
       if (!Array.isArray(list)) {
-        setParseError("فرمت ورودی نامعتبر است: داده‌ها باید یک آرایه شامل حداقل یک دسته قوانین باشند.");
+        setParseError("فرمت ورودی نامعتبر است: داده‌ها باید یک آرایه شامل حداقل یک دسته بصری باشند.");
         setParsedData(null);
         return;
       }
 
-      // Quick validate root elements
+      // Quick validate elements
       for (const item of list) {
         if (!item || typeof item !== "object") {
-          setParseError("هر عضو آرایه ورودی باید یک شیء دسته قوانین باشد.");
+          setParseError("هر عضو آرایه ورودی باید یک شیء دسته بصری باشد.");
           setParsedData(null);
           return;
         }
@@ -244,7 +222,7 @@ export function RuleCategoryImportDialog({
     }
 
     if (!parsedData || parsedData.length === 0) {
-      alert("لطفاً ابتدا فایل JSON معتبر دسته‌های قوانین را وارد کنید.");
+      alert("لطفاً ابتدا فایل JSON معتبر دسته‌های بصری را وارد کنید.");
       return;
     }
 
@@ -252,7 +230,7 @@ export function RuleCategoryImportDialog({
     setResult(null);
 
     try {
-      const res = await fetch("/api/tracks/rule-categories/import", {
+      const res = await fetch("/api/tracks/visual-categories/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -272,7 +250,7 @@ export function RuleCategoryImportDialog({
       } else {
         setResult({
           success: false,
-          message: data.message || "خطا در ورود دسته‌های قوانین",
+          message: data.message || "خطا در ورود دسته‌های بصری",
         });
       }
     } catch (err: any) {
@@ -290,11 +268,11 @@ export function RuleCategoryImportDialog({
       <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto" dir="rtl">
         <DialogHeader>
           <DialogTitle className="text-base font-bold flex items-center gap-2">
-            <FolderTree className="h-5 w-5 text-primary" />
-            <span>ورود دسته‌ای دسته‌های قوانین (Import JSON)</span>
+            <Palette className="h-5 w-5 text-primary" />
+            <span>ورود دسته‌ای دسته‌های بصری (Import JSON)</span>
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
-            ورود ساختار درختی دسته‌های قوانین و انتساب دروس به صورت فایل JSON سلسله‌مراتبی
+            ورود لیست دسته‌های بصری رنگی و انتساب دروس به صورت فایل JSON تخت و یکپارچه
           </DialogDescription>
         </DialogHeader>
 
@@ -314,7 +292,7 @@ export function RuleCategoryImportDialog({
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 p-3 rounded-2xl bg-primary/5 border border-primary/20">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Sparkles className="h-4 w-4 text-primary shrink-0" />
-              <span>فایل توصیف‌کننده ساختار درختی JSON دسته‌ها:</span>
+              <span>فایل توصیف‌کننده ساختار JSON دسته‌های بصری:</span>
             </div>
             <Button
               type="button"
@@ -362,16 +340,13 @@ export function RuleCategoryImportDialog({
           <div className="space-y-1.5">
             <div className="flex items-center justify-between text-xs font-semibold">
               <span>یا محتوای JSON را مستقیماً اینجا وارد یا ویرایش کنید:</span>
-              {treeStats && (
+              {listStats && (
                 <div className="flex items-center gap-1.5">
                   <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-500/30 bg-emerald-500/10">
-                    {treeStats.totalCategories} دسته
-                  </Badge>
-                  <Badge variant="outline" className="text-[10px] text-sky-600 border-sky-500/30 bg-sky-500/10">
-                    عمق {treeStats.maxDepth} لایه
+                    {listStats.totalCategories} دسته بصری
                   </Badge>
                   <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500/30 bg-amber-500/10">
-                    {treeStats.totalCourses} انتساب درس
+                    {listStats.totalCourses} انتساب درس
                   </Badge>
                 </div>
               )}
@@ -380,10 +355,10 @@ export function RuleCategoryImportDialog({
             <CodeEditor
               value={jsonText}
               onChange={handleTextChange}
-              placeholder='[ { "code": "RC-CORE", "name": "دروس اصلی", "courses": ["8101234"], "children": [ ... ] } ]'
+              placeholder='[ { "code": "VC-TERM-1", "name": "ترم اول", "color": "#3b82f6", "courses": ["8101101"] } ]'
               maxHeight="18rem"
               minHeight="10rem"
-              title="ویرایشگر ساختار درختی دسته‌های قوانین"
+              title="ویرایشگر ساختار دسته‌های بصری"
               allowFullscreen={false}
             />
           </div>
@@ -476,7 +451,7 @@ export function RuleCategoryImportDialog({
               ) : (
                 <>
                   <Upload className="h-3.5 w-3.5" />
-                  شروع فرآیند ورود دسته‌های قوانین...
+                  شروع فرآیند ورود دسته‌های بصری...
                 </>
               )}
             </Button>

@@ -40,6 +40,7 @@ import { TrackCloneDialog } from "./track-clone-dialog";
 import { CategoryCourseAssignDialog } from "./category-course-assign-dialog";
 import { RuleCategoryNode } from "./rule-category-node";
 import { RuleCategoryImportDialog } from "./rule-category-import-dialog";
+import { VisualCategoryImportDialog } from "./visual-category-import-dialog";
 import type { Course, VisualCategory, RuleCategory } from "@/lib/types";
 
 const COLOR_PRESETS = [
@@ -102,6 +103,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
     parentId: null,
   });
   const [rcatImportModalOpen, setRcatImportModalOpen] = useState(false);
+  const [vcatImportModalOpen, setVcatImportModalOpen] = useState(false);
 
   // Assign Modal State
   const [assignModal, setAssignModal] = useState<{
@@ -738,6 +740,33 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
 
           <div className="flex flex-wrap items-center gap-2">
             <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (!selectedTrackId) return;
+                window.open(`/api/tracks/visual-categories/export?trackId=${selectedTrackId}`, "_blank");
+              }}
+              disabled={!selectedTrackId || visualCats.length === 0}
+              className="h-8 gap-1.5 text-xs shadow-2xs font-semibold"
+            >
+              <Download className="h-3.5 w-3.5 text-primary" />
+              <span>خروجی دسته‌ها (Export JSON)</span>
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setVcatImportModalOpen(true)}
+              disabled={!selectedTrackId}
+              className="h-8 gap-1.5 text-xs shadow-2xs font-semibold"
+            >
+              <Upload className="h-3.5 w-3.5 text-primary" />
+              <span>ورود دسته‌ها (Import JSON)</span>
+            </Button>
+
+            <Button
               size="sm"
               variant="outline"
               disabled={!selectedTrackId || isSyncing || ruleCats.length === 0}
@@ -1195,6 +1224,19 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
       <RuleCategoryImportDialog
         open={rcatImportModalOpen}
         onOpenChange={setRcatImportModalOpen}
+        trackId={selectedTrackId || undefined}
+        trackName={currentTrack?.name || ""}
+        onSuccess={async () => {
+          if (selectedTrackId) {
+            await loadTrackDetails(selectedTrackId);
+          }
+        }}
+      />
+
+      {/* Visual Categories Import Dialog */}
+      <VisualCategoryImportDialog
+        open={vcatImportModalOpen}
+        onOpenChange={setVcatImportModalOpen}
         trackId={selectedTrackId || undefined}
         trackName={currentTrack?.name || ""}
         onSuccess={async () => {
