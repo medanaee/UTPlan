@@ -6,22 +6,25 @@ export const dynamic = "force-dynamic";
 
 const TABLE_ORDER = [
   "faculties",
+  "faculty_links",
   "majors",
   "tracks",
-  "rule_categories",
   "visual_categories",
+  "rule_categories",
   "courses",
   "prerequisites",
+  "track_course_assignments",
   "professors",
   "course_offerings",
   "offering_professors",
+  "offering_resources",
   "course_events",
   "course_event_slots",
-  "charts",
-  "chart_courses",
-  "track_course_assignments",
-  "reviews",
   "users",
+  "reviews",
+  "charts",
+  "chart_terms",
+  "chart_courses",
 ];
 
 export async function GET(request: NextRequest) {
@@ -189,7 +192,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `بازیابی کامل از فایل JSON با موفقیت انجام شد: در مجموع ${totalInserted} رکورد در ۱۷ جدول بازنویسی و بازیابی گردید.`,
+      message: `بازیابی کامل از فایل JSON با موفقیت انجام شد: در مجموع ${totalInserted} رکورد در ۲۰ جدول بازنویسی و بازیابی گردید.`,
       stats: {
         totalInserted,
         restoredRecords: totalInserted,

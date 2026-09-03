@@ -21,6 +21,8 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
   Info,
+  Link2,
+  FolderArchive,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -46,22 +48,25 @@ interface DatabaseStats {
 
 const TABLE_LABELS: Record<string, { label: string; icon: any }> = {
   faculties: { label: "دانشکده‌ها", icon: Building2 },
+  faculty_links: { label: "اتصال دانشکده‌ها", icon: Link2 },
   majors: { label: "رشته‌ها", icon: GraduationCap },
   tracks: { label: "گرایش‌ها", icon: Layers },
+  visual_categories: { label: "دسته‌های بصری", icon: Layers },
+  rule_categories: { label: "دسته‌های قوانین", icon: Layers },
   courses: { label: "دروس مصوب", icon: BookOpen },
   prerequisites: { label: "روابط پیش‌نیاز/هم‌نیاز", icon: Layers },
+  track_course_assignments: { label: "انتساب دروس به دسته‌ها", icon: Layers },
   professors: { label: "اساتید", icon: Users },
   course_offerings: { label: "ارائه‌های درسی", icon: BookOpen },
   offering_professors: { label: "هم‌تدریسی اساتید", icon: Users },
+  offering_resources: { label: "منابع درسی (جزوه/ویدیو)", icon: FolderArchive },
   course_events: { label: "رویدادها و کلاس‌ها", icon: Calendar },
   course_event_slots: { label: "جلسات هفتگی کلاس‌ها", icon: Calendar },
-  charts: { label: "چارت‌های درسی", icon: Sparkles },
-  chart_courses: { label: "دروس در چارت", icon: BookOpen },
-  rule_categories: { label: "دسته‌های قوانین", icon: Layers },
-  visual_categories: { label: "دسته‌های بصری", icon: Layers },
-  track_course_assignments: { label: "انتساب دروس به دسته‌ها", icon: Layers },
-  reviews: { label: "نظرات و امتیازات", icon: Info },
   users: { label: "کاربران سامانه", icon: Users },
+  reviews: { label: "نظرات و امتیازات", icon: Info },
+  charts: { label: "چارت‌های درسی", icon: Sparkles },
+  chart_terms: { label: "ترم‌های چارت", icon: Calendar },
+  chart_courses: { label: "دروس در چارت", icon: BookOpen },
 };
 
 export function BackupManager() {
