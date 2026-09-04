@@ -6,11 +6,39 @@ export const dynamic = "force-dynamic";
 
 export interface ConflictItem {
   id: string;
-  sourceEntityType: "course" | "professor" | "offering" | "event";
+  sourceEntityType: "course" | "professor" | "offering" | "event" | "faculty" | "major" | "track";
   sourceEntityId: string;
   sourceEntityName: string;
-  relationType: "offering" | "prerequisite" | "track_assignment" | "chart_course" | "event" | "offering_professor" | "student_event_selection";
-  dependentEntityType: "course" | "professor" | "offering" | "event" | "prerequisite" | "track_assignment" | "chart_course" | "offering_professor";
+  relationType:
+    | "offering"
+    | "prerequisite"
+    | "track_assignment"
+    | "chart_course"
+    | "event"
+    | "offering_professor"
+    | "student_event_selection"
+    | "faculty_major"
+    | "faculty_course"
+    | "faculty_professor"
+    | "faculty_user"
+    | "major_track"
+    | "major_user"
+    | "track_assignment"
+    | "track_chart"
+    | "track_user";
+  dependentEntityType:
+    | "course"
+    | "professor"
+    | "offering"
+    | "event"
+    | "faculty"
+    | "major"
+    | "track"
+    | "prerequisite"
+    | "track_assignment"
+    | "chart_course"
+    | "offering_professor"
+    | "user";
   dependentEntityId: string;
   dependentEntityName: string;
   description: string;
@@ -417,6 +445,391 @@ export async function POST(request: NextRequest) {
               allowedActions: ["replace", "unlink"],
               requiresCascadeInspection: false,
               replacementCandidates: eventCandidates,
+            });
+          }
+        }
+      }
+
+      // ----------------------------------------------------
+      // 5. FACULTY DEPENDENCIES
+      // ----------------------------------------------------
+      else if (entityType === "faculty") {
+        const facRow = await d1
+          .prepare("SELECT id, name, code FROM faculties WHERE id = ?")
+          .bind(entityId)
+          .first();
+        const facName = facRow ? `دانشکده ${(facRow as any).name} (کد: ${(facRow as any).code || "-"})` : "این دانشکده";
+
+        // Candidate faculties for replacement
+        const { results: otherFacs } = await d1
+          .prepare("SELECT id, name, code FROM faculties WHERE deleted_at IS NULL ORDER BY name ASC")
+          .all();
+        const facultyCandidates = (otherFacs || [])
+          .filter((f: any) => !selectedDeleteKeys.has(`faculty:${f.id}`))
+          .map((f: any) => ({
+            id: f.id as string,
+            label: `دانشکده ${f.name} (کد: ${f.code || "-"})`,
+            code: f.code as string,
+          }));
+
+        // A. Majors belonging to this faculty
+        const { results: majors } = await d1
+          .prepare("SELECT id, name, code, deleted_at FROM majors WHERE faculty_id = ?")
+          .bind(entityId)
+          .all();
+
+        for (const m of majors || []) {
+          if (selectedDeleteKeys.has(`major:${m.id}`)) continue;
+
+          const conflictKey = `dep_fac_major_${m.id}`;
+          if (seenConflictIds.has(conflictKey)) continue;
+          seenConflictIds.add(conflictKey);
+
+          const isMajorTrashed = Boolean(m.deleted_at);
+          const allowedActions: Array<"replace" | "cascade_delete" | "trash_delete"> = isMajorTrashed
+            ? ["trash_delete", "replace"]
+            : ["replace", "cascade_delete"];
+
+          dependencies.push({
+            id: conflictKey,
+            sourceEntityType: "faculty",
+            sourceEntityId: entityId,
+            sourceEntityName: facName,
+            relationType: "faculty_major",
+            dependentEntityType: "major",
+            dependentEntityId: m.id as string,
+            dependentEntityName: `رشته ${m.name} (کد: ${m.code || "-"})`,
+            description: isMajorTrashed
+              ? `دانشکده «${facName}» دارای رشته «${m.name}» در سطل بازیافت است. می‌توانید آن را به دانشکده دیگری منتقل کرده یا مستقیماً پاک نمایید.`
+              : `دانشکده «${facName}» دارای رشته فعال «${m.name}» است. برای حذف قطعی دانشکده، این رشته باید به دانشکده دیگری منتقل شده یا حذف گردد.`,
+            allowedActions,
+            requiresCascadeInspection: !isMajorTrashed,
+            isDependentInTrash: isMajorTrashed,
+            replacementCandidates: facultyCandidates,
+          });
+        }
+
+        // B. Courses belonging to this faculty
+        const { results: courses } = await d1
+          .prepare("SELECT id, name, code, units, deleted_at FROM courses WHERE faculty_id = ?")
+          .bind(entityId)
+          .all();
+
+        for (const c of courses || []) {
+          if (selectedDeleteKeys.has(`course:${c.id}`)) continue;
+
+          const conflictKey = `dep_fac_course_${c.id}`;
+          if (seenConflictIds.has(conflictKey)) continue;
+          seenConflictIds.add(conflictKey);
+
+          const isCourseTrashed = Boolean(c.deleted_at);
+          const allowedActions: Array<"replace" | "cascade_delete" | "trash_delete"> = isCourseTrashed
+            ? ["trash_delete", "replace"]
+            : ["replace", "cascade_delete"];
+
+          dependencies.push({
+            id: conflictKey,
+            sourceEntityType: "faculty",
+            sourceEntityId: entityId,
+            sourceEntityName: facName,
+            relationType: "faculty_course",
+            dependentEntityType: "course",
+            dependentEntityId: c.id as string,
+            dependentEntityName: `درس ${c.name} (کد: ${c.code || "-"})`,
+            description: isCourseTrashed
+              ? `دانشکده «${facName}» مالک درس «${c.name}» در سطل بازیافت است. می‌توانید آن را به دانشکده دیگری منتقل کنید یا مستقیماً پاک نمایید.`
+              : `دانشکده «${facName}» مالک درس فعال «${c.name}» است. می‌توانید این درس را به دانشکده دیگری منتقل کنید یا حذف قطعی نمایید.`,
+            allowedActions,
+            requiresCascadeInspection: !isCourseTrashed,
+            isDependentInTrash: isCourseTrashed,
+            replacementCandidates: facultyCandidates,
+          });
+        }
+
+        // C. Professors belonging to this faculty
+        const { results: profs } = await d1
+          .prepare("SELECT id, first_name, last_name, code, title, deleted_at FROM professors WHERE faculty_id = ?")
+          .bind(entityId)
+          .all();
+
+        for (const p of profs || []) {
+          if (selectedDeleteKeys.has(`professor:${p.id}`)) continue;
+
+          const conflictKey = `dep_fac_prof_${p.id}`;
+          if (seenConflictIds.has(conflictKey)) continue;
+          seenConflictIds.add(conflictKey);
+
+          const profFullName = `${p.first_name} ${p.last_name}`;
+          const isProfTrashed = Boolean(p.deleted_at);
+          const allowedActions: Array<"replace" | "cascade_delete" | "trash_delete"> = isProfTrashed
+            ? ["trash_delete", "replace"]
+            : ["replace", "cascade_delete"];
+
+          dependencies.push({
+            id: conflictKey,
+            sourceEntityType: "faculty",
+            sourceEntityId: entityId,
+            sourceEntityName: facName,
+            relationType: "faculty_professor",
+            dependentEntityType: "professor",
+            dependentEntityId: p.id as string,
+            dependentEntityName: `استاد ${profFullName} (${p.title || "استاد"}) - کد: ${p.code || "-"}`,
+            description: isProfTrashed
+              ? `استاد «${profFullName}» عضو هیئت علمی این دانشکده در سطل بازیافت است. می‌توانید او را به دانشکده دیگری منتقل کنید یا مستقیماً پاک نمایید.`
+              : `استاد «${profFullName}» عضو هیئت علمی فعال «${facName}» است. می‌توانید او را به دانشکده دیگری منتقل کنید یا حذف قطعی نمایید.`,
+            allowedActions,
+            requiresCascadeInspection: !isProfTrashed,
+            isDependentInTrash: isProfTrashed,
+            replacementCandidates: facultyCandidates,
+          });
+        }
+
+        // D. Users assigned to this faculty
+        const userCountRow = await d1
+          .prepare("SELECT count(*) as count FROM users WHERE faculty_id = ?")
+          .bind(entityId)
+          .first();
+        const userCount = Number(userCountRow?.count) || 0;
+
+        if (userCount > 0) {
+          const conflictKey = `dep_fac_users_${entityId}`;
+          if (!seenConflictIds.has(conflictKey)) {
+            seenConflictIds.add(conflictKey);
+            dependencies.push({
+              id: conflictKey,
+              sourceEntityType: "faculty",
+              sourceEntityId: entityId,
+              sourceEntityName: facName,
+              relationType: "faculty_user",
+              dependentEntityType: "user",
+              dependentEntityId: entityId,
+              dependentEntityName: `کاربران/دانشجویان منتسب (${userCount} کاربر)`,
+              description: `تعداد ${userCount} حساب کاربری در «${facName}» ثبت شده‌اند. می‌توانید دانشکده آن‌ها را به دانشکده دیگری منتقل کنید یا انتساب دانشکده را لغو (خالی) نمایید تا اکانتشان حفظ شود.`,
+              allowedActions: ["replace", "unlink"],
+              requiresCascadeInspection: false,
+              replacementCandidates: facultyCandidates,
+            });
+          }
+        }
+      }
+
+      // ----------------------------------------------------
+      // 6. MAJOR DEPENDENCIES
+      // ----------------------------------------------------
+      else if (entityType === "major") {
+        const majorRow = await d1
+          .prepare(
+            `SELECT m.id, m.name, m.code, m.faculty_id, f.name as faculty_name
+             FROM majors m
+             LEFT JOIN faculties f ON m.faculty_id = f.id
+             WHERE m.id = ?`
+          )
+          .bind(entityId)
+          .first();
+        const majorName = majorRow
+          ? `رشته ${(majorRow as any).name} (کد: ${(majorRow as any).code || "-"} | دانشکده: ${(majorRow as any).faculty_name || "-"})`
+          : "این رشته";
+
+        // Candidate majors for replacement
+        const { results: otherMajors } = await d1
+          .prepare(
+            `SELECT m.id, m.name, m.code, f.name as faculty_name
+             FROM majors m
+             LEFT JOIN faculties f ON m.faculty_id = f.id
+             WHERE m.deleted_at IS NULL
+             ORDER BY m.name ASC`
+          )
+          .all();
+        const majorCandidates = (otherMajors || [])
+          .filter((m: any) => !selectedDeleteKeys.has(`major:${m.id}`))
+          .map((m: any) => ({
+            id: m.id as string,
+            label: `رشته ${m.name} (${m.faculty_name || "-"} | کد: ${m.code || "-"})`,
+            code: m.code as string,
+          }));
+
+        // A. Tracks belonging to this major
+        const { results: tracks } = await d1
+          .prepare("SELECT id, name, code, deleted_at FROM tracks WHERE major_id = ?")
+          .bind(entityId)
+          .all();
+
+        for (const t of tracks || []) {
+          if (selectedDeleteKeys.has(`track:${t.id}`)) continue;
+
+          const conflictKey = `dep_major_track_${t.id}`;
+          if (seenConflictIds.has(conflictKey)) continue;
+          seenConflictIds.add(conflictKey);
+
+          const isTrackTrashed = Boolean(t.deleted_at);
+          const allowedActions: Array<"replace" | "cascade_delete" | "trash_delete"> = isTrackTrashed
+            ? ["trash_delete", "replace"]
+            : ["replace", "cascade_delete"];
+
+          dependencies.push({
+            id: conflictKey,
+            sourceEntityType: "major",
+            sourceEntityId: entityId,
+            sourceEntityName: majorName,
+            relationType: "major_track",
+            dependentEntityType: "track",
+            dependentEntityId: t.id as string,
+            dependentEntityName: `گرایش ${t.name} (کد: ${t.code || "-"})`,
+            description: isTrackTrashed
+              ? `رشته «${majorName}» دارای گرایش «${t.name}» در سطل بازیافت است. می‌توانید آن را به رشته دیگری منتقل کرده یا مستقیماً پاک نمایید.`
+              : `رشته «${majorName}» دارای گرایش فعال «${t.name}» است. می‌توانید این گرایش را به رشته دیگری منتقل کنید یا حذف قطعی نمایید.`,
+            allowedActions,
+            requiresCascadeInspection: !isTrackTrashed,
+            isDependentInTrash: isTrackTrashed,
+            replacementCandidates: majorCandidates,
+          });
+        }
+
+        // B. Users assigned to this major
+        const userCountRow = await d1
+          .prepare("SELECT count(*) as count FROM users WHERE major_id = ?")
+          .bind(entityId)
+          .first();
+        const userCount = Number(userCountRow?.count) || 0;
+
+        if (userCount > 0) {
+          const conflictKey = `dep_major_users_${entityId}`;
+          if (!seenConflictIds.has(conflictKey)) {
+            seenConflictIds.add(conflictKey);
+            dependencies.push({
+              id: conflictKey,
+              sourceEntityType: "major",
+              sourceEntityId: entityId,
+              sourceEntityName: majorName,
+              relationType: "major_user",
+              dependentEntityType: "user",
+              dependentEntityId: entityId,
+              dependentEntityName: `دانشجویان رشته (${userCount} دانشجو)`,
+              description: `تعداد ${userCount} دانشجو در «${majorName}» ثبت‌نام شده‌اند. می‌توانید رشته آن‌ها را به رشته دیگری منتقل کرده یا انتساب رشته را لغو (خالی) نمایید تا اکانتشان حفظ شود.`,
+              allowedActions: ["replace", "unlink"],
+              requiresCascadeInspection: false,
+              replacementCandidates: majorCandidates,
+            });
+          }
+        }
+      }
+
+      // ----------------------------------------------------
+      // 7. TRACK DEPENDENCIES
+      // ----------------------------------------------------
+      else if (entityType === "track") {
+        const trackRow = await d1
+          .prepare(
+            `SELECT t.id, t.name, t.code, m.name as major_name, f.name as faculty_name
+             FROM tracks t
+             LEFT JOIN majors m ON t.major_id = m.id
+             LEFT JOIN faculties f ON m.faculty_id = f.id
+             WHERE t.id = ?`
+          )
+          .bind(entityId)
+          .first();
+        const trackName = trackRow
+          ? `گرایش ${(trackRow as any).name} (کد: ${(trackRow as any).code || "-"} | رشته: ${(trackRow as any).major_name || "-"})`
+          : "این گرایش";
+
+        // Candidate tracks for replacement
+        const { results: otherTracks } = await d1
+          .prepare(
+            `SELECT t.id, t.name, t.code, m.name as major_name
+             FROM tracks t
+             LEFT JOIN majors m ON t.major_id = m.id
+             WHERE t.deleted_at IS NULL
+             ORDER BY t.name ASC`
+          )
+          .all();
+        const trackCandidates = (otherTracks || [])
+          .filter((t: any) => !selectedDeleteKeys.has(`track:${t.id}`))
+          .map((t: any) => ({
+            id: t.id as string,
+            label: `گرایش ${t.name} (${t.major_name || "-"} | کد: ${t.code || "-"})`,
+            code: t.code as string,
+          }));
+
+        // A. Track Course Assignments
+        const assignCountRow = await d1
+          .prepare("SELECT count(*) as count FROM track_course_assignments WHERE track_id = ?")
+          .bind(entityId)
+          .first();
+        const assignCount = Number(assignCountRow?.count) || 0;
+
+        if (assignCount > 0) {
+          const conflictKey = `dep_track_assignments_${entityId}`;
+          if (!seenConflictIds.has(conflictKey)) {
+            seenConflictIds.add(conflictKey);
+            dependencies.push({
+              id: conflictKey,
+              sourceEntityType: "track",
+              sourceEntityId: entityId,
+              sourceEntityName: trackName,
+              relationType: "track_assignment",
+              dependentEntityType: "track_assignment",
+              dependentEntityId: entityId,
+              dependentEntityName: `دروس انتساب‌داده‌شده در چارت گرایش (${assignCount} درس)`,
+              description: `این گرایش دارای ${assignCount} درس در چارت تحصیلی است. می‌توانید این انتساب‌ها را به گرایش دیگری منتقل کنید یا انتساب‌ها را از چارت پاک نمایید.`,
+              allowedActions: ["replace", "cascade_delete"],
+              requiresCascadeInspection: false,
+              replacementCandidates: trackCandidates,
+            });
+          }
+        }
+
+        // B. Student Saved Charts
+        const chartCountRow = await d1
+          .prepare("SELECT count(*) as count FROM charts WHERE track_id = ?")
+          .bind(entityId)
+          .first();
+        const chartCount = Number(chartCountRow?.count) || 0;
+
+        if (chartCount > 0) {
+          const conflictKey = `dep_track_charts_${entityId}`;
+          if (!seenConflictIds.has(conflictKey)) {
+            seenConflictIds.add(conflictKey);
+            dependencies.push({
+              id: conflictKey,
+              sourceEntityType: "track",
+              sourceEntityId: entityId,
+              sourceEntityName: trackName,
+              relationType: "track_chart",
+              dependentEntityType: "chart_course",
+              dependentEntityId: entityId,
+              dependentEntityName: `برنامه و چارت‌های تحصیلی دانشجویان (${chartCount} چارت)`,
+              description: `تعداد ${chartCount} چارت تحصیلی دانشجو بر اساس این گرایش ثبت شده است. می‌توانید گرایش این چارت‌ها را به گرایش دیگری منتقل کرده یا چارت‌ها را حذف نمایید.`,
+              allowedActions: ["replace", "cascade_delete"],
+              requiresCascadeInspection: false,
+              replacementCandidates: trackCandidates,
+            });
+          }
+        }
+
+        // C. Users assigned to this track
+        const userCountRow = await d1
+          .prepare("SELECT count(*) as count FROM users WHERE track_id = ?")
+          .bind(entityId)
+          .first();
+        const userCount = Number(userCountRow?.count) || 0;
+
+        if (userCount > 0) {
+          const conflictKey = `dep_track_users_${entityId}`;
+          if (!seenConflictIds.has(conflictKey)) {
+            seenConflictIds.add(conflictKey);
+            dependencies.push({
+              id: conflictKey,
+              sourceEntityType: "track",
+              sourceEntityId: entityId,
+              sourceEntityName: trackName,
+              relationType: "track_user",
+              dependentEntityType: "user",
+              dependentEntityId: entityId,
+              dependentEntityName: `دانشجویان دارای این گرایش (${userCount} دانشجو)`,
+              description: `تعداد ${userCount} دانشجو دارای گرایش «${trackName}» هستند. می‌توانید گرایش آن‌ها را به گرایش دیگری منتقل کرده یا انتساب گرایش را لغو (خالی) نمایید.`,
+              allowedActions: ["replace", "unlink"],
+              requiresCascadeInspection: false,
+              replacementCandidates: trackCandidates,
             });
           }
         }

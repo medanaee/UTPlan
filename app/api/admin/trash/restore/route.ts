@@ -23,6 +23,9 @@ export async function POST(request: NextRequest) {
     }
 
     const idsByType: Record<string, string[]> = {
+      faculties: [],
+      majors: [],
+      tracks: [],
       courses: [],
       professors: [],
       course_offerings: [],
@@ -30,7 +33,10 @@ export async function POST(request: NextRequest) {
     };
 
     for (const it of rawItems) {
-      if (it.type === "course") idsByType.courses.push(it.id);
+      if (it.type === "faculty") idsByType.faculties.push(it.id);
+      else if (it.type === "major") idsByType.majors.push(it.id);
+      else if (it.type === "track") idsByType.tracks.push(it.id);
+      else if (it.type === "course") idsByType.courses.push(it.id);
       else if (it.type === "professor") idsByType.professors.push(it.id);
       else if (it.type === "offering") idsByType.course_offerings.push(it.id);
       else if (it.type === "event") idsByType.course_events.push(it.id);

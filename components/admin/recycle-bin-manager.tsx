@@ -16,6 +16,7 @@ import {
   CheckSquare,
   Square,
   Layers,
+  GraduationCap,
   X,
   Loader2,
 } from "lucide-react";
@@ -33,10 +34,13 @@ interface RecycleBinManagerProps {
 }
 
 export function RecycleBinManager({ onDataChanged, selectedFacultyId }: RecycleBinManagerProps) {
-  const [activeTab, setActiveTab] = useState<"all" | "course" | "professor" | "offering" | "event">("all");
+  const [activeTab, setActiveTab] = useState<"all" | "faculty" | "major" | "track" | "course" | "professor" | "offering" | "event">("all");
   const [items, setItems] = useState<TrashItem[]>([]);
   const [counts, setCounts] = useState({
     all: 0,
+    faculty: 0,
+    major: 0,
+    track: 0,
     course: 0,
     professor: 0,
     offering: 0,
@@ -206,6 +210,12 @@ export function RecycleBinManager({ onDataChanged, selectedFacultyId }: RecycleB
 
   const getEntityIcon = (type: TrashItem["type"]) => {
     switch (type) {
+      case "faculty":
+        return <Building2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />;
+      case "major":
+        return <GraduationCap className="h-4 w-4 text-indigo-500" />;
+      case "track":
+        return <Layers className="h-4 w-4 text-cyan-500" />;
       case "course":
         return <BookOpen className="h-4 w-4 text-blue-500" />;
       case "professor":
@@ -219,6 +229,12 @@ export function RecycleBinManager({ onDataChanged, selectedFacultyId }: RecycleB
 
   const getEntityLabel = (type: TrashItem["type"]) => {
     switch (type) {
+      case "faculty":
+        return "دانشکده";
+      case "major":
+        return "رشته";
+      case "track":
+        return "گرایش";
       case "course":
         return "درس";
       case "professor":
@@ -362,6 +378,54 @@ export function RecycleBinManager({ onDataChanged, selectedFacultyId }: RecycleB
                 <span>همه موارد</span>
                 <Badge variant="secondary" className="h-4 px-1.5 text-[10px] font-mono">
                   {counts.all}
+                </Badge>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("faculty")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                  activeTab === "faculty"
+                    ? "bg-background text-primary shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Building2 className="h-3.5 w-3.5 text-indigo-500" />
+                <span>دانشکده‌ها</span>
+                <Badge variant="secondary" className="h-4 px-1.5 text-[10px] font-mono">
+                  {counts.faculty}
+                </Badge>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("major")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                  activeTab === "major"
+                    ? "bg-background text-primary shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <GraduationCap className="h-3.5 w-3.5 text-cyan-500" />
+                <span>رشته‌ها</span>
+                <Badge variant="secondary" className="h-4 px-1.5 text-[10px] font-mono">
+                  {counts.major}
+                </Badge>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("track")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                  activeTab === "track"
+                    ? "bg-background text-primary shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Layers className="h-3.5 w-3.5 text-violet-500" />
+                <span>گرایش‌ها</span>
+                <Badge variant="secondary" className="h-4 px-1.5 text-[10px] font-mono">
+                  {counts.track}
                 </Badge>
               </button>
 

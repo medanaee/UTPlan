@@ -515,7 +515,6 @@ export default function AdminDashboardPage() {
             {activeTab === "trash" && (
               <RecycleBinManager
                 onDataChanged={loadAllData}
-                selectedFacultyId={selectedFacultyId}
               />
             )}
           </div>
