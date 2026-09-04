@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  getProfessors,
   getFaculties,
-  createProfessor,
-  updateProfessor,
-  deleteProfessorsByFaculty,
+  getD1,
 } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
 
@@ -54,6 +51,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const d1 = getD1();
+    if (!d1) {
+      return NextResponse.json({ success: false, message: "پایگاه داده در دسترس نیست." }, { status: 500 });
+    }
+
     // 1. Resolve Target Faculty
     const existingFaculties = await getFaculties();
     if (!targetFacultyId || !existingFaculties.some((f) => f.id === targetFacultyId)) {
@@ -68,12 +70,10 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Fetch professors of target faculty (including soft-deleted for seamless code reuse/restoration)
-    const { results: allProfRows } = await (async () => {
-      const { getD1 } = await import("@/lib/db/client");
-      const d1 = getD1();
-      if (!d1) return { results: [] };
-      return await d1.prepare("SELECT * FROM professors WHERE faculty_id = ?").bind(targetFacultyId).all();
-    })();
+    const { results: allProfRows } = await d1
+      .prepare("SELECT * FROM professors WHERE faculty_id = ?")
+      .bind(targetFacultyId)
+      .all();
 
     // Code is the ONLY matching criterion
     const profCodeMap = new Map<string, any>(); // code -> prof
@@ -85,6 +85,17 @@ export async function POST(request: NextRequest) {
     let createdCount = 0;
     let updatedCount = 0;
     const errors: string[] = [];
+
+    function chunkArray<T>(items: T[], size: number): T[][] {
+      const chunks: T[][] = [];
+      for (let i = 0; i < items.length; i += size) {
+        chunks.push(items.slice(i, i + size));
+      }
+      return chunks;
+    }
+
+    const stmts: any[] = [];
+    const now = new Date().toISOString();
 
     // 3. Process each professor item
     for (const item of rawList) {
@@ -107,7 +118,7 @@ export async function POST(request: NextRequest) {
       // 3.3 Optional avatarUrl
       const cleanAvatarUrl = item.avatarUrl && typeof item.avatarUrl === "string" && item.avatarUrl.trim()
         ? item.avatarUrl.trim()
-        : undefined;
+        : null;
 
       // 3.4 Title: optional, default to "استاد تمام"
       const cleanTitle = (item.title && typeof item.title === "string" && item.title.trim())
@@ -120,7 +131,7 @@ export async function POST(request: NextRequest) {
         : "";
 
       // 3.6 Links: optional, strictly allowed keys ["website", "scholar"]
-      let cleanLinks: Record<string, string> | undefined = undefined;
+      let cleanLinks: Record<string, string> | null = null;
       if (item.links && typeof item.links === "object") {
         const filteredLinks: Record<string, string> = {};
         if (item.links.website && typeof item.links.website === "string" && item.links.website.trim()) {
@@ -133,50 +144,58 @@ export async function POST(request: NextRequest) {
           cleanLinks = filteredLinks;
         }
       }
+      const linksStr = cleanLinks ? JSON.stringify(cleanLinks) : null;
 
       // 3.7 Matching strictly by Code
       const existingMatch = profCodeMap.get(cleanCode);
 
       if (existingMatch) {
         // Update existing professor (and restore if previously soft-deleted)
-        try {
-          await updateProfessor(existingMatch.id, {
-            facultyId: targetFacultyId,
-            code: cleanCode,
-            firstName: rawFirstName,
-            lastName: rawLastName,
-            name: rawFullName,
-            avatarUrl: cleanAvatarUrl !== undefined ? cleanAvatarUrl : (existingMatch.avatar_url || existingMatch.avatarUrl),
-            title: cleanTitle,
-            email: cleanEmail || existingMatch.email || "",
-            links: cleanLinks !== undefined ? cleanLinks : existingMatch.links,
-            deletedAt: null,
-          });
-          updatedCount++;
-        } catch (err: any) {
-          errors.push(`خطا در ویرایش استاد ${rawFullName} (${cleanCode}): ${err?.message || "خطای نامشخص"}`);
-        }
+        stmts.push(
+          d1.prepare(`
+            UPDATE professors
+            SET faculty_id = ?, first_name = ?, last_name = ?, title = ?, email = ?, avatar_url = COALESCE(?, avatar_url), links = COALESCE(?, links), deleted_at = NULL
+            WHERE id = ?
+          `).bind(
+            targetFacultyId,
+            rawFirstName,
+            rawLastName,
+            cleanTitle,
+            cleanEmail || existingMatch.email || "",
+            cleanAvatarUrl,
+            linksStr,
+            existingMatch.id
+          )
+        );
+        updatedCount++;
       } else {
         // Create new professor
-        try {
-          const newProf = await createProfessor({
-            id: item.id?.trim(),
-            facultyId: targetFacultyId,
-            code: cleanCode,
-            firstName: rawFirstName,
-            lastName: rawLastName,
-            name: rawFullName,
-            avatarUrl: cleanAvatarUrl,
-            title: cleanTitle,
-            email: cleanEmail,
-            links: cleanLinks,
-          });
+        const id = item.id?.trim() || `prf_${crypto.randomUUID().slice(0, 8)}`;
+        stmts.push(
+          d1.prepare(`
+            INSERT INTO professors (id, code, faculty_id, first_name, last_name, title, email, avatar_url, links, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).bind(
+            id,
+            cleanCode,
+            targetFacultyId,
+            rawFirstName,
+            rawLastName,
+            cleanTitle,
+            cleanEmail,
+            cleanAvatarUrl,
+            linksStr,
+            now
+          )
+        );
+        createdCount++;
+        profCodeMap.set(cleanCode, { id, code: cleanCode, email: cleanEmail });
+      }
+    }
 
-          createdCount++;
-          profCodeMap.set(cleanCode, newProf);
-        } catch (err: any) {
-          errors.push(`خطا در ایجاد استاد ${rawFullName} (${cleanCode}): ${err?.message || "خطای نامشخص"}`);
-        }
+    if (stmts.length > 0) {
+      for (const bChunk of chunkArray(stmts, 50)) {
+        await d1.batch(bChunk);
       }
     }
 

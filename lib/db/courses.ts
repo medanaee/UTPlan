@@ -444,6 +444,7 @@ export async function addPrerequisite(
         .run();
     } catch (err) {
       console.error("D1 addPrerequisite error:", err);
+      throw err;
     }
   }
 

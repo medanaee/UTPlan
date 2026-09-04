@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getEvents, getOfferings, createEvent, updateEvent } from "@/lib/db";
+import { getOfferings, getD1 } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
 
 interface IncomingSlot {
@@ -16,6 +16,14 @@ interface IncomingEvent {
   examStartTime?: string;
   examEndTime?: string;
   slots: IncomingSlot[];
+}
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
 }
 
 export async function POST(request: NextRequest) {
@@ -44,6 +52,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const d1 = getD1();
+    if (!d1) {
+      return NextResponse.json({ success: false, message: "پایگاه داده در دسترس نیست." }, { status: 500 });
+    }
+
     // 1. Fetch available offerings for matching
     const allOfferings = await getOfferings(facultyId);
     const offeringMap = new Map<string, (typeof allOfferings)[0]>();
@@ -53,10 +66,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 2. Fetch existing events in target term for code matching (Upsert)
-    const existingEvents = await getEvents({ term, facultyId });
-    const existingMap = new Map<string, (typeof existingEvents)[0]>();
-    for (const evt of existingEvents) {
+    // 2. Fetch existing events in target term for code matching (Upsert - including soft-deleted)
+    const { results: existingRows } = await d1
+      .prepare("SELECT id, code, offering_id FROM course_events WHERE term = ?")
+      .bind(term)
+      .all();
+
+    const existingMap = new Map<string, any>();
+    for (const evt of existingRows || []) {
       if (evt.code) {
         existingMap.set(evt.code.trim().toUpperCase(), evt);
       }
@@ -114,11 +131,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. Execution Pass (Upsert)
+    // 4. Execution Pass (Upsert with D1 batch)
     let createdCount = 0;
     let updatedCount = 0;
     let totalSlots = 0;
     const warnings: string[] = [];
+    const stmts: any[] = [];
+    const now = new Date().toISOString();
 
     for (const item of events) {
       const cleanCode = item.code.trim().toUpperCase();
@@ -142,33 +161,73 @@ export async function POST(request: NextRequest) {
 
       if (existingEvent) {
         // Update existing event
-        await updateEvent(existingEvent.id, {
-          code: cleanCode,
-          offeringId: offering.id,
-          term,
-          location: item.location || "",
-          examDate: item.examDate || "",
-          examStartTime: item.examStartTime || "",
-          examEndTime: item.examEndTime || "",
-          slots: formattedSlots,
-        });
+        stmts.push(
+          d1.prepare(`
+            UPDATE course_events
+            SET offering_id = ?, location = ?, exam_date = ?, exam_start_time = ?, exam_end_time = ?,
+                is_user_custom = 0, user_id = NULL, deleted_at = NULL
+            WHERE id = ?
+          `).bind(
+            offering.id,
+            item.location || "",
+            item.examDate || "",
+            item.examStartTime || "",
+            item.examEndTime || "",
+            existingEvent.id
+          )
+        );
+
+        // Remove old slots and insert new slots
+        stmts.push(
+          d1.prepare("DELETE FROM course_event_slots WHERE event_id = ?").bind(existingEvent.id)
+        );
+
+        for (const slot of formattedSlots) {
+          const slotId = `slot_${crypto.randomUUID().slice(0, 8)}`;
+          stmts.push(
+            d1.prepare("INSERT INTO course_event_slots (id, event_id, day_of_week, start_time, end_time) VALUES (?, ?, ?, ?, ?)")
+              .bind(slotId, existingEvent.id, slot.dayOfWeek, slot.startTime, slot.endTime)
+          );
+        }
         updatedCount++;
       } else {
         // Create new event
-        await createEvent({
-          code: cleanCode,
-          offeringId: offering.id,
-          term,
-          location: item.location || "",
-          examDate: item.examDate || "",
-          examStartTime: item.examStartTime || "",
-          examEndTime: item.examEndTime || "",
-          slots: formattedSlots,
-        });
+        const newEventId = `evt_${crypto.randomUUID().slice(0, 8)}`;
+        stmts.push(
+          d1.prepare(`
+            INSERT INTO course_events (id, code, offering_id, term, location, exam_date, exam_start_time, exam_end_time, is_user_custom, user_id, created_at, deleted_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, NULL)
+          `).bind(
+            newEventId,
+            cleanCode,
+            offering.id,
+            term,
+            item.location || "",
+            item.examDate || "",
+            item.examStartTime || "",
+            item.examEndTime || "",
+            now
+          )
+        );
+
+        for (const slot of formattedSlots) {
+          const slotId = `slot_${crypto.randomUUID().slice(0, 8)}`;
+          stmts.push(
+            d1.prepare("INSERT INTO course_event_slots (id, event_id, day_of_week, start_time, end_time) VALUES (?, ?, ?, ?, ?)")
+              .bind(slotId, newEventId, slot.dayOfWeek, slot.startTime, slot.endTime)
+          );
+        }
         createdCount++;
+        existingMap.set(cleanCode, { id: newEventId, code: cleanCode, offering_id: offering.id });
       }
 
       totalSlots += formattedSlots.length;
+    }
+
+    if (stmts.length > 0) {
+      for (const bChunk of chunkArray(stmts, 50)) {
+        await d1.batch(bChunk);
+      }
     }
 
     return NextResponse.json({

@@ -8,6 +8,7 @@ import {
   addPrerequisite,
   getAllPrerequisites,
   findUserById,
+  getD1,
 } from "@/lib/db";
 import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
 import { wouldCreatePrerequisiteCycle } from "@/lib/graph-utils";
@@ -149,7 +150,23 @@ export async function POST(request: NextRequest) {
     let prereqsAdded = 0;
     const errors: string[] = [];
 
-    // 4. Step 1: Create or Update Courses
+    function chunkArray<T>(items: T[], size: number): T[][] {
+      const chunks: T[][] = [];
+      for (let i = 0; i < items.length; i += size) {
+        chunks.push(items.slice(i, i + size));
+      }
+      return chunks;
+    }
+
+    const d1 = getD1();
+    if (!d1) {
+      return NextResponse.json({ success: false, message: "پایگاه داده در دسترس نیست." }, { status: 500 });
+    }
+
+    // 4. Step 1: Create or Update Courses (Batched)
+    const courseStmts: any[] = [];
+    const now = new Date().toISOString();
+
     for (const item of rawList) {
       if (!item.code || !item.name) {
         errors.push(`سطر بدون کد یا نام درس رد شد: ${JSON.stringify(item)}`);
@@ -168,54 +185,47 @@ export async function POST(request: NextRequest) {
           : rawOff === "none" || rawOff === "عدم ارائه" || rawOff === "نامشخص"
           ? "none"
           : "both";
-      const cleanAbbr = item.abbreviation ? String(item.abbreviation).trim() : undefined;
+      const cleanAbbr = item.abbreviation ? String(item.abbreviation).trim() : null;
       const cleanDesc = item.description || "";
 
       const existingFacultyCourse = facultyCourseCodeMap.get(cleanCode);
 
       if (existingFacultyCourse) {
-        // Update existing course (and restore if previously soft-deleted)
-        try {
-          await updateCourse(existingFacultyCourse.id, {
-            name: cleanName,
-            abbreviation: cleanAbbr,
-            units: cleanUnits,
-            offeredIn: cleanOffered,
-            description: cleanDesc,
-            facultyId: targetFacultyId,
-            deletedAt: null,
-          });
-          updatedCount++;
-          courseCodeToIdMap.set(cleanCode, existingFacultyCourse.id);
-          courseNameToIdMap.set(cleanName.toLowerCase(), existingFacultyCourse.id);
-          if (cleanAbbr) courseAbbrToIdMap.set(cleanAbbr.toUpperCase(), existingFacultyCourse.id);
-        } catch (err: any) {
-          errors.push(`خطا در ویرایش درس ${cleanName} (${cleanCode}): ${err?.message || "خطای نامشخص"}`);
-        }
+        courseStmts.push(
+          d1.prepare(`
+            UPDATE courses
+            SET name = ?, abbreviation = ?, units = ?, offered_in = ?, description = ?, faculty_id = ?, deleted_at = NULL
+            WHERE id = ?
+          `).bind(cleanName, cleanAbbr, cleanUnits, cleanOffered, cleanDesc, targetFacultyId, existingFacultyCourse.id)
+        );
+        updatedCount++;
+        courseCodeToIdMap.set(cleanCode, existingFacultyCourse.id);
+        courseNameToIdMap.set(cleanName.toLowerCase(), existingFacultyCourse.id);
+        if (cleanAbbr) courseAbbrToIdMap.set(cleanAbbr.toUpperCase(), existingFacultyCourse.id);
       } else {
-        // Create new course
-        try {
-          const newCourse = await createCourse({
-            facultyId: targetFacultyId,
-            code: cleanCode,
-            abbreviation: cleanAbbr,
-            name: cleanName,
-            units: cleanUnits,
-            offeredIn: cleanOffered,
-            description: cleanDesc,
-          });
-          createdCount++;
-          courseCodeToIdMap.set(cleanCode, newCourse.id);
-          courseNameToIdMap.set(cleanName.toLowerCase(), newCourse.id);
-          if (cleanAbbr) courseAbbrToIdMap.set(cleanAbbr.toUpperCase(), newCourse.id);
-        } catch (err: any) {
-          errors.push(`خطا در ایجاد درس ${cleanName} (${cleanCode}): ${err?.message || "خطای نامشخص"}`);
-        }
+        const newId = `crs_${crypto.randomUUID().slice(0, 8)}`;
+        courseStmts.push(
+          d1.prepare(`
+            INSERT INTO courses (id, faculty_id, name, code, abbreviation, units, offered_in, description, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).bind(newId, targetFacultyId, cleanName, cleanCode, cleanAbbr, cleanUnits, cleanOffered, cleanDesc, now)
+        );
+        createdCount++;
+        courseCodeToIdMap.set(cleanCode, newId);
+        courseNameToIdMap.set(cleanName.toLowerCase(), newId);
+        if (cleanAbbr) courseAbbrToIdMap.set(cleanAbbr.toUpperCase(), newId);
       }
     }
 
-    // 3. Step 2: Establish Prerequisites, Corequisites, and Recommended Prerequisites
+    if (courseStmts.length > 0) {
+      for (const bChunk of chunkArray(courseStmts, 50)) {
+        await d1.batch(bChunk);
+      }
+    }
+
+    // 3. Step 2: Establish Prerequisites, Corequisites, and Recommended Prerequisites (Batched)
     let allPrereqs = await getAllPrerequisites();
+    const prereqStmts: any[] = [];
 
     // Helper: Find target course ID by reference string
     const resolveTargetId = (refStr: string): string | null => {
@@ -263,13 +273,16 @@ export async function POST(request: NextRequest) {
           if (causesCycle) {
             errors.push(`هشدار: پیش‌نیاز «${reqRef}» برای درس «${item.name}» به دلیل ایجاد چرخه اضافه نشد.`);
           } else {
-            try {
-              const added = await addPrerequisite(sourceCourseId, targetCourseId, "prerequisite");
-              allPrereqs.push(added);
-              prereqsAdded++;
-            } catch (err: any) {
-              errors.push(`خطا در افزودن پیش‌نیاز «${reqRef}»: ${err?.message || ""}`);
-            }
+            const prId = `pr_${crypto.randomUUID().slice(0, 8)}`;
+            prereqStmts.push(
+              d1.prepare(`
+                INSERT INTO prerequisites (id, course_id, required_course_id, type)
+                VALUES (?, ?, ?, 'prerequisite')
+                ON CONFLICT(course_id, required_course_id, type) DO NOTHING
+              `).bind(prId, sourceCourseId, targetCourseId)
+            );
+            allPrereqs.push({ courseId: sourceCourseId, requiredCourseId: targetCourseId, type: "prerequisite" });
+            prereqsAdded++;
           }
         }
       }
@@ -286,13 +299,16 @@ export async function POST(request: NextRequest) {
         );
 
         if (!exists) {
-          try {
-            const added = await addPrerequisite(sourceCourseId, targetCourseId, "corequisite");
-            allPrereqs.push(added);
-            prereqsAdded++;
-          } catch (err: any) {
-            errors.push(`خطا در افزودن هم‌نیاز «${reqRef}»: ${err?.message || ""}`);
-          }
+          const prId = `pr_${crypto.randomUUID().slice(0, 8)}`;
+          prereqStmts.push(
+            d1.prepare(`
+              INSERT INTO prerequisites (id, course_id, required_course_id, type)
+              VALUES (?, ?, ?, 'corequisite')
+              ON CONFLICT(course_id, required_course_id, type) DO NOTHING
+            `).bind(prId, sourceCourseId, targetCourseId)
+          );
+          allPrereqs.push({ courseId: sourceCourseId, requiredCourseId: targetCourseId, type: "corequisite" });
+          prereqsAdded++;
         }
       }
 
@@ -308,14 +324,23 @@ export async function POST(request: NextRequest) {
         );
 
         if (!exists) {
-          try {
-            const added = await addPrerequisite(sourceCourseId, targetCourseId, "recommended");
-            allPrereqs.push(added);
-            prereqsAdded++;
-          } catch (err: any) {
-            errors.push(`خطا در افزودن پیش‌نیاز پیشنهادی «${reqRef}»: ${err?.message || ""}`);
-          }
+          const prId = `pr_${crypto.randomUUID().slice(0, 8)}`;
+          prereqStmts.push(
+            d1.prepare(`
+              INSERT INTO prerequisites (id, course_id, required_course_id, type)
+              VALUES (?, ?, ?, 'recommended')
+              ON CONFLICT(course_id, required_course_id, type) DO NOTHING
+            `).bind(prId, sourceCourseId, targetCourseId)
+          );
+          allPrereqs.push({ courseId: sourceCourseId, requiredCourseId: targetCourseId, type: "recommended" });
+          prereqsAdded++;
         }
+      }
+    }
+
+    if (prereqStmts.length > 0) {
+      for (const bChunk of chunkArray(prereqStmts, 100)) {
+        await d1.batch(bChunk);
       }
     }
 

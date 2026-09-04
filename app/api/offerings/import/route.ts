@@ -3,19 +3,26 @@ import {
   getCourses,
   getProfessors,
   getFaculties,
-  createOffering,
-  updateOffering,
-  deleteOfferingsByFaculty,
+  getD1,
 } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
 
 interface ImportOfferingItem {
+  id?: string;
   code?: string;
   courseCode?: string;
   mainProfessor?: string;
   professors?: string[];
   description?: string;
   finalizedSemesters?: string[];
+}
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
 }
 
 export async function POST(request: NextRequest) {
@@ -46,6 +53,11 @@ export async function POST(request: NextRequest) {
         { success: false, message: "لیست ارائه‌های ارسالی خالی یا نامعتبر است." },
         { status: 400 }
       );
+    }
+
+    const d1 = getD1();
+    if (!d1) {
+      return NextResponse.json({ success: false, message: "پایگاه داده در دسترس نیست." }, { status: 500 });
     }
 
     // 1. Resolve Target Faculty
@@ -80,19 +92,14 @@ export async function POST(request: NextRequest) {
     });
 
     // Fetch all existing offerings of target faculty (including soft-deleted for code reuse/restoration)
-    const { results: allOfferingRows } = await (async () => {
-      const { getD1 } = await import("@/lib/db/client");
-      const d1 = getD1();
-      if (!d1) return { results: [] };
-      return await d1
-        .prepare(
-          `SELECT o.* FROM course_offerings o
-           JOIN courses c ON o.course_id = c.id
-           WHERE c.faculty_id = ?`
-        )
-        .bind(targetFacultyId)
-        .all();
-    })();
+    const { results: allOfferingRows } = await d1
+      .prepare(
+        `SELECT o.* FROM course_offerings o
+         JOIN courses c ON o.course_id = c.id
+         WHERE c.faculty_id = ?`
+      )
+      .bind(targetFacultyId)
+      .all();
 
     const offeringCodeMap = new Map<string, any>();
     (allOfferingRows || []).forEach((o: any) => {
@@ -100,21 +107,16 @@ export async function POST(request: NextRequest) {
     });
 
     // Fetch existing offerings outside target faculty to protect against overwriting
-    const { results: otherOfferingRows } = await (async () => {
-      const { getD1 } = await import("@/lib/db/client");
-      const d1 = getD1();
-      if (!d1) return { results: [] };
-      return await d1
-        .prepare(
-          `SELECT o.code, f.name AS faculty_name
-           FROM course_offerings o
-           JOIN courses c ON o.course_id = c.id
-           JOIN faculties f ON c.faculty_id = f.id
-           WHERE c.faculty_id != ? AND o.deleted_at IS NULL`
-        )
-        .bind(targetFacultyId)
-        .all();
-    })();
+    const { results: otherOfferingRows } = await d1
+      .prepare(
+        `SELECT o.code, f.name AS faculty_name
+         FROM course_offerings o
+         JOIN courses c ON o.course_id = c.id
+         JOIN faculties f ON c.faculty_id = f.id
+         WHERE c.faculty_id != ? AND o.deleted_at IS NULL`
+      )
+      .bind(targetFacultyId)
+      .all();
 
     const otherOfferingCodeMap = new Map<string, string>();
     (otherOfferingRows || []).forEach((o: any) => {
@@ -124,6 +126,8 @@ export async function POST(request: NextRequest) {
     let createdCount = 0;
     let updatedCount = 0;
     const errors: string[] = [];
+    const stmts: any[] = [];
+    const now = new Date().toISOString();
 
     // 3. Process each offering item
     for (const item of rawList) {
@@ -205,35 +209,71 @@ export async function POST(request: NextRequest) {
       const existingMatch = offeringCodeMap.get(offeringCode);
 
       if (existingMatch) {
-        // Update and restore if soft-deleted
-        try {
-          await updateOffering(existingMatch.id, {
-            courseId: matchedCourse.id,
-            professorIds: resolvedProfIds,
-            code: offeringCode,
-            description: cleanDesc,
-            finalizedSemesters: cleanSemesters,
-            deletedAt: null,
-          });
-          updatedCount++;
-        } catch (err: any) {
-          errors.push(`خطا در به‌روزرسانی ارائه «${offeringCode}»: ${err?.message || "نامشخص"}`);
+        // Update offering and restore if soft-deleted
+        const desc = cleanDesc !== undefined ? cleanDesc : (existingMatch.description || null);
+        const semStr = cleanSemesters !== undefined ? JSON.stringify(cleanSemesters) : (existingMatch.finalized_semesters || "[]");
+
+        stmts.push(
+          d1.prepare(`
+            UPDATE course_offerings
+            SET course_id = ?, code = ?, description = ?, finalized_semesters = ?, deleted_at = NULL
+            WHERE id = ?
+          `).bind(matchedCourse.id, offeringCode, desc, semStr, existingMatch.id)
+        );
+
+        stmts.push(
+          d1.prepare("DELETE FROM offering_professors WHERE offering_id = ?").bind(existingMatch.id)
+        );
+
+        for (let i = 0; i < resolvedProfIds.length; i++) {
+          const pId = resolvedProfIds[i];
+          const isPrimary = i === 0 ? 1 : 0;
+          const opId = `op_${existingMatch.id}_${pId}`;
+          stmts.push(
+            d1.prepare(`
+              INSERT INTO offering_professors (id, offering_id, professor_id, is_primary, created_at)
+              VALUES (?, ?, ?, ?, ?)
+            `).bind(opId, existingMatch.id, pId, isPrimary, now)
+          );
         }
+        updatedCount++;
       } else {
         // Create new offering
-        try {
-          const newOff = await createOffering({
-            courseId: matchedCourse.id,
-            professorIds: resolvedProfIds,
-            code: offeringCode,
-            description: cleanDesc,
-            finalizedSemesters: cleanSemesters || [],
-          });
-          createdCount++;
-          offeringCodeMap.set(offeringCode, newOff);
-        } catch (err: any) {
-          errors.push(`خطا در ایجاد ارائه «${offeringCode}»: ${err?.message || "نامشخص"}`);
+        const newId = item.id?.trim() || `off_${crypto.randomUUID().slice(0, 8)}`;
+        const desc = cleanDesc || null;
+        const semStr = JSON.stringify(cleanSemesters || []);
+
+        stmts.push(
+          d1.prepare(`
+            INSERT INTO course_offerings (id, code, course_id, description, finalized_semesters, created_at, deleted_at)
+            VALUES (?, ?, ?, ?, ?, ?, NULL)
+          `).bind(newId, offeringCode, matchedCourse.id, desc, semStr, now)
+        );
+
+        for (let i = 0; i < resolvedProfIds.length; i++) {
+          const pId = resolvedProfIds[i];
+          const isPrimary = i === 0 ? 1 : 0;
+          const opId = `op_${newId}_${pId}`;
+          stmts.push(
+            d1.prepare(`
+              INSERT INTO offering_professors (id, offering_id, professor_id, is_primary, created_at)
+              VALUES (?, ?, ?, ?, ?)
+            `).bind(opId, newId, pId, isPrimary, now)
+          );
         }
+        createdCount++;
+        offeringCodeMap.set(offeringCode, {
+          id: newId,
+          code: offeringCode,
+          description: desc,
+          finalized_semesters: semStr,
+        });
+      }
+    }
+
+    if (stmts.length > 0) {
+      for (const bChunk of chunkArray(stmts, 50)) {
+        await d1.batch(bChunk);
       }
     }
 
