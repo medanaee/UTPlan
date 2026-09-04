@@ -266,12 +266,18 @@ export default function ProfilePage() {
               تعیین مشخصات دانشجو، دانشکده، رشته، گرایش و نیمسال ورودی برای اتصال خودکار به چارت‌ها
             </p>
           </div>
-          <Link href="/charts">
-            <Button variant="outline" size="sm" className="h-8 gap-1 text-xs">
-              <ArrowRight className="h-3.5 w-3.5" />
-              مشاهده چارت‌ها
+          <Button
+              type="submit"
+              disabled={isSaving || uploadingImage}
+              className="font-semibold"
+            >
+              {isSaving ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              {isSaving ? "در حال ذخیره‌سازی..." : "ذخیره تغییرات پروفایل"}
             </Button>
-          </Link>
         </div>
 
         {/* Notifications */}
@@ -304,7 +310,7 @@ export default function ProfilePage() {
               </CardDescription>
             </CardHeader>
 
-            <CardContent className="p-4 sm:p-6 space-y-4">
+            <CardContent className="space-y-4">
               {/* Avatar Upload */}
               <div className="flex items-center gap-4 p-3 rounded-2xl border border-border/70 bg-muted/20">
                 <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-2 border-border/80 bg-background overflow-hidden shadow-2xs">
@@ -341,7 +347,7 @@ export default function ProfilePage() {
                       <Button
                         type="button"
                         variant="ghost"
-                        size="sm"
+                      
                         onClick={() => setAvatarUrl("")}
                         className="h-7 text-xs text-muted-foreground hover:text-destructive px-2"
                       >
@@ -361,7 +367,6 @@ export default function ProfilePage() {
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     placeholder="مثلاً علی"
-                    className="h-9 text-xs"
                   />
                 </div>
 
@@ -372,7 +377,6 @@ export default function ProfilePage() {
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     placeholder="مثلاً رضایی"
-                    className="h-9 text-xs"
                   />
                 </div>
 
@@ -381,7 +385,7 @@ export default function ProfilePage() {
                   <Input
                     disabled
                     value={user?.email || ""}
-                    className="h-9 text-xs bg-muted/50 cursor-not-allowed opacity-80"
+                    className="bg-muted/50 cursor-not-allowed opacity-80"
                     dir="ltr"
                   />
                 </div>
@@ -403,7 +407,7 @@ export default function ProfilePage() {
               </CardDescription>
             </CardHeader>
 
-            <CardContent className="p-4 sm:p-6 space-y-4">
+            <CardContent className="space-y-4">
               {/* Faculty & Major */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
@@ -424,7 +428,7 @@ export default function ProfilePage() {
                       }
                     }}
                   >
-                    <SelectTrigger size="sm" className="w-full text-xs h-9">
+                    <SelectTrigger className="w-full text-xs h-9">
                       <SelectValue placeholder="انتخاب دانشکده..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -452,7 +456,7 @@ export default function ProfilePage() {
                       }
                     }}
                   >
-                    <SelectTrigger size="sm" className="w-full text-xs h-9">
+                    <SelectTrigger className="w-full text-xs h-9">
                       <SelectValue placeholder="انتخاب رشته..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -477,7 +481,7 @@ export default function ProfilePage() {
                     value={trackId}
                     onValueChange={(val) => val && setTrackId(val)}
                   >
-                    <SelectTrigger size="sm" className="w-full text-xs h-9">
+                    <SelectTrigger className="w-full text-xs h-9">
                       <SelectValue placeholder="انتخاب گرایش..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -497,7 +501,7 @@ export default function ProfilePage() {
                   <Label className="text-xs font-semibold">نیمسال ورود به دانشگاه</Label>
                   <div className="grid grid-cols-2 gap-2">
                     <Select items={yearOptions} value={entryYear} onValueChange={(val) => val && setEntryYear(val)}>
-                      <SelectTrigger size="sm" className="w-full text-xs h-9">
+                      <SelectTrigger className="w-full text-xs h-9">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -512,7 +516,7 @@ export default function ProfilePage() {
                     </Select>
 
                     <Select items={semesterTypeOptions} value={entryType} onValueChange={(val) => val && setEntryType(val)}>
-                      <SelectTrigger size="sm" className="w-full text-xs h-9">
+                      <SelectTrigger className="w-full text-xs h-9">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -553,7 +557,7 @@ export default function ProfilePage() {
               </CardDescription>
             </CardHeader>
 
-            <CardContent className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold">رمز عبور فعلی</Label>
                 <Input
@@ -561,7 +565,6 @@ export default function ProfilePage() {
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="h-9 text-xs"
                 />
               </div>
 
@@ -572,7 +575,6 @@ export default function ProfilePage() {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="حداقل ۶ کاراکتر"
-                  className="h-9 text-xs"
                 />
               </div>
 
@@ -583,27 +585,10 @@ export default function ProfilePage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="تکرار رمز عبور جدید"
-                  className="h-9 text-xs"
                 />
               </div>
             </CardContent>
           </Card>
-
-          {/* Save Button */}
-          <div className="flex items-center justify-end gap-3 pt-2">
-            <Button
-              type="submit"
-              disabled={isSaving || uploadingImage}
-              className="h-10 px-6 gap-2 text-xs font-semibold shadow-xs"
-            >
-              {isSaving ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4" />
-              )}
-              {isSaving ? "در حال ذخیره‌سازی..." : "ذخیره تغییرات پروفایل"}
-            </Button>
-          </div>
         </form>
       </main>
     </div>
