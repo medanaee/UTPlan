@@ -28,6 +28,7 @@ export async function getEvents(
     let query = `
       SELECT e.id, e.code, e.offering_id, e.term, e.location, e.exam_date, e.exam_start_time, e.exam_end_time,
              e.is_user_custom, e.user_id, e.global_event_id, e.created_at, e.deleted_at,
+             o.deleted_at AS offering_deleted_at,
              c.id AS course_id, c.name AS course_name, c.units AS course_units,
              c.faculty_id AS faculty_id, f.name AS faculty_name,
              p.id AS professor_id, (p.first_name || ' ' || p.last_name) AS professor_name, p.title AS professor_title, p.avatar_url AS professor_avatar_url
@@ -37,7 +38,7 @@ export async function getEvents(
       LEFT JOIN faculties f ON c.faculty_id = f.id
       LEFT JOIN offering_professors op ON op.offering_id = o.id AND op.is_primary = 1
       LEFT JOIN professors p ON op.professor_id = p.id
-      WHERE o.deleted_at IS NULL AND e.deleted_at IS NULL
+      WHERE e.deleted_at IS NULL
     `;
     const params: any[] = [];
     if (eventId) {
@@ -134,6 +135,7 @@ export async function getEvents(
         professorName: profNames || e.professor_name || "استاد نامشخص",
         professorTitle: primaryProf?.title || e.professor_title,
         professorAvatarUrl: primaryProf?.avatar_url || e.professor_avatar_url,
+        isOfferingDeleted: Boolean(e.offering_deleted_at),
         slots,
       };
     });

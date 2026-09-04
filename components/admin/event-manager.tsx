@@ -748,6 +748,14 @@ export function EventManager({
                                   {evt.facultyName || "لینک‌شده"}
                                 </Badge>
                               )}
+                              {evt.isOfferingDeleted && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[9px] px-1.5 py-0 text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10"
+                                >
+                                  ارائه در سطل بازیافت
+                                </Badge>
+                              )}
                             </div>
                             <div className="text-[10px] text-muted-foreground">
                               {evt.professorName} ({evt.professorTitle || "استاد"})
@@ -954,13 +962,26 @@ export function EventManager({
                 ارائه درس (درس و استاد مدرس) *
               </Label>
               <Combobox
-                items={offerings.map((o) => ({
-                  value: o.id,
-                  label: `${o.courseName || "درس"} — ${o.professorName || "استاد"}`,
-                  badge: o.courseCode || undefined,
-                  sublabel: o.professorTitle || undefined,
-                  keywords: [o.courseName || "", o.courseCode || "", o.professorName || ""],
-                }))}
+                items={[
+                  ...offerings.map((o) => ({
+                    value: o.id,
+                    label: `${o.courseName || "درس"} — ${o.professorName || "استاد"}`,
+                    badge: o.courseCode || undefined,
+                    sublabel: o.professorTitle || undefined,
+                    keywords: [o.courseName || "", o.courseCode || "", o.professorName || ""],
+                  })),
+                  ...(editingEvent && editingEvent.offeringId && !offerings.some((o) => o.id === editingEvent.offeringId)
+                    ? [
+                        {
+                          value: editingEvent.offeringId,
+                          label: `${editingEvent.courseName || "درس"} — ${editingEvent.professorName || "استاد"} (ارائه در سطل بازیافت)`,
+                          badge: "حذف‌شده",
+                          sublabel: "ارائه در سطل بازیافت قرار دارد",
+                          keywords: [editingEvent.courseName || "", editingEvent.professorName || ""],
+                        },
+                      ]
+                    : []),
+                ]}
                 value={selectedOfferingId}
                 onChange={(val) => {
                   setSelectedOfferingId(val);

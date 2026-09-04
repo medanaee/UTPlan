@@ -259,6 +259,7 @@ export interface CourseEvent {
   facultyName?: string;
   professorName?: string;
   professorTitle?: string;
+  isOfferingDeleted?: boolean;
   // Slots
   slots?: CourseEventSlot[];
 }
