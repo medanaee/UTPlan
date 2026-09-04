@@ -740,8 +740,10 @@ export async function deleteVisualCategory(id: string): Promise<boolean> {
       await deleteVisualCategory((child as any).id);
     }
 
-    // Delete connected course assignments first to satisfy foreign key constraint
-    await d1.prepare("DELETE FROM track_course_assignments WHERE visual_category_id = ?").bind(id).run();
+    // Nullify visual_category_id for assigned courses so rule_category_id is NOT lost
+    await d1.prepare("UPDATE track_course_assignments SET visual_category_id = NULL WHERE visual_category_id = ?").bind(id).run();
+    // Clean up orphan rows that have neither visual nor rule category
+    await d1.prepare("DELETE FROM track_course_assignments WHERE visual_category_id IS NULL AND rule_category_id IS NULL").run();
     await d1.prepare("DELETE FROM visual_categories WHERE id = ?").bind(id).run();
     return true;
   } catch (err) {
@@ -839,18 +841,19 @@ export async function deleteRuleCategory(id: string): Promise<boolean> {
   if (!d1) return false;
 
   try {
-    // Delete assignments for child categories and children first
+    // Recursively handle child categories first
     const { results: childRows } = await d1
       .prepare("SELECT id FROM rule_categories WHERE parent_id = ?")
       .bind(id)
       .all();
     for (const child of childRows || []) {
-      await d1.prepare("DELETE FROM track_course_assignments WHERE rule_category_id = ?").bind((child as any).id).run();
+      await deleteRuleCategory((child as any).id);
     }
-    await d1.prepare("DELETE FROM rule_categories WHERE parent_id = ?").bind(id).run();
 
-    // Delete assignments for this rule category
-    await d1.prepare("DELETE FROM track_course_assignments WHERE rule_category_id = ?").bind(id).run();
+    // Nullify assignments for this rule category so visual_category_id is NOT lost
+    await d1.prepare("UPDATE track_course_assignments SET rule_category_id = NULL WHERE rule_category_id = ?").bind(id).run();
+    // Clean up orphan rows that have neither visual nor rule category
+    await d1.prepare("DELETE FROM track_course_assignments WHERE visual_category_id IS NULL AND rule_category_id IS NULL").run();
     await d1.prepare("DELETE FROM rule_categories WHERE id = ?").bind(id).run();
     return true;
   } catch (err) {
@@ -1316,15 +1319,20 @@ export async function clearCategoryCourses(
   try {
     if (type === "visual") {
       await d1
-        .prepare("DELETE FROM track_course_assignments WHERE track_id = ? AND visual_category_id = ?")
+        .prepare("UPDATE track_course_assignments SET visual_category_id = NULL WHERE track_id = ? AND visual_category_id = ?")
         .bind(trackId, categoryId)
         .run();
     } else {
       await d1
-        .prepare("DELETE FROM track_course_assignments WHERE track_id = ? AND rule_category_id = ?")
+        .prepare("UPDATE track_course_assignments SET rule_category_id = NULL WHERE track_id = ? AND rule_category_id = ?")
         .bind(trackId, categoryId)
         .run();
     }
+    // Clean up orphan rows that have neither visual nor rule category
+    await d1
+      .prepare("DELETE FROM track_course_assignments WHERE track_id = ? AND visual_category_id IS NULL AND rule_category_id IS NULL")
+      .bind(trackId)
+      .run();
     return true;
   } catch (err) {
     console.error("D1 clearCategoryCourses error:", err);
