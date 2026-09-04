@@ -475,7 +475,7 @@ export default function AdminDashboardPage() {
                       }}
                     />
 
-                    <RuleSandboxTester
+                    {/* <RuleSandboxTester
                       trackId={selectedTrackId}
                       trackName={tracks.find((t) => t.id === selectedTrackId)?.name || "گرایش انتخابی"}
                       rulesTree={tracks.find((t) => t.id === selectedTrackId)?.rulesTree}
@@ -483,7 +483,7 @@ export default function AdminDashboardPage() {
                       courses={courses}
                       prerequisites={courses.flatMap((c) => c.prerequisites || [])}
                       trackAssignments={trackAssignments}
-                    />
+                    /> */}
                   </>
                 ) : (
                   <Card className="p-8 text-center text-xs text-muted-foreground">

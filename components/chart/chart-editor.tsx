@@ -35,7 +35,10 @@ import {
   ZoomOut,
   PanelRightClose,
   PanelRightOpen,
+  Camera,
+  GraduationCap,
 } from "lucide-react";
+import { toPng } from "html-to-image";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -176,6 +179,7 @@ export function ChartEditor({
   const [isCloning, setIsCloning] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isExportingImage, setIsExportingImage] = useState(false);
 
   // Clone approved / read-only chart for current user
   const handleCloneForMe = async () => {
@@ -389,7 +393,9 @@ export function ChartEditor({
 
     const content = contentRef.current;
     const contentRect = content.getBoundingClientRect();
-    const zoomFactor = Math.max(0.1, zoom / 100);
+    const zoomFactor = (content.style as any).zoom
+      ? parseFloat((content.style as any).zoom) || 1
+      : Math.max(0.1, zoom / 100);
     const curves: typeof svgCurves = [];
 
     chart.semesters.forEach((sem) => {
@@ -664,6 +670,80 @@ export function ChartEditor({
     }
   };
 
+  // Export High-Quality Image of the Entire Chart
+  const handleExportImage = async () => {
+    if (!contentRef.current || isExportingImage) return;
+
+    try {
+      setIsExportingImage(true);
+      const content = contentRef.current;
+
+      // 1. Temporarily normalize zoom to 1 and add padding for a framed, crisp export
+      content.style.zoom = "1";
+      content.style.padding = "20px";
+
+      // 2. Recalculate SVG curves for zoom = 1
+      updateSvgCurves();
+
+      // 3. Allow React and DOM to complete reflow and paint
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      // 4. Match current theme background so the PNG has a solid, crisp background
+      const isDark = document.documentElement.classList.contains("dark");
+      const backgroundColor = isDark ? "#09090b" : "#ffffff";
+
+      // 5. Generate high-resolution PNG using html-to-image
+      let dataUrl: string;
+      try {
+        dataUrl = await toPng(content, {
+          pixelRatio: 2,
+          cacheBust: true,
+          backgroundColor,
+          filter: (node: HTMLElement) => {
+            if (node?.getAttribute && node.getAttribute("data-no-export") === "true") {
+              return false;
+            }
+            return true;
+          },
+        });
+      } catch (firstErr) {
+        console.warn("Retrying chart image export at 1.5x with skipFonts...", firstErr);
+        dataUrl = await toPng(content, {
+          pixelRatio: 1.5,
+          skipFonts: true,
+          backgroundColor,
+          filter: (node: HTMLElement) => {
+            if (node?.getAttribute && node.getAttribute("data-no-export") === "true") {
+              return false;
+            }
+            return true;
+          },
+        });
+      }
+
+      // 6. Trigger automatic download
+      const chartTitle = (title || chart.title || "چارت تحصیلی").trim();
+      const safeTitle = chartTitle.replace(/[/\\?%*:|"<>]/g, "-").trim();
+      const link = document.createElement("a");
+      link.download = `${safeTitle || "chart"}.png`;
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error("Failed to export chart image:", err);
+      alert("خطا در تهیه خروجی تصویر از چارت. لطفاً دوباره تلاش کنید.");
+    } finally {
+      // 7. Restore original zoom and padding, then recalculate SVG curves
+      if (contentRef.current) {
+        contentRef.current.style.zoom = `${zoom / 100}`;
+        contentRef.current.style.padding = "";
+        updateSvgCurves();
+      }
+      setIsExportingImage(false);
+    }
+  };
+
   // Helper: Get category ID and all its descendants recursively
   const getCategoryAndDescendantIds = useCallback((catId: string, categories: VisualCategory[]): Set<string> => {
     const set = new Set<string>();
@@ -922,6 +1002,25 @@ export function ChartEditor({
                   <span className="hidden sm:inline">بارگذاری چارت مصوب / پیشنهادی</span>
                 </Button>
               )}
+
+              {/* Export High-Quality Image Button */}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleExportImage}
+                disabled={isExportingImage}
+                title="دریافت خروجی تصویری باکیفیت از کل چارت (PNG)"
+                className="h-8 gap-1.5 text-xs px-3 rounded-lg border border-border bg-background/60 text-foreground hover:bg-muted/80 transition-all shadow-2xs flex items-center cursor-pointer"
+              >
+                {isExportingImage ? (
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin text-primary shrink-0" />
+                ) : (
+                  <Camera className="h-3.5 w-3.5 text-primary shrink-0" />
+                )}
+                <span className="hidden sm:inline">
+                  {isExportingImage ? "در حال آماده‌سازی..." : "خروجی تصویر"}
+                </span>
+              </Button>
 
               {/* Save Button OR Clone Button */}
               {isReadOnly ? (
@@ -1466,6 +1565,7 @@ export function ChartEditor({
                   </svg>
                 )}
 
+
                 {/* Semesters Stacked Vertically (Full Width, z-10) */}
                 <div className="space-y-3 w-full relative z-10 pb-6">
                   {chart.semesters.map((sem) => {
@@ -1526,7 +1626,7 @@ export function ChartEditor({
                           </div>
 
                           {/* Quick Link to Semester Weekly Schedule Planner */}
-                          <div className="flex items-center">
+                          <div className="flex items-center" data-no-export="true">
                             <Button
                               type="button"
                               variant="ghost"
