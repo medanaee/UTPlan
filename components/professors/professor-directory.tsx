@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Professor, Faculty } from "@/lib/types";
+import { usePersistedState } from "@/lib/hooks/use-persisted-state";
 
 interface ProfessorDirectoryProps {
   initialProfessors?: Professor[];
@@ -42,7 +43,7 @@ export function ProfessorDirectory({
   const [loading, setLoading] = useState(initialProfessors.length === 0);
 
   const [search, setSearch] = useState("");
-  const [selectedFaculty, setSelectedFaculty] = useState<string>("all");
+  const [selectedFaculty, setSelectedFaculty] = usePersistedState<string>("ut_ece_public_faculty", "all");
 
   useEffect(() => {
     async function loadData() {

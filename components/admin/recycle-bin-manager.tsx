@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { TrashItem } from "@/app/api/admin/trash/route";
 import { DependencyResolutionDialog } from "./dependency-resolution-dialog";
+import { usePersistedState } from "@/lib/hooks/use-persisted-state";
 
 interface RecycleBinManagerProps {
   onDataChanged?: () => void;
@@ -34,7 +35,7 @@ interface RecycleBinManagerProps {
 }
 
 export function RecycleBinManager({ onDataChanged, selectedFacultyId }: RecycleBinManagerProps) {
-  const [activeTab, setActiveTab] = useState<"all" | "faculty" | "major" | "track" | "course" | "professor" | "offering" | "event">("all");
+  const [activeTab, setActiveTab] = usePersistedState<"all" | "faculty" | "major" | "track" | "course" | "professor" | "offering" | "event">("ut_ece_trash_active_tab", "all");
   const [items, setItems] = useState<TrashItem[]>([]);
   const [counts, setCounts] = useState({
     all: 0,

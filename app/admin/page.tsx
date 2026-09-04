@@ -59,26 +59,14 @@ export default function AdminDashboardPage() {
     selectedFacultyId,
     selectedMajorId,
     selectedTrackId,
+    activeTab,
+    setActiveTab,
+    isSidebarCollapsed,
+    setIsSidebarCollapsed,
     actionMessage,
     loadAllData,
     setActionMessage,
   } = useAdminStore();
-
-  const [activeTab, setActiveTab] = useState<
-    | "structure"
-    | "courses"
-    | "offerings"
-    | "events"
-    | "professors"
-    | "categories"
-    | "approved-charts"
-    | "rules"
-    | "users"
-    | "backup"
-    | "trash"
-  >("structure");
-
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Authentication check and initial data load
   useEffect(() => {

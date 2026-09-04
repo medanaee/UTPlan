@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { CourseOffering, Faculty } from "@/lib/types";
+import { usePersistedState } from "@/lib/hooks/use-persisted-state";
 
 interface OfferingDirectoryProps {
   initialOfferings?: CourseOffering[];
@@ -44,7 +45,7 @@ export function OfferingDirectory({
   const [loading, setLoading] = useState(initialOfferings.length === 0);
 
   const [search, setSearch] = useState("");
-  const [selectedFaculty, setSelectedFaculty] = useState<string>("all");
+  const [selectedFaculty, setSelectedFaculty] = usePersistedState<string>("ut_ece_public_faculty", "all");
 
   useEffect(() => {
     async function loadData() {

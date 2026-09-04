@@ -42,6 +42,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Navbar } from "@/components/navbar";
+import { usePersistedState } from "@/lib/hooks/use-persisted-state";
 import type { StudentChart, Track, UserSession } from "@/lib/types";
 
 export default function ChartsPage() {
@@ -54,8 +55,8 @@ export default function ChartsPage() {
   // New Chart Modal
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
-  const [selectedTrackId, setSelectedTrackId] = useState("");
-  const [selectedTemplateChartId, setSelectedTemplateChartId] = useState("empty");
+  const [selectedTrackId, setSelectedTrackId] = usePersistedState<string>("ut_ece_chart_new_track_id", "");
+  const [selectedTemplateChartId, setSelectedTemplateChartId] = usePersistedState<string>("ut_ece_chart_new_template_id", "empty");
   const [isCreating, setIsCreating] = useState(false);
 
   const trackSelectItems = useMemo(
@@ -92,7 +93,7 @@ export default function ChartsPage() {
       }
 
       setUser(authRes.user);
-      if (authRes.user?.trackId) {
+      if (!selectedTrackId && authRes.user?.trackId) {
         setSelectedTrackId(authRes.user.trackId);
       }
 
@@ -102,7 +103,7 @@ export default function ChartsPage() {
 
       if (tracksRes.success) {
         setTracks(tracksRes.data || []);
-        if (tracksRes.data?.length > 0 && !authRes.user?.trackId) {
+        if (tracksRes.data?.length > 0 && !selectedTrackId && !authRes.user?.trackId) {
           setSelectedTrackId(tracksRes.data[0].id);
         }
       }

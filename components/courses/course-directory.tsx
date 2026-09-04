@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import type { Course, Faculty, UserSession } from "@/lib/types";
 import { Download, Upload } from "lucide-react";
+import { usePersistedState } from "@/lib/hooks/use-persisted-state";
 
 interface CourseDirectoryProps {
   initialCourses?: Course[];
@@ -39,11 +40,11 @@ export function CourseDirectory({
   const [loading, setLoading] = useState(initialCourses.length === 0);
 
   const [search, setSearch] = useState("");
-  const [selectedFaculty, setSelectedFaculty] = useState<string>("all");
+  const [selectedFaculty, setSelectedFaculty] = usePersistedState<string>("ut_ece_public_faculty", "all");
   const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
-  const [selectedOfferedIn, setSelectedOfferedIn] = useState<string>("all");
-  const [selectedUnits, setSelectedUnits] = useState<string>("all");
+  const [selectedOfferedIn, setSelectedOfferedIn] = usePersistedState<string>("ut_ece_courses_offered_in", "all");
+  const [selectedUnits, setSelectedUnits] = usePersistedState<string>("ut_ece_courses_units", "all");
 
   useEffect(() => {
     async function loadData() {

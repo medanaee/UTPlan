@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { usePersistedState } from "@/lib/hooks/use-persisted-state";
 import {
   Layers,
   BookOpen,
@@ -142,7 +143,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
     return arr.sort().reverse();
   }, [offering.events, offering.finalizedSemesters]);
 
-  const [selectedSemester, setSelectedSemester] = useState<string>(() => {
+  const defaultSemester = React.useMemo(() => {
     if (offering.events && offering.events.length > 0) {
       return offering.events[0].term || "1404-2";
     }
@@ -150,7 +151,12 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
       return offering.finalizedSemesters[0];
     }
     return "1404-2";
-  });
+  }, [offering.events, offering.finalizedSemesters]);
+
+  const [selectedSemester, setSelectedSemester] = usePersistedState<string>(
+    "ut_ece_offering_detail_semester",
+    defaultSemester
+  );
 
   useEffect(() => {
     if (availableSemesters.length > 0 && !availableSemesters.includes(selectedSemester)) {

@@ -59,6 +59,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { validateFullChart } from "@/lib/rules-engine";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { TermSchedulePlanner } from "./term-schedule-planner";
+import { usePersistedState } from "@/lib/hooks/use-persisted-state";
 import type {
   StudentChart,
   ChartSemester,
@@ -115,9 +116,9 @@ export function ChartEditor({
 
   // Search & Category Filter for drawer
   const [drawerSearch, setDrawerSearch] = useState("");
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("all");
-  const [showArrows, setShowArrows] = useState(true);
-  const [isDrawerCollapsed, setIsDrawerCollapsed] = useState(false);
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = usePersistedState<string>("ut_ece_chart_cat_filter", "all");
+  const [showArrows, setShowArrows] = usePersistedState<boolean>("ut_ece_chart_show_arrows", true);
+  const [isDrawerCollapsed, setIsDrawerCollapsed] = usePersistedState<boolean>("ut_ece_chart_drawer_collapsed", false);
 
   // Drag & Drop State
   const [draggedCourseId, setDraggedCourseId] = useState<string | null>(null);

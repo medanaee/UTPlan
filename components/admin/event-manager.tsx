@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import type { CourseOffering, CourseEvent, Faculty } from "@/lib/types";
+import { useAdminStore } from "@/lib/stores/admin-store";
 import {
   Card,
   CardHeader,
@@ -102,15 +103,13 @@ export function EventManager({
   faculties = [],
   selectedFacultyId,
 }: EventManagerProps) {
+  const { activeTerm, setActiveTerm } = useAdminStore();
   const [offerings, setOfferings] = useState<CourseOffering[]>(initialOfferings || []);
   const [events, setEvents] = useState<CourseEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
   const currentFaculty = faculties.find((f) => f.id === selectedFacultyId);
-
-  // Active selected semester - ALL operations & views are strictly bound to this term
-  const [activeTerm, setActiveTerm] = useState<string>("1403-1");
 
   // Modals
   const [isModalOpen, setIsModalOpen] = useState(false);
