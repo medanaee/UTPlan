@@ -39,6 +39,7 @@ import {
   GraduationCap,
 } from "lucide-react";
 import { toPng } from "html-to-image";
+import { searchCourses } from "@/lib/search/persian-search";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -762,30 +763,25 @@ export function ChartEditor({
 
   // Filter and sort drawer courses (unplaced courses first, placed courses at the bottom)
   const filteredDrawerCourses = useMemo(() => {
-    const list = allCourses.filter((course) => {
-      // 1. Search query
-      if (drawerSearch.trim()) {
-        const term = drawerSearch.trim().toLowerCase();
-        const matchName = course.name.toLowerCase().includes(term);
-        const matchCode = course.code.toLowerCase().includes(term);
-        const matchAbbr = Boolean(course.abbreviation && course.abbreviation.toLowerCase().includes(term));
-        if (!matchName && !matchCode && !matchAbbr) return false;
-      }
-
-      // 2. Category filter (matches category and all its descendants)
-      if (selectedCategoryFilter !== "all") {
-        const allowedCatIds = getCategoryAndDescendantIds(selectedCategoryFilter, visualCategories);
+    // 1. Category filter (matches category and all its descendants)
+    let list = allCourses;
+    if (selectedCategoryFilter !== "all") {
+      const allowedCatIds = getCategoryAndDescendantIds(selectedCategoryFilter, visualCategories);
+      list = list.filter((course) => {
         const assignment =
           course.trackAssignments?.find((a) => a.trackId === selectedTrackId) ||
           course.trackAssignments?.[0];
-        if (!assignment?.visualCategoryId || !allowedCatIds.has(assignment.visualCategoryId)) return false;
-      }
+        return Boolean(assignment?.visualCategoryId && allowedCatIds.has(assignment.visualCategoryId));
+      });
+    }
 
-      return true;
-    });
+    // 2. Intelligent Persian search with typo tolerance & space invariance
+    if (drawerSearch.trim()) {
+      list = searchCourses(list, drawerSearch);
+    }
 
-    // Sort: unplaced courses first, placed courses pushed to the bottom
-    return list.sort((a, b) => {
+    // 3. Sort: unplaced courses first, placed courses pushed to the bottom (stable sort)
+    return list.slice().sort((a, b) => {
       const aPlaced = placedCourseIdMap.has(a.id);
       const bPlaced = placedCourseIdMap.has(b.id);
       if (aPlaced === bPlaced) return 0;

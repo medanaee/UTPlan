@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
+import { searchCourses } from "@/lib/search/persian-search";
 import {
   BookOpen,
   Building2,
@@ -87,15 +88,9 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
     return c.facultyId === selectedFacultyId || linkedFacultyIds.includes(c.facultyId);
   });
 
-  const filteredCourses = facultyCourses.filter((c) => {
-    const q = courseSearch.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      c.name.toLowerCase().includes(q) ||
-      c.code.toLowerCase().includes(q) ||
-      Boolean(c.abbreviation && c.abbreviation.toLowerCase().includes(q))
-    );
-  });
+  const filteredCourses = useMemo(() => {
+    return searchCourses(facultyCourses, courseSearch);
+  }, [facultyCourses, courseSearch]);
 
   // Create or Update Course
   const handleSaveCourse = async (e: React.FormEvent) => {

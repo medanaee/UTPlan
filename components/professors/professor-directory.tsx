@@ -105,26 +105,17 @@ export function ProfessorDirectory({
 
       {/* Search & Filter Controls */}
       <Card className="border border-border/80 shadow-xs">
-        <CardContent className="p-4 space-y-3">
+        <CardContent className="space-y-3">
           <div className="flex flex-col md:flex-row items-center gap-3">
             {/* Search Input */}
             <div className="relative flex-1 w-full">
-              <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="جستجوی نام یا مرتبه علمی استاد..."
-                className="pr-9 text-xs h-9"
+                className="pr-9 text-xs h-7"
+                icon={<Search className="h-4 w-4 text-muted-foreground" />}
               />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch("")}
-                  className="absolute left-3 top-2.5 text-xs text-muted-foreground hover:text-foreground"
-                >
-                  پاک کردن
-                </button>
-              )}
             </div>
 
             {/* Faculty Filter */}

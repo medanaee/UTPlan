@@ -479,7 +479,7 @@ export function ApprovedChartsManager({
       )}
 
       {/* All Approved Charts List Table */}
-      <Card className="border-border/70 shadow-xs">
+      {/* <Card className="border-border/70 shadow-xs">
         <CardHeader className="border-b pb-3">
           <CardTitle className="text-sm flex items-center justify-between">
             <span className="flex items-center gap-2">
@@ -575,7 +575,7 @@ export function ApprovedChartsManager({
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card> */}
 
       {/* CREATE APPROVED CHART MODAL */}
       <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>

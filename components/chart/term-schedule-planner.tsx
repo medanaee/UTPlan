@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { calculateSemesterForTerm, formatSemesterLabel } from "@/lib/semester-utils";
+import { searchCourses } from "@/lib/search/persian-search";
 import {
   Calendar,
   Clock,
@@ -289,14 +290,7 @@ export function TermSchedulePlanner({
 
   // Filtered sidebar courses
   const filteredCourses = useMemo(() => {
-    if (!searchQuery.trim()) return termCourses;
-    const q = searchQuery.toLowerCase().trim();
-    return termCourses.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        c.code.toLowerCase().includes(q) ||
-        Boolean(c.abbreviation && c.abbreviation.toLowerCase().includes(q))
-    );
+    return searchCourses(termCourses, searchQuery);
   }, [termCourses, searchQuery]);
 
   const totalUnits = useMemo(() => {

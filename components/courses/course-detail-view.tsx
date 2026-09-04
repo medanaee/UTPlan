@@ -296,7 +296,7 @@ export function CourseDetailView({ course }: CourseDetailViewProps) {
                 </Badge>
               </div>
             </CardHeader>
-            <CardContent className="pt-4 space-y-2.5">
+            <CardContent className="space-y-2.5">
               {recommendedPrereqs.length > 0 ? (
                 recommendedPrereqs.map((r) => (
                   <Link

@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Search, BookOpen, CheckSquare, Square, Loader2, Sparkles, Scale, Link2 } from "lucide-react";
 import type { Course } from "@/lib/types";
+import { searchCourses } from "@/lib/search/persian-search";
 
 interface CategoryCourseAssignDialogProps {
   open: boolean;
@@ -54,14 +55,7 @@ export function CategoryCourseAssignDialog({
   }, [open, currentAssignedCourseIds]);
 
   const filteredCourses = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return allCourses;
-    return allCourses.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        (c.code && c.code.toLowerCase().includes(q)) ||
-        Boolean(c.abbreviation && c.abbreviation.toLowerCase().includes(q))
-    );
+    return searchCourses(allCourses, search);
   }, [allCourses, search]);
 
   const toggleCourse = (courseId: string) => {

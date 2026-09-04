@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { searchCourses } from "@/lib/search/persian-search";
 import {
   Layers,
   Save,
@@ -168,24 +169,15 @@ export function CourseCategoryManager({
     }
   };
 
-  const filteredCourses = courses.filter((c) => {
-    const q = search.trim().toLowerCase();
-    const matchSearch =
-      !q ||
-      c.name.toLowerCase().includes(q) ||
-      c.code.toLowerCase().includes(q) ||
-      Boolean(c.abbreviation && c.abbreviation.toLowerCase().includes(q));
-
-    if (!matchSearch) return false;
-
-    if (filterVcat === "all") return true;
+  const filteredCourses = useMemo(() => {
+    let list = courses;
     if (filterVcat === "unassigned") {
-      const a = assignments.get(c.id);
-      return !a?.vcatId;
+      list = list.filter((c) => !assignments.get(c.id)?.vcatId);
+    } else if (filterVcat !== "all") {
+      list = list.filter((c) => assignments.get(c.id)?.vcatId === filterVcat);
     }
-    const a = assignments.get(c.id);
-    return a?.vcatId === filterVcat;
-  });
+    return searchCourses(list, search);
+  }, [courses, filterVcat, assignments, search]);
 
   const visualCategoryFilterItems = [
     { value: "all", label: "همه دسته‌ها" },

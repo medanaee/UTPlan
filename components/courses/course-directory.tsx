@@ -25,6 +25,7 @@ import {
 import type { Course, Faculty, UserSession } from "@/lib/types";
 import { Download, Upload } from "lucide-react";
 import { usePersistedState } from "@/lib/hooks/use-persisted-state";
+import { searchCourses } from "@/lib/search/persian-search";
 
 interface CourseDirectoryProps {
   initialCourses?: Course[];
@@ -76,16 +77,10 @@ export function CourseDirectory({
     }
   }, [initialCourses.length]);
 
-  // Filtered list
+  // Filtered and intelligently ranked list
   const filteredCourses = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return courses.filter((c) => {
-      const matchesSearch =
-        q === "" ||
-        c.name.toLowerCase().includes(q) ||
-        c.code.toLowerCase().includes(q) ||
-        Boolean(c.abbreviation && c.abbreviation.toLowerCase().includes(q));
-
+    // 1. Filter by category dropdowns first
+    const baseFiltered = courses.filter((c) => {
       const matchesFaculty =
         selectedFaculty === "all" || c.facultyId === selectedFaculty;
 
@@ -97,8 +92,11 @@ export function CourseDirectory({
       const matchesUnits =
         selectedUnits === "all" || String(c.units) === selectedUnits;
 
-      return matchesSearch && matchesFaculty && matchesOffered && matchesUnits;
+      return matchesFaculty && matchesOffered && matchesUnits;
     });
+
+    // 2. Intelligently search and rank by search query
+    return searchCourses(baseFiltered, search);
   }, [courses, search, selectedFaculty, selectedOfferedIn, selectedUnits]);
 
   const formatTermOffered = (term?: string) => {
