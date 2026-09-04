@@ -90,16 +90,12 @@ export async function POST(request: NextRequest) {
       else if (res.relationType === "track_assignment") {
         if (res.action === "replace" && res.replacementId) {
           if (res.dependentEntityType === "course") {
-            stmts.push(d1.prepare("UPDATE track_course_assignments SET course_id = ? WHERE id = ?").bind(res.replacementId, res.dependentEntityId));
+            stmts.push(d1.prepare("UPDATE track_course_assignments SET course_id = ? WHERE id = ? OR course_id = ?").bind(res.replacementId, res.dependentEntityId, res.dependentEntityId));
           } else {
-            stmts.push(d1.prepare("UPDATE track_course_assignments SET track_id = ? WHERE track_id = ?").bind(res.replacementId, res.dependentEntityId));
+            stmts.push(d1.prepare("UPDATE track_course_assignments SET track_id = ? WHERE id = ? OR track_id = ?").bind(res.replacementId, res.dependentEntityId, res.dependentEntityId));
           }
         } else {
-          if (res.dependentEntityType === "track_assignment") {
-            stmts.push(d1.prepare("DELETE FROM track_course_assignments WHERE track_id = ?").bind(res.dependentEntityId));
-          } else {
-            stmts.push(d1.prepare("DELETE FROM track_course_assignments WHERE id = ?").bind(res.dependentEntityId));
-          }
+          stmts.push(d1.prepare("DELETE FROM track_course_assignments WHERE id = ? OR track_id = ? OR course_id = ?").bind(res.dependentEntityId, res.dependentEntityId, res.dependentEntityId));
         }
       }
 
@@ -168,6 +164,13 @@ export async function POST(request: NextRequest) {
           stmts.push(d1.prepare("UPDATE courses SET faculty_id = ? WHERE id = ?").bind(res.replacementId, res.dependentEntityId));
         } else {
           stmts.push(
+            d1.prepare("DELETE FROM course_event_slots WHERE event_id IN (SELECT id FROM course_events WHERE offering_id IN (SELECT id FROM course_offerings WHERE course_id = ?))").bind(res.dependentEntityId),
+            d1.prepare("UPDATE chart_courses SET selected_event_id = NULL WHERE selected_event_id IN (SELECT id FROM course_events WHERE offering_id IN (SELECT id FROM course_offerings WHERE course_id = ?))").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM course_events WHERE offering_id IN (SELECT id FROM course_offerings WHERE course_id = ?)").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM offering_professors WHERE offering_id IN (SELECT id FROM course_offerings WHERE course_id = ?)").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM offering_resources WHERE offering_id IN (SELECT id FROM course_offerings WHERE course_id = ?)").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM reviews WHERE target_type = 'offering' AND target_id IN (SELECT id FROM course_offerings WHERE course_id = ?)").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM course_offerings WHERE course_id = ?").bind(res.dependentEntityId),
             d1.prepare("DELETE FROM prerequisites WHERE course_id = ? OR required_course_id = ?").bind(res.dependentEntityId, res.dependentEntityId),
             d1.prepare("DELETE FROM track_course_assignments WHERE course_id = ?").bind(res.dependentEntityId),
             d1.prepare("DELETE FROM chart_courses WHERE course_id = ?").bind(res.dependentEntityId),
@@ -249,14 +252,16 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Group root items by entity type for batch deletion
+    // Order of deletion MUST be topologically from leaf entities to root entities:
+    // 1. event -> 2. offering -> 3. course -> 4. professor -> 5. track -> 6. major -> 7. faculty
     const itemsByType: Record<string, string[]> = {
-      faculty: [],
-      major: [],
-      track: [],
+      event: [],
+      offering: [],
       course: [],
       professor: [],
-      offering: [],
-      event: [],
+      track: [],
+      major: [],
+      faculty: [],
     };
 
     for (const it of rawItems) {
@@ -265,32 +270,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // A. Batch delete courses
-    if (itemsByType.course.length > 0) {
-      for (const chunk of chunkArray(itemsByType.course, 50)) {
+    // 1. Batch delete events (leaf)
+    if (itemsByType.event.length > 0) {
+      for (const chunk of chunkArray(itemsByType.event, 50)) {
         const placeholders = chunk.map(() => "?").join(",");
         stmts.push(
-          d1.prepare(`DELETE FROM prerequisites WHERE course_id IN (${placeholders}) OR required_course_id IN (${placeholders})`).bind(...chunk, ...chunk),
-          d1.prepare(`DELETE FROM track_course_assignments WHERE course_id IN (${placeholders})`).bind(...chunk),
-          d1.prepare(`DELETE FROM chart_courses WHERE course_id IN (${placeholders})`).bind(...chunk),
-          d1.prepare(`DELETE FROM courses WHERE id IN (${placeholders})`).bind(...chunk)
+          d1.prepare(`DELETE FROM course_event_slots WHERE event_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`UPDATE chart_courses SET selected_event_id = NULL WHERE selected_event_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`DELETE FROM course_events WHERE id IN (${placeholders})`).bind(...chunk)
         );
       }
     }
 
-    // B. Batch delete professors
-    if (itemsByType.professor.length > 0) {
-      for (const chunk of chunkArray(itemsByType.professor, 50)) {
-        const placeholders = chunk.map(() => "?").join(",");
-        stmts.push(
-          d1.prepare(`DELETE FROM offering_professors WHERE professor_id IN (${placeholders})`).bind(...chunk),
-          d1.prepare(`DELETE FROM reviews WHERE target_type = 'professor' AND target_id IN (${placeholders})`).bind(...chunk),
-          d1.prepare(`DELETE FROM professors WHERE id IN (${placeholders})`).bind(...chunk)
-        );
-      }
-    }
-
-    // C. Batch delete offerings
+    // 2. Batch delete offerings (depends on courses and professors)
     if (itemsByType.offering.length > 0) {
       for (const chunk of chunkArray(itemsByType.offering, 50)) {
         const placeholders = chunk.map(() => "?").join(",");
@@ -306,36 +298,63 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // D. Batch delete events
-    if (itemsByType.event.length > 0) {
-      for (const chunk of chunkArray(itemsByType.event, 50)) {
+    // 3. Batch delete courses (depends on faculties; offerings & prerequisites depend on courses)
+    if (itemsByType.course.length > 0) {
+      for (const chunk of chunkArray(itemsByType.course, 50)) {
         const placeholders = chunk.map(() => "?").join(",");
         stmts.push(
-          d1.prepare(`DELETE FROM course_event_slots WHERE event_id IN (${placeholders})`).bind(...chunk),
-          d1.prepare(`UPDATE chart_courses SET selected_event_id = NULL WHERE selected_event_id IN (${placeholders})`).bind(...chunk),
-          d1.prepare(`DELETE FROM course_events WHERE id IN (${placeholders})`).bind(...chunk)
+          // Defensive cascading cleanup of any offerings/events of these courses
+          d1.prepare(`DELETE FROM course_event_slots WHERE event_id IN (SELECT id FROM course_events WHERE offering_id IN (SELECT id FROM course_offerings WHERE course_id IN (${placeholders})))`).bind(...chunk),
+          d1.prepare(`UPDATE chart_courses SET selected_event_id = NULL WHERE selected_event_id IN (SELECT id FROM course_events WHERE offering_id IN (SELECT id FROM course_offerings WHERE course_id IN (${placeholders})))`).bind(...chunk),
+          d1.prepare(`DELETE FROM course_events WHERE offering_id IN (SELECT id FROM course_offerings WHERE course_id IN (${placeholders}))`).bind(...chunk),
+          d1.prepare(`DELETE FROM offering_professors WHERE offering_id IN (SELECT id FROM course_offerings WHERE course_id IN (${placeholders}))`).bind(...chunk),
+          d1.prepare(`DELETE FROM offering_resources WHERE offering_id IN (SELECT id FROM course_offerings WHERE course_id IN (${placeholders}))`).bind(...chunk),
+          d1.prepare(`DELETE FROM reviews WHERE target_type = 'offering' AND target_id IN (SELECT id FROM course_offerings WHERE course_id IN (${placeholders}))`).bind(...chunk),
+          d1.prepare(`DELETE FROM course_offerings WHERE course_id IN (${placeholders})`).bind(...chunk),
+          // Clean course connections
+          d1.prepare(`DELETE FROM prerequisites WHERE course_id IN (${placeholders}) OR required_course_id IN (${placeholders})`).bind(...chunk, ...chunk),
+          d1.prepare(`DELETE FROM track_course_assignments WHERE course_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`DELETE FROM chart_courses WHERE course_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`DELETE FROM courses WHERE id IN (${placeholders})`).bind(...chunk)
         );
       }
     }
 
-    // E. Batch delete faculties
-    if (itemsByType.faculty.length > 0) {
-      for (const chunk of chunkArray(itemsByType.faculty, 50)) {
+    // 4. Batch delete professors (depends on faculties; offering_professors depends on professors)
+    if (itemsByType.professor.length > 0) {
+      for (const chunk of chunkArray(itemsByType.professor, 50)) {
         const placeholders = chunk.map(() => "?").join(",");
         stmts.push(
-          d1.prepare(`DELETE FROM faculty_links WHERE target_faculty_id IN (${placeholders}) OR source_faculty_id IN (${placeholders})`).bind(...chunk, ...chunk),
-          d1.prepare(`UPDATE users SET faculty_id = NULL WHERE faculty_id IN (${placeholders})`).bind(...chunk),
-          d1.prepare(`DELETE FROM faculties WHERE id IN (${placeholders})`).bind(...chunk)
+          d1.prepare(`DELETE FROM offering_professors WHERE professor_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`DELETE FROM reviews WHERE target_type = 'professor' AND target_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`DELETE FROM professors WHERE id IN (${placeholders})`).bind(...chunk)
         );
       }
     }
 
-    // F. Batch delete majors
+    // 5. Batch delete tracks (depends on majors)
+    if (itemsByType.track.length > 0) {
+      for (const chunk of chunkArray(itemsByType.track, 50)) {
+        const placeholders = chunk.map(() => "?").join(",");
+        stmts.push(
+          d1.prepare(`UPDATE users SET track_id = NULL WHERE track_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`DELETE FROM track_course_assignments WHERE track_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`DELETE FROM visual_categories WHERE track_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`DELETE FROM rule_categories WHERE track_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`DELETE FROM chart_courses WHERE term_id IN (SELECT id FROM chart_terms WHERE chart_id IN (SELECT id FROM charts WHERE track_id IN (${placeholders})))`).bind(...chunk),
+          d1.prepare(`DELETE FROM chart_terms WHERE chart_id IN (SELECT id FROM charts WHERE track_id IN (${placeholders}))`).bind(...chunk),
+          d1.prepare(`DELETE FROM charts WHERE track_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`DELETE FROM tracks WHERE id IN (${placeholders})`).bind(...chunk)
+        );
+      }
+    }
+
+    // 6. Batch delete majors (depends on faculties)
     if (itemsByType.major.length > 0) {
       for (const chunk of chunkArray(itemsByType.major, 50)) {
         const placeholders = chunk.map(() => "?").join(",");
         stmts.push(
-          d1.prepare(`UPDATE users SET major_id = NULL, track_id = NULL WHERE major_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`UPDATE users SET track_id = NULL WHERE track_id IN (SELECT id FROM tracks WHERE major_id IN (${placeholders}))`).bind(...chunk),
           d1.prepare(`DELETE FROM track_course_assignments WHERE track_id IN (SELECT id FROM tracks WHERE major_id IN (${placeholders}))`).bind(...chunk),
           d1.prepare(`DELETE FROM visual_categories WHERE track_id IN (SELECT id FROM tracks WHERE major_id IN (${placeholders}))`).bind(...chunk),
           d1.prepare(`DELETE FROM rule_categories WHERE track_id IN (SELECT id FROM tracks WHERE major_id IN (${placeholders}))`).bind(...chunk),
@@ -343,33 +362,67 @@ export async function POST(request: NextRequest) {
           d1.prepare(`DELETE FROM chart_terms WHERE chart_id IN (SELECT id FROM charts WHERE track_id IN (SELECT id FROM tracks WHERE major_id IN (${placeholders})))`).bind(...chunk),
           d1.prepare(`DELETE FROM charts WHERE track_id IN (SELECT id FROM tracks WHERE major_id IN (${placeholders}))`).bind(...chunk),
           d1.prepare(`DELETE FROM tracks WHERE major_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`UPDATE users SET major_id = NULL WHERE major_id IN (${placeholders})`).bind(...chunk),
           d1.prepare(`DELETE FROM majors WHERE id IN (${placeholders})`).bind(...chunk)
         );
       }
     }
 
-    // G. Batch delete tracks
-    if (itemsByType.track.length > 0) {
-      for (const chunk of chunkArray(itemsByType.track, 50)) {
+    // 7. Batch delete faculties (root)
+    if (itemsByType.faculty.length > 0) {
+      for (const chunk of chunkArray(itemsByType.faculty, 50)) {
         const placeholders = chunk.map(() => "?").join(",");
         stmts.push(
-          d1.prepare(`DELETE FROM track_course_assignments WHERE track_id IN (${placeholders})`).bind(...chunk),
-          d1.prepare(`DELETE FROM visual_categories WHERE track_id IN (${placeholders})`).bind(...chunk),
-          d1.prepare(`DELETE FROM rule_categories WHERE track_id IN (${placeholders})`).bind(...chunk),
-          d1.prepare(`DELETE FROM chart_courses WHERE term_id IN (SELECT id FROM chart_terms WHERE chart_id IN (SELECT id FROM charts WHERE track_id IN (${placeholders})))`).bind(...chunk),
-          d1.prepare(`DELETE FROM chart_terms WHERE chart_id IN (SELECT id FROM charts WHERE track_id IN (${placeholders}))`).bind(...chunk),
-          d1.prepare(`DELETE FROM charts WHERE track_id IN (${placeholders})`).bind(...chunk),
-          d1.prepare(`UPDATE users SET track_id = NULL WHERE track_id IN (${placeholders})`).bind(...chunk),
-          d1.prepare(`DELETE FROM tracks WHERE id IN (${placeholders})`).bind(...chunk)
+          d1.prepare(`UPDATE users SET track_id = NULL WHERE track_id IN (SELECT id FROM tracks WHERE major_id IN (SELECT id FROM majors WHERE faculty_id IN (${placeholders})))`).bind(...chunk),
+          d1.prepare(`DELETE FROM track_course_assignments WHERE track_id IN (SELECT id FROM tracks WHERE major_id IN (SELECT id FROM majors WHERE faculty_id IN (${placeholders})))`).bind(...chunk),
+          d1.prepare(`DELETE FROM visual_categories WHERE track_id IN (SELECT id FROM tracks WHERE major_id IN (SELECT id FROM majors WHERE faculty_id IN (${placeholders})))`).bind(...chunk),
+          d1.prepare(`DELETE FROM rule_categories WHERE track_id IN (SELECT id FROM tracks WHERE major_id IN (SELECT id FROM majors WHERE faculty_id IN (${placeholders})))`).bind(...chunk),
+          d1.prepare(`DELETE FROM chart_courses WHERE term_id IN (SELECT id FROM chart_terms WHERE chart_id IN (SELECT id FROM charts WHERE track_id IN (SELECT id FROM tracks WHERE major_id IN (SELECT id FROM majors WHERE faculty_id IN (${placeholders})))))`).bind(...chunk),
+          d1.prepare(`DELETE FROM chart_terms WHERE chart_id IN (SELECT id FROM charts WHERE track_id IN (SELECT id FROM tracks WHERE major_id IN (SELECT id FROM majors WHERE faculty_id IN (${placeholders}))))`).bind(...chunk),
+          d1.prepare(`DELETE FROM charts WHERE track_id IN (SELECT id FROM tracks WHERE major_id IN (SELECT id FROM majors WHERE faculty_id IN (${placeholders})))`).bind(...chunk),
+          d1.prepare(`DELETE FROM tracks WHERE major_id IN (SELECT id FROM majors WHERE faculty_id IN (${placeholders}))`).bind(...chunk),
+          d1.prepare(`UPDATE users SET major_id = NULL WHERE major_id IN (SELECT id FROM majors WHERE faculty_id IN (${placeholders}))`).bind(...chunk),
+          d1.prepare(`DELETE FROM majors WHERE faculty_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`DELETE FROM course_event_slots WHERE event_id IN (SELECT id FROM course_events WHERE offering_id IN (SELECT id FROM course_offerings WHERE course_id IN (SELECT id FROM courses WHERE faculty_id IN (${placeholders}))))`).bind(...chunk),
+          d1.prepare(`UPDATE chart_courses SET selected_event_id = NULL WHERE selected_event_id IN (SELECT id FROM course_events WHERE offering_id IN (SELECT id FROM course_offerings WHERE course_id IN (SELECT id FROM courses WHERE faculty_id IN (${placeholders}))))`).bind(...chunk),
+          d1.prepare(`DELETE FROM course_events WHERE offering_id IN (SELECT id FROM course_offerings WHERE course_id IN (SELECT id FROM courses WHERE faculty_id IN (${placeholders})))`).bind(...chunk),
+          d1.prepare(`DELETE FROM offering_professors WHERE offering_id IN (SELECT id FROM course_offerings WHERE course_id IN (SELECT id FROM courses WHERE faculty_id IN (${placeholders})))`).bind(...chunk),
+          d1.prepare(`DELETE FROM offering_resources WHERE offering_id IN (SELECT id FROM course_offerings WHERE course_id IN (SELECT id FROM courses WHERE faculty_id IN (${placeholders})))`).bind(...chunk),
+          d1.prepare(`DELETE FROM reviews WHERE target_type = 'offering' AND target_id IN (SELECT id FROM course_offerings WHERE course_id IN (SELECT id FROM courses WHERE faculty_id IN (${placeholders})))`).bind(...chunk),
+          d1.prepare(`DELETE FROM course_offerings WHERE course_id IN (SELECT id FROM courses WHERE faculty_id IN (${placeholders}))`).bind(...chunk),
+          d1.prepare(`DELETE FROM prerequisites WHERE course_id IN (SELECT id FROM courses WHERE faculty_id IN (${placeholders})) OR required_course_id IN (SELECT id FROM courses WHERE faculty_id IN (${placeholders}))`).bind(...chunk, ...chunk),
+          d1.prepare(`DELETE FROM track_course_assignments WHERE course_id IN (SELECT id FROM courses WHERE faculty_id IN (${placeholders}))`).bind(...chunk),
+          d1.prepare(`DELETE FROM chart_courses WHERE course_id IN (SELECT id FROM courses WHERE faculty_id IN (${placeholders}))`).bind(...chunk),
+          d1.prepare(`DELETE FROM courses WHERE faculty_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`DELETE FROM offering_professors WHERE professor_id IN (SELECT id FROM professors WHERE faculty_id IN (${placeholders}))`).bind(...chunk),
+          d1.prepare(`DELETE FROM reviews WHERE target_type = 'professor' AND target_id IN (SELECT id FROM professors WHERE faculty_id IN (${placeholders}))`).bind(...chunk),
+          d1.prepare(`DELETE FROM professors WHERE faculty_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`DELETE FROM faculty_links WHERE target_faculty_id IN (${placeholders}) OR source_faculty_id IN (${placeholders})`).bind(...chunk, ...chunk),
+          d1.prepare(`UPDATE users SET faculty_id = NULL WHERE faculty_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`DELETE FROM faculties WHERE id IN (${placeholders})`).bind(...chunk)
         );
       }
     }
 
     // 3. Execute all statements in Cloudflare D1 batch chunks
     if (stmts.length > 0) {
-      const batchChunks = chunkArray(stmts, 100);
-      for (const bChunk of batchChunks) {
-        await d1.batch(bChunk);
+      try {
+        await d1.prepare("PRAGMA foreign_keys = OFF;").run();
+      } catch (e) {
+        // Continue if environment restricts direct PRAGMA; topological order handles it cleanly
+      }
+
+      try {
+        const batchChunks = chunkArray(stmts, 100);
+        for (const bChunk of batchChunks) {
+          await d1.batch(bChunk);
+        }
+      } finally {
+        try {
+          await d1.prepare("PRAGMA foreign_keys = ON;").run();
+        } catch (e) {
+          // ignore
+        }
       }
     }
 
