@@ -57,18 +57,21 @@ CREATE TABLE IF NOT EXISTS tracks (
 );
 CREATE INDEX IF NOT EXISTS idx_tracks_major ON tracks(major_id);
 
--- 5. Visual Categories Table (Flat visual groupings with color, per track)
+-- 5. Visual Categories Table (Hierarchical visual category tree with color, per track)
 CREATE TABLE IF NOT EXISTS visual_categories (
   id TEXT PRIMARY KEY,
   track_id TEXT NOT NULL,
+  parent_id TEXT,
   code TEXT,
   name TEXT NOT NULL,
   color TEXT NOT NULL DEFAULT '#3b82f6',
   sort_order INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
-  FOREIGN KEY (track_id) REFERENCES tracks(id)
+  FOREIGN KEY (track_id) REFERENCES tracks(id),
+  FOREIGN KEY (parent_id) REFERENCES visual_categories(id)
 );
 CREATE INDEX IF NOT EXISTS idx_visual_categories_track ON visual_categories(track_id);
+CREATE INDEX IF NOT EXISTS idx_visual_categories_parent ON visual_categories(parent_id);
 CREATE INDEX IF NOT EXISTS idx_visual_categories_code ON visual_categories(code);
 
 -- 6. Rule Categories Table (Hierarchical category tree for requirements rules, per track)

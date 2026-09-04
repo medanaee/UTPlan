@@ -564,13 +564,14 @@ export async function getVisualCategories(trackId: string): Promise<VisualCatego
 
   try {
     const { results } = await d1
-      .prepare("SELECT * FROM visual_categories WHERE track_id = ? ORDER BY sort_order ASC")
+      .prepare("SELECT * FROM visual_categories WHERE track_id = ? ORDER BY sort_order ASC, created_at ASC")
       .bind(trackId)
       .all();
     return (results || []).map((r: any) => ({
       id: r.id,
       trackId: r.track_id,
       code: r.code || undefined,
+      parentId: r.parent_id || null,
       name: r.name,
       color: r.color,
       sortOrder: Number(r.sort_order) || 0,
@@ -583,15 +584,17 @@ export async function getVisualCategories(trackId: string): Promise<VisualCatego
 }
 
 export async function createVisualCategory(
-  trackIdOrData: string | { trackId: string; name: string; color?: string; sortOrder?: number; code?: string },
+  trackIdOrData: string | { trackId: string; name: string; color?: string; parentId?: string | null; sortOrder?: number; code?: string },
   nameArg?: string,
   colorArg?: string,
   sortOrderArg = 0,
-  codeArg?: string
+  codeArg?: string,
+  parentIdArg?: string | null
 ): Promise<VisualCategory> {
   let trackId: string;
   let name: string;
   let color: string;
+  let parentId: string | null;
   let sortOrder: number;
   let code: string | undefined;
 
@@ -599,12 +602,14 @@ export async function createVisualCategory(
     trackId = trackIdOrData.trackId;
     name = trackIdOrData.name;
     color = trackIdOrData.color || "#3b82f6";
+    parentId = trackIdOrData.parentId || null;
     sortOrder = trackIdOrData.sortOrder ?? 0;
     code = trackIdOrData.code?.trim() || undefined;
   } else {
     trackId = trackIdOrData;
     name = nameArg!;
     color = colorArg || "#3b82f6";
+    parentId = parentIdArg || null;
     sortOrder = sortOrderArg;
     code = codeArg?.trim() || undefined;
   }
@@ -621,9 +626,9 @@ export async function createVisualCategory(
   try {
     await d1
       .prepare(
-        "INSERT INTO visual_categories (id, track_id, code, name, color, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        "INSERT INTO visual_categories (id, track_id, parent_id, code, name, color, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
       )
-      .bind(id, trackId, cleanCode, name.trim(), color, sortOrder, now)
+      .bind(id, trackId, parentId, cleanCode, name.trim(), color, sortOrder, now)
       .run();
   } catch (err) {
     console.error("D1 createVisualCategory error:", err);
@@ -634,6 +639,7 @@ export async function createVisualCategory(
     id,
     trackId,
     code: cleanCode,
+    parentId,
     name: name.trim(),
     color,
     sortOrder,
@@ -643,7 +649,7 @@ export async function createVisualCategory(
 
 export async function updateVisualCategory(
   id: string,
-  data: { name?: string; color?: string; sortOrder?: number; code?: string | null }
+  data: { name?: string; color?: string; parentId?: string | null; sortOrder?: number; code?: string | null }
 ): Promise<VisualCategory | null> {
   const d1 = getD1();
   if (!d1) return null;
@@ -654,6 +660,7 @@ export async function updateVisualCategory(
 
     const name = data.name !== undefined ? data.name.trim() : (existing as any).name;
     const color = data.color !== undefined ? data.color : (existing as any).color;
+    const parentId = data.parentId !== undefined ? (data.parentId || null) : (existing as any).parent_id;
     const sortOrder = data.sortOrder !== undefined ? data.sortOrder : (existing as any).sort_order;
     const code =
       data.code !== undefined
@@ -661,14 +668,15 @@ export async function updateVisualCategory(
         : ((existing as any).code || `VCAT-${crypto.randomUUID().slice(0, 6).toUpperCase()}`);
 
     await d1
-      .prepare("UPDATE visual_categories SET code = ?, name = ?, color = ?, sort_order = ? WHERE id = ?")
-      .bind(code, name, color, sortOrder, id)
+      .prepare("UPDATE visual_categories SET code = ?, name = ?, color = ?, parent_id = ?, sort_order = ? WHERE id = ?")
+      .bind(code, name, color, parentId, sortOrder, id)
       .run();
 
     return {
       id,
       trackId: (existing as any).track_id,
       code,
+      parentId,
       name,
       color,
       sortOrder,
@@ -723,6 +731,15 @@ export async function deleteVisualCategory(id: string): Promise<boolean> {
   if (!d1) return false;
 
   try {
+    // Recursively delete children first
+    const { results: childRows } = await d1
+      .prepare("SELECT id FROM visual_categories WHERE parent_id = ?")
+      .bind(id)
+      .all();
+    for (const child of childRows || []) {
+      await deleteVisualCategory((child as any).id);
+    }
+
     // Delete connected course assignments first to satisfy foreign key constraint
     await d1.prepare("DELETE FROM track_course_assignments WHERE visual_category_id = ?").bind(id).run();
     await d1.prepare("DELETE FROM visual_categories WHERE id = ?").bind(id).run();
@@ -983,16 +1000,62 @@ export async function cloneTrackStructure(
     const visualCatMap = new Map<string, string>(); // oldVcatId -> newVcatId
     const ruleCatMap = new Map<string, string>(); // oldRcatId -> newRcatId
 
-    // 1. Clone Visual Categories
+    // 1. Clone Visual Categories (preserves hierarchy)
     if (options.cloneVisualCategories) {
       const sourceVCats = await getVisualCategories(sourceTrackId);
-      for (const vcat of sourceVCats) {
+
+      const remainingVCats = [...sourceVCats];
+      let iterations = 0;
+      while (remainingVCats.length > 0 && iterations < 20) {
+        iterations++;
+        const toRemove: number[] = [];
+
+        for (let i = 0; i < remainingVCats.length; i++) {
+          const vcat = remainingVCats[i];
+          if (!vcat.parentId) {
+            // Root category
+            const newVCat = await createVisualCategory(
+              targetTrackId,
+              vcat.name,
+              vcat.color,
+              vcat.sortOrder,
+              vcat.code,
+              null
+            );
+            visualCatMap.set(vcat.id, newVCat.id);
+            toRemove.push(i);
+            stats.visualCategoriesCloned++;
+          } else if (visualCatMap.has(vcat.parentId)) {
+            // Child category whose parent is already created
+            const newParentId = visualCatMap.get(vcat.parentId)!;
+            const newVCat = await createVisualCategory(
+              targetTrackId,
+              vcat.name,
+              vcat.color,
+              vcat.sortOrder,
+              vcat.code,
+              newParentId
+            );
+            visualCatMap.set(vcat.id, newVCat.id);
+            toRemove.push(i);
+            stats.visualCategoriesCloned++;
+          }
+        }
+
+        for (let j = toRemove.length - 1; j >= 0; j--) {
+          remainingVCats.splice(toRemove[j], 1);
+        }
+      }
+
+      // Any remaining orphaned categories
+      for (const vcat of remainingVCats) {
         const newVCat = await createVisualCategory(
           targetTrackId,
           vcat.name,
           vcat.color,
           vcat.sortOrder,
-          vcat.code
+          vcat.code,
+          null
         );
         visualCatMap.set(vcat.id, newVCat.id);
         stats.visualCategoriesCloned++;
@@ -1136,14 +1199,21 @@ export async function cloneTrackStructure(
   }
 }
 
-export async function reorderVisualCategories(items: { id: string; sortOrder: number }[]): Promise<boolean> {
+export async function reorderVisualCategories(
+  items: { id: string; sortOrder: number; parentId?: string | null }[]
+): Promise<boolean> {
   const d1 = getD1();
   if (!d1) return false;
 
   try {
-    const stmts = items.map((item) =>
-      d1.prepare("UPDATE visual_categories SET sort_order = ? WHERE id = ?").bind(item.sortOrder, item.id)
-    );
+    const stmts = items.map((item) => {
+      if (item.parentId !== undefined) {
+        return d1
+          .prepare("UPDATE visual_categories SET sort_order = ?, parent_id = ? WHERE id = ?")
+          .bind(item.sortOrder, item.parentId || null, item.id);
+      }
+      return d1.prepare("UPDATE visual_categories SET sort_order = ? WHERE id = ?").bind(item.sortOrder, item.id);
+    });
     await d1.batch(stmts);
     return true;
   } catch (err) {
@@ -1272,14 +1342,14 @@ export async function syncVisualFromRuleCategories(trackId: string): Promise<boo
       .prepare("SELECT * FROM rule_categories WHERE track_id = ? ORDER BY sort_order ASC, created_at ASC")
       .bind(trackId)
       .all();
-    const ruleCategories = ruleRows || [];
+    const ruleCategories = (ruleRows || []) as any[];
 
     // 2. Fetch all assignments for this track
     const { results: assignRows } = await d1
       .prepare("SELECT * FROM track_course_assignments WHERE track_id = ?")
       .bind(trackId)
       .all();
-    const assignments = assignRows || [];
+    const assignments = (assignRows || []) as any[];
 
     // 3. Clear all existing visual categories for this track and unassign their visual references
     await d1.prepare("DELETE FROM visual_categories WHERE track_id = ?").bind(trackId).run();
@@ -1291,11 +1361,6 @@ export async function syncVisualFromRuleCategories(trackId: string): Promise<boo
     if (ruleCategories.length === 0) {
       return true;
     }
-
-    // 4. Identify top-level (level 1) rule categories
-    const topLevelRules = ruleCategories.filter(
-      (r: any) => !r.parent_id || !ruleCategories.some((p: any) => p.id === r.parent_id)
-    );
 
     const PRESET_COLORS = [
       "#3b82f6", // blue
@@ -1312,51 +1377,71 @@ export async function syncVisualFromRuleCategories(trackId: string): Promise<boo
       "#a855f7", // violet
     ];
 
-    // 5. For each top-level category, find all descendant rule category IDs and flatten their assigned courses
-    for (let idx = 0; idx < topLevelRules.length; idx++) {
-      const topRule: any = topLevelRules[idx];
-      const descendantIds = new Set<string>();
+    // 4. Map rule category IDs to visual category IDs
+    const ruleIdToVcatId = new Map<string, string>();
+    const statements: any[] = [];
+    const now = new Date().toISOString();
 
-      const collectDescendants = (parentId: string) => {
-        descendantIds.add(parentId);
-        const children = ruleCategories.filter((r: any) => r.parent_id === parentId);
-        for (const child of children) {
-          collectDescendants((child as any).id);
-        }
-      };
-      collectDescendants(topRule.id);
+    // Identify top-level (level 1) rule categories
+    const topLevelRules = ruleCategories.filter(
+      (r: any) => !r.parent_id || !ruleCategories.some((p: any) => p.id === r.parent_id)
+    );
 
-      // Collect all course IDs under this entire rule category tree
-      const courseIds = assignments
-        .filter((a: any) => a.rule_category_id && descendantIds.has(a.rule_category_id))
-        .map((a: any) => a.course_id);
-      const uniqueCourseIds = Array.from(new Set(courseIds));
-
-      // Create new visual category
+    // Recursively process categories depth-first so parents exist before children
+    const processCategoryTree = (ruleCat: any, parentVcatId: string | null, color: string, sortIdx: number) => {
       const vcatId = `vcat_${crypto.randomUUID().slice(0, 8)}`;
-      const vcatCode = topRule.code || `VCAT-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
-      const color = PRESET_COLORS[idx % PRESET_COLORS.length];
-      const now = new Date().toISOString();
+      ruleIdToVcatId.set(ruleCat.id, vcatId);
+      const vcatCode = ruleCat.code || `VCAT-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
 
-      await d1
-        .prepare(
-          "INSERT INTO visual_categories (id, track_id, code, name, color, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
-        )
-        .bind(vcatId, trackId, vcatCode, topRule.name, color, idx + 1, now)
-        .run();
-
-      // Assign collected courses to the new visual category
-      for (const courseId of uniqueCourseIds) {
-        const assignId = `assign_${trackId}_${courseId}`;
-        await d1
+      statements.push(
+        d1
           .prepare(
-            `INSERT INTO track_course_assignments (id, track_id, course_id, visual_category_id)
-             VALUES (?, ?, ?, ?)
-             ON CONFLICT(track_id, course_id) DO UPDATE SET visual_category_id = excluded.visual_category_id`
+            "INSERT INTO visual_categories (id, track_id, parent_id, code, name, color, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
           )
-          .bind(assignId, trackId, courseId, vcatId)
-          .run();
+          .bind(vcatId, trackId, parentVcatId, vcatCode, ruleCat.name, color, ruleCat.sort_order ?? sortIdx, now)
+      );
+
+      const children = ruleCategories.filter((r: any) => r.parent_id === ruleCat.id);
+      for (let cIdx = 0; cIdx < children.length; cIdx++) {
+        processCategoryTree(children[cIdx], vcatId, color, cIdx + 1);
       }
+    };
+
+    for (let idx = 0; idx < topLevelRules.length; idx++) {
+      const topRule = topLevelRules[idx];
+      const color = PRESET_COLORS[idx % PRESET_COLORS.length];
+      processCategoryTree(topRule, null, color, idx + 1);
+    }
+
+    // Handle any orphaned categories
+    for (const r of ruleCategories) {
+      if (!ruleIdToVcatId.has(r.id)) {
+        const color = PRESET_COLORS[statements.length % PRESET_COLORS.length];
+        processCategoryTree(r, null, color, statements.length + 1);
+      }
+    }
+
+    // Assign courses 1:1 matching rule_category_id to visual_category_id
+    for (const a of assignments) {
+      if (a.rule_category_id && ruleIdToVcatId.has(a.rule_category_id)) {
+        const targetVcatId = ruleIdToVcatId.get(a.rule_category_id)!;
+        const assignId = a.id || `assign_${trackId}_${a.course_id}`;
+        statements.push(
+          d1
+            .prepare(
+              `INSERT INTO track_course_assignments (id, track_id, course_id, rule_category_id, visual_category_id)
+               VALUES (?, ?, ?, ?, ?)
+               ON CONFLICT(track_id, course_id) DO UPDATE SET visual_category_id = excluded.visual_category_id`
+            )
+            .bind(assignId, trackId, a.course_id, a.rule_category_id, targetVcatId)
+        );
+      }
+    }
+
+    // Execute batch statements in chunks of 50
+    const BATCH_SIZE = 50;
+    for (let i = 0; i < statements.length; i += BATCH_SIZE) {
+      await d1.batch(statements.slice(i, i + BATCH_SIZE));
     }
 
     return true;

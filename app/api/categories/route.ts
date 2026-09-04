@@ -88,6 +88,7 @@ export async function POST(request: Request) {
         name,
         color: color || "#3b82f6",
         sortOrder: sortOrder || 0,
+        parentId,
         code,
       });
       return Response.json({ success: true, data: newCat }, { status: 201 });
@@ -157,7 +158,7 @@ export async function PUT(request: Request) {
     // Sub-action: Update category
     if (id) {
       if (type === "visual") {
-        const updated = await updateVisualCategory(id, { name, color, sortOrder, code });
+        const updated = await updateVisualCategory(id, { name, color, parentId, sortOrder, code });
         if (!updated) {
           return Response.json({ success: false, message: "دسته بصری یافت نشد." }, { status: 404 });
         }

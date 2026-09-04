@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import { getTrackById, getVisualCategories, getTrackAssignments } from "@/lib/db";
+import type { VisualCategory } from "@/lib/types";
 
-interface VisualCategoryExportNode {
+interface HierarchicalVisualCategoryNode {
   code: string;
   name: string;
   color?: string;
   courses: string[];
+  children: HierarchicalVisualCategoryNode[];
 }
 
 export async function GET(request: NextRequest) {
@@ -45,15 +47,28 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Build flat visual categories list
-    const exportData: VisualCategoryExportNode[] = categories.map((cat) => ({
-      code: cat.code || `VCAT-${cat.id}`,
-      name: cat.name,
-      color: cat.color || "#3b82f6",
-      courses: courseCodesByCatId.get(cat.id) || [],
-    }));
+    // Build hierarchical tree
+    function buildNode(cat: VisualCategory): HierarchicalVisualCategoryNode {
+      const children = categories
+        .filter((c) => c.parentId === cat.id)
+        .map(buildNode);
 
-    const jsonContent = JSON.stringify(exportData, null, 2);
+      return {
+        code: cat.code || `VCAT-${cat.id}`,
+        name: cat.name,
+        color: cat.color || "#3b82f6",
+        courses: courseCodesByCatId.get(cat.id) || [],
+        children,
+      };
+    }
+
+    // Identify root categories (no parent or parent not found in list)
+    const rootCategories = categories.filter(
+      (c) => !c.parentId || !categories.some((p) => p.id === c.parentId)
+    );
+    const hierarchicalData = rootCategories.map(buildNode);
+
+    const jsonContent = JSON.stringify(hierarchicalData, null, 2);
     const dateStr = new Date().toISOString().split("T")[0];
     const safeTrackName = (track.name || "track").replace(/[^a-zA-Z0-9\u0600-\u06FF_-]/g, "_");
     const filename = `visual-categories-${safeTrackName}-${dateStr}.json`;

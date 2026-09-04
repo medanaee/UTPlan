@@ -17,10 +17,11 @@ import {
   FolderTree,
   Palette,
   RefreshCw,
-  Eraser,
   Download,
   Upload,
   Link2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,8 +40,10 @@ import { useAdminStore } from "@/lib/stores/admin-store";
 import { TrackCloneDialog } from "./track-clone-dialog";
 import { CategoryCourseAssignDialog } from "./category-course-assign-dialog";
 import { RuleCategoryNode } from "./rule-category-node";
+import { VisualCategoryNode } from "./visual-category-node";
 import { RuleCategoryImportDialog } from "./rule-category-import-dialog";
 import { VisualCategoryImportDialog } from "./visual-category-import-dialog";
+import { usePersistedState } from "@/lib/hooks/use-persisted-state";
 import type { Course, VisualCategory, RuleCategory } from "@/lib/types";
 
 const COLOR_PRESETS = [
@@ -85,7 +88,12 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
   // Edit Modals
   const [vcatEditModalOpen, setVcatEditModalOpen] = useState(false);
   const [editingVcat, setEditingVcat] = useState<VisualCategory | null>(null);
-  const [vcatEditForm, setVcatEditForm] = useState({ code: "", name: "", color: "#3b82f6" });
+  const [vcatEditForm, setVcatEditForm] = useState<{ code: string; name: string; color: string; parentId: string | null }>({
+    code: "",
+    name: "",
+    color: "#3b82f6",
+    parentId: null,
+  });
 
   const [rcatEditModalOpen, setRcatEditModalOpen] = useState(false);
   const [editingRcat, setEditingRcat] = useState<RuleCategory | null>(null);
@@ -96,7 +104,13 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
   });
 
   const [isSyncing, setIsSyncing] = useState(false);
-  const [vcatForm, setVcatForm] = useState({ code: "", name: "", color: "#3b82f6", sortOrder: 1 });
+  const [vcatForm, setVcatForm] = useState<{ code: string; name: string; color: string; sortOrder: number; parentId: string | null }>({
+    code: "",
+    name: "",
+    color: "#3b82f6",
+    sortOrder: 1,
+    parentId: null,
+  });
   const [rcatForm, setRcatForm] = useState<{ code: string; name: string; parentId: string | null }>({
     code: "",
     name: "",
@@ -104,6 +118,47 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
   });
   const [rcatImportModalOpen, setRcatImportModalOpen] = useState(false);
   const [vcatImportModalOpen, setVcatImportModalOpen] = useState(false);
+
+  // Collapsed Categories State (persisted in localStorage)
+  const [collapsedRuleCatIdsArray, setCollapsedRuleCatIdsArray] = usePersistedState<string[]>(
+    "ut_ece_collapsed_rcats",
+    []
+  );
+  const [collapsedVisualCatIdsArray, setCollapsedVisualCatIdsArray] = usePersistedState<string[]>(
+    "ut_ece_collapsed_vcats",
+    []
+  );
+
+  const collapsedRuleCatIds = useMemo(() => new Set(collapsedRuleCatIdsArray), [collapsedRuleCatIdsArray]);
+  const collapsedVisualCatIds = useMemo(() => new Set(collapsedVisualCatIdsArray), [collapsedVisualCatIdsArray]);
+
+  const toggleCollapseRuleCat = (catId: string) => {
+    setCollapsedRuleCatIdsArray((prev) =>
+      prev.includes(catId) ? prev.filter((id) => id !== catId) : [...prev, catId]
+    );
+  };
+
+  const toggleCollapseVisualCat = (catId: string) => {
+    setCollapsedVisualCatIdsArray((prev) =>
+      prev.includes(catId) ? prev.filter((id) => id !== catId) : [...prev, catId]
+    );
+  };
+
+  const collapseAllRuleCats = () => {
+    setCollapsedRuleCatIdsArray(ruleCats.map((c) => c.id));
+  };
+
+  const expandAllRuleCats = () => {
+    setCollapsedRuleCatIdsArray([]);
+  };
+
+  const collapseAllVisualCats = () => {
+    setCollapsedVisualCatIdsArray(visualCats.map((c) => c.id));
+  };
+
+  const expandAllVisualCats = () => {
+    setCollapsedVisualCatIdsArray([]);
+  };
 
   // Assign Modal State
   const [assignModal, setAssignModal] = useState<{
@@ -120,8 +175,8 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
   });
 
   // Drag and Drop States
-  const [draggedVcatIndex, setDraggedVcatIndex] = useState<number | null>(null);
-  const [dragOverVcatIndex, setDragOverVcatIndex] = useState<number | null>(null);
+  const [draggedVcatId, setDraggedVcatId] = useState<string | null>(null);
+  const [dragOverVcatId, setDragOverVcatId] = useState<string | null>(null);
 
   const [draggedRcatId, setDraggedRcatId] = useState<string | null>(null);
   const [dragOverRcatId, setDragOverRcatId] = useState<string | null>(null);
@@ -188,6 +243,38 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
     return false;
   };
 
+  // Helper: Calculate depth of visual category in tree (Level 1: 1, Level 2: 2, Level 3: 3)
+  const getVisualCategoryDepth = (catId: string): number => {
+    let depth = 1;
+    let curr = visualCats.find((c) => c.id === catId);
+    while (curr?.parentId) {
+      depth++;
+      curr = visualCats.find((c) => c.id === curr!.parentId);
+    }
+    return depth;
+  };
+
+  // Helper: Calculate visual subtree height
+  const getVisualSubtreeDepth = (catId: string): number => {
+    const children = visualCats.filter((c) => c.parentId === catId);
+    if (children.length === 0) return 1;
+    let maxChildSubtree = 0;
+    for (const ch of children) {
+      maxChildSubtree = Math.max(maxChildSubtree, getVisualSubtreeDepth(ch.id));
+    }
+    return 1 + maxChildSubtree;
+  };
+
+  // Helper: Check if childId is a descendant of ancestorId for visual categories
+  const isVisualDescendant = (childId: string, ancestorId: string): boolean => {
+    let curr = visualCats.find((c) => c.id === childId);
+    while (curr?.parentId) {
+      if (curr.parentId === ancestorId) return true;
+      curr = visualCats.find((c) => c.id === curr!.parentId);
+    }
+    return false;
+  };
+
   // Quick Unassign Course from Visual Category
   const handleQuickUnassignVisual = async (catId: string, courseId: string) => {
     if (!selectedTrackId) return;
@@ -232,10 +319,19 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
     if (assignRes.success) setTrackAssignments(assignRes.data);
   };
 
-  // Create Visual Category
+  // Create Visual Category (With Depth 3 check)
   const handleCreateVcat = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTrackId) return;
+
+    if (vcatForm.parentId) {
+      const parentDepth = getVisualCategoryDepth(vcatForm.parentId);
+      if (parentDepth >= 3) {
+        alert("خطا: ساختار درختی دسته‌های بصری حداکثر تا عمق ۳ لایه مجاز است.");
+        return;
+      }
+    }
+
     const res = await fetch("/api/categories", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -245,13 +341,14 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
         code: vcatForm.code?.trim() || undefined,
         name: (vcatForm.name || "").trim(),
         color: vcatForm.color,
-        sortOrder: visualCats.length + 1,
+        sortOrder: vcatForm.sortOrder,
+        parentId: vcatForm.parentId || null,
       }),
     }).then((r) => r.json());
 
     if (res.success) {
       setVcatModalOpen(false);
-      setVcatForm({ code: "", name: "", color: "#3b82f6", sortOrder: 1 });
+      setVcatForm({ code: "", name: "", color: "#3b82f6", sortOrder: 1, parentId: null });
       setActionMessage("دسته بصری جدید با موفقیت اضافه شد.");
       await loadTrackDetails(selectedTrackId);
     }
@@ -260,7 +357,12 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
   // Open Edit Visual Category Modal
   const handleOpenEditVcat = (cat: VisualCategory) => {
     setEditingVcat(cat);
-    setVcatEditForm({ code: cat.code || "", name: cat.name || "", color: cat.color || "#3b82f6" });
+    setVcatEditForm({
+      code: cat.code || "",
+      name: cat.name || "",
+      color: cat.color || "#3b82f6",
+      parentId: cat.parentId || null,
+    });
     setVcatEditModalOpen(true);
   };
 
@@ -268,6 +370,23 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
   const handleUpdateVcat = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingVcat || !selectedTrackId) return;
+
+    if (vcatEditForm.parentId) {
+      if (vcatEditForm.parentId === editingVcat.id) {
+        alert("خطا: یک دسته نمی‌تواند والد خودش باشد!");
+        return;
+      }
+      if (isVisualDescendant(vcatEditForm.parentId, editingVcat.id)) {
+        alert("خطا: نمی‌توانید یکی از زیردسته‌ها را به عنوان والد این دسته انتخاب کنید (ایجاد چرخه)!");
+        return;
+      }
+      const parentDepth = getVisualCategoryDepth(vcatEditForm.parentId);
+      const subtreeDepth = getVisualSubtreeDepth(editingVcat.id);
+      if (parentDepth + subtreeDepth > 3) {
+        alert("خطا: ساختار درختی دسته‌های بصری حداکثر تا عمق ۳ لایه مجاز است.");
+        return;
+      }
+    }
 
     const res = await fetch("/api/categories", {
       method: "PUT",
@@ -279,6 +398,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
         code: vcatEditForm.code?.trim() || null,
         name: (vcatEditForm.name || "").trim(),
         color: vcatEditForm.color,
+        parentId: vcatEditForm.parentId || null,
       }),
     }).then((r) => r.json());
 
@@ -377,12 +497,12 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
     }
   };
 
-  // Sync Visual Categories from Level 1 Rule Categories (Flattening & copying courses)
+  // Sync Visual Categories from Rule Categories (Preserving full tree & courses)
   const handleSyncVisualFromRules = async () => {
     if (!selectedTrackId) return;
     if (
       !confirm(
-        "آیا از پاک کردن تمام دسته‌های بصری فعلی و کپی دسته‌های سطح ۱ قوانین (به همراه کلیه دروس زیردسته‌ها) مطمئن هستید؟ این عملیات قابل بازگشت نیست."
+        "آیا از پاک کردن تمام دسته‌های بصری فعلی و کپی کامل ساختار درختی دسته‌های قوانین (به همراه کلیه دروس مربوطه) مطمئن هستید؟ این عملیات قابل بازگشت نیست."
       )
     ) {
       return;
@@ -400,7 +520,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
       }).then((r) => r.json());
 
       if (res.success) {
-        setActionMessage(res.message || "دسته‌های بصری با موفقیت از سطح ۱ قوانین بازتولید شدند.");
+        setActionMessage(res.message || "دسته‌های بصری با موفقیت بر اساس ساختار درختی قوانین بازتولید شدند.");
         await loadTrackDetails(selectedTrackId);
       } else {
         alert(res.message || "خطا در همگام‌سازی دسته‌های بصری");
@@ -414,23 +534,40 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
   };
 
   // Visual Category Drag and Drop Reorder
-  const handleVcatDrop = async (targetIndex: number) => {
-    if (draggedVcatIndex === null || draggedVcatIndex === targetIndex) {
-      setDraggedVcatIndex(null);
-      setDragOverVcatIndex(null);
+  const handleVcatDrop = async (targetCatId: string, parentId: string | null) => {
+    if (!draggedVcatId || draggedVcatId === targetCatId) {
+      setDraggedVcatId(null);
+      setDragOverVcatId(null);
       return;
     }
 
-    const updated = [...visualCats];
-    const [draggedItem] = updated.splice(draggedVcatIndex, 1);
-    updated.splice(targetIndex, 0, draggedItem);
+    const siblings = visualCats.filter((c) => (c.parentId || null) === parentId);
+    const draggedIdx = siblings.findIndex((c) => c.id === draggedVcatId);
+    const targetIdx = siblings.findIndex((c) => c.id === targetCatId);
 
-    setVisualCats(updated);
-    setDraggedVcatIndex(null);
-    setDragOverVcatIndex(null);
+    if (draggedIdx === -1 || targetIdx === -1) {
+      setDraggedVcatId(null);
+      setDragOverVcatId(null);
+      return;
+    }
+
+    const reorderedSiblings = [...siblings];
+    const [draggedItem] = reorderedSiblings.splice(draggedIdx, 1);
+    reorderedSiblings.splice(targetIdx, 0, draggedItem);
+
+    const otherCats = visualCats.filter((c) => (c.parentId || null) !== parentId);
+    const newVisualCats = [...otherCats, ...reorderedSiblings];
+
+    setVisualCats(newVisualCats);
+    setDraggedVcatId(null);
+    setDragOverVcatId(null);
 
     try {
-      const itemsPayload = updated.map((item, idx) => ({ id: item.id, sortOrder: idx + 1 }));
+      const itemsPayload = reorderedSiblings.map((item, idx) => ({
+        id: item.id,
+        sortOrder: idx + 1,
+        parentId: parentId || null,
+      }));
       await fetch("/api/categories", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -440,6 +577,20 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
       console.error("Reorder visual categories error:", err);
     }
   };
+
+  // Filter visual categories eligible to be parent for new categories (depth < 3)
+  const eligibleVisualParentCategories = visualCats.filter((c) => getVisualCategoryDepth(c.id) < 3);
+
+  // Filter visual categories eligible to be parent when editing an existing category
+  const eligibleVisualParentsForEdit = editingVcat
+    ? visualCats.filter((c) => {
+        if (c.id === editingVcat.id) return false;
+        if (isVisualDescendant(c.id, editingVcat.id)) return false;
+        const pDepth = getVisualCategoryDepth(c.id);
+        const subDepth = getVisualSubtreeDepth(editingVcat.id);
+        return pDepth + subDepth <= 3;
+      })
+    : eligibleVisualParentCategories;
 
   // Rule Category Drag and Drop Reorder
   const handleRcatDrop = async (targetCatId: string, parentId: string | null) => {
@@ -678,6 +829,33 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
               <Plus className="h-3.5 w-3.5" />
               افزودن دسته اصلی قوانین
             </Button>
+
+            {ruleCats.length > 0 && (
+              <div className="flex items-center gap-1 border-r pr-2 mr-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={expandAllRuleCats}
+                  className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground font-medium gap-1"
+                  title="باز کردن تمام دسته‌های قوانین"
+                >
+                  <ChevronDown className="h-3.5 w-3.5 text-primary" />
+                  <span>باز کردن همه</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={collapseAllRuleCats}
+                  className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground font-medium gap-1"
+                  title="بستن تمام دسته‌های قوانین"
+                >
+                  <ChevronUp className="h-3.5 w-3.5 text-primary" />
+                  <span>بستن همه</span>
+                </Button>
+              </div>
+            )}
           </div>
         </CardHeader>
 
@@ -719,6 +897,8 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
                 onAssignmentsChanged={async () => {
                   if (selectedTrackId) await loadTrackDetails(selectedTrackId);
                 }}
+                collapsedIds={collapsedRuleCatIds}
+                onToggleCollapse={toggleCollapseRuleCat}
               />
             ));
           })()}
@@ -772,17 +952,17 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
               disabled={!selectedTrackId || isSyncing || ruleCats.length === 0}
               onClick={handleSyncVisualFromRules}
               className="h-8 gap-1.5 text-xs shadow-2xs font-semibold text-muted-foreground hover:text-foreground"
-              title="پاک کردن دسته‌های بصری فعلی و کپی دسته‌های سطح ۱ قوانین به همراه دروس زیردسته‌ها"
+              title="پاک کردن دسته‌های بصری فعلی و کپی کامل ساختار درختی دسته‌های قوانین به همراه دروس"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin text-primary" : ""}`} />
-              همگام‌سازی از قوانین (سطح ۱)
+              همگام‌سازی از قوانین
             </Button>
 
             <Button
               size="sm"
               disabled={!selectedTrackId}
               onClick={() => {
-                setVcatForm({ code: "", name: "", color: "#3b82f6", sortOrder: visualCats.length + 1 });
+                setVcatForm({ code: "", name: "", color: "#3b82f6", sortOrder: visualCats.length + 1, parentId: null });
                 setVcatModalOpen(true);
               }}
               className="h-8 gap-1.5 text-xs shadow-xs font-semibold"
@@ -790,147 +970,79 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
               <Plus className="h-3.5 w-3.5" />
               افزودن دسته بصری جدید
             </Button>
+
+            {visualCats.length > 0 && (
+              <div className="flex items-center gap-1 border-r pr-2 mr-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={expandAllVisualCats}
+                  className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground font-medium gap-1"
+                  title="باز کردن تمام دسته‌های بصری"
+                >
+                  <ChevronDown className="h-3.5 w-3.5 text-primary" />
+                  <span>باز کردن همه</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={collapseAllVisualCats}
+                  className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground font-medium gap-1"
+                  title="بستن تمام دسته‌های بصری"
+                >
+                  <ChevronUp className="h-3.5 w-3.5 text-primary" />
+                  <span>بستن همه</span>
+                </Button>
+              </div>
+            )}
           </div>
         </CardHeader>
 
         <CardContent className="space-y-3.5">
-          {visualCats.map((cat, idx) => {
-            const assignedCourses = getVisualCategoryCourses(cat.id);
-            const totalUnits = assignedCourses.reduce((sum, c) => sum + (c.units || 3), 0);
-
-            return (
-              <div
-                key={cat.id}
-                draggable
-                onDragStart={(e) => {
-                  e.dataTransfer.setData("text/plain", idx.toString());
-                  setDraggedVcatIndex(idx);
-                }}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  if (dragOverVcatIndex !== idx) setDragOverVcatIndex(idx);
-                }}
-                onDragLeave={() => {
-                  if (dragOverVcatIndex === idx) setDragOverVcatIndex(null);
-                }}
-                onDrop={() => handleVcatDrop(idx)}
-                onDragEnd={() => {
-                  setDraggedVcatIndex(null);
-                  setDragOverVcatIndex(null);
-                }}
-                className={"rounded-2xl border border-border/70 bg-card p-4 transition-all duration-150 space-y-3 shadow-2xs " + (
-                  draggedVcatIndex === idx
-                    ? "opacity-40 border-dashed border-primary bg-primary/5 scale-[0.99]"
-                    : dragOverVcatIndex === idx
-                    ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary/40"
-                    : "hover:border-primary/40"
-                )}
-              >
-                {/* Category Header Row */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                  <div className="flex items-center gap-2.5 cursor-grab active:cursor-grabbing select-none">
-                    <GripVertical className="h-4 w-4 text-muted-foreground/60 shrink-0 cursor-grab" />
-                    <span
-                      className="h-4 w-4 rounded-full border shadow-2xs shrink-0"
-                      style={{ backgroundColor: cat.color }}
-                    />
-                    <span className="font-bold text-sm text-foreground">{cat.name}</span>
-                    {cat.code && (
-                      <Badge variant="outline" className="text-xs px-1.5 py-0.5 border-primary/40 text-primary bg-primary/5 font-semibold">
-                        {cat.code}
-                      </Badge>
-                    )}
-                    <Badge variant="secondary" className="text-xs font-medium px-2 py-0.5">
-                      {assignedCourses.length} درس ({totalUnits} واحد)
-                    </Badge>
-                  </div>
-
-                  <div className="flex items-center gap-2 self-end sm:self-auto">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        setAssignModal({
-                          open: true,
-                          type: "visual",
-                          categoryId: cat.id,
-                          categoryName: cat.name,
-                          categoryColor: cat.color,
-                        })
-                      }
-                      className="h-8 text-xs gap-1.5 shadow-2xs font-medium"
-                    >
-                      <BookOpen className="h-3.5 w-3.5 text-primary" />
-                      تخصیص دروس
-                    </Button>
-
-                    {/* Eraser Button: Clear all assigned courses inside this visual category */}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={async () => {
-                        if (!confirm(`آیا از حذف تمام دروس داخل دسته بصری «${cat.name}» مطمئن هستید؟`)) return;
-                        await fetch("/api/tracks/assignments", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            action: "clear_category_courses",
-                            trackId: selectedTrackId,
-                            type: "visual",
-                            categoryId: cat.id,
-                          }),
-                        });
-                        if (selectedTrackId) await loadTrackDetails(selectedTrackId);
-                        setActionMessage(`تمام دروس دسته بصری «${cat.name}» با موفقیت پاک شدند.`);
-                      }}
-                      disabled={assignedCourses.length === 0}
-                      className="h-8 w-8 p-0 text-muted-foreground hover:text-amber-600 hover:bg-amber-500/10 shrink-0"
-                      title="پاک کردن تمام دروس این دسته بصری"
-                    >
-                      <Eraser className="h-4 w-4" />
-                    </Button>
-
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleOpenEditVcat(cat)}
-                      className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10 shrink-0"
-                      title="ویرایش نام و رنگ دسته بصری"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={async () => {
-                        if (!confirm("آیا از حذف دسته بصری «" + cat.name + "» مطمئن هستید؟")) return;
-                        await fetch("/api/categories?id=" + cat.id + "&type=visual", { method: "DELETE" });
-                        if (selectedTrackId) await loadTrackDetails(selectedTrackId);
-                        setActionMessage(`دسته بصری «${cat.name}» با موفقیت حذف شد.`);
-                      }}
-                      className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive shrink-0"
-                      title="حذف دسته"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Assigned Courses Chips Container */}
-                <div className="pt-2.5 border-t border-border/50">
-                  {renderCourseChips(cat.id, "visual", cat.name, cat.color)}
-                </div>
-              </div>
+          {(() => {
+            const rootVisualCats = visualCats.filter(
+              (c) => !c.parentId || !visualCats.some((p) => p.id === c.parentId)
             );
-          })}
 
-          {visualCats.length === 0 && (
-            <div className="text-center py-8 text-xs text-muted-foreground space-y-1">
-              <Palette className="h-8 w-8 text-muted-foreground/40 mx-auto" />
-              <p>دسته‌بندی بصری برای این گرایش تعریف نشده است.</p>
-            </div>
-          )}
+            if (rootVisualCats.length === 0) {
+              return (
+                <div className="text-center py-8 text-xs text-muted-foreground space-y-1">
+                  <Palette className="h-8 w-8 text-muted-foreground/40 mx-auto" />
+                  <p>دسته‌بندی بصری برای این گرایش تعریف نشده است.</p>
+                </div>
+              );
+            }
+
+            return rootVisualCats.map((parentCat) => (
+              <VisualCategoryNode
+                key={parentCat.id}
+                category={parentCat}
+                depth={1}
+                maxDepth={3}
+                visualCats={visualCats}
+                draggedVcatId={draggedVcatId}
+                dragOverVcatId={dragOverVcatId}
+                selectedTrackId={selectedTrackId}
+                setDraggedVcatId={setDraggedVcatId}
+                setDragOverVcatId={setDragOverVcatId}
+                handleVcatDrop={handleVcatDrop}
+                handleOpenEditVcat={handleOpenEditVcat}
+                setVcatForm={setVcatForm}
+                setVcatModalOpen={setVcatModalOpen}
+                setAssignModal={setAssignModal}
+                setVisualCats={setVisualCats}
+                getVisualCategoryCourses={getVisualCategoryCourses}
+                renderCourseChips={renderCourseChips}
+                onAssignmentsChanged={async () => {
+                  if (selectedTrackId) await loadTrackDetails(selectedTrackId);
+                }}
+                collapsedIds={collapsedVisualCatIds}
+                onToggleCollapse={toggleCollapseVisualCat}
+              />
+            ));
+          })()}
         </CardContent>
       </Card>
 
@@ -966,14 +1078,28 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
 
       {/* 1. Add Visual Category Modal */}
       <Dialog open={vcatModalOpen} onOpenChange={setVcatModalOpen}>
-        <DialogContent className="sm:max-w-xs" dir="rtl">
+        <DialogContent className="sm:max-w-sm" dir="rtl">
           <DialogHeader>
             <DialogTitle className="text-sm font-bold">افزودن دسته بصری چارت</DialogTitle>
             <DialogDescription className="text-xs">
-              رنگ و نام این دسته در پیش‌نمایش گرافیکی چارت نمایش داده خواهد شد.
+              دسته‌ها به صورت درختی و تا حداکثر ۳ لایه سازمان‌دهی می‌شوند.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateVcat} className="space-y-3.5 pt-2">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold">دسته والد (اختیاری):</Label>
+                <span className="text-xs text-muted-foreground">حداکثر عمق: ۳ لایه</span>
+              </div>
+              <CategoryPicker
+                categories={eligibleVisualParentCategories}
+                value={vcatForm.parentId}
+                onChange={(val) => setVcatForm({ ...vcatForm, parentId: val })}
+                placeholder="دسته اصلی (بدون والد - سطح ۱)"
+                className="w-full"
+              />
+            </div>
+
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-semibold">کد دسته:</Label>
@@ -1028,17 +1154,31 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
 
       {/* 2. Edit Visual Category Modal */}
       <Dialog open={vcatEditModalOpen} onOpenChange={setVcatEditModalOpen}>
-        <DialogContent className="sm:max-w-xs" dir="rtl">
+        <DialogContent className="sm:max-w-sm" dir="rtl">
           <DialogHeader>
             <DialogTitle className="text-sm font-bold flex items-center gap-1.5">
               <Pencil className="h-4 w-4 text-primary" />
               <span>ویرایش دسته بصری چارت</span>
             </DialogTitle>
             <DialogDescription className="text-xs">
-              نام، کد و رنگ اختصاصی این دسته بصری را تغییر دهید.
+              نام، کد، دسته والد و رنگ اختصاصی این دسته بصری را تغییر دهید (حداکثر ۳ لایه).
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleUpdateVcat} className="space-y-3.5 pt-2">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold">دسته والد (اختیاری):</Label>
+                <span className="text-xs text-muted-foreground">حداکثر عمق: ۳ لایه</span>
+              </div>
+              <CategoryPicker
+                categories={eligibleVisualParentsForEdit}
+                value={vcatEditForm.parentId}
+                onChange={(val) => setVcatEditForm({ ...vcatEditForm, parentId: val })}
+                placeholder="دسته اصلی (بدون والد - سطح ۱)"
+                className="w-full"
+              />
+            </div>
+
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-semibold">کد دسته:</Label>

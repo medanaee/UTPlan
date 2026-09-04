@@ -40,21 +40,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 1. Validation
+    // 1. Recursive Structural Validation
     const categoryCodes = new Set<string>();
     const validationErrors: string[] = [];
 
-    categories.forEach((cat: any, idx: number) => {
-      const path = cat?.name || `دسته ${idx + 1}`;
-      if (!cat || typeof cat !== "object") {
-        validationErrors.push(`ردیف ${idx + 1} ساختار شیء معتبر ندارد.`);
+    function validateNode(node: any, path: string, depth: number) {
+      if (!node || typeof node !== "object") {
+        validationErrors.push(`گره در مسیر «${path}» ساختار شیء معتبر ندارد.`);
         return;
       }
-
-      if (typeof cat.code !== "string" || !cat.code.trim()) {
-        validationErrors.push(`کد دسته در «${path}» الزامی است.`);
+      if (typeof node.code !== "string" || !node.code.trim()) {
+        validationErrors.push(`کد دسته در مسیر «${path}» الزامی است.`);
       } else {
-        const cleanCode = cat.code.trim().toUpperCase();
+        const cleanCode = node.code.trim().toUpperCase();
         if (categoryCodes.has(cleanCode)) {
           validationErrors.push(`کد دسته «${cleanCode}» در فایل ورودی تکراری است.`);
         } else {
@@ -62,14 +60,29 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      if (typeof cat.name !== "string" || !cat.name.trim()) {
-        validationErrors.push(`نام دسته در «${path}» الزامی است.`);
+      if (typeof node.name !== "string" || !node.name.trim()) {
+        validationErrors.push(`نام دسته در مسیر «${path}» الزامی است.`);
       }
 
-      const courses = cat.courses ?? cat.courseCodes;
+      const courses = node.courses ?? node.courseCodes;
       if (courses !== undefined && !Array.isArray(courses)) {
-        validationErrors.push(`لیست دروس در دسته «${path}» باید آرایه‌ای از کدهای دروس باشد.`);
+        validationErrors.push(`لیست دروس در دسته «${node.name || path}» باید آرایه‌ای از کدهای دروس باشد.`);
       }
+
+      const children = node.children ?? node.subcategories;
+      if (children !== undefined) {
+        if (!Array.isArray(children)) {
+          validationErrors.push(`زیردسته‌های دسته «${node.name || path}» باید آرایه باشند.`);
+        } else {
+          children.forEach((child: any, idx: number) => {
+            validateNode(child, `${path} > ${child.name || idx + 1}`, depth + 1);
+          });
+        }
+      }
+    }
+
+    categories.forEach((cat: any, idx: number) => {
+      validateNode(cat, cat.name || `ریشه ${idx + 1}`, 1);
     });
 
     if (validationErrors.length > 0) {
@@ -101,7 +114,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 4. Execution (Merge Strategy)
+    // 4. Execution (Merge Strategy with Hierarchy)
     const stats = {
       categoriesCreated: 0,
       categoriesUpdated: 0,
@@ -109,12 +122,10 @@ export async function POST(request: NextRequest) {
       warnings: [] as string[],
     };
 
-    for (let i = 0; i < categories.length; i++) {
-      const node = categories[i];
+    async function processCategory(node: any, parentId: string | null, sortOrder: number) {
       const cleanCode = node.code.trim().toUpperCase();
       const cleanName = node.name.trim();
       const color = node.color?.trim() || "#3b82f6";
-      const sortOrder = i + 1;
 
       let categoryId: string;
       const existing = existingByCode.get(cleanCode);
@@ -123,6 +134,7 @@ export async function POST(request: NextRequest) {
         await updateVisualCategory(existing.id, {
           name: cleanName,
           color,
+          parentId,
           sortOrder,
           code: cleanCode,
         });
@@ -133,6 +145,7 @@ export async function POST(request: NextRequest) {
           trackId,
           name: cleanName,
           color,
+          parentId,
           sortOrder,
           code: cleanCode,
         });
@@ -141,38 +154,63 @@ export async function POST(request: NextRequest) {
         stats.categoriesCreated++;
       }
 
-      // Assign courses if specified
-      const courses = node.courses ?? node.courseCodes;
-      if (Array.isArray(courses) && courses.length > 0) {
-        const courseIdsToAssign: string[] = [];
-        for (const rawCode of courses) {
-          const codeStr = String(rawCode).trim();
-          const courseId = courseMapByCode.get(codeStr);
-          if (courseId) {
-            courseIdsToAssign.push(courseId);
-          } else {
-            stats.warnings.push(
-              `درس با کد «${codeStr}» برای دسته بصری «${cleanName}» در سیستم یافت نشد و نادیده گرفته شد.`
-            );
+      // Assign Courses
+      const coursesList = Array.isArray(node.courses)
+        ? node.courses
+        : Array.isArray(node.courseCodes)
+        ? node.courseCodes
+        : [];
+
+      if (coursesList.length > 0) {
+        const validCourseIds: string[] = [];
+        for (const cCode of coursesList) {
+          if (typeof cCode === "string" && cCode.trim()) {
+            const trimmedCode = cCode.trim();
+            const cId = courseMapByCode.get(trimmedCode);
+            if (cId) {
+              if (!validCourseIds.includes(cId)) {
+                validCourseIds.push(cId);
+              }
+            } else {
+              stats.warnings.push(
+                `درس با کد «${trimmedCode}» در دسته بصری «${cleanName}» یافت نشد و نادیده گرفته شد.`
+              );
+            }
           }
         }
 
-        if (courseIdsToAssign.length > 0) {
-          await assignCategoryCourses(trackId, "visual", categoryId, courseIdsToAssign);
-          stats.coursesAssigned += courseIdsToAssign.length;
+        if (validCourseIds.length > 0) {
+          await assignCategoryCourses(trackId, "visual", categoryId, validCourseIds);
+          stats.coursesAssigned += validCourseIds.length;
         }
       }
+
+      // Process children recursively
+      const childrenList = Array.isArray(node.children)
+        ? node.children
+        : Array.isArray(node.subcategories)
+        ? node.subcategories
+        : [];
+
+      for (let i = 0; i < childrenList.length; i++) {
+        await processCategory(childrenList[i], categoryId, i + 1);
+      }
+    }
+
+    // Process top-level root categories
+    for (let i = 0; i < categories.length; i++) {
+      await processCategory(categories[i], null, i + 1);
     }
 
     return NextResponse.json({
       success: true,
-      message: `واردسازی دسته‌های بصری با موفقیت انجام شد: ${stats.categoriesCreated} دسته ایجاد، ${stats.categoriesUpdated} دسته بروزرسانی و ${stats.coursesAssigned} درس منتسب گردیدند.`,
+      message: `ورود دسته‌های بصری با موفقیت انجام شد (${stats.categoriesCreated} ایجاد، ${stats.categoriesUpdated} به‌روزرسانی و ${stats.coursesAssigned} درس منتسب گردید).`,
       stats,
     });
   } catch (error: any) {
     console.error("Visual categories import error:", error);
     return NextResponse.json(
-      { success: false, message: error?.message || "خطا در واردسازی دسته‌های بصری" },
+      { success: false, message: error?.message || "خطا در پردازش و ورود دسته‌های بصری" },
       { status: 500 }
     );
   }

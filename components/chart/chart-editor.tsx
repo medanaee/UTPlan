@@ -664,6 +664,22 @@ export function ChartEditor({
     }
   };
 
+  // Helper: Get category ID and all its descendants recursively
+  const getCategoryAndDescendantIds = useCallback((catId: string, categories: VisualCategory[]): Set<string> => {
+    const set = new Set<string>();
+    const queue = [catId];
+    while (queue.length > 0) {
+      const currId = queue.shift()!;
+      set.add(currId);
+      for (const cat of categories) {
+        if (cat.parentId === currId && !set.has(cat.id)) {
+          queue.push(cat.id);
+        }
+      }
+    }
+    return set;
+  }, []);
+
   // Filter and sort drawer courses (unplaced courses first, placed courses at the bottom)
   const filteredDrawerCourses = useMemo(() => {
     const list = allCourses.filter((course) => {
@@ -676,12 +692,13 @@ export function ChartEditor({
         if (!matchName && !matchCode && !matchAbbr) return false;
       }
 
-      // 2. Category filter
+      // 2. Category filter (matches category and all its descendants)
       if (selectedCategoryFilter !== "all") {
+        const allowedCatIds = getCategoryAndDescendantIds(selectedCategoryFilter, visualCategories);
         const assignment =
           course.trackAssignments?.find((a) => a.trackId === selectedTrackId) ||
           course.trackAssignments?.[0];
-        if (assignment?.visualCategoryId !== selectedCategoryFilter) return false;
+        if (!assignment?.visualCategoryId || !allowedCatIds.has(assignment.visualCategoryId)) return false;
       }
 
       return true;
@@ -694,7 +711,7 @@ export function ChartEditor({
       if (aPlaced === bPlaced) return 0;
       return aPlaced ? 1 : -1;
     });
-  }, [allCourses, drawerSearch, selectedCategoryFilter, selectedTrackId, placedCourseIdMap]);
+  }, [allCourses, drawerSearch, selectedCategoryFilter, selectedTrackId, placedCourseIdMap, visualCategories, getCategoryAndDescendantIds]);
 
   // Dynamic grid column count based on zoom level:
   // Base (90%+): 3 -> 8 cols
@@ -709,6 +726,64 @@ export function ChartEditor({
     }
     return "grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8";
   }, [zoom]);
+
+  // Active ancestor path from root down to selectedCategoryFilter
+  const activeCategoryPath = useMemo(() => {
+    if (selectedCategoryFilter === "all") return [];
+    const path: VisualCategory[] = [];
+    let curr = visualCategories.find((c) => c.id === selectedCategoryFilter);
+    while (curr) {
+      path.unshift(curr);
+      curr = curr.parentId ? visualCategories.find((c) => c.id === curr!.parentId) : undefined;
+    }
+    return path;
+  }, [selectedCategoryFilter, visualCategories]);
+
+  // Hierarchical category filter levels (Row 1: roots, Row 2: children of path[0], Row 3: children of path[1]...)
+  const categoryFilterLevels = useMemo(() => {
+    const levels: {
+      levelIndex: number;
+      parentCatId: string | null;
+      activeId: string;
+      categories: VisualCategory[];
+      onSelectAll: () => void;
+    }[] = [];
+
+    // Level 0: Root categories
+    const rootCats = visualCategories.filter(
+      (c) => !c.parentId || !visualCategories.some((p) => p.id === c.parentId)
+    );
+
+    if (rootCats.length === 0) return levels;
+
+    const level0ActiveId = activeCategoryPath.length > 0 ? activeCategoryPath[0].id : "all";
+    levels.push({
+      levelIndex: 0,
+      parentCatId: null,
+      activeId: level0ActiveId,
+      categories: rootCats,
+      onSelectAll: () => setSelectedCategoryFilter("all"),
+    });
+
+    // Sub-levels: For each ancestor on path, if it has children in visualCategories
+    for (let i = 0; i < activeCategoryPath.length; i++) {
+      const currentParent = activeCategoryPath[i];
+      const children = visualCategories.filter((c) => c.parentId === currentParent.id);
+      if (children.length > 0) {
+        const nextInPath = activeCategoryPath[i + 1];
+        const nextActiveId = nextInPath ? nextInPath.id : "all";
+        levels.push({
+          levelIndex: i + 1,
+          parentCatId: currentParent.id,
+          activeId: nextActiveId,
+          categories: children,
+          onSelectAll: () => setSelectedCategoryFilter(currentParent.id),
+        });
+      }
+    }
+
+    return levels;
+  }, [visualCategories, activeCategoryPath, setSelectedCategoryFilter]);
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -966,35 +1041,49 @@ export function ChartEditor({
                   />
                 </div>
 
-                {/* Visual Category Chips */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 pt-0.5 max-w-full text-[11px] select-none scrollbar-thin">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedCategoryFilter("all")}
-                    className={`px-2.5 py-1 rounded-md font-medium transition-colors shrink-0 whitespace-nowrap ${selectedCategoryFilter === "all"
-                        ? "bg-primary text-primary-foreground font-bold shadow-2xs"
-                        : "bg-muted text-muted-foreground hover:text-foreground"
+                {/* Visual Category Multi-Row Dynamic Filters */}
+                <div className="space-y-1.5 pt-0.5 max-w-full">
+                  {categoryFilterLevels.map((lvl) => (
+                    <div
+                      key={lvl.levelIndex}
+                      className={`flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full text-[11px] select-none scrollbar-thin ${
+                        lvl.levelIndex > 0 ? "pr-2 border-r-2 border-primary/40 mr-1" : ""
                       }`}
-                  >
-                    همه
-                  </button>
-                  {visualCategories.map((vcat) => (
-                    <button
-                      key={vcat.id}
-                      type="button"
-                      onClick={() => setSelectedCategoryFilter(vcat.id)}
-                      style={{
-                        borderColor: selectedCategoryFilter === vcat.id ? vcat.color : `${vcat.color}40`,
-                        backgroundColor: selectedCategoryFilter === vcat.id ? `${vcat.color}25` : undefined,
-                        color: selectedCategoryFilter === vcat.id ? vcat.color : undefined,
-                      }}
-                      className={`px-2.5 py-1 rounded-md border text-[11px] shrink-0 whitespace-nowrap transition-colors ${selectedCategoryFilter !== vcat.id
-                          ? "bg-muted/60 text-muted-foreground hover:text-foreground"
-                          : "font-bold shadow-2xs"
-                        }`}
                     >
-                      {vcat.name}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={lvl.onSelectAll}
+                        className={`px-2.5 py-1 rounded-md font-medium transition-colors shrink-0 whitespace-nowrap ${
+                          lvl.activeId === "all"
+                            ? "bg-primary text-primary-foreground font-bold shadow-2xs"
+                            : "bg-muted text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        همه
+                      </button>
+                      {lvl.categories.map((vcat) => {
+                        const isActive = lvl.activeId === vcat.id;
+                        return (
+                          <button
+                            key={vcat.id}
+                            type="button"
+                            onClick={() => setSelectedCategoryFilter(vcat.id)}
+                            style={{
+                              borderColor: isActive ? vcat.color : `${vcat.color}40`,
+                              backgroundColor: isActive ? `${vcat.color}25` : undefined,
+                              color: isActive ? vcat.color : undefined,
+                            }}
+                            className={`px-2.5 py-1 rounded-md border text-[11px] shrink-0 whitespace-nowrap transition-colors ${
+                              !isActive
+                                ? "bg-muted/60 text-muted-foreground hover:text-foreground"
+                                : "font-bold shadow-2xs"
+                            }`}
+                          >
+                            {vcat.name}
+                          </button>
+                        );
+                      })}
+                    </div>
                   ))}
                 </div>
               </div>

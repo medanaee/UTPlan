@@ -25,8 +25,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+type CategoryItem = RuleCategory | VisualCategory;
+
 interface CategoryPickerProps {
-  categories: RuleCategory[];
+  categories: CategoryItem[];
   value?: string | null;
   onChange: (value: string | null) => void;
   placeholder?: string;
@@ -70,7 +72,7 @@ export function CategoryPicker({
 
   // Map category ID to category
   const categoryMap = useMemo(() => {
-    const map = new Map<string, RuleCategory>();
+    const map = new Map<string, CategoryItem>();
     validCategories.forEach((c) => map.set(c.id, c));
     return map;
   }, [validCategories]);
@@ -81,7 +83,7 @@ export function CategoryPicker({
   // Build breadcrumb path for a category
   const getCategoryPath = (catId: string): string[] => {
     const path: string[] = [];
-    let curr: RuleCategory | undefined = categoryMap.get(catId);
+    let curr: CategoryItem | undefined = categoryMap.get(catId);
     while (curr) {
       path.unshift(curr.name);
       curr = curr.parentId ? categoryMap.get(curr.parentId) : undefined;
@@ -94,7 +96,7 @@ export function CategoryPicker({
     const crumbs: { id: string | null; name: string }[] = [{ id: null, name: "دسته‌های اصلی" }];
     if (!currentParentId) return crumbs;
 
-    let curr: RuleCategory | undefined = categoryMap.get(currentParentId);
+    let curr: CategoryItem | undefined = categoryMap.get(currentParentId);
     const trail: { id: string; name: string }[] = [];
     while (curr) {
       trail.unshift({ id: curr.id, name: curr.name });

@@ -71,10 +71,12 @@ export interface VisualCategory {
   id: string;
   trackId: string;
   code?: string;
+  parentId?: string | null; // For hierarchical tree
   name: string;
   color: string; // e.g. "#3b82f6", "#10b981", "#f59e0b"
   sortOrder: number;
   createdAt: string;
+  children?: VisualCategory[];
 }
 
 export interface RuleCategory {
