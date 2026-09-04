@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { GripVertical, CornerDownLeft, BookOpen, Plus, Pencil, Trash2, Eraser, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -60,8 +60,38 @@ export function RuleCategoryNode({
 }: RuleCategoryNodeProps) {
   const children = ruleCats.filter((c) => c.parentId === category.id);
   const assignedCourses = getRuleCategoryCourses(category.id);
-  const totalUnits = assignedCourses.reduce((sum, c) => sum + (c.units || 3), 0);
   const isExpanded = collapsedIds ? !collapsedIds.has(category.id) : true;
+
+  // Collect all category IDs in this subtree (this category + all its recursive subcategories)
+  const subtreeCategoryIds = useMemo(() => {
+    const ids: string[] = [category.id];
+    const queue = [category.id];
+    while (queue.length > 0) {
+      const currentId = queue.shift()!;
+      for (const cat of ruleCats) {
+        if (cat.parentId === currentId) {
+          ids.push(cat.id);
+          queue.push(cat.id);
+        }
+      }
+    }
+    return ids;
+  }, [category.id, ruleCats]);
+
+  // Aggregate all unique courses across the entire subtree (including all subcategories)
+  const totalSubtreeCourses = useMemo(() => {
+    const courseMap = new Map<string, Course>();
+    for (const catId of subtreeCategoryIds) {
+      for (const course of getRuleCategoryCourses(catId)) {
+        courseMap.set(course.id, course);
+      }
+    }
+    return Array.from(courseMap.values());
+  }, [subtreeCategoryIds, getRuleCategoryCourses]);
+
+  const totalSubtreeUnits = useMemo(() => {
+    return totalSubtreeCourses.reduce((sum, c) => sum + (c.units || 3), 0);
+  }, [totalSubtreeCourses]);
 
   const roundedClasses =
     {
@@ -130,7 +160,7 @@ export function RuleCategoryNode({
             </Badge>
           )}
           <Badge variant="secondary" className="text-xs font-medium px-2 py-0.5">
-            {assignedCourses.length} درس ({totalUnits} واحد)
+            {totalSubtreeCourses.length} درس ({totalSubtreeUnits} واحد)
           </Badge>
         </div>
 
