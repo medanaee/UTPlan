@@ -42,13 +42,23 @@ export async function POST(request: NextRequest) {
       else if (it.type === "event") idsByType.course_events.push(it.id);
     }
 
+    const stmts: any[] = [];
     let restoredCount = 0;
     for (const [table, ids] of Object.entries(idsByType)) {
       if (ids.length > 0) {
-        for (const id of ids) {
-          await d1.prepare(`UPDATE ${table} SET deleted_at = NULL WHERE id = ?`).bind(id).run();
-          restoredCount++;
+        restoredCount += ids.length;
+        for (let i = 0; i < ids.length; i += 50) {
+          const chunk = ids.slice(i, i + 50);
+          const placeholders = chunk.map(() => "?").join(",");
+          stmts.push(d1.prepare(`UPDATE ${table} SET deleted_at = NULL WHERE id IN (${placeholders})`).bind(...chunk));
         }
+      }
+    }
+
+    if (stmts.length > 0) {
+      for (let i = 0; i < stmts.length; i += 100) {
+        const batchChunk = stmts.slice(i, i + 100);
+        await d1.batch(batchChunk);
       }
     }
 

@@ -913,8 +913,34 @@ export async function bulkAssignTrackCourses(
   trackId: string,
   assignments: { courseId: string; visualCategoryId?: string | null; ruleCategoryId?: string | null }[]
 ): Promise<boolean> {
+  const d1 = getD1();
+  if (!d1) return false;
+  if (!assignments || assignments.length === 0) return true;
+
+  const upsertSql = `
+    INSERT INTO track_course_assignments (id, track_id, course_id, visual_category_id, rule_category_id)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(track_id, course_id) DO UPDATE SET
+      visual_category_id = excluded.visual_category_id,
+      rule_category_id = excluded.rule_category_id
+  `;
+
+  const stmts: any[] = [];
   for (const item of assignments) {
-    await assignCourseToCategories(trackId, item.courseId, item.visualCategoryId, item.ruleCategoryId);
+    const id = `assign_${trackId}_${item.courseId}`;
+    stmts.push(
+      d1.prepare(upsertSql).bind(
+        id,
+        trackId,
+        item.courseId,
+        item.visualCategoryId || null,
+        item.ruleCategoryId || null
+      )
+    );
+  }
+
+  for (let i = 0; i < stmts.length; i += 100) {
+    await d1.batch(stmts.slice(i, i + 100));
   }
   return true;
 }
@@ -1081,13 +1107,13 @@ export async function cloneTrackStructure(
     // 4. Clone Course Assignments
     if (options.cloneAssignments) {
       const sourceAssignments = await getTrackAssignments(sourceTrackId);
-      for (const a of sourceAssignments) {
-        const newVisualId = a.visualCategoryId ? visualCatMap.get(a.visualCategoryId) || null : null;
-        const newRuleId = a.ruleCategoryId ? ruleCatMap.get(a.ruleCategoryId) || null : null;
-
-        await assignCourseToCategories(targetTrackId, a.courseId, newVisualId, newRuleId);
-        stats.assignmentsCloned++;
-      }
+      const assignmentsToClone = sourceAssignments.map((a) => ({
+        courseId: a.courseId,
+        visualCategoryId: a.visualCategoryId ? visualCatMap.get(a.visualCategoryId) || null : null,
+        ruleCategoryId: a.ruleCategoryId ? ruleCatMap.get(a.ruleCategoryId) || null : null,
+      }));
+      await bulkAssignTrackCourses(targetTrackId, assignmentsToClone);
+      stats.assignmentsCloned = assignmentsToClone.length;
     }
 
     return {

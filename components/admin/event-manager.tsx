@@ -626,6 +626,42 @@ export function EventManager({
               </Button>
             )}
 
+            {/* Delete All Events in Faculty & Term Button */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                if (!selectedFacultyId || !activeTerm) return;
+                const termLabel = formatSemesterLabel(activeTerm);
+                const facultyName = currentFaculty?.name || "این دانشکده";
+                if (
+                  confirm(
+                    `هشدار: آیا از حذف کلیه رویدادهای کلاسی ${facultyName} در نیمسال «${termLabel}» (${activeTerm}) مطمئن هستید؟ این رویدادها به صورت موقت (Soft Delete) به سطل بازیافت منتقل می‌شوند و در صورت نیاز قابل بازیابی خواهند بود.`
+                  )
+                ) {
+                  try {
+                    const res = await fetch(
+                      `/api/events?all=true&facultyId=${selectedFacultyId}&term=${encodeURIComponent(activeTerm)}`,
+                      { method: "DELETE" }
+                    ).then((r) => r.json());
+                    if (res.success) {
+                      await loadData();
+                    } else {
+                      alert(res.message || "خطا در حذف رویدادها");
+                    }
+                  } catch (e: any) {
+                    alert("خطا در برقراری ارتباط با سرور: " + (e?.message || "نامشخص"));
+                  }
+                }
+              }}
+              disabled={!selectedFacultyId || termEvents.length === 0}
+              className="h-8 gap-1.5 text-xs text-destructive border-destructive/30 hover:bg-destructive/10 shadow-2xs font-medium"
+            >
+              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+              <span>حذف همه رویدادها</span>
+            </Button>
+
             {/* Create Event Button */}
             <Button
               size="sm"

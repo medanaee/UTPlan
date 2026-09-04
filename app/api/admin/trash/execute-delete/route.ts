@@ -28,6 +28,14 @@ interface ResolutionAction {
   replacementId?: string;
 }
 
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireAdminSession(request);
@@ -48,48 +56,49 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: "پایگاه داده در دسترس نیست." }, { status: 500 });
     }
 
-    // 1. Process all resolutions in the queue
+    const stmts: any[] = [];
+
+    // 1. Process all resolutions in batch
     for (const res of resolutions) {
       // A. Offering
       if (res.relationType === "offering") {
         if (res.action === "replace" && res.replacementId) {
-          await d1.prepare("UPDATE course_offerings SET course_id = ? WHERE id = ?").bind(res.replacementId, res.dependentEntityId).run();
+          stmts.push(d1.prepare("UPDATE course_offerings SET course_id = ? WHERE id = ?").bind(res.replacementId, res.dependentEntityId));
         } else if (res.action === "cascade_delete" || res.action === "trash_delete") {
-          await d1.prepare("DELETE FROM course_event_slots WHERE event_id IN (SELECT id FROM course_events WHERE offering_id = ?)").bind(res.dependentEntityId).run();
-          await d1.prepare("UPDATE chart_courses SET selected_event_id = NULL WHERE selected_event_id IN (SELECT id FROM course_events WHERE offering_id = ?)").bind(res.dependentEntityId).run();
-          await d1.prepare("DELETE FROM course_events WHERE offering_id = ?").bind(res.dependentEntityId).run();
-          await d1.prepare("DELETE FROM offering_professors WHERE offering_id = ?").bind(res.dependentEntityId).run();
-          await d1.prepare("DELETE FROM offering_resources WHERE offering_id = ?").bind(res.dependentEntityId).run();
-          await d1.prepare("DELETE FROM reviews WHERE target_type = 'offering' AND target_id = ?").bind(res.dependentEntityId).run();
-          await d1.prepare("DELETE FROM course_offerings WHERE id = ?").bind(res.dependentEntityId).run();
+          stmts.push(
+            d1.prepare("DELETE FROM course_event_slots WHERE event_id IN (SELECT id FROM course_events WHERE offering_id = ?)").bind(res.dependentEntityId),
+            d1.prepare("UPDATE chart_courses SET selected_event_id = NULL WHERE selected_event_id IN (SELECT id FROM course_events WHERE offering_id = ?)").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM course_events WHERE offering_id = ?").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM offering_professors WHERE offering_id = ?").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM offering_resources WHERE offering_id = ?").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM reviews WHERE target_type = 'offering' AND target_id = ?").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM course_offerings WHERE id = ?").bind(res.dependentEntityId)
+          );
         }
       }
 
       // B. Prerequisite
       else if (res.relationType === "prerequisite") {
         if (res.action === "replace" && res.replacementId) {
-          await d1.prepare("UPDATE prerequisites SET required_course_id = ? WHERE id = ?").bind(res.replacementId, res.dependentEntityId).run();
+          stmts.push(d1.prepare("UPDATE prerequisites SET required_course_id = ? WHERE id = ?").bind(res.replacementId, res.dependentEntityId));
         } else {
-          await d1.prepare("DELETE FROM prerequisites WHERE id = ?").bind(res.dependentEntityId).run();
+          stmts.push(d1.prepare("DELETE FROM prerequisites WHERE id = ?").bind(res.dependentEntityId));
         }
       }
 
       // C. Track Assignment (either by course or by track)
       else if (res.relationType === "track_assignment") {
         if (res.action === "replace" && res.replacementId) {
-          // If replacing for a course
           if (res.dependentEntityType === "course") {
-            await d1.prepare("UPDATE track_course_assignments SET course_id = ? WHERE id = ?").bind(res.replacementId, res.dependentEntityId).run();
+            stmts.push(d1.prepare("UPDATE track_course_assignments SET course_id = ? WHERE id = ?").bind(res.replacementId, res.dependentEntityId));
           } else {
-            // Replacing for a track
-            await d1.prepare("UPDATE track_course_assignments SET track_id = ? WHERE track_id = ?").bind(res.replacementId, res.dependentEntityId).run();
+            stmts.push(d1.prepare("UPDATE track_course_assignments SET track_id = ? WHERE track_id = ?").bind(res.replacementId, res.dependentEntityId));
           }
         } else {
-          // Cascade delete
           if (res.dependentEntityType === "track_assignment") {
-            await d1.prepare("DELETE FROM track_course_assignments WHERE track_id = ?").bind(res.dependentEntityId).run();
+            stmts.push(d1.prepare("DELETE FROM track_course_assignments WHERE track_id = ?").bind(res.dependentEntityId));
           } else {
-            await d1.prepare("DELETE FROM track_course_assignments WHERE id = ?").bind(res.dependentEntityId).run();
+            stmts.push(d1.prepare("DELETE FROM track_course_assignments WHERE id = ?").bind(res.dependentEntityId));
           }
         }
       }
@@ -97,185 +106,270 @@ export async function POST(request: NextRequest) {
       // D. Chart Course
       else if (res.relationType === "chart_course") {
         if (res.action === "replace" && res.replacementId) {
-          await d1.prepare("UPDATE chart_courses SET course_id = ? WHERE course_id = ?").bind(res.replacementId, res.dependentEntityId).run();
+          stmts.push(d1.prepare("UPDATE chart_courses SET course_id = ? WHERE course_id = ?").bind(res.replacementId, res.dependentEntityId));
         } else {
-          await d1.prepare("DELETE FROM chart_courses WHERE course_id = ?").bind(res.dependentEntityId).run();
+          stmts.push(d1.prepare("DELETE FROM chart_courses WHERE course_id = ?").bind(res.dependentEntityId));
         }
       }
 
       // E. Offering Professor
       else if (res.relationType === "offering_professor") {
         if (res.action === "replace" && res.replacementId) {
-          await d1.prepare("UPDATE offering_professors SET professor_id = ? WHERE id = ?").bind(res.replacementId, res.dependentEntityId).run();
+          stmts.push(d1.prepare("UPDATE offering_professors SET professor_id = ? WHERE id = ?").bind(res.replacementId, res.dependentEntityId));
         } else {
-          await d1.prepare("DELETE FROM offering_professors WHERE id = ?").bind(res.dependentEntityId).run();
+          stmts.push(d1.prepare("DELETE FROM offering_professors WHERE id = ?").bind(res.dependentEntityId));
         }
       }
 
       // F. Event
       else if (res.relationType === "event") {
         if (res.action === "replace" && res.replacementId) {
-          await d1.prepare("UPDATE course_events SET offering_id = ? WHERE id = ?").bind(res.replacementId, res.dependentEntityId).run();
+          stmts.push(d1.prepare("UPDATE course_events SET offering_id = ? WHERE id = ?").bind(res.replacementId, res.dependentEntityId));
         } else if (res.action === "cascade_delete" || res.action === "trash_delete") {
-          await d1.prepare("DELETE FROM course_event_slots WHERE event_id = ?").bind(res.dependentEntityId).run();
-          await d1.prepare("UPDATE chart_courses SET selected_event_id = NULL WHERE selected_event_id = ?").bind(res.dependentEntityId).run();
-          await d1.prepare("DELETE FROM course_events WHERE id = ?").bind(res.dependentEntityId).run();
+          stmts.push(
+            d1.prepare("DELETE FROM course_event_slots WHERE event_id = ?").bind(res.dependentEntityId),
+            d1.prepare("UPDATE chart_courses SET selected_event_id = NULL WHERE selected_event_id = ?").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM course_events WHERE id = ?").bind(res.dependentEntityId)
+          );
         }
       }
 
       // G. Student Event Selection
       else if (res.relationType === "student_event_selection") {
         if (res.action === "replace" && res.replacementId) {
-          await d1.prepare("UPDATE chart_courses SET selected_event_id = ? WHERE selected_event_id = ?").bind(res.replacementId, res.dependentEntityId).run();
+          stmts.push(d1.prepare("UPDATE chart_courses SET selected_event_id = ? WHERE selected_event_id = ?").bind(res.replacementId, res.dependentEntityId));
         } else {
-          await d1.prepare("UPDATE chart_courses SET selected_event_id = NULL WHERE selected_event_id = ?").bind(res.dependentEntityId).run();
+          stmts.push(d1.prepare("UPDATE chart_courses SET selected_event_id = NULL WHERE selected_event_id = ?").bind(res.dependentEntityId));
         }
       }
 
       // H. Faculty Major
       else if (res.relationType === "faculty_major") {
         if (res.action === "replace" && res.replacementId) {
-          await d1.prepare("UPDATE majors SET faculty_id = ? WHERE id = ?").bind(res.replacementId, res.dependentEntityId).run();
+          stmts.push(d1.prepare("UPDATE majors SET faculty_id = ? WHERE id = ?").bind(res.replacementId, res.dependentEntityId));
         } else {
-          await d1.prepare("UPDATE users SET major_id = NULL, track_id = NULL WHERE major_id = ?").bind(res.dependentEntityId).run();
-          await d1.prepare("DELETE FROM track_course_assignments WHERE track_id IN (SELECT id FROM tracks WHERE major_id = ?)").bind(res.dependentEntityId).run();
-          await d1.prepare("DELETE FROM visual_categories WHERE track_id IN (SELECT id FROM tracks WHERE major_id = ?)").bind(res.dependentEntityId).run();
-          await d1.prepare("DELETE FROM rule_categories WHERE track_id IN (SELECT id FROM tracks WHERE major_id = ?)").bind(res.dependentEntityId).run();
-          await d1.prepare("DELETE FROM chart_courses WHERE term_id IN (SELECT id FROM chart_terms WHERE chart_id IN (SELECT id FROM charts WHERE track_id IN (SELECT id FROM tracks WHERE major_id = ?)))").bind(res.dependentEntityId).run();
-          await d1.prepare("DELETE FROM chart_terms WHERE chart_id IN (SELECT id FROM charts WHERE track_id IN (SELECT id FROM tracks WHERE major_id = ?))").bind(res.dependentEntityId).run();
-          await d1.prepare("DELETE FROM charts WHERE track_id IN (SELECT id FROM tracks WHERE major_id = ?)").bind(res.dependentEntityId).run();
-          await d1.prepare("DELETE FROM tracks WHERE major_id = ?").bind(res.dependentEntityId).run();
-          await d1.prepare("DELETE FROM majors WHERE id = ?").bind(res.dependentEntityId).run();
+          stmts.push(
+            d1.prepare("UPDATE users SET major_id = NULL, track_id = NULL WHERE major_id = ?").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM track_course_assignments WHERE track_id IN (SELECT id FROM tracks WHERE major_id = ?)").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM visual_categories WHERE track_id IN (SELECT id FROM tracks WHERE major_id = ?)").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM rule_categories WHERE track_id IN (SELECT id FROM tracks WHERE major_id = ?)").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM chart_courses WHERE term_id IN (SELECT id FROM chart_terms WHERE chart_id IN (SELECT id FROM charts WHERE track_id IN (SELECT id FROM tracks WHERE major_id = ?)))").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM chart_terms WHERE chart_id IN (SELECT id FROM charts WHERE track_id IN (SELECT id FROM tracks WHERE major_id = ?))").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM charts WHERE track_id IN (SELECT id FROM tracks WHERE major_id = ?)").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM tracks WHERE major_id = ?").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM majors WHERE id = ?").bind(res.dependentEntityId)
+          );
         }
       }
 
       // I. Faculty Course
       else if (res.relationType === "faculty_course") {
         if (res.action === "replace" && res.replacementId) {
-          await d1.prepare("UPDATE courses SET faculty_id = ? WHERE id = ?").bind(res.replacementId, res.dependentEntityId).run();
+          stmts.push(d1.prepare("UPDATE courses SET faculty_id = ? WHERE id = ?").bind(res.replacementId, res.dependentEntityId));
         } else {
-          await d1.prepare("DELETE FROM prerequisites WHERE course_id = ? OR required_course_id = ?").bind(res.dependentEntityId, res.dependentEntityId).run();
-          await d1.prepare("DELETE FROM track_course_assignments WHERE course_id = ?").bind(res.dependentEntityId).run();
-          await d1.prepare("DELETE FROM chart_courses WHERE course_id = ?").bind(res.dependentEntityId).run();
-          await d1.prepare("DELETE FROM courses WHERE id = ?").bind(res.dependentEntityId).run();
+          stmts.push(
+            d1.prepare("DELETE FROM prerequisites WHERE course_id = ? OR required_course_id = ?").bind(res.dependentEntityId, res.dependentEntityId),
+            d1.prepare("DELETE FROM track_course_assignments WHERE course_id = ?").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM chart_courses WHERE course_id = ?").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM courses WHERE id = ?").bind(res.dependentEntityId)
+          );
         }
       }
 
       // J. Faculty Professor
       else if (res.relationType === "faculty_professor") {
         if (res.action === "replace" && res.replacementId) {
-          await d1.prepare("UPDATE professors SET faculty_id = ? WHERE id = ?").bind(res.replacementId, res.dependentEntityId).run();
+          stmts.push(d1.prepare("UPDATE professors SET faculty_id = ? WHERE id = ?").bind(res.replacementId, res.dependentEntityId));
         } else {
-          await d1.prepare("DELETE FROM offering_professors WHERE professor_id = ?").bind(res.dependentEntityId).run();
-          await d1.prepare("DELETE FROM reviews WHERE target_type = 'professor' AND target_id = ?").bind(res.dependentEntityId).run();
-          await d1.prepare("DELETE FROM professors WHERE id = ?").bind(res.dependentEntityId).run();
+          stmts.push(
+            d1.prepare("DELETE FROM offering_professors WHERE professor_id = ?").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM reviews WHERE target_type = 'professor' AND target_id = ?").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM professors WHERE id = ?").bind(res.dependentEntityId)
+          );
         }
       }
 
       // K. Faculty User
       else if (res.relationType === "faculty_user") {
         if (res.action === "replace" && res.replacementId) {
-          await d1.prepare("UPDATE users SET faculty_id = ? WHERE faculty_id = ?").bind(res.replacementId, res.dependentEntityId).run();
+          stmts.push(d1.prepare("UPDATE users SET faculty_id = ? WHERE faculty_id = ?").bind(res.replacementId, res.dependentEntityId));
         } else {
-          await d1.prepare("UPDATE users SET faculty_id = NULL WHERE faculty_id = ?").bind(res.dependentEntityId).run();
+          stmts.push(d1.prepare("UPDATE users SET faculty_id = NULL WHERE faculty_id = ?").bind(res.dependentEntityId));
         }
       }
 
       // L. Major Track
       else if (res.relationType === "major_track") {
         if (res.action === "replace" && res.replacementId) {
-          await d1.prepare("UPDATE tracks SET major_id = ? WHERE id = ?").bind(res.replacementId, res.dependentEntityId).run();
+          stmts.push(d1.prepare("UPDATE tracks SET major_id = ? WHERE id = ?").bind(res.replacementId, res.dependentEntityId));
         } else {
-          await d1.prepare("UPDATE users SET track_id = NULL WHERE track_id = ?").bind(res.dependentEntityId).run();
-          await d1.prepare("DELETE FROM track_course_assignments WHERE track_id = ?").bind(res.dependentEntityId).run();
-          await d1.prepare("DELETE FROM visual_categories WHERE track_id = ?").bind(res.dependentEntityId).run();
-          await d1.prepare("DELETE FROM rule_categories WHERE track_id = ?").bind(res.dependentEntityId).run();
-          await d1.prepare("DELETE FROM chart_courses WHERE term_id IN (SELECT id FROM chart_terms WHERE chart_id IN (SELECT id FROM charts WHERE track_id = ?))").bind(res.dependentEntityId).run();
-          await d1.prepare("DELETE FROM chart_terms WHERE chart_id IN (SELECT id FROM charts WHERE track_id = ?)").bind(res.dependentEntityId).run();
-          await d1.prepare("DELETE FROM charts WHERE track_id = ?").bind(res.dependentEntityId).run();
-          await d1.prepare("DELETE FROM tracks WHERE id = ?").bind(res.dependentEntityId).run();
+          stmts.push(
+            d1.prepare("UPDATE users SET track_id = NULL WHERE track_id = ?").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM track_course_assignments WHERE track_id = ?").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM visual_categories WHERE track_id = ?").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM rule_categories WHERE track_id = ?").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM chart_courses WHERE term_id IN (SELECT id FROM chart_terms WHERE chart_id IN (SELECT id FROM charts WHERE track_id = ?))").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM chart_terms WHERE chart_id IN (SELECT id FROM charts WHERE track_id = ?)").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM charts WHERE track_id = ?").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM tracks WHERE id = ?").bind(res.dependentEntityId)
+          );
         }
       }
 
       // M. Major User
       else if (res.relationType === "major_user") {
         if (res.action === "replace" && res.replacementId) {
-          await d1.prepare("UPDATE users SET major_id = ? WHERE major_id = ?").bind(res.replacementId, res.dependentEntityId).run();
+          stmts.push(d1.prepare("UPDATE users SET major_id = ? WHERE major_id = ?").bind(res.replacementId, res.dependentEntityId));
         } else {
-          await d1.prepare("UPDATE users SET major_id = NULL, track_id = NULL WHERE major_id = ?").bind(res.dependentEntityId).run();
+          stmts.push(d1.prepare("UPDATE users SET major_id = NULL, track_id = NULL WHERE major_id = ?").bind(res.dependentEntityId));
         }
       }
 
       // N. Track Chart
       else if (res.relationType === "track_chart") {
         if (res.action === "replace" && res.replacementId) {
-          await d1.prepare("UPDATE charts SET track_id = ? WHERE track_id = ?").bind(res.replacementId, res.dependentEntityId).run();
+          stmts.push(d1.prepare("UPDATE charts SET track_id = ? WHERE track_id = ?").bind(res.replacementId, res.dependentEntityId));
         } else {
-          await d1.prepare("DELETE FROM chart_courses WHERE term_id IN (SELECT id FROM chart_terms WHERE chart_id IN (SELECT id FROM charts WHERE track_id = ?))").bind(res.dependentEntityId).run();
-          await d1.prepare("DELETE FROM chart_terms WHERE chart_id IN (SELECT id FROM charts WHERE track_id = ?)").bind(res.dependentEntityId).run();
-          await d1.prepare("DELETE FROM charts WHERE track_id = ?").bind(res.dependentEntityId).run();
+          stmts.push(
+            d1.prepare("DELETE FROM chart_courses WHERE term_id IN (SELECT id FROM chart_terms WHERE chart_id IN (SELECT id FROM charts WHERE track_id = ?))").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM chart_terms WHERE chart_id IN (SELECT id FROM charts WHERE track_id = ?)").bind(res.dependentEntityId),
+            d1.prepare("DELETE FROM charts WHERE track_id = ?").bind(res.dependentEntityId)
+          );
         }
       }
 
       // O. Track User
       else if (res.relationType === "track_user") {
         if (res.action === "replace" && res.replacementId) {
-          await d1.prepare("UPDATE users SET track_id = ? WHERE track_id = ?").bind(res.replacementId, res.dependentEntityId).run();
+          stmts.push(d1.prepare("UPDATE users SET track_id = ? WHERE track_id = ?").bind(res.replacementId, res.dependentEntityId));
         } else {
-          await d1.prepare("UPDATE users SET track_id = NULL WHERE track_id = ?").bind(res.dependentEntityId).run();
+          stmts.push(d1.prepare("UPDATE users SET track_id = NULL WHERE track_id = ?").bind(res.dependentEntityId));
         }
       }
     }
 
-    // 2. Finally hard-delete all root items
-    for (const item of rawItems) {
-      const rootEntityType = item.type;
-      const rootEntityId = item.id;
+    // 2. Group root items by entity type for batch deletion
+    const itemsByType: Record<string, string[]> = {
+      faculty: [],
+      major: [],
+      track: [],
+      course: [],
+      professor: [],
+      offering: [],
+      event: [],
+    };
 
-      if (rootEntityType === "faculty") {
-        await d1.prepare("DELETE FROM faculty_links WHERE target_faculty_id = ? OR source_faculty_id = ?").bind(rootEntityId, rootEntityId).run();
-        await d1.prepare("UPDATE users SET faculty_id = NULL WHERE faculty_id = ?").bind(rootEntityId).run();
-        await d1.prepare("DELETE FROM faculties WHERE id = ?").bind(rootEntityId).run();
-      } else if (rootEntityType === "major") {
-        await d1.prepare("UPDATE users SET major_id = NULL, track_id = NULL WHERE major_id = ?").bind(rootEntityId).run();
-        await d1.prepare("DELETE FROM track_course_assignments WHERE track_id IN (SELECT id FROM tracks WHERE major_id = ?)").bind(rootEntityId).run();
-        await d1.prepare("DELETE FROM visual_categories WHERE track_id IN (SELECT id FROM tracks WHERE major_id = ?)").bind(rootEntityId).run();
-        await d1.prepare("DELETE FROM rule_categories WHERE track_id IN (SELECT id FROM tracks WHERE major_id = ?)").bind(rootEntityId).run();
-        await d1.prepare("DELETE FROM chart_courses WHERE term_id IN (SELECT id FROM chart_terms WHERE chart_id IN (SELECT id FROM charts WHERE track_id IN (SELECT id FROM tracks WHERE major_id = ?)))").bind(rootEntityId).run();
-        await d1.prepare("DELETE FROM chart_terms WHERE chart_id IN (SELECT id FROM charts WHERE track_id IN (SELECT id FROM tracks WHERE major_id = ?))").bind(rootEntityId).run();
-        await d1.prepare("DELETE FROM charts WHERE track_id IN (SELECT id FROM tracks WHERE major_id = ?)").bind(rootEntityId).run();
-        await d1.prepare("DELETE FROM tracks WHERE major_id = ?").bind(rootEntityId).run();
-        await d1.prepare("DELETE FROM majors WHERE id = ?").bind(rootEntityId).run();
-      } else if (rootEntityType === "track") {
-        await d1.prepare("DELETE FROM track_course_assignments WHERE track_id = ?").bind(rootEntityId).run();
-        await d1.prepare("DELETE FROM visual_categories WHERE track_id = ?").bind(rootEntityId).run();
-        await d1.prepare("DELETE FROM rule_categories WHERE track_id = ?").bind(rootEntityId).run();
-        await d1.prepare("DELETE FROM chart_courses WHERE term_id IN (SELECT id FROM chart_terms WHERE chart_id IN (SELECT id FROM charts WHERE track_id = ?))").bind(rootEntityId).run();
-        await d1.prepare("DELETE FROM chart_terms WHERE chart_id IN (SELECT id FROM charts WHERE track_id = ?)").bind(rootEntityId).run();
-        await d1.prepare("DELETE FROM charts WHERE track_id = ?").bind(rootEntityId).run();
-        await d1.prepare("UPDATE users SET track_id = NULL WHERE track_id = ?").bind(rootEntityId).run();
-        await d1.prepare("DELETE FROM tracks WHERE id = ?").bind(rootEntityId).run();
-      } else if (rootEntityType === "course") {
-        await d1.prepare("DELETE FROM prerequisites WHERE course_id = ? OR required_course_id = ?").bind(rootEntityId, rootEntityId).run();
-        await d1.prepare("DELETE FROM track_course_assignments WHERE course_id = ?").bind(rootEntityId).run();
-        await d1.prepare("DELETE FROM chart_courses WHERE course_id = ?").bind(rootEntityId).run();
-        await d1.prepare("DELETE FROM courses WHERE id = ?").bind(rootEntityId).run();
-      } else if (rootEntityType === "professor") {
-        await d1.prepare("DELETE FROM offering_professors WHERE professor_id = ?").bind(rootEntityId).run();
-        await d1.prepare("DELETE FROM reviews WHERE target_type = 'professor' AND target_id = ?").bind(rootEntityId).run();
-        await d1.prepare("DELETE FROM professors WHERE id = ?").bind(rootEntityId).run();
-      } else if (rootEntityType === "offering") {
-        await d1.prepare("DELETE FROM course_event_slots WHERE event_id IN (SELECT id FROM course_events WHERE offering_id = ?)").bind(rootEntityId).run();
-        await d1.prepare("UPDATE chart_courses SET selected_event_id = NULL WHERE selected_event_id IN (SELECT id FROM course_events WHERE offering_id = ?)").bind(rootEntityId).run();
-        await d1.prepare("DELETE FROM course_events WHERE offering_id = ?").bind(rootEntityId).run();
-        await d1.prepare("DELETE FROM offering_professors WHERE offering_id = ?").bind(rootEntityId).run();
-        await d1.prepare("DELETE FROM offering_resources WHERE offering_id = ?").bind(rootEntityId).run();
-        await d1.prepare("DELETE FROM reviews WHERE target_type = 'offering' AND target_id = ?").bind(rootEntityId).run();
-        await d1.prepare("DELETE FROM course_offerings WHERE id = ?").bind(rootEntityId).run();
-      } else if (rootEntityType === "event") {
-        await d1.prepare("DELETE FROM course_event_slots WHERE event_id = ?").bind(rootEntityId).run();
-        await d1.prepare("UPDATE chart_courses SET selected_event_id = NULL WHERE selected_event_id = ?").bind(rootEntityId).run();
-        await d1.prepare("DELETE FROM course_events WHERE id = ?").bind(rootEntityId).run();
+    for (const it of rawItems) {
+      if (itemsByType[it.type]) {
+        itemsByType[it.type].push(it.id);
+      }
+    }
+
+    // A. Batch delete courses
+    if (itemsByType.course.length > 0) {
+      for (const chunk of chunkArray(itemsByType.course, 50)) {
+        const placeholders = chunk.map(() => "?").join(",");
+        stmts.push(
+          d1.prepare(`DELETE FROM prerequisites WHERE course_id IN (${placeholders}) OR required_course_id IN (${placeholders})`).bind(...chunk, ...chunk),
+          d1.prepare(`DELETE FROM track_course_assignments WHERE course_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`DELETE FROM chart_courses WHERE course_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`DELETE FROM courses WHERE id IN (${placeholders})`).bind(...chunk)
+        );
+      }
+    }
+
+    // B. Batch delete professors
+    if (itemsByType.professor.length > 0) {
+      for (const chunk of chunkArray(itemsByType.professor, 50)) {
+        const placeholders = chunk.map(() => "?").join(",");
+        stmts.push(
+          d1.prepare(`DELETE FROM offering_professors WHERE professor_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`DELETE FROM reviews WHERE target_type = 'professor' AND target_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`DELETE FROM professors WHERE id IN (${placeholders})`).bind(...chunk)
+        );
+      }
+    }
+
+    // C. Batch delete offerings
+    if (itemsByType.offering.length > 0) {
+      for (const chunk of chunkArray(itemsByType.offering, 50)) {
+        const placeholders = chunk.map(() => "?").join(",");
+        stmts.push(
+          d1.prepare(`DELETE FROM course_event_slots WHERE event_id IN (SELECT id FROM course_events WHERE offering_id IN (${placeholders}))`).bind(...chunk),
+          d1.prepare(`UPDATE chart_courses SET selected_event_id = NULL WHERE selected_event_id IN (SELECT id FROM course_events WHERE offering_id IN (${placeholders}))`).bind(...chunk),
+          d1.prepare(`DELETE FROM course_events WHERE offering_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`DELETE FROM offering_professors WHERE offering_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`DELETE FROM offering_resources WHERE offering_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`DELETE FROM reviews WHERE target_type = 'offering' AND target_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`DELETE FROM course_offerings WHERE id IN (${placeholders})`).bind(...chunk)
+        );
+      }
+    }
+
+    // D. Batch delete events
+    if (itemsByType.event.length > 0) {
+      for (const chunk of chunkArray(itemsByType.event, 50)) {
+        const placeholders = chunk.map(() => "?").join(",");
+        stmts.push(
+          d1.prepare(`DELETE FROM course_event_slots WHERE event_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`UPDATE chart_courses SET selected_event_id = NULL WHERE selected_event_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`DELETE FROM course_events WHERE id IN (${placeholders})`).bind(...chunk)
+        );
+      }
+    }
+
+    // E. Batch delete faculties
+    if (itemsByType.faculty.length > 0) {
+      for (const chunk of chunkArray(itemsByType.faculty, 50)) {
+        const placeholders = chunk.map(() => "?").join(",");
+        stmts.push(
+          d1.prepare(`DELETE FROM faculty_links WHERE target_faculty_id IN (${placeholders}) OR source_faculty_id IN (${placeholders})`).bind(...chunk, ...chunk),
+          d1.prepare(`UPDATE users SET faculty_id = NULL WHERE faculty_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`DELETE FROM faculties WHERE id IN (${placeholders})`).bind(...chunk)
+        );
+      }
+    }
+
+    // F. Batch delete majors
+    if (itemsByType.major.length > 0) {
+      for (const chunk of chunkArray(itemsByType.major, 50)) {
+        const placeholders = chunk.map(() => "?").join(",");
+        stmts.push(
+          d1.prepare(`UPDATE users SET major_id = NULL, track_id = NULL WHERE major_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`DELETE FROM track_course_assignments WHERE track_id IN (SELECT id FROM tracks WHERE major_id IN (${placeholders}))`).bind(...chunk),
+          d1.prepare(`DELETE FROM visual_categories WHERE track_id IN (SELECT id FROM tracks WHERE major_id IN (${placeholders}))`).bind(...chunk),
+          d1.prepare(`DELETE FROM rule_categories WHERE track_id IN (SELECT id FROM tracks WHERE major_id IN (${placeholders}))`).bind(...chunk),
+          d1.prepare(`DELETE FROM chart_courses WHERE term_id IN (SELECT id FROM chart_terms WHERE chart_id IN (SELECT id FROM charts WHERE track_id IN (SELECT id FROM tracks WHERE major_id IN (${placeholders}))))`).bind(...chunk),
+          d1.prepare(`DELETE FROM chart_terms WHERE chart_id IN (SELECT id FROM charts WHERE track_id IN (SELECT id FROM tracks WHERE major_id IN (${placeholders})))`).bind(...chunk),
+          d1.prepare(`DELETE FROM charts WHERE track_id IN (SELECT id FROM tracks WHERE major_id IN (${placeholders}))`).bind(...chunk),
+          d1.prepare(`DELETE FROM tracks WHERE major_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`DELETE FROM majors WHERE id IN (${placeholders})`).bind(...chunk)
+        );
+      }
+    }
+
+    // G. Batch delete tracks
+    if (itemsByType.track.length > 0) {
+      for (const chunk of chunkArray(itemsByType.track, 50)) {
+        const placeholders = chunk.map(() => "?").join(",");
+        stmts.push(
+          d1.prepare(`DELETE FROM track_course_assignments WHERE track_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`DELETE FROM visual_categories WHERE track_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`DELETE FROM rule_categories WHERE track_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`DELETE FROM chart_courses WHERE term_id IN (SELECT id FROM chart_terms WHERE chart_id IN (SELECT id FROM charts WHERE track_id IN (${placeholders})))`).bind(...chunk),
+          d1.prepare(`DELETE FROM chart_terms WHERE chart_id IN (SELECT id FROM charts WHERE track_id IN (${placeholders}))`).bind(...chunk),
+          d1.prepare(`DELETE FROM charts WHERE track_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`UPDATE users SET track_id = NULL WHERE track_id IN (${placeholders})`).bind(...chunk),
+          d1.prepare(`DELETE FROM tracks WHERE id IN (${placeholders})`).bind(...chunk)
+        );
+      }
+    }
+
+    // 3. Execute all statements in Cloudflare D1 batch chunks
+    if (stmts.length > 0) {
+      const batchChunks = chunkArray(stmts, 100);
+      for (const bChunk of batchChunks) {
+        await d1.batch(bChunk);
       }
     }
 

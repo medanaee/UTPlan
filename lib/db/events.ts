@@ -374,3 +374,38 @@ export async function deleteEvent(id: string): Promise<boolean> {
     return false;
   }
 }
+
+export async function deleteEventsByFacultyAndTerm(
+  facultyId: string,
+  term?: string
+): Promise<boolean> {
+  const d1 = getD1();
+  if (!d1) return false;
+
+  try {
+    const now = new Date().toISOString();
+    let query = `
+      UPDATE course_events
+      SET deleted_at = ?
+      WHERE offering_id IN (
+        SELECT o.id FROM course_offerings o
+        JOIN courses c ON o.course_id = c.id
+        WHERE c.faculty_id = ?
+      )
+      AND is_user_custom = 0
+      AND deleted_at IS NULL
+    `;
+    const params: any[] = [now, facultyId];
+
+    if (term) {
+      query += " AND term = ?";
+      params.push(term);
+    }
+
+    await d1.prepare(query).bind(...params).run();
+    return true;
+  } catch (err) {
+    console.error("D1 deleteEventsByFacultyAndTerm error:", err);
+    return false;
+  }
+}

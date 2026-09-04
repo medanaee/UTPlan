@@ -159,6 +159,7 @@ export async function POST(request: NextRequest) {
 
       if (rows.length === 0) continue;
 
+      const stmts: any[] = [];
       for (const row of rows) {
         if (!row || typeof row !== "object") continue;
 
@@ -174,15 +175,20 @@ export async function POST(request: NextRequest) {
           return val;
         });
 
+        stmts.push(
+          d1.prepare(`INSERT INTO ${table} (${cols}) VALUES (${placeholders})`).bind(...values)
+        );
+      }
+
+      // Execute in batch chunks of 100
+      for (let i = 0; i < stmts.length; i += 100) {
+        const batchChunk = stmts.slice(i, i + 100);
         try {
-          await d1
-            .prepare(`INSERT INTO ${table} (${cols}) VALUES (${placeholders})`)
-            .bind(...values)
-            .run();
-          totalInserted++;
-          restoredStats[table]++;
-        } catch (insertErr: any) {
-          errors.push(`خطا در جدول ${table}: ${insertErr?.message || "نامشخص"}`);
+          await d1.batch(batchChunk);
+          totalInserted += batchChunk.length;
+          restoredStats[table] += batchChunk.length;
+        } catch (batchErr: any) {
+          errors.push(`خطا در درج دسته‌ای جدول ${table}: ${batchErr?.message || "نامشخص"}`);
         }
       }
     }

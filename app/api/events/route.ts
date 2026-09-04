@@ -1,5 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getEvents, createEvent, createCustomUserEvent, updateEvent, deleteEvent, findUserById, getD1 } from "@/lib/db";
+import {
+  getEvents,
+  createEvent,
+  createCustomUserEvent,
+  updateEvent,
+  deleteEvent,
+  deleteEventsByFacultyAndTerm,
+  findUserById,
+  getD1,
+} from "@/lib/db";
 import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
 
 async function getEffectiveUserRole(session: any): Promise<{ isAdmin: boolean; userId: string; role: string }> {
@@ -245,6 +254,27 @@ export async function DELETE(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
+    const facultyId = searchParams.get("facultyId");
+    const term = searchParams.get("term") || undefined;
+    const all = searchParams.get("all") === "true";
+
+    // Bulk soft delete for faculty & term (admin only)
+    if (all && facultyId) {
+      if (!isAdmin) {
+        return NextResponse.json(
+          { success: false, message: "تنها مدیران می‌توانند رویدادها را به صورت دسته‌ای حذف کنند." },
+          { status: 403 }
+        );
+      }
+
+      const success = await deleteEventsByFacultyAndTerm(facultyId, term);
+      return NextResponse.json({
+        success,
+        message: term
+          ? `کلیه رویدادهای کلاسی این دانشکده در نیمسال ${term} به سطل بازیافت منتقل شدند.`
+          : "کلیه رویدادهای کلاسی این دانشکده به سطل بازیافت منتقل شدند.",
+      });
+    }
 
     if (!id) {
       return NextResponse.json(

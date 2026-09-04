@@ -48,6 +48,14 @@ export interface ConflictItem {
   replacementCandidates?: Array<{ id: string; label: string; code?: string }>;
 }
 
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireAdminSession(request);
@@ -72,176 +80,284 @@ export async function POST(request: NextRequest) {
     const dependencies: ConflictItem[] = [];
     const seenConflictIds = new Set<string>();
 
-    for (const item of rawItems) {
-      const entityType = item.type;
-      const entityId = item.id;
-
-      // ----------------------------------------------------
-      // 1. COURSE DEPENDENCIES
-      // ----------------------------------------------------
-      if (entityType === "course") {
-        const courseRow = await d1
-          .prepare("SELECT id, name, code, faculty_id FROM courses WHERE id = ?")
-          .bind(entityId)
-          .first();
-        const courseName = courseRow ? `${(courseRow as any).name} (کد درس: ${(courseRow as any).code || "-"})` : "این درس";
-
-        // Candidate courses (excluding all items currently in delete batch)
+    // Lazy candidate loaders (cached once per request)
+    let cachedCourseCandidates: Array<{ id: string; label: string; code?: string }> | null = null;
+    const getCourseCandidates = async () => {
+      if (!cachedCourseCandidates) {
         const { results: otherCourses } = await d1
           .prepare("SELECT id, name, code, units FROM courses WHERE deleted_at IS NULL ORDER BY name ASC")
           .all();
+        cachedCourseCandidates = (otherCourses || []).map((c: any) => ({
+          id: c.id as string,
+          label: `${c.name} (${c.code || "بدون کد"}) - ${c.units || 3} واحد`,
+          code: c.code as string,
+        }));
+      }
+      return cachedCourseCandidates.filter((c) => !selectedDeleteKeys.has(`course:${c.id}`));
+    };
 
-        const courseCandidates = (otherCourses || [])
-          .filter((c: any) => !selectedDeleteKeys.has(`course:${c.id}`))
-          .map((c: any) => ({
-            id: c.id as string,
-            label: `${c.name} (${c.code || "بدون کد"}) - ${c.units || 3} واحد`,
-            code: c.code as string,
-          }));
-
-        // A. Offerings
-        const { results: offerings } = await d1
-          .prepare("SELECT id, code, description, deleted_at FROM course_offerings WHERE course_id = ?")
-          .bind(entityId)
+    let cachedProfCandidates: Array<{ id: string; label: string; code?: string }> | null = null;
+    const getProfCandidates = async () => {
+      if (!cachedProfCandidates) {
+        const { results: otherProfs } = await d1
+          .prepare("SELECT id, first_name, last_name, code, title FROM professors WHERE deleted_at IS NULL ORDER BY last_name, first_name ASC")
           .all();
+        cachedProfCandidates = (otherProfs || []).map((p: any) => ({
+          id: p.id as string,
+          label: `${p.first_name} ${p.last_name} (${p.title || "استاد"}) - کد: ${p.code || "-"}`,
+          code: p.code as string,
+        }));
+      }
+      return cachedProfCandidates.filter((p) => !selectedDeleteKeys.has(`professor:${p.id}`));
+    };
 
-        for (const off of offerings || []) {
-          // Rule 1: If offering is already in delete batch, ignore this conflict!
-          if (selectedDeleteKeys.has(`offering:${off.id}`)) continue;
-
-          const conflictKey = `dep_offering_${off.id}`;
-          if (seenConflictIds.has(conflictKey)) continue;
-          seenConflictIds.add(conflictKey);
-
-          const isTrashed = Boolean(off.deleted_at);
-          const allowedActions: Array<"replace" | "cascade_delete" | "trash_delete"> = isTrashed
-            ? ["trash_delete", "replace"]
-            : ["replace", "cascade_delete"];
-
-          dependencies.push({
-            id: conflictKey,
-            sourceEntityType: "course",
-            sourceEntityId: entityId,
-            sourceEntityName: courseName,
-            relationType: "offering",
-            dependentEntityType: "offering",
-            dependentEntityId: off.id as string,
-            dependentEntityName: `ارائه با کد ${off.code || "-"} (درس ${courseName})`,
-            description: isTrashed
-              ? `درس «${courseName}» دارای ارائه با کد «${off.code || "-"}» است که هم‌اکنون در سطل بازیافت قرار دارد. می‌توانید آن را نیز مستقیماً به طور دائمی پاک کنید.`
-              : `درس «${courseName}» دارای ارائه درسی فعال با کد «${off.code || "-"}» است. برای حذف درس، این ارائه باید با درس دیگری جایگزین شود یا خود ارائه نیز حذف گردد.`,
-            allowedActions,
-            requiresCascadeInspection: !isTrashed,
-            isDependentInTrash: isTrashed,
-            replacementCandidates: courseCandidates,
-          });
-        }
-
-        // B. Prerequisites where this course is required
-        const { results: prereqs } = await d1
+    let cachedOfferingCandidates: Array<{ id: string; label: string; code?: string }> | null = null;
+    const getOfferingCandidates = async () => {
+      if (!cachedOfferingCandidates) {
+        const { results: otherOfferings } = await d1
           .prepare(
-            `SELECT p.id, p.course_id, c.name as dependent_course_name, c.code as dependent_course_code, c.deleted_at, p.type
-             FROM prerequisites p
-             JOIN courses c ON p.course_id = c.id
-             WHERE p.required_course_id = ?`
+            `SELECT o.id, o.code, c.name as course_name, c.code as course_code
+             FROM course_offerings o
+             JOIN courses c ON o.course_id = c.id
+             WHERE o.deleted_at IS NULL
+             ORDER BY c.name ASC`
           )
-          .bind(entityId)
           .all();
+        cachedOfferingCandidates = (otherOfferings || []).map((o: any) => ({
+          id: o.id as string,
+          label: `ارائه ${o.course_name} (کد ارائه: ${o.code || "-"}${o.course_code ? ` | کد درس: ${o.course_code}` : ""})`,
+          code: o.code as string,
+        }));
+      }
+      return cachedOfferingCandidates.filter((o) => !selectedDeleteKeys.has(`offering:${o.id}`));
+    };
 
-        for (const pr of prereqs || []) {
-          // If the dependent course is also in delete batch, skip!
-          if (selectedDeleteKeys.has(`course:${pr.course_id}`)) continue;
+    let cachedFacultyCandidates: Array<{ id: string; label: string; code?: string }> | null = null;
+    const getFacultyCandidates = async () => {
+      if (!cachedFacultyCandidates) {
+        const { results: otherFacs } = await d1
+          .prepare("SELECT id, name, code FROM faculties WHERE deleted_at IS NULL ORDER BY name ASC")
+          .all();
+        cachedFacultyCandidates = (otherFacs || []).map((f: any) => ({
+          id: f.id as string,
+          label: `دانشکده ${f.name} (کد: ${f.code || "-"})`,
+          code: f.code as string,
+        }));
+      }
+      return cachedFacultyCandidates.filter((f) => !selectedDeleteKeys.has(`faculty:${f.id}`));
+    };
 
-          const conflictKey = `dep_prereq_${pr.id}`;
-          if (seenConflictIds.has(conflictKey)) continue;
-          seenConflictIds.add(conflictKey);
-
-          const typeLabel = pr.type === "corequisite" ? "هم‌نیاز" : "پیش‌نیاز";
-          const isTrashed = Boolean(pr.deleted_at);
-
-          dependencies.push({
-            id: conflictKey,
-            sourceEntityType: "course",
-            sourceEntityId: entityId,
-            sourceEntityName: courseName,
-            relationType: "prerequisite",
-            dependentEntityType: "prerequisite",
-            dependentEntityId: pr.id as string,
-            dependentEntityName: `${typeLabel} برای درس ${pr.dependent_course_name} (کد: ${pr.dependent_course_code || "-"})`,
-            description: `درس «${courseName}» به عنوان ${typeLabel} برای درس «${pr.dependent_course_name}» (${pr.dependent_course_code || "-"}) تعریف شده است.`,
-            allowedActions: ["replace", "unlink"],
-            requiresCascadeInspection: false,
-            isDependentInTrash: isTrashed,
-            replacementCandidates: courseCandidates,
-          });
-        }
-
-        // C. Track Assignments
-        const { results: trackAssigns } = await d1
+    let cachedMajorCandidates: Array<{ id: string; label: string; code?: string }> | null = null;
+    const getMajorCandidates = async () => {
+      if (!cachedMajorCandidates) {
+        const { results: otherMajors } = await d1
           .prepare(
-            `SELECT a.id, a.track_id, t.name as track_name, m.name as major_name
-             FROM track_course_assignments a
-             JOIN tracks t ON a.track_id = t.id
-             JOIN majors m ON t.major_id = m.id
-             WHERE a.course_id = ?`
+            `SELECT m.id, m.name, m.code, f.name as faculty_name
+             FROM majors m
+             LEFT JOIN faculties f ON m.faculty_id = f.id
+             WHERE m.deleted_at IS NULL
+             ORDER BY m.name ASC`
           )
-          .bind(entityId)
           .all();
+        cachedMajorCandidates = (otherMajors || []).map((m: any) => ({
+          id: m.id as string,
+          label: `رشته ${m.name} (${m.faculty_name || "-"} | کد: ${m.code || "-"})`,
+          code: m.code as string,
+        }));
+      }
+      return cachedMajorCandidates.filter((m) => !selectedDeleteKeys.has(`major:${m.id}`));
+    };
 
-        for (const ta of trackAssigns || []) {
-          const conflictKey = `dep_track_${ta.id}`;
-          if (seenConflictIds.has(conflictKey)) continue;
-          seenConflictIds.add(conflictKey);
+    let cachedTrackCandidates: Array<{ id: string; label: string; code?: string }> | null = null;
+    const getTrackCandidates = async () => {
+      if (!cachedTrackCandidates) {
+        const { results: otherTracks } = await d1
+          .prepare(
+            `SELECT t.id, t.name, t.code, m.name as major_name
+             FROM tracks t
+             LEFT JOIN majors m ON t.major_id = m.id
+             WHERE t.deleted_at IS NULL
+             ORDER BY t.name ASC`
+          )
+          .all();
+        cachedTrackCandidates = (otherTracks || []).map((t: any) => ({
+          id: t.id as string,
+          label: `گرایش ${t.name} (${t.major_name || "-"} | کد: ${t.code || "-"})`,
+          code: t.code as string,
+        }));
+      }
+      return cachedTrackCandidates.filter((t) => !selectedDeleteKeys.has(`track:${t.id}`));
+    };
 
-          dependencies.push({
-            id: conflictKey,
-            sourceEntityType: "course",
-            sourceEntityId: entityId,
-            sourceEntityName: courseName,
-            relationType: "track_assignment",
-            dependentEntityType: "track_assignment",
-            dependentEntityId: ta.id as string,
-            dependentEntityName: `چارت گرایش ${ta.track_name} (رشته ${ta.major_name})`,
-            description: `درس «${courseName}» در چارت گرایش «${ta.track_name}» (رشته ${ta.major_name}) انتساب داده شده است.`,
-            allowedActions: ["replace", "unlink"],
-            requiresCascadeInspection: false,
-            replacementCandidates: courseCandidates,
-          });
-        }
+    // ----------------------------------------------------
+    // 1. BATCH PROCESS COURSE DEPENDENCIES
+    // ----------------------------------------------------
+    const courseItems = rawItems.filter((it) => it.type === "course");
+    if (courseItems.length > 0) {
+      const courseCandidates = await getCourseCandidates();
+      for (const chunk of chunkArray(courseItems, 50)) {
+        const chunkIds = chunk.map((c) => c.id);
+        const placeholders = chunkIds.map(() => "?").join(",");
 
-        // D. Student Chart Courses
-        const chartCountRow = await d1
-          .prepare("SELECT count(*) as count FROM chart_courses WHERE course_id = ?")
-          .bind(entityId)
-          .first();
-        const chartCount = Number(chartCountRow?.count) || 0;
+        const [
+          { results: courseRows },
+          { results: offerings },
+          { results: prereqs },
+          { results: trackAssigns },
+          { results: chartCounts },
+        ] = await Promise.all([
+          d1.prepare(`SELECT id, name, code, faculty_id FROM courses WHERE id IN (${placeholders})`).bind(...chunkIds).all(),
+          d1.prepare(`SELECT id, code, description, deleted_at, course_id FROM course_offerings WHERE course_id IN (${placeholders})`).bind(...chunkIds).all(),
+          d1.prepare(`
+            SELECT p.id, p.course_id, p.required_course_id, c.name as dependent_course_name, c.code as dependent_course_code, c.deleted_at, p.type
+            FROM prerequisites p
+            JOIN courses c ON p.course_id = c.id
+            WHERE p.required_course_id IN (${placeholders})
+          `).bind(...chunkIds).all(),
+          d1.prepare(`
+            SELECT a.id, a.course_id, a.track_id, t.name as track_name, m.name as major_name
+            FROM track_course_assignments a
+            JOIN tracks t ON a.track_id = t.id
+            JOIN majors m ON t.major_id = m.id
+            WHERE a.course_id IN (${placeholders})
+          `).bind(...chunkIds).all(),
+          d1.prepare(`
+            SELECT course_id, count(*) as count
+            FROM chart_courses
+            WHERE course_id IN (${placeholders})
+            GROUP BY course_id
+          `).bind(...chunkIds).all(),
+        ]);
 
-        if (chartCount > 0) {
-          const conflictKey = `dep_chart_courses_${entityId}`;
-          if (!seenConflictIds.has(conflictKey)) {
+        const courseMap = new Map((courseRows || []).map((c: any) => [c.id, c]));
+        const chartCountMap = new Map((chartCounts || []).map((cc: any) => [cc.course_id, Number(cc.count) || 0]));
+
+        for (const item of chunk) {
+          const entityId = item.id;
+          const courseRow = courseMap.get(entityId);
+          const courseName = courseRow ? `${(courseRow as any).name} (کد درس: ${(courseRow as any).code || "-"})` : "این درس";
+
+          // A. Offerings
+          const itemOfferings = (offerings || []).filter((o: any) => o.course_id === entityId);
+          for (const off of itemOfferings) {
+            if (selectedDeleteKeys.has(`offering:${off.id}`)) continue;
+            const conflictKey = `dep_offering_${off.id}`;
+            if (seenConflictIds.has(conflictKey)) continue;
             seenConflictIds.add(conflictKey);
+
+            const isTrashed = Boolean(off.deleted_at);
+            const allowedActions: Array<"replace" | "cascade_delete" | "trash_delete"> = isTrashed
+              ? ["trash_delete", "replace"]
+              : ["replace", "cascade_delete"];
+
             dependencies.push({
               id: conflictKey,
               sourceEntityType: "course",
               sourceEntityId: entityId,
               sourceEntityName: courseName,
-              relationType: "chart_course",
-              dependentEntityType: "chart_course",
-              dependentEntityId: entityId,
-              dependentEntityName: `انتخاب توسط دانشجویان (${chartCount} چارت دانشجو)`,
-              description: `درس «${courseName}» در چارت تحصیلی ${chartCount} دانشجو انتخاب شده است.`,
+              relationType: "offering",
+              dependentEntityType: "offering",
+              dependentEntityId: off.id as string,
+              dependentEntityName: `ارائه با کد ${off.code || "-"} (درس ${courseName})`,
+              description: isTrashed
+                ? `درس «${courseName}» دارای ارائه با کد «${off.code || "-"}» است که هم‌اکنون در سطل بازیافت قرار دارد. می‌توانید آن را نیز مستقیماً به طور دائمی پاک کنید.`
+                : `درس «${courseName}» دارای ارائه درسی فعال با کد «${off.code || "-"}» است. برای حذف درس، این ارائه باید با درس دیگری جایگزین شود یا خود ارائه نیز حذف گردد.`,
+              allowedActions,
+              requiresCascadeInspection: !isTrashed,
+              isDependentInTrash: isTrashed,
+              replacementCandidates: courseCandidates,
+            });
+          }
+
+          // B. Prerequisites
+          const itemPrereqs = (prereqs || []).filter((p: any) => p.required_course_id === entityId);
+          for (const pr of itemPrereqs) {
+            if (selectedDeleteKeys.has(`course:${pr.course_id}`)) continue;
+            const conflictKey = `dep_prereq_${pr.id}`;
+            if (seenConflictIds.has(conflictKey)) continue;
+            seenConflictIds.add(conflictKey);
+
+            const typeLabel = pr.type === "corequisite" ? "هم‌نیاز" : "پیش‌نیاز";
+            const isTrashed = Boolean(pr.deleted_at);
+
+            dependencies.push({
+              id: conflictKey,
+              sourceEntityType: "course",
+              sourceEntityId: entityId,
+              sourceEntityName: courseName,
+              relationType: "prerequisite",
+              dependentEntityType: "prerequisite",
+              dependentEntityId: pr.id as string,
+              dependentEntityName: `${typeLabel} برای درس ${pr.dependent_course_name} (کد: ${pr.dependent_course_code || "-"})`,
+              description: `درس «${courseName}» به عنوان ${typeLabel} برای درس «${pr.dependent_course_name}» (${pr.dependent_course_code || "-"}) تعریف شده است.`,
+              allowedActions: ["replace", "unlink"],
+              requiresCascadeInspection: false,
+              isDependentInTrash: isTrashed,
+              replacementCandidates: courseCandidates,
+            });
+          }
+
+          // C. Track Assignments
+          const itemTrackAssigns = (trackAssigns || []).filter((ta: any) => ta.course_id === entityId);
+          for (const ta of itemTrackAssigns) {
+            const conflictKey = `dep_track_${ta.id}`;
+            if (seenConflictIds.has(conflictKey)) continue;
+            seenConflictIds.add(conflictKey);
+
+            dependencies.push({
+              id: conflictKey,
+              sourceEntityType: "course",
+              sourceEntityId: entityId,
+              sourceEntityName: courseName,
+              relationType: "track_assignment",
+              dependentEntityType: "track_assignment",
+              dependentEntityId: ta.id as string,
+              dependentEntityName: `چارت گرایش ${ta.track_name} (رشته ${ta.major_name})`,
+              description: `درس «${courseName}» در چارت گرایش «${ta.track_name}» (رشته ${ta.major_name}) انتساب داده شده است.`,
               allowedActions: ["replace", "unlink"],
               requiresCascadeInspection: false,
               replacementCandidates: courseCandidates,
             });
           }
+
+          // D. Student Chart Courses
+          const chartCount = chartCountMap.get(entityId) || 0;
+          if (chartCount > 0) {
+            const conflictKey = `dep_chart_courses_${entityId}`;
+            if (!seenConflictIds.has(conflictKey)) {
+              seenConflictIds.add(conflictKey);
+              dependencies.push({
+                id: conflictKey,
+                sourceEntityType: "course",
+                sourceEntityId: entityId,
+                sourceEntityName: courseName,
+                relationType: "chart_course",
+                dependentEntityType: "chart_course",
+                dependentEntityId: entityId,
+                dependentEntityName: `انتخاب توسط دانشجویان (${chartCount} چارت دانشجو)`,
+                description: `درس «${courseName}» در چارت تحصیلی ${chartCount} دانشجو انتخاب شده است.`,
+                allowedActions: ["replace", "unlink"],
+                requiresCascadeInspection: false,
+                replacementCandidates: courseCandidates,
+              });
+            }
+          }
         }
       }
+    }
+
+    // ----------------------------------------------------
+    // 2. PROCESS OTHER ENTITIES (professor, offering, event, faculty, major, track)
+    // ----------------------------------------------------
+    const otherItems = rawItems.filter((it) => it.type !== "course");
+    for (const item of otherItems) {
+      const entityType = item.type;
+      const entityId = item.id;
 
       // ----------------------------------------------------
       // 2. PROFESSOR DEPENDENCIES
       // ----------------------------------------------------
-      else if (entityType === "professor") {
+      if (entityType === "professor") {
         const profRow = await d1
           .prepare("SELECT id, first_name, last_name, code FROM professors WHERE id = ?")
           .bind(entityId)
@@ -260,18 +376,8 @@ export async function POST(request: NextRequest) {
           .bind(entityId)
           .all();
 
-        // Candidate professors
-        const { results: otherProfs } = await d1
-          .prepare("SELECT id, first_name, last_name, code, title FROM professors WHERE deleted_at IS NULL ORDER BY last_name, first_name ASC")
-          .all();
-
-        const profCandidates = (otherProfs || [])
-          .filter((p: any) => !selectedDeleteKeys.has(`professor:${p.id}`))
-          .map((p: any) => ({
-            id: p.id as string,
-            label: `${p.first_name} ${p.last_name} (${p.title || "استاد"}) - کد: ${p.code || "-"}`,
-            code: p.code as string,
-          }));
+        // Candidate professors (cached)
+        const profCandidates = await getProfCandidates();
 
         for (const op of offProfs || []) {
           // If offering is also in delete batch, ignore!
@@ -322,24 +428,8 @@ export async function POST(request: NextRequest) {
         const offCode = (offRow as any)?.code || "-";
         const offeringName = `ارائه درس ${courseName} (کد ارائه: ${offCode}${courseCode ? ` | کد درس: ${courseCode}` : ""})`;
 
-        // Candidate offerings
-        const { results: otherOfferings } = await d1
-          .prepare(
-            `SELECT o.id, o.code, c.name as course_name, c.code as course_code
-             FROM course_offerings o
-             JOIN courses c ON o.course_id = c.id
-             WHERE o.deleted_at IS NULL
-             ORDER BY c.name ASC`
-          )
-          .all();
-
-        const offeringCandidates = (otherOfferings || [])
-          .filter((o: any) => !selectedDeleteKeys.has(`offering:${o.id}`))
-          .map((o: any) => ({
-            id: o.id as string,
-            label: `ارائه ${o.course_name} (کد ارائه: ${o.code || "-"}${o.course_code ? ` | کد درس: ${o.course_code}` : ""})`,
-            code: o.code as string,
-          }));
+        // Candidate offerings (cached)
+        const offeringCandidates = await getOfferingCandidates();
 
         // Events belonging to this offering
         const { results: events } = await d1
@@ -460,17 +550,8 @@ export async function POST(request: NextRequest) {
           .first();
         const facName = facRow ? `دانشکده ${(facRow as any).name} (کد: ${(facRow as any).code || "-"})` : "این دانشکده";
 
-        // Candidate faculties for replacement
-        const { results: otherFacs } = await d1
-          .prepare("SELECT id, name, code FROM faculties WHERE deleted_at IS NULL ORDER BY name ASC")
-          .all();
-        const facultyCandidates = (otherFacs || [])
-          .filter((f: any) => !selectedDeleteKeys.has(`faculty:${f.id}`))
-          .map((f: any) => ({
-            id: f.id as string,
-            label: `دانشکده ${f.name} (کد: ${f.code || "-"})`,
-            code: f.code as string,
-          }));
+        // Candidate faculties for replacement (cached)
+        const facultyCandidates = await getFacultyCandidates();
 
         // A. Majors belonging to this faculty
         const { results: majors } = await d1
@@ -630,23 +711,8 @@ export async function POST(request: NextRequest) {
           ? `رشته ${(majorRow as any).name} (کد: ${(majorRow as any).code || "-"} | دانشکده: ${(majorRow as any).faculty_name || "-"})`
           : "این رشته";
 
-        // Candidate majors for replacement
-        const { results: otherMajors } = await d1
-          .prepare(
-            `SELECT m.id, m.name, m.code, f.name as faculty_name
-             FROM majors m
-             LEFT JOIN faculties f ON m.faculty_id = f.id
-             WHERE m.deleted_at IS NULL
-             ORDER BY m.name ASC`
-          )
-          .all();
-        const majorCandidates = (otherMajors || [])
-          .filter((m: any) => !selectedDeleteKeys.has(`major:${m.id}`))
-          .map((m: any) => ({
-            id: m.id as string,
-            label: `رشته ${m.name} (${m.faculty_name || "-"} | کد: ${m.code || "-"})`,
-            code: m.code as string,
-          }));
+        // Candidate majors for replacement (cached)
+        const majorCandidates = await getMajorCandidates();
 
         // A. Tracks belonging to this major
         const { results: tracks } = await d1
@@ -732,23 +798,8 @@ export async function POST(request: NextRequest) {
           ? `گرایش ${(trackRow as any).name} (کد: ${(trackRow as any).code || "-"} | رشته: ${(trackRow as any).major_name || "-"})`
           : "این گرایش";
 
-        // Candidate tracks for replacement
-        const { results: otherTracks } = await d1
-          .prepare(
-            `SELECT t.id, t.name, t.code, m.name as major_name
-             FROM tracks t
-             LEFT JOIN majors m ON t.major_id = m.id
-             WHERE t.deleted_at IS NULL
-             ORDER BY t.name ASC`
-          )
-          .all();
-        const trackCandidates = (otherTracks || [])
-          .filter((t: any) => !selectedDeleteKeys.has(`track:${t.id}`))
-          .map((t: any) => ({
-            id: t.id as string,
-            label: `گرایش ${t.name} (${t.major_name || "-"} | کد: ${t.code || "-"})`,
-            code: t.code as string,
-          }));
+        // Candidate tracks for replacement (cached)
+        const trackCandidates = await getTrackCandidates();
 
         // A. Track Course Assignments
         const assignCountRow = await d1

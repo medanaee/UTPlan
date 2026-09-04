@@ -210,32 +210,35 @@ export async function createChart(data: {
       await d1.prepare("ALTER TABLE charts ADD COLUMN waived_course_ids TEXT").run();
     } catch {}
 
-    await d1
-      .prepare(
+    const stmts: any[] = [];
+    stmts.push(
+      d1.prepare(
         `INSERT INTO charts (id, user_id, track_id, title, is_approved_template, waived_course_ids, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-      .bind(chartId, data.userId, data.trackId, data.title, isApproved, waivedCourseIdsJson, now, now)
-      .run();
+      ).bind(chartId, data.userId, data.trackId, data.title, isApproved, waivedCourseIdsJson, now, now)
+    );
 
     for (const s of semesters) {
       const termId = `term_${chartId}_${s.semesterNumber}`;
-      await d1
-        .prepare("INSERT INTO chart_terms (id, chart_id, term_index) VALUES (?, ?, ?)")
-        .bind(termId, chartId, s.semesterNumber)
-        .run();
+      stmts.push(
+        d1.prepare("INSERT INTO chart_terms (id, chart_id, term_index) VALUES (?, ?, ?)")
+          .bind(termId, chartId, s.semesterNumber)
+      );
 
       let order = 0;
       for (const courseId of s.courseIds || []) {
         const ccId = `cc_${crypto.randomUUID().slice(0, 8)}`;
         const selectedEventId = s.courseEventsMap?.[courseId] || null;
-        await d1
-          .prepare(
+        stmts.push(
+          d1.prepare(
             "INSERT INTO chart_courses (id, term_id, course_id, selected_event_id, sort_order) VALUES (?, ?, ?, ?, ?)"
-          )
-          .bind(ccId, termId, courseId, selectedEventId, order++)
-          .run();
+          ).bind(ccId, termId, courseId, selectedEventId, order++)
+        );
       }
+    }
+
+    if (stmts.length > 0) {
+      await d1.batch(stmts);
     }
   } catch (err) {
     console.error("D1 createChart error:", err);
@@ -296,36 +299,38 @@ export async function updateChart(
     }
 
     if (data.semesters) {
-      // Clear old terms and chart courses
-      const { results: existingTerms } = await d1
-        .prepare("SELECT id FROM chart_terms WHERE chart_id = ?")
-        .bind(id)
-        .all();
+      const stmts: any[] = [];
+      // 1. Delete old chart courses belonging to this chart
+      stmts.push(
+        d1.prepare("DELETE FROM chart_courses WHERE term_id IN (SELECT id FROM chart_terms WHERE chart_id = ?)").bind(id)
+      );
+      // 2. Delete old chart terms
+      stmts.push(
+        d1.prepare("DELETE FROM chart_terms WHERE chart_id = ?").bind(id)
+      );
 
-      for (const t of existingTerms || []) {
-        await d1.prepare("DELETE FROM chart_courses WHERE term_id = ?").bind((t as any).id).run();
-      }
-      await d1.prepare("DELETE FROM chart_terms WHERE chart_id = ?").bind(id).run();
-
-      // Re-insert terms
+      // 3. Re-insert terms and chart courses
       for (const s of data.semesters) {
         const termId = `term_${id}_${s.semesterNumber}`;
-        await d1
-          .prepare("INSERT INTO chart_terms (id, chart_id, term_index) VALUES (?, ?, ?)")
-          .bind(termId, id, s.semesterNumber)
-          .run();
+        stmts.push(
+          d1.prepare("INSERT INTO chart_terms (id, chart_id, term_index) VALUES (?, ?, ?)")
+            .bind(termId, id, s.semesterNumber)
+        );
 
         let order = 0;
         for (const courseId of s.courseIds || []) {
           const ccId = `cc_${crypto.randomUUID().slice(0, 8)}`;
           const selectedEventId = s.courseEventsMap?.[courseId] || null;
-          await d1
-            .prepare(
+          stmts.push(
+            d1.prepare(
               "INSERT INTO chart_courses (id, term_id, course_id, selected_event_id, sort_order) VALUES (?, ?, ?, ?, ?)"
-            )
-            .bind(ccId, termId, courseId, selectedEventId, order++)
-            .run();
+            ).bind(ccId, termId, courseId, selectedEventId, order++)
+          );
         }
+      }
+
+      if (stmts.length > 0) {
+        await d1.batch(stmts);
       }
     }
 
