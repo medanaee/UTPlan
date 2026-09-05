@@ -682,11 +682,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
           return (
             <div
               key={c.id}
-              className={`flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl border text-xs transition-colors shadow-2xs ${
-                isLinked
-                  ? "bg-amber-500/5 border-amber-500/30 hover:bg-amber-500/10"
-                  : "bg-muted/40 border-border/70 hover:bg-muted/70"
-              }`}
+              className={`flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl border text-xs transition-colors shadow-2xs bg-muted/40 border-border/70 hover:bg-muted/70 `}
             >
               <span className="font-semibold text-foreground">{c.name}</span>
               {isLinked && (

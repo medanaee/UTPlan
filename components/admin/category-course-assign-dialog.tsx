@@ -212,8 +212,6 @@ export function CategoryCourseAssignDialog({
                   className={"flex items-center justify-between p-2.5 rounded-xl border text-xs cursor-pointer transition-all " + (
                     isSelected
                       ? "border-primary bg-primary/10 ring-1 ring-primary/30 shadow-2xs"
-                      : isLinked
-                      ? "border-amber-500/30 bg-amber-500/[0.02] hover:bg-amber-500/[0.05]"
                       : "border-border/60 bg-card hover:bg-muted/30 hover:border-border"
                   )}
                 >
