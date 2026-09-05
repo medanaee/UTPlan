@@ -18,6 +18,7 @@ import {
   Clock,
   ArrowRight,
   RefreshCw,
+  Pencil,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -65,6 +66,9 @@ export function ApprovedChartsManager({
   const [sourceChartIdToClone, setSourceChartIdToClone] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [editTitleModalOpen, setEditTitleModalOpen] = useState(false);
+  const [editingChart, setEditingChart] = useState<StudentChart | null>(null);
+  const [editTitleInput, setEditTitleInput] = useState("");
 
   const currentTrack = tracks.find((t) => t.id === selectedTrackId);
   const trackApprovedCharts = allApprovedCharts.filter(
@@ -194,24 +198,36 @@ export function ApprovedChartsManager({
     }
   };
 
-  // Set a chart as the single primary approved chart for this track
-  const handleSetPrimary = async (chartId: string) => {
+  // Update chart title
+  const handleUpdateChartTitle = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingChart || !editTitleInput.trim()) return;
+
+    setIsSubmitting(true);
     try {
       const res = await fetch("/api/charts", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: chartId, action: "set_primary" }),
+        body: JSON.stringify({
+          id: editingChart.id,
+          title: editTitleInput.trim(),
+        }),
       });
       const data = await res.json();
       if (data.success) {
-        setActionMessage(data.message || "چارت مصوب اصلی گرایش تعیین شد.");
+        setActionMessage("نام چارت با موفقیت ویرایش شد.");
+        setEditTitleModalOpen(false);
+        setEditingChart(null);
+        setEditTitleInput("");
         await loadApprovedCharts();
-        setTimeout(() => setActionMessage(null), 4000);
+        setTimeout(() => setActionMessage(null), 3000);
       } else {
-        alert(data.message || "خطا در تنظیم چارت مصوب");
+        alert(data.message || "خطا در ویرایش نام چارت");
       }
     } catch {
       alert("خطا در برقراری ارتباط با سرور");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -299,7 +315,7 @@ export function ApprovedChartsManager({
                     </Badge>
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    تنها ۱ چارت می‌تواند به عنوان چارت مصوب رسمی اصلی انتخاب شود. سایر چارت‌ها به عنوان الگوهای پیشنهادی در دسترس خواهند بود.
+                    چارت‌های مصوب و پیشنهادی دانشگاه برای این گرایش که دانشجویان می‌توانند به عنوان الگوی تحصیلی خود بارگذاری کنند.
                   </p>
                 </div>
               </div>
@@ -345,37 +361,11 @@ export function ApprovedChartsManager({
                   return (
                     <div
                       key={chart.id}
-                      className={`p-4 rounded-xl border space-y-3 transition-all ${
-                        chart.isPrimaryApproved
-                          ? "border-emerald-500/50 bg-emerald-500/10 shadow-xs ring-1 ring-emerald-500/30"
-                          : "border-border/80 bg-muted/20 hover:border-primary/40"
-                      }`}
+                      className="p-4 rounded-xl border border-border/80 bg-muted/20 hover:border-primary/40 space-y-3 transition-all"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="space-y-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            {chart.isPrimaryApproved ? (
-                              <Badge className="bg-emerald-600 text-white dark:bg-emerald-500 dark:text-black border-transparent text-[11px] h-5.5 font-bold gap-1 shadow-2xs">
-                                <Sparkles className="h-3 w-3 shrink-0" />
-                                <span>چارت مصوب رسمی اصلی</span>
-                              </Badge>
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <Badge variant="outline" className="text-muted-foreground border-border/80 text-[10px] h-5">
-                                  الگوی پیشنهادی
-                                </Badge>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleSetPrimary(chart.id)}
-                                  className="h-6 text-[10px] gap-1 text-primary border-primary/30 hover:bg-primary/5"
-                                  title="تنها ۱ چارت در هر گرایش مصوب اصلی است"
-                                >
-                                  تعیین به عنوان مصوب اصلی گرایش
-                                </Button>
-                              </div>
-                            )}
-
+                          <div className="flex items-center gap-2">
                             <span className="text-xs font-bold text-foreground">
                               {chart.title}
                             </span>
@@ -388,6 +378,20 @@ export function ApprovedChartsManager({
 
                         {/* Action buttons */}
                         <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setEditingChart(chart);
+                              setEditTitleInput(chart.title);
+                              setEditTitleModalOpen(true);
+                            }}
+                            className="h-8 gap-1 text-xs text-muted-foreground hover:text-foreground"
+                            title="تغییر نام چارت"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline">تغییر نام</span>
+                          </Button>
                           <Link href={`/charts/${chart.id}`} target="_blank">
                             <Button size="sm" className="h-8 gap-1.5 text-xs font-semibold shadow-xs">
                               <Edit className="h-3.5 w-3.5" />
@@ -695,6 +699,54 @@ export function ApprovedChartsManager({
                 className="h-8 text-xs font-semibold"
               >
                 {isSubmitting ? "در حال کپی..." : "کپی و ایجاد چارت"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Chart Title Dialog */}
+      <Dialog open={editTitleModalOpen} onOpenChange={setEditTitleModalOpen}>
+        <DialogContent className="sm:max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-bold flex items-center gap-2">
+              <Pencil className="h-4 w-4 text-primary" />
+              تغییر نام چارت
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              عنوان جدید را برای این چارت وارد نمایید.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleUpdateChartTitle} className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">عنوان چارت</Label>
+              <Input
+                value={editTitleInput}
+                onChange={(e) => setEditTitleInput(e.target.value)}
+                placeholder="مثلاً: چارت مصوب مهندسی نرم‌افزار - ورودی ۱۴۰۲"
+                required
+                className="h-8 text-xs"
+              />
+            </div>
+
+            <DialogFooter className="gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setEditTitleModalOpen(false)}
+                className="h-8 text-xs"
+                disabled={isSubmitting}
+              >
+                انصراف
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={isSubmitting || !editTitleInput.trim()}
+                className="h-8 text-xs font-semibold"
+              >
+                {isSubmitting ? "در حال ذخیره..." : "ذخیره تغییرات"}
               </Button>
             </DialogFooter>
           </form>

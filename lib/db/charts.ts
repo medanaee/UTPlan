@@ -83,22 +83,6 @@ export async function getApprovedTrackChart(trackId: string): Promise<StudentCha
   return approved[0] || null;
 }
 
-export async function setPrimaryApprovedChart(chartId: string, trackId?: string): Promise<boolean> {
-  const d1 = getD1();
-  if (!d1) return false;
-
-  try {
-    if (trackId) {
-      await d1.prepare("UPDATE charts SET is_approved_template = 0 WHERE track_id = ?").bind(trackId).run();
-    }
-    await d1.prepare("UPDATE charts SET is_approved_template = 1 WHERE id = ?").bind(chartId).run();
-    return true;
-  } catch (err) {
-    console.error("D1 setPrimaryApprovedChart error:", err);
-    return false;
-  }
-}
-
 export async function cloneChart(chartId: string, newUserId: string, title?: string): Promise<StudentChart | null> {
   const source = await getChartById(chartId);
   if (!source) return null;

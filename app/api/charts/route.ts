@@ -8,7 +8,6 @@ import {
   deleteChart,
   getApprovedTrackChart,
   getApprovedTrackCharts,
-  setPrimaryApprovedChart,
   findUserById,
 } from "@/lib/db";
 
@@ -121,7 +120,7 @@ export async function PUT(req: NextRequest) {
     const { isAdmin, userId } = await getEffectiveUserRole(session);
 
     const body = await req.json();
-    const { id, title, trackId, semesters, isPrimaryApproved, isApprovedDefault, action, waivedCourseIds } = body;
+    const { id, title, trackId, semesters, isApprovedDefault, waivedCourseIds } = body;
 
     if (!id) {
       return NextResponse.json({ success: false, message: "شناسه چارت الزامی است." }, { status: 400 });
@@ -155,26 +154,12 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    if (action === "set_primary" || isPrimaryApproved) {
-      if (!isAdmin) {
-        return NextResponse.json({ success: false, message: "دسترسی غیرمجاز" }, { status: 403 });
-      }
-      await setPrimaryApprovedChart(existing.trackId, id);
-      const updated = await getChartById(id);
-      return NextResponse.json({
-        success: true,
-        data: updated,
-        message: "این چارت به عنوان چارت مصوب اصلی گرایش تعیین شد.",
-      });
-    }
-
     const updated = await updateChart(id, {
       title,
       trackId,
       semesters,
       waivedCourseIds,
       isApprovedDefault: isAdmin ? isApprovedDefault : undefined,
-      isPrimaryApproved: isAdmin ? isPrimaryApproved : undefined,
     });
 
     return NextResponse.json({ success: true, data: updated, message: "چارت با موفقیت ذخیره شد." });

@@ -365,7 +365,6 @@ export interface StudentChart {
   trackId: string;
   title: string;
   isApprovedDefault?: boolean;
-  isPrimaryApproved?: boolean;
   semesters: ChartSemester[];
   waivedCourseIds?: string[];
   createdAt: string;
