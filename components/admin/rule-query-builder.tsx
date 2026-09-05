@@ -448,6 +448,7 @@ interface RuleLeafItemProps {
 
 const RULE_TYPE_ITEMS = [
   { value: "MIN_CREDITS_IN_CATEGORY", label: "حداقل N واحد از دسته قوانین" },
+  { value: "MAX_CREDITS_IN_CATEGORY", label: "حداکثر N واحد از دسته قوانین" },
   { value: "ALL_COURSES_IN_CATEGORY", label: "گذراندن تمام دروس دسته قوانین" },
   { value: "EXACT_N_COURSES_IN_CATEGORY", label: "دقیقاً N درس از دسته قوانین" },
   { value: "MIN_TOTAL_CREDITS_BEFORE_COURSE", label: "حداقل N واحد قبل از اخذ درس خاص" },
@@ -468,6 +469,9 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
             onUpdate({
               ...leaf,
               type: val as any,
+              ...(val === "MAX_CREDITS_IN_CATEGORY" && !leaf.maxCredits
+                ? { maxCredits: leaf.minCredits || 10, minCredits: leaf.minCredits || 10 }
+                : {}),
             })
           }
         >
@@ -503,6 +507,32 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
               max={150}
               value={leaf.minCredits || 20}
               onChange={(val) => onUpdate({ ...leaf, minCredits: parseInt(String(val)) || 0 })}
+              className="w-20"
+            />
+            <span className="text-muted-foreground">واحد</span>
+          </div>
+        )}
+
+        {leaf.type === "MAX_CREDITS_IN_CATEGORY" && (
+          <div className="flex items-center gap-1.5 w-auto whitespace-nowrap">
+            <span className="text-muted-foreground">از دسته:</span>
+            <CategoryPicker
+              categories={ruleCategories}
+              value={leaf.ruleCategoryId || null}
+              onChange={(val) => onUpdate({ ...leaf, ruleCategoryId: val || undefined })}
+              placeholder="انتخاب دسته..."
+              triggerClassName="h-7 min-w-[160px] text-xs"
+            />
+
+            <span className="text-muted-foreground">حداکثر:</span>
+            <NumberInput
+              min={1}
+              max={150}
+              value={leaf.maxCredits ?? leaf.minCredits ?? 10}
+              onChange={(val) => {
+                const num = parseInt(String(val)) || 0;
+                onUpdate({ ...leaf, maxCredits: num, minCredits: num });
+              }}
               className="w-20"
             />
             <span className="text-muted-foreground">واحد</span>

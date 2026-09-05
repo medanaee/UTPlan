@@ -130,10 +130,10 @@ export function Navbar({ user: initialUser }: NavbarProps) {
             <div className="flex items-center gap-2">
               <Link
                 href="/profile"
-                className="flex items-center gap-2 p-1 rounded-xl hover:bg-muted/50 transition-colors"
+                className="flex items-center gap-2 px-1 h-8 rounded-md hover:bg-muted/50 transition-colors"
                 title="مشاهده و ویرایش پروفایل تحصیلی"
               >
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs overflow-hidden border border-border/80 shadow-2xs">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs overflow-hidden border border-border/80 shadow-2xs">
                   {user.avatarUrl ? (
                     <img src={user.avatarUrl} alt={user.name} className="h-full w-full object-cover" />
                   ) : (
@@ -148,7 +148,6 @@ export function Navbar({ user: initialUser }: NavbarProps) {
                       {user.role === "super_admin" || user.role === "admin" ? "مدیر سیستم" : "دانشجو"}
                     </Badge>
                   </div>
-                  <p className="text-[10px] text-muted-foreground">{user.email}</p>
                 </div>
               </Link>
 
@@ -162,7 +161,6 @@ export function Navbar({ user: initialUser }: NavbarProps) {
               )}
 
               <Button
-                size="sm"
                 variant="outline"
                 onClick={handleLogout}
                 className="h-8 gap-1 text-xs border-border/80 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
@@ -173,7 +171,7 @@ export function Navbar({ user: initialUser }: NavbarProps) {
             </div>
           ) : (
             <Link href="/login">
-              <Button size="sm" className="h-8 gap-1 text-xs font-semibold shadow-xs">
+              <Button className="h-8 gap-1 text-xs font-semibold shadow-xs">
                 <LogIn className="h-3.5 w-3.5" />
                 ورود / ثبت‌نام
               </Button>

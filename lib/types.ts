@@ -295,6 +295,7 @@ export interface Review {
 export type RuleNodeType =
   | "GROUP"
   | "MIN_CREDITS_IN_CATEGORY"
+  | "MAX_CREDITS_IN_CATEGORY"
   | "ALL_COURSES_IN_CATEGORY"
   | "EXACT_N_COURSES_IN_CATEGORY"
   | "MIN_TOTAL_CREDITS_BEFORE_COURSE"
@@ -313,6 +314,7 @@ export interface RuleLeafNode {
   type: Exclude<RuleNodeType, "GROUP">;
   ruleCategoryId?: string;
   minCredits?: number;
+  maxCredits?: number;
   exactCount?: number;
   targetCourseId?: string;
   requiredCreditsBefore?: number;
@@ -336,6 +338,7 @@ export interface CategoryStat {
   categoryId: string;
   categoryName: string;
   requiredCredits?: number;
+  maxCredits?: number;
   earnedCredits: number;
   totalCoursesPassed: number;
   isSatisfied: boolean;

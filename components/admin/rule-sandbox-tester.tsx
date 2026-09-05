@@ -262,6 +262,7 @@ export function RuleSandboxTester({
                     <span>واحدهای گذرانده:</span>
                     <span className="font-bold text-foreground">
                       {stat.earnedCredits} {stat.requiredCredits ? `/ ${stat.requiredCredits}` : ""} واحد
+                      {stat.maxCredits !== undefined ? ` (سقف: ${stat.maxCredits})` : ""}
                     </span>
                   </div>
                 </div>

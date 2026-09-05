@@ -179,8 +179,9 @@ export default function ProfilePage() {
   };
 
   // Submit Profile Form
-  const handleSaveProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveProfile = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (isSaving) return;
     setIsSaving(true);
     setSaveMessage(null);
     setErrorMessage(null);
@@ -267,17 +268,18 @@ export default function ProfilePage() {
             </p>
           </div>
           <Button
-              type="submit"
-              disabled={isSaving || uploadingImage}
-              className="font-semibold"
-            >
-              {isSaving ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4" />
-              )}
-              {isSaving ? "در حال ذخیره‌سازی..." : "ذخیره تغییرات پروفایل"}
-            </Button>
+            type="submit"
+            form="profile-form"
+            disabled={isSaving || uploadingImage}
+            className="font-semibold"
+          >
+            {isSaving ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+            {isSaving ? "در حال ذخیره‌سازی..." : "ذخیره تغییرات پروفایل"}
+          </Button>
         </div>
 
         {/* Notifications */}
@@ -295,7 +297,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <form onSubmit={handleSaveProfile} className="space-y-6">
+        <form id="profile-form" onSubmit={handleSaveProfile} className="space-y-6">
           {/* ========================================================================= */}
           {/* 1. PERSONAL INFORMATION & AVATAR */}
           {/* ========================================================================= */}

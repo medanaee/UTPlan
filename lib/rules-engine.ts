@@ -261,11 +261,15 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
 
     // Extract requirement dynamically from rulesTree if defined
     let required = 0;
+    let maxAllowed: number | undefined = undefined;
     if (rulesTree) {
       const findReq = (node: any) => {
         if (!node) return;
         if (node.type === "MIN_CREDITS_IN_CATEGORY" && node.ruleCategoryId === rcat.id) {
           required = node.minCredits || 0;
+        }
+        if (node.type === "MAX_CREDITS_IN_CATEGORY" && node.ruleCategoryId === rcat.id) {
+          maxAllowed = node.maxCredits !== undefined ? node.maxCredits : node.minCredits;
         }
         if (node.children && Array.isArray(node.children)) {
           node.children.forEach(findReq);
@@ -274,12 +278,15 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
       findReq(rulesTree);
     }
 
-    const isSatisfied = required === 0 || earnedCredits >= required;
+    const minSatisfied = required === 0 || earnedCredits >= required;
+    const maxSatisfied = maxAllowed === undefined || earnedCredits <= maxAllowed;
+    const isSatisfied = minSatisfied && maxSatisfied;
 
     return {
       categoryId: rcat.id,
       categoryName: rcat.name,
       requiredCredits: required > 0 ? required : undefined,
+      maxCredits: maxAllowed,
       earnedCredits,
       totalCoursesPassed: assignedCourses.length,
       isSatisfied,
@@ -406,6 +413,34 @@ switch (leaf.type) {
         id: `issue_leaf_${leaf.id}`,
         type: "error",
         message: `شرط حداقل واحد: در دسته «${catName}» باید حداقل ${required} واحد گذرانده شود (واحدهای فعلی: ${earned}).`,
+        ruleNodeId: leaf.id,
+      });
+    }
+    return { satisfied, issues };
+  }
+
+  case "MAX_CREDITS_IN_CATEGORY": {
+    const cat = ruleCategories.find((c) => c.id === leaf.ruleCategoryId);
+    const catName = cat ? cat.name : "دسته نامشخص";
+    const maxAllowed = leaf.maxCredits !== undefined ? leaf.maxCredits : (leaf.minCredits || 0);
+    const targetCatIds = getCategoryAndDescendantIds(leaf.ruleCategoryId || "", ruleCategories);
+
+    const earned = chartCourses
+      .filter((entry) => {
+        const assignedCatId = courseToRuleCatMap.get(entry.courseId);
+        return assignedCatId && targetCatIds.has(assignedCatId);
+      })
+      .reduce((sum, entry) => {
+        const c = courseMap.get(entry.courseId);
+        return sum + (c ? c.units : 3);
+      }, 0);
+
+    const satisfied = earned <= maxAllowed;
+    if (!satisfied) {
+      issues.push({
+        id: `issue_leaf_${leaf.id}`,
+        type: "error",
+        message: `شرط حداکثر واحد: در دسته «${catName}» حداکثر می‌توان ${maxAllowed} واحد اخذ نمود (واحدهای فعلی اخذ شده: ${earned}).`,
         ruleNodeId: leaf.id,
       });
     }
