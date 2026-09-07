@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,9 +12,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, BookOpen, CheckSquare, Square, Loader2, Sparkles, Scale, Link2 } from "lucide-react";
+import {
+  Search,
+  BookOpen,
+  CheckSquare,
+  Square,
+  Loader2,
+  Sparkles,
+  Scale,
+  Link2,
+  CheckCircle2,
+} from "lucide-react";
 import type { Course } from "@/lib/types";
 import { searchCourses } from "@/lib/search/persian-search";
+import { cn } from "@/lib/utils";
+
+export interface OtherCategoryAssignmentInfo {
+  categoryId: string;
+  categoryName: string;
+  categoryColor?: string;
+}
 
 interface CategoryCourseAssignDialogProps {
   open: boolean;
@@ -27,6 +44,7 @@ interface CategoryCourseAssignDialogProps {
   allCourses: Course[];
   currentAssignedCourseIds: string[];
   currentFacultyId?: string;
+  otherCategoryAssignments?: Record<string, OtherCategoryAssignmentInfo>;
   onSuccess: () => void;
 }
 
@@ -41,43 +59,115 @@ export function CategoryCourseAssignDialog({
   allCourses,
   currentAssignedCourseIds,
   currentFacultyId,
+  otherCategoryAssignments,
   onSuccess,
 }: CategoryCourseAssignDialogProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const lastClickedIdRef = useRef<string | null>(null);
+  const lastActionRef = useRef<"select" | "deselect">("select");
+  const lastShiftRef = useRef(false);
 
   useEffect(() => {
     if (open) {
       setSelectedIds(new Set(currentAssignedCourseIds));
       setSearch("");
+      lastClickedIdRef.current = null;
+      lastActionRef.current = "select";
+      lastShiftRef.current = false;
     }
   }, [open, currentAssignedCourseIds]);
 
-  const filteredCourses = useMemo(() => {
-    return searchCourses(allCourses, search);
-  }, [allCourses, search]);
+  const { filteredCourses, otherCategoryCount } = useMemo(() => {
+    const matched = searchCourses(allCourses, search);
 
-  const toggleCourse = (courseId: string) => {
+    if (!otherCategoryAssignments || Object.keys(otherCategoryAssignments).length === 0) {
+      return { filteredCourses: matched, otherCategoryCount: 0 };
+    }
+
+    const normalCourses: Course[] = [];
+    const otherCatCourses: Course[] = [];
+
+    for (const c of matched) {
+      if (otherCategoryAssignments[c.id]) {
+        otherCatCourses.push(c);
+      } else {
+        normalCourses.push(c);
+      }
+    }
+
+    return {
+      filteredCourses: [...normalCourses, ...otherCatCourses],
+      otherCategoryCount: otherCatCourses.length,
+    };
+  }, [allCourses, search, otherCategoryAssignments]);
+
+  const handleCourseToggle = (courseId: string, index: number, isShift = false) => {
+    if (isShift) {
+      try {
+        window.getSelection()?.removeAllRanges();
+      } catch {}
+    }
+
     const next = new Set(selectedIds);
-    if (next.has(courseId)) {
+    const isCurrentlySelected = selectedIds.has(courseId);
+
+    if (isShift && lastClickedIdRef.current) {
+      const anchorIndex = filteredCourses.findIndex((c) => c.id === lastClickedIdRef.current);
+
+      if (anchorIndex !== -1 && anchorIndex !== index) {
+        const startIndex = Math.min(anchorIndex, index);
+        const endIndex = Math.max(anchorIndex, index);
+        const shouldSelect = lastActionRef.current === "select" || !isCurrentlySelected;
+
+        for (let i = startIndex; i <= endIndex; i++) {
+          const item = filteredCourses[i];
+          if (item) {
+            if (shouldSelect) {
+              next.add(item.id);
+            } else {
+              next.delete(item.id);
+            }
+          }
+        }
+
+        setSelectedIds(next);
+        lastClickedIdRef.current = courseId;
+        lastActionRef.current = shouldSelect ? "select" : "deselect";
+        return;
+      }
+    }
+
+    if (isCurrentlySelected) {
       next.delete(courseId);
+      lastActionRef.current = "deselect";
     } else {
       next.add(courseId);
+      lastActionRef.current = "select";
     }
+
+    lastClickedIdRef.current = courseId;
     setSelectedIds(next);
+  };
+
+  const toggleCourse = (courseId: string) => {
+    const idx = filteredCourses.findIndex((c) => c.id === courseId);
+    handleCourseToggle(courseId, idx === -1 ? 0 : idx, false);
   };
 
   const selectAllFiltered = () => {
     const next = new Set(selectedIds);
     filteredCourses.forEach((c) => next.add(c.id));
     setSelectedIds(next);
+    lastClickedIdRef.current = null;
   };
 
   const deselectAllFiltered = () => {
     const next = new Set(selectedIds);
     filteredCourses.forEach((c) => next.delete(c.id));
     setSelectedIds(next);
+    lastClickedIdRef.current = null;
   };
 
   const selectedCoursesList = useMemo(() => {
@@ -178,10 +268,20 @@ export function CategoryCourseAssignDialog({
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
-            <span>
-              نمایش <b className="text-foreground">{filteredCourses.length}</b> درس از مجموع {allCourses.length} درس مجاز دانشکده و لینک‌ها
-            </span>
+          <div className="flex items-center justify-between text-xs text-muted-foreground px-1 flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <span>
+                نمایش <b className="text-foreground">{filteredCourses.length}</b> درس از مجموع {allCourses.length} درس مجاز دانشکده و لینک‌ها
+              </span>
+              {otherCategoryCount > 0 && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/30 font-normal"
+                >
+                  {otherCategoryCount} درس در دسته‌های دیگر
+                </Badge>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               <span className="font-medium text-primary">
                 {selectedIds.size} درس انتخاب‌شده
@@ -202,62 +302,109 @@ export function CategoryCourseAssignDialog({
               <p>درسی با این مشخصات یافت نشد.</p>
             </div>
           ) : (
-            filteredCourses.map((c) => {
+            filteredCourses.map((c, index) => {
               const isSelected = selectedIds.has(c.id);
               const isLinked = Boolean(currentFacultyId && c.facultyId && c.facultyId !== currentFacultyId);
+              const otherCatInfo = otherCategoryAssignments?.[c.id];
+              const isInOtherCat = Boolean(otherCatInfo);
+              const isFirstOtherCat =
+                isInOtherCat &&
+                (index === 0 || !otherCategoryAssignments?.[filteredCourses[index - 1]?.id]);
+
               return (
-                <div
-                  key={c.id}
-                  onClick={() => toggleCourse(c.id)}
-                  className={"flex items-center justify-between p-2.5 rounded-xl border text-xs cursor-pointer transition-all " + (
-                    isSelected
-                      ? "border-primary bg-primary/10 ring-1 ring-primary/30 shadow-2xs"
-                      : "border-border/60 bg-card hover:bg-muted/30 hover:border-border"
+                <React.Fragment key={c.id}>
+                  {isFirstOtherCat && (
+                    <div className="pt-3 pb-1 flex items-center gap-2 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                      <div className="h-px bg-emerald-500/20 flex-1" />
+                      <span className="flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-500/10 rounded-lg border border-emerald-500/25 text-[11px]">
+                        <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        دروس تخصیص‌یافته به سایر دسته‌های این گرایش ({otherCategoryCount} درس)
+                      </span>
+                      <div className="h-px bg-emerald-500/20 flex-1" />
+                    </div>
                   )}
-                >
-                  <div className="flex items-center gap-3">
-                    <Checkbox
-                      checked={isSelected}
-                      onCheckedChange={() => toggleCourse(c.id)}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                    <div>
-                      <div className="font-bold text-foreground flex items-center gap-2">
-                        <span>{c.name}</span>
-                        {isLinked && (
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 gap-1 font-normal"
-                          >
-                            <Link2 className="h-2.5 w-2.5" />
-                            {c.facultyName || "لینک‌شده"}
-                          </Badge>
-                        )}
-                        {c.abbreviation && (
-                          <Badge variant="outline" className="text-xs font-mono font-medium text-primary border-primary/30 bg-primary/5">
-                            {c.abbreviation}
-                          </Badge>
-                        )}
-                        {c.code && (
-                          <Badge variant="outline" className="text-xs font-mono font-normal">
-                            {c.code}
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="text-[11px] text-muted-foreground mt-0.5">
-                        {c.units} واحد • {c.offeredIn === "both" ? "هردو ترم" : c.offeredIn === "fall" ? "ترم پاییز" : c.offeredIn === "spring" ? "ترم بهار" : "عدم ارائه"}
-                        {isLinked && ` • لینک‌شده از ${c.facultyName || "دانشکده دیگر"}`}
+
+                  <div
+                    onClick={(e) => handleCourseToggle(c.id, index, e.shiftKey)}
+                    className={cn(
+                      "flex items-center justify-between p-2.5 rounded-xl border text-xs cursor-pointer transition-all",
+                      isInOtherCat
+                        ? isSelected
+                          ? "border-emerald-500/50 bg-emerald-500/15 dark:bg-emerald-950/40 ring-1 ring-emerald-500/40 shadow-2xs"
+                          : "border-emerald-500/30 bg-emerald-500/5 dark:bg-emerald-950/20 hover:bg-emerald-500/10 hover:border-emerald-500/50"
+                        : isSelected
+                        ? "border-primary bg-primary/10 ring-1 ring-primary/30 shadow-2xs"
+                        : "border-border/60 bg-card hover:bg-muted/30 hover:border-border"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        checked={isSelected}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          lastShiftRef.current = e.shiftKey;
+                        }}
+                        onCheckedChange={() => {
+                          handleCourseToggle(c.id, index, lastShiftRef.current);
+                          lastShiftRef.current = false;
+                        }}
+                        className={
+                          isInOtherCat && isSelected
+                            ? "data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
+                            : undefined
+                        }
+                      />
+                      <div>
+                        <div className="font-bold text-foreground flex items-center flex-wrap gap-1.5">
+                          <span>{c.name}</span>
+                          {isLinked && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 gap-1 font-normal"
+                            >
+                              <Link2 className="h-2.5 w-2.5" />
+                              {c.facultyName || "لینک‌شده"}
+                            </Badge>
+                          )}
+                          {c.abbreviation && (
+                            <Badge variant="outline" className="text-xs font-mono font-medium text-primary border-primary/30 bg-primary/5">
+                              {c.abbreviation}
+                            </Badge>
+                          )}
+                          {c.code && (
+                            <Badge variant="outline" className="text-xs font-mono font-normal">
+                              {c.code}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground mt-0.5">
+                          {c.units} واحد • {c.offeredIn === "both" ? "هردو ترم" : c.offeredIn === "fall" ? "ترم پاییز" : c.offeredIn === "spring" ? "ترم بهار" : "عدم ارائه"}
+                          {isLinked && ` • لینک‌شده از ${c.facultyName || "دانشکده دیگر"}`}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <Badge
-                    variant={isSelected ? "default" : "secondary"}
-                    className="text-xs font-normal"
-                  >
-                    {isSelected ? "تخصیص داده شده" : "تخصیص نیافته"}
-                  </Badge>
-                </div>
+                    {isInOtherCat ? (
+                      <Badge
+                        variant="outline"
+                        className={
+                          isSelected
+                            ? "text-xs font-medium bg-emerald-600 text-white border-emerald-600"
+                            : "text-xs font-normal bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+                        }
+                      >
+                        {isSelected ? "تخصیص به این دسته" : `در «${otherCatInfo?.categoryName}»`}
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant={isSelected ? "default" : "secondary"}
+                        className="text-xs font-normal"
+                      >
+                        {isSelected ? "تخصیص داده شده" : "تخصیص نیافته"}
+                      </Badge>
+                    )}
+                  </div>
+                </React.Fragment>
               );
             })
           )}

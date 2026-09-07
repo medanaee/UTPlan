@@ -211,6 +211,34 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
     return courses.filter((c) => assignedCourseIds.has(c.id));
   };
 
+  // Helper: Map courses assigned to other categories of the same track
+  const otherCategoryAssignments = useMemo(() => {
+    if (!assignModal.open || !assignModal.categoryId) return {};
+    const map: Record<string, { categoryId: string; categoryName: string; categoryColor?: string }> = {};
+
+    for (const a of trackAssignments) {
+      if (assignModal.type === "visual") {
+        if (a.visualCategoryId && a.visualCategoryId !== assignModal.categoryId) {
+          const vcat = visualCats.find((c) => c.id === a.visualCategoryId);
+          map[a.courseId] = {
+            categoryId: a.visualCategoryId,
+            categoryName: vcat?.name || "دسته بصری دیگر",
+            categoryColor: vcat?.color,
+          };
+        }
+      } else {
+        if (a.ruleCategoryId && a.ruleCategoryId !== assignModal.categoryId) {
+          const rcat = ruleCats.find((c) => c.id === a.ruleCategoryId);
+          map[a.courseId] = {
+            categoryId: a.ruleCategoryId,
+            categoryName: rcat?.name || "دسته قوانین دیگر",
+          };
+        }
+      }
+    }
+    return map;
+  }, [assignModal.open, assignModal.categoryId, assignModal.type, trackAssignments, visualCats, ruleCats]);
+
   // Helper: Calculate depth of category in tree (Level 1: 1, Level 2: 2, Level 3: 3)
   const getCategoryDepth = (catId: string): number => {
     let depth = 1;
@@ -1056,6 +1084,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
           categoryColor={assignModal.categoryColor}
           allCourses={facultyCourses}
           currentFacultyId={effectiveFacultyId}
+          otherCategoryAssignments={otherCategoryAssignments}
           currentAssignedCourseIds={
             assignModal.type === "visual"
               ? getVisualCategoryCourses(assignModal.categoryId).map((c) => c.id)
