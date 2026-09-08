@@ -4,13 +4,10 @@ import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  BookOpen,
   Building2,
-  Calendar,
   Layers,
   Users,
   AlertCircle,
-  CheckCircle2,
   ArrowRight,
   ArrowLeft,
   ChevronRight,
@@ -19,9 +16,6 @@ import {
   Share2,
   GraduationCap,
   FileText,
-  User,
-  Clock,
-  BookMarked,
   Check,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -149,23 +143,23 @@ export function CourseDetailView({ course }: CourseDetailViewProps) {
 
           {/* Quick Stats Box */}
           <div className="flex items-center gap-2 shrink-0 flex-wrap">
-            <div className="rounded-xl border border-border/80 p-3 text-center min-w-[75px] shadow-2xs">
+            <div className="rounded-xl border border-border/80 p-3 text-center min-w-18.75 shadow-2xs">
               <span className="text-lg font-extrabold text-foreground block">{prereqs.length}</span>
               <span className="text-[10px] text-muted-foreground font-medium">پیش‌نیاز</span>
             </div>
-            <div className="rounded-xl border border-border/80 p-3 text-center min-w-[75px] shadow-2xs">
+            <div className="rounded-xl border border-border/80 p-3 text-center min-w-18.75 shadow-2xs">
               <span className="text-lg font-extrabold text-foreground block">{coreqs.length}</span>
               <span className="text-[10px] text-muted-foreground font-medium">هم‌نیاز</span>
             </div>
-            <div className="rounded-xl border border-border/80 p-3 text-center min-w-[75px] shadow-2x">
+            <div className="rounded-xl border border-border/80 p-3 text-center min-w-18.75 shadow-2x">
               <span className="text-lg font-extrabold text-foreground block">{recommendedPrereqs.length}</span>
               <span className="text-[10px] text-muted-foreground font-medium">پیش‌نیاز پیشنهادی</span>
             </div>
-            <div className="rounded-xl border border-border/80 p-3 text-center min-w-[75px] shadow-2xs">
+            <div className="rounded-xl border border-border/80 p-3 text-center min-w-18.75 shadow-2xs">
               <span className="text-lg font-extrabold text-foreground block">{deps.length}</span>
               <span className="text-[10px] text-muted-foreground font-medium">درس وابسته</span>
             </div>
-            <div className="rounded-xl border border-border/80 p-3 text-center min-w-[75px] shadow-2xs">
+            <div className="rounded-xl border border-border/80 p-3 text-center min-w-18.75 shadow-2xs">
               <span className="text-lg font-extrabold text-foreground block">{offerings.length}</span>
               <span className="text-[10px] text-muted-foreground font-medium">استاد ارائه</span>
             </div>

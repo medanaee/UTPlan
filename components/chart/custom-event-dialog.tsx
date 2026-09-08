@@ -19,7 +19,6 @@ import {
   Select,
   SelectContent,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -27,11 +26,6 @@ import {
   Plus,
   Trash2,
   Clock,
-  MapPin,
-  User,
-  Calendar,
-  Sparkles,
-  Loader2,
   AlertTriangle,
 } from "lucide-react";
 import type { Course, CourseEvent } from "@/lib/types";
@@ -305,7 +299,7 @@ export function CustomEventDialog({
                         </Select>
                       </div>
 
-                      <div className="flex items-center gap-1.5 flex-1 min-w-[200px]">
+                      <div className="flex items-center gap-1.5 flex-1 min-w-50">
                         <span className="text-[11px] text-muted-foreground">از</span>
                         <TimePicker
                           value={slot.startTime}

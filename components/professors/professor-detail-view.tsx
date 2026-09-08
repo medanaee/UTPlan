@@ -5,10 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { fetchJson, postJson, putJson, deleteJson } from "@/lib/api-client";
 import {
-  Users,
   BookOpen,
   Building2,
-  Mail,
   Globe,
   Star,
   MessageSquare,

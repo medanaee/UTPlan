@@ -9,14 +9,12 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   CalendarDays,
   AlertTriangle,
   XCircle,
   CheckCircle2,
   Clock,
-  BookOpen,
   User,
   MapPin,
 } from "lucide-react";

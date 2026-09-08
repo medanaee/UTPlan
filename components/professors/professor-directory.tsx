@@ -6,20 +6,15 @@ import {
   Users,
   Search,
   Building2,
-  BookOpen,
   Star,
-  MessageSquare,
   ArrowLeft,
-  GraduationCap,
   Loader2,
   Mail,
   SlidersHorizontal,
   X,
   ChevronDown,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,

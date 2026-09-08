@@ -11,7 +11,6 @@ import {
   Building2,
   Sparkles,
   BookUser,
-  Info,
   RefreshCw,
 } from "lucide-react";
 import {
@@ -24,7 +23,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { CodeEditor } from "@/components/ui/code-editor";
 import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
 import type { Faculty } from "@/lib/types";
 import { fetchJson, postJson } from "@/lib/api-client";
 

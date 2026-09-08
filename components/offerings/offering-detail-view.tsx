@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { usePersistedState } from "@/lib/hooks/use-persisted-state";
 import { fetchJson, postJson, putJson, deleteJson } from "@/lib/api-client";
 import {
-  Layers,
   BookOpen,
   User,
   Calendar,

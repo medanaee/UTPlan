@@ -17,16 +17,12 @@ import {
   AlertTriangle,
   XCircle,
   Sparkles,
-  BookOpen,
   CalendarDays,
   ArrowRight,
   Search,
   Check,
   ChevronDown,
   ChevronUp,
-  RefreshCw,
-  Eye,
-  Info,
   ExternalLink,
   Loader2,
 } from "lucide-react";
@@ -34,7 +30,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -51,7 +46,6 @@ import type {
   Course,
   CourseOffering,
   CourseEvent,
-  CourseEventSlot,
   VisualCategory,
   UserSession,
 } from "@/lib/types";
@@ -60,7 +54,6 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
