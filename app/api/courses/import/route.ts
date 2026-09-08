@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     const queryFacultyId = searchParams.get("facultyId");
     const queryMode = searchParams.get("mode");
 
-    const body = await request.json();
+    const body: any = await request.json();
     let rawList: ImportCourseItem[] = [];
     let targetFacultyId = queryFacultyId || undefined;
     let mode = (queryMode || (body && typeof body === "object" ? body.mode : null) || "append") as "append" | "replace";

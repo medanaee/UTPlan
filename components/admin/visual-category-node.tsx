@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { Course, VisualCategory } from "@/lib/types";
+import { fetchJson, deleteJson } from "@/lib/api-client";
 
 export interface VisualCategoryNodeProps {
   category: VisualCategory;
@@ -265,10 +266,8 @@ export function VisualCategoryNode({
                   ? "آیا از حذف دسته بصری «" + category.name + "» و زیردسته‌های آن مطمئن هستید؟"
                   : "آیا از حذف زیردسته «" + category.name + "» مطمئن هستید؟";
               if (!confirm(confirmMsg)) return;
-              await fetch("/api/categories?id=" + category.id + "&type=visual", {
-                method: "DELETE",
-              });
-              const res = await fetch("/api/categories?trackId=" + selectedTrackId).then((r) => r.json());
+              await deleteJson("/api/categories?id=" + category.id + "&type=visual");
+              const res = await fetchJson("/api/categories?trackId=" + selectedTrackId);
               if (res.success) setVisualCats(res.data.visual);
               if (onAssignmentsChanged) {
                 await onAssignmentsChanged();

@@ -23,8 +23,8 @@ export async function GET(request: Request) {
       return Response.json({ success: false, message: "شناسه گرایش الزامی است." }, { status: 400 });
     }
 
-    let visualCats = [];
-    let ruleCats = [];
+    let visualCats: any[] = [];
+    let ruleCats: any[] = [];
 
     if (type === "all" || type === "visual") {
       visualCats = await getVisualCategories(trackId);
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
   try {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response!;
-    const body = await request.json();
+    const body: any = await request.json();
 
     if (body.action === "sync_from_rules") {
       const { trackId } = body as { action: string; trackId: string };
@@ -132,7 +132,7 @@ export async function PUT(request: Request) {
   try {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response!;
-    const body = await request.json();
+    const body: any = await request.json();
     const { action, type, items, id, name, color, sortOrder, parentId, code } = body as {
       action?: "reorder" | "update";
       type: "visual" | "rule";

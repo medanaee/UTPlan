@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { Course, RuleCategory } from "@/lib/types";
+import { fetchJson, deleteJson } from "@/lib/api-client";
 
 export interface RuleCategoryNodeProps {
   category: RuleCategory;
@@ -253,10 +254,8 @@ export function RuleCategoryNode({
                   ? "آیا از حذف دسته قوانین «" + category.name + "» و زیردسته‌های آن مطمئن هستید؟"
                   : "آیا از حذف زیردسته «" + category.name + "» مطمئن هستید؟";
               if (!confirm(confirmMsg)) return;
-              await fetch("/api/categories?id=" + category.id + "&type=rule", {
-                method: "DELETE",
-              });
-              const res = await fetch("/api/categories?trackId=" + selectedTrackId).then((r) => r.json());
+              await deleteJson("/api/categories?id=" + category.id + "&type=rule");
+              const res = await fetchJson("/api/categories?trackId=" + selectedTrackId);
               if (res.success) setRuleCats(res.data.rule);
               if (onAssignmentsChanged) {
                 await onAssignmentsChanged();

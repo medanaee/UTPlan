@@ -162,7 +162,8 @@ export async function createEvent(data: {
     : `EVT-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
 
   const d1 = getD1();
-  if (!d1) throw new Error("پایگاه‌داده در دسترس نیست.");
+  let eventId = "";
+  const now = new Date().toISOString();
 
   try {
     // Check if an event with this code already exists in this term (including soft-deleted)
@@ -170,9 +171,6 @@ export async function createEvent(data: {
       .prepare("SELECT id FROM course_events WHERE code = ? AND term = ?")
       .bind(cleanCode, data.term)
       .first();
-
-    let eventId: string;
-    const now = new Date().toISOString();
 
     if (existing && (existing as any).id) {
       eventId = (existing as any).id;
@@ -257,6 +255,7 @@ export async function createEvent(data: {
 
 export async function createCustomUserEvent(data: {
   userId: string;
+  code?: string;
   offeringId: string;
   term: string;
   location?: string;
@@ -266,6 +265,7 @@ export async function createCustomUserEvent(data: {
   slots: { dayOfWeek: number; startTime: string; endTime: string }[];
 }): Promise<CourseEvent> {
   const created = await createEvent({
+    code: data.code,
     offeringId: data.offeringId,
     term: data.term,
     location: data.location || "",

@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
 
     const { isAdmin, userId } = await getEffectiveUserRole(session);
 
-    const body = await request.json();
+    const body: any = await request.json();
     const {
       code,
       offeringId,
@@ -132,7 +132,6 @@ export async function POST(request: NextRequest) {
       code,
       offeringId,
       term: term || "1403-1",
-      capacity: capacity !== undefined ? Number(capacity) : 40,
       location: location || "",
       examDate: examDate || "",
       examStartTime: examStartTime || "",
@@ -168,7 +167,7 @@ export async function PUT(request: NextRequest) {
 
     const { isAdmin, userId } = await getEffectiveUserRole(session);
 
-    const body = await request.json();
+    const body: any = await request.json();
     const {
       id,
       code,

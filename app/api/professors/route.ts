@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   try {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response!;
-    const body = await request.json();
+    const body: any = await request.json();
     const { facultyId, code, firstName, lastName, name, title, email, avatarUrl, links } = body;
 
     if (!facultyId || (!name && !firstName && !lastName)) {
@@ -53,7 +53,7 @@ export async function PUT(request: Request) {
   try {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response!;
-    const body = await request.json();
+    const body: any = await request.json();
     const { id, facultyId, code, firstName, lastName, name, title, email, avatarUrl, links } = body;
 
     if (!id) {

@@ -26,6 +26,7 @@ import {
 import type { Course } from "@/lib/types";
 import { searchCourses } from "@/lib/search/persian-search";
 import { cn } from "@/lib/utils";
+import { postJson } from "@/lib/api-client";
 
 export interface OtherCategoryAssignmentInfo {
   categoryId: string;
@@ -181,17 +182,13 @@ export function CategoryCourseAssignDialog({
   const handleSave = async () => {
     try {
       setIsSaving(true);
-      const res = await fetch("/api/tracks/assignments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "assign_category_courses",
-          trackId,
-          type,
-          categoryId,
-          courseIds: Array.from(selectedIds),
-        }),
-      }).then((r) => r.json());
+      const res = await postJson("/api/tracks/assignments", {
+        action: "assign_category_courses",
+        trackId,
+        type,
+        categoryId,
+        courseIds: Array.from(selectedIds),
+      });
 
       if (res.success) {
         onSuccess();

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import type { RuleCategory } from "@/lib/types";
+import type { RuleCategory, VisualCategory } from "@/lib/types";
 import {
   Popover,
   PopoverTrigger,

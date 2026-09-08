@@ -23,6 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { postJson } from "@/lib/api-client";
 import {
   Select,
   SelectContent,
@@ -83,20 +84,16 @@ export function TrackCloneDialog({
       setLoading(true);
       setFeedback(null);
 
-      const res = await fetch("/api/tracks/clone-structure", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sourceTrackId,
-          targetTrackId: targetTrack.id,
-          options: {
-            cloneVisualCategories,
-            cloneRuleCategories,
-            cloneRulesTree,
-            cloneAssignments,
-          },
-        }),
-      }).then((r) => r.json());
+      const res = await postJson("/api/tracks/clone-structure", {
+        sourceTrackId,
+        targetTrackId: targetTrack.id,
+        options: {
+          cloneVisualCategories,
+          cloneRuleCategories,
+          cloneRulesTree,
+          cloneAssignments,
+        },
+      });
 
       setFeedback(res);
 

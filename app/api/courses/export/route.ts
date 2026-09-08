@@ -15,15 +15,17 @@ export async function GET(request: NextRequest) {
 
       (course.prerequisites || []).forEach((p) => {
         const code =
-          p.requiredCourseCode && p.requiredCourseCode !== "---"
+          (p.requiredCourseCode && p.requiredCourseCode !== "---"
             ? p.requiredCourseCode
-            : p.requiredCourseName;
-        if (p.type === "corequisite") {
-          coreqCodes.push(code);
-        } else if (p.type === "recommended") {
-          recommendedCodes.push(code);
-        } else {
-          prereqCodes.push(code);
+            : p.requiredCourseName) || "";
+        if (code) {
+          if (p.type === "corequisite") {
+            coreqCodes.push(code);
+          } else if (p.type === "recommended") {
+            recommendedCodes.push(code);
+          } else {
+            prereqCodes.push(code);
+          }
         }
       });
 

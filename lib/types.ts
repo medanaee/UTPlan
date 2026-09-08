@@ -255,10 +255,13 @@ export interface CourseEvent {
   createdAt: string;
   deletedAt?: string | null;
   // Joined
+  courseId?: string;
+  courseCode?: string;
   courseName?: string;
   courseUnits?: number;
   facultyId?: string;
   facultyName?: string;
+  professorId?: string;
   professorName?: string;
   professorTitle?: string;
   isOfferingDeleted?: boolean;

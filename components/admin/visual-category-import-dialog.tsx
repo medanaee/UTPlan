@@ -22,6 +22,7 @@ import {
   Layers,
   Building2,
 } from "lucide-react";
+import { postJson } from "@/lib/api-client";
 
 interface VisualCategoryImportDialogProps {
   open: boolean;
@@ -230,16 +231,10 @@ export function VisualCategoryImportDialog({
     setResult(null);
 
     try {
-      const res = await fetch("/api/tracks/visual-categories/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          trackId,
-          categories: parsedData,
-        }),
+      const data = await postJson("/api/tracks/visual-categories/import", {
+        trackId,
+        categories: parsedData,
       });
-
-      const data = await res.json();
       if (data.success) {
         setResult({
           success: true,

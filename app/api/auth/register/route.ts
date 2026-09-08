@@ -3,7 +3,7 @@ import { hashPassword, createSessionToken, createAuthCookieHeader } from "@/lib/
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const body: any = await request.json();
     const { firstName, lastName, name, email, password, role } = body as {
       firstName?: string;
       lastName?: string;

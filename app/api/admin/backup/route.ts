@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response! as NextResponse;
 
-    const body = await request.json();
+    const body: any = await request.json();
     let tablesData: Record<string, any[]> | null = null;
 
     if (body.data && typeof body.data === "object") {

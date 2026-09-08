@@ -395,7 +395,7 @@ switch (leaf.type) {
     const cat = ruleCategories.find((c) => c.id === leaf.ruleCategoryId);
     const catName = cat ? cat.name : "دسته نامشخص";
     const required = leaf.minCredits || 0;
-    const targetCatIds = getCategoryAndDescendantIds(leaf.ruleCategoryId, ruleCategories);
+    const targetCatIds = getCategoryAndDescendantIds(leaf.ruleCategoryId || "", ruleCategories);
 
     const earned = chartCourses
       .filter((entry) => {
@@ -450,7 +450,7 @@ switch (leaf.type) {
   case "ALL_COURSES_IN_CATEGORY": {
     const cat = ruleCategories.find((c) => c.id === leaf.ruleCategoryId);
     const catName = cat ? cat.name : "دسته نامشخص";
-    const targetCatIds = getCategoryAndDescendantIds(leaf.ruleCategoryId, ruleCategories);
+    const targetCatIds = getCategoryAndDescendantIds(leaf.ruleCategoryId || "", ruleCategories);
 
     // Find all courses assigned to this category or its subcategories
     const requiredCourseIds: string[] = [];

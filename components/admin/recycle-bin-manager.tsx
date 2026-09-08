@@ -28,6 +28,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import type { TrashItem } from "@/app/api/admin/trash/route";
 import { DependencyResolutionDialog } from "./dependency-resolution-dialog";
 import { usePersistedState } from "@/lib/hooks/use-persisted-state";
+import { fetchJson, postJson } from "@/lib/api-client";
 
 interface RecycleBinManagerProps {
   onDataChanged?: () => void;
@@ -65,7 +66,7 @@ export function RecycleBinManager({ onDataChanged, selectedFacultyId }: RecycleB
     try {
       setLoading(true);
       const url = `/api/admin/trash?type=${activeTab}${selectedFacultyId ? `&facultyId=${selectedFacultyId}` : ""}`;
-      const res = await fetch(url).then((r) => r.json());
+      const res = await fetchJson(url);
       if (res.success && res.data) {
         setItems(res.data.items || []);
         if (res.data.counts) {
@@ -137,14 +138,10 @@ export function RecycleBinManager({ onDataChanged, selectedFacultyId }: RecycleB
       setRestoringId(item.id);
       setActionSuccessMessage(null);
 
-      const res = await fetch("/api/admin/trash/restore", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: item.type,
-          id: item.id,
-        }),
-      }).then((r) => r.json());
+      const res = await postJson("/api/admin/trash/restore", {
+        type: item.type,
+        id: item.id,
+      });
 
       if (res.success) {
         setActionSuccessMessage(res.message || "آیتم با موفقیت بازیابی شد.");
@@ -171,13 +168,9 @@ export function RecycleBinManager({ onDataChanged, selectedFacultyId }: RecycleB
       setBulkRestoring(true);
       setActionSuccessMessage(null);
 
-      const res = await fetch("/api/admin/trash/restore", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: selectedItemsList.map((it) => ({ type: it.type, id: it.id })),
-        }),
-      }).then((r) => r.json());
+      const res = await postJson("/api/admin/trash/restore", {
+        items: selectedItemsList.map((it) => ({ type: it.type, id: it.id })),
+      });
 
       if (res.success) {
         setActionSuccessMessage(res.message || `${selectedItemsList.length} مورد با موفقیت بازیابی شدند.`);

@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response! as NextResponse;
 
-    const body = await request.json();
+    const body: any = await request.json();
     const { offeringId, title, term, type, url } = body;
 
     if (!offeringId || !title?.trim() || !type || !url?.trim()) {
@@ -81,7 +81,7 @@ export async function PUT(request: NextRequest) {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response! as NextResponse;
 
-    const body = await request.json();
+    const body: any = await request.json();
     const { id, title, term, type, url } = body;
 
     if (!id) {

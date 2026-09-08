@@ -17,7 +17,7 @@ export async function POST(request: Request) {
   try {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response!;
-    const body = await request.json();
+    const body: any = await request.json();
     const { majorId, name, code, rulesTree } = body as {
       majorId?: string;
       name?: string;
@@ -41,7 +41,7 @@ export async function PUT(request: Request) {
   try {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response!;
-    const body = await request.json();
+    const body: any = await request.json();
     const { id, trackId, name, code, rulesTree } = body as {
       id?: string;
       trackId?: string;

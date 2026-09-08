@@ -64,7 +64,7 @@ export async function PATCH(request: Request) {
       );
     }
 
-    const body = await request.json();
+    const body: any = await request.json();
     const { userId, role } = body as { userId: string; role: "super_admin" | "admin" | "user" };
 
     if (!userId || !role) {

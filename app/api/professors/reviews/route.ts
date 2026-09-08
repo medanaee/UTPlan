@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     const token = getAuthTokenFromRequest(request);
     const session = token ? await verifySessionToken(token) : null;
 
-    const body = await request.json();
+    const body: any = await request.json();
     const { professorId, comment, isAnonymous, criteriaRatings } = body;
 
     if (!professorId || !comment || !comment.trim()) {
@@ -107,7 +107,7 @@ export async function PUT(request: NextRequest) {
 
     const { isAdmin, userId } = await getEffectiveUserRole(session);
 
-    const body = await request.json();
+    const body: any = await request.json();
     const { id, comment, isAnonymous, criteriaRatings } = body;
 
     if (!id || !comment || !comment.trim()) {

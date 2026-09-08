@@ -59,7 +59,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ success: false, message: "نشست نامعتبر است" }, { status: 401 });
     }
 
-    const body = await request.json();
+    const body: any = await request.json();
     const {
       firstName,
       lastName,

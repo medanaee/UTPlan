@@ -32,7 +32,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     >
       <body className="min-h-screen bg-background text-foreground antialiased font-sans">
         <ThemeProvider defaultTheme="system">
-          <DirectionProvider direction="rtl">{children}</DirectionProvider>
+          <DirectionProvider dir="rtl">{children}</DirectionProvider>
         </ThemeProvider>
       </body>
     </html>

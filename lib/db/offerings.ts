@@ -111,7 +111,7 @@ export async function getOfferings(filter?: {
 
     if (normFilter?.professorId) {
       list = list.filter(
-        (o) => o.professorId === normFilter.professorId || o.professorIds?.includes(normFilter.professorId!)
+        (o: any) => o.professorId === normFilter.professorId || o.professorIds?.includes(normFilter.professorId!)
       );
     }
 
@@ -337,6 +337,7 @@ export async function updateOffering(
     code?: string;
     description?: string;
     finalizedSemesters?: string[];
+    deletedAt?: string | null;
   }
 ): Promise<CourseOffering | null> {
   const d1 = getD1();

@@ -19,6 +19,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
+import { putJson } from "@/lib/api-client";
 import {
   Select,
   SelectContent,
@@ -165,14 +166,10 @@ export function RuleQueryBuilder({
     setSavedSuccess(false);
 
     try {
-      const res = await fetch("/api/tracks", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          trackId,
-          rulesTree: tree,
-        }),
-      }).then((r) => r.json());
+      const res = await putJson("/api/tracks", {
+        trackId,
+        rulesTree: tree,
+      });
 
       if (res.success) {
         setSavedSuccess(true);

@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response!;
 
-    const body = await request.json();
+    const body: any = await request.json();
     const { trackId, categories } = body;
 
     if (!trackId) {

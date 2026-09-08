@@ -23,6 +23,7 @@ import {
   BookOpen,
   Building2,
 } from "lucide-react";
+import { postJson } from "@/lib/api-client";
 
 interface RuleCategoryImportDialogProps {
   open: boolean;
@@ -252,16 +253,10 @@ export function RuleCategoryImportDialog({
     setResult(null);
 
     try {
-      const res = await fetch("/api/tracks/rule-categories/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          trackId,
-          categories: parsedData,
-        }),
+      const data = await postJson("/api/tracks/rule-categories/import", {
+        trackId,
+        categories: parsedData,
       });
-
-      const data = await res.json();
       if (data.success) {
         setResult({
           success: true,

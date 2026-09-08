@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { UserSession } from "@/lib/types";
+import { fetchJson, patchJson } from "@/lib/api-client";
 
 interface AdminUserItem {
   id: string;
@@ -55,7 +56,7 @@ export function UserManager({ currentUser }: UserManagerProps) {
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/admin/users").then((r) => r.json());
+      const res = await fetchJson("/api/admin/users");
       if (res.success && Array.isArray(res.data)) {
         setUsers(res.data);
       }
@@ -75,11 +76,7 @@ export function UserManager({ currentUser }: UserManagerProps) {
     setFeedback(null);
     startTransition(async () => {
       try {
-        const res = await fetch("/api/admin/users", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: targetUserId, role: newRole }),
-        }).then((r) => r.json());
+        const res = await patchJson("/api/admin/users", { userId: targetUserId, role: newRole });
 
         if (res.success) {
           setFeedback({ type: "success", message: res.message });

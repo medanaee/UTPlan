@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response! as NextResponse;
 
-    const body = await request.json();
+    const body: any = await request.json();
     const { courseId, professorId, professorIds, code, description, finalizedSemesters } = body;
 
     const resolvedProfIds: string[] = Array.isArray(professorIds) && professorIds.length > 0
@@ -72,7 +72,7 @@ export async function PUT(request: NextRequest) {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response! as NextResponse;
 
-    const body = await request.json();
+    const body: any = await request.json();
     const { id, courseId, professorId, professorIds, code, description, finalizedSemesters } = body;
 
     const resolvedProfIds: string[] | undefined = Array.isArray(professorIds)

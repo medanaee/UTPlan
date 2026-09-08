@@ -64,6 +64,25 @@ export async function putJson<T = any>(
 }
 
 /**
+ * Helper for PATCH requests with JSON payload
+ */
+export async function patchJson<T = any>(
+  url: string,
+  body?: any,
+  init?: Omit<RequestInit, "body" | "method">
+): Promise<T> {
+  return fetchJson<T>(url, {
+    ...init,
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers || {}),
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+}
+
+/**
  * Helper for DELETE requests
  */
 export async function deleteJson<T = any>(
@@ -75,3 +94,4 @@ export async function deleteJson<T = any>(
     method: "DELETE",
   });
 }
+

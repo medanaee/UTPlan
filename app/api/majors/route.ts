@@ -17,7 +17,7 @@ export async function POST(request: Request) {
   try {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response!;
-    const body = await request.json();
+    const body: any = await request.json();
     const { facultyId, name, code } = body as { facultyId?: string; name?: string; code?: string };
 
     if (!facultyId || !name || !code) {
@@ -36,7 +36,7 @@ export async function PUT(request: Request) {
   try {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response!;
-    const body = await request.json();
+    const body: any = await request.json();
     const { id, name, code } = body as { id?: string; name?: string; code?: string };
 
     if (!id || !name || !code) {

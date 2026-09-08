@@ -187,6 +187,8 @@ export function TermSchedulePlanner({
       courseA: Course;
       courseB: Course;
       examDate: string;
+      timeA?: string;
+      timeB?: string;
       isSameHour: boolean;
     }[] = [];
 
@@ -1259,9 +1261,9 @@ function CustomEventDialog({
               <Combobox
                 items={offerings.map((off) => ({
                   value: off.id,
-                  label: off.professorName,
+                  label: off.professorName || "استاد نامشخص",
                   sublabel: off.professorTitle || undefined,
-                  keywords: [off.professorName, off.professorTitle || ""],
+                  keywords: [off.professorName || "", off.professorTitle || ""],
                 }))}
                 value={selectedOfferingId}
                 onChange={setSelectedOfferingId}

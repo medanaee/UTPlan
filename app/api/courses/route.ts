@@ -39,7 +39,7 @@ export async function POST(request: Request) {
   try {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response!;
-    const body = await request.json();
+    const body: any = await request.json();
     const {
       facultyId,
       name,
@@ -81,7 +81,7 @@ export async function PUT(request: Request) {
   try {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response!;
-    const body = await request.json();
+    const body: any = await request.json();
     const { action, id, courseId, requiredCourseId, type, ...updateData } = body;
 
     // Sub-action: Add Prerequisite with Cycle Detection

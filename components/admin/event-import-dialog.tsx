@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { CodeEditor } from "@/components/ui/code-editor";
 import { Badge } from "@/components/ui/badge";
 import { formatSemesterLabel } from "@/lib/semester-utils";
+import { postJson } from "@/lib/api-client";
 
 interface EventImportDialogProps {
   open: boolean;
@@ -243,15 +244,11 @@ export function EventImportDialog({
       setLoading(true);
       setResult(null);
 
-      const res = await fetch("/api/events/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          term: activeTerm,
-          facultyId: selectedFacultyId,
-          events: parsedData,
-        }),
-      }).then((r) => r.json());
+      const res = await postJson("/api/events/import", {
+        term: activeTerm,
+        facultyId: selectedFacultyId,
+        events: parsedData,
+      });
 
       setResult(res);
 

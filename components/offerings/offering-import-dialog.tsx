@@ -11,6 +11,7 @@ import {
   Building2,
   Sparkles,
   BookUser,
+  RefreshCw,
 } from "lucide-react";
 import {
   Dialog,
@@ -24,6 +25,7 @@ import { CodeEditor } from "@/components/ui/code-editor";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import type { Faculty } from "@/lib/types";
+import { fetchJson, postJson } from "@/lib/api-client";
 
 interface OfferingImportDialogProps {
   open: boolean;
@@ -108,7 +110,7 @@ export function OfferingImportDialog({
     targetFaculty?.id || defaultFacultyId || ""
   );
 
-  const importMode = "append";
+  const [importMode] = useState<"append" | "replace">("append");
   const [jsonText, setJsonText] = useState("");
   const [parsedData, setParsedData] = useState<any[] | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
@@ -126,8 +128,7 @@ export function OfferingImportDialog({
 
   useEffect(() => {
     if (!targetFaculty) {
-      fetch("/api/faculties")
-        .then((r) => r.json())
+      fetchJson("/api/faculties")
         .then((d) => {
           if (d.success && Array.isArray(d.data)) {
             setFaculties(d.data);
@@ -210,14 +211,10 @@ export function OfferingImportDialog({
       setLoading(true);
       setResult(null);
 
-      const res = await fetch(
+      const res = await postJson(
         `/api/offerings/import?facultyId=${targetId}&mode=${importMode}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ offerings: parsedData, mode: importMode }),
-        }
-      ).then((r) => r.json());
+        { offerings: parsedData, mode: importMode }
+      );
 
       setResult(res);
 

@@ -29,6 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { Combobox } from "@/components/ui/combobox";
 import type { TrashItem } from "@/app/api/admin/trash/route";
 import type { ConflictItem } from "@/app/api/admin/trash/check-dependencies/route";
+import { postJson } from "@/lib/api-client";
 
 interface DependencyResolutionDialogProps {
   open: boolean;
@@ -155,13 +156,9 @@ export function DependencyResolutionDialog({
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch("/api/admin/trash/check-dependencies", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            items: activeItems.map((it) => ({ type: it.type, id: it.id })),
-          }),
-        }).then((r) => r.json());
+        const res = await postJson("/api/admin/trash/check-dependencies", {
+          items: activeItems.map((it) => ({ type: it.type, id: it.id })),
+        });
 
         if (res.success) {
           setSafeDirect(res.safeToDeleteDirectly);
@@ -232,13 +229,9 @@ export function DependencyResolutionDialog({
     // If cascade_delete was chosen and this item requires cascading inspection
     if (newAction === "cascade_delete" && conflict.requiresCascadeInspection) {
       try {
-        const res = await fetch("/api/admin/trash/check-dependencies", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            items: [{ type: conflict.dependentEntityType, id: conflict.dependentEntityId }],
-          }),
-        }).then((r) => r.json());
+        const res = await postJson("/api/admin/trash/check-dependencies", {
+          items: [{ type: conflict.dependentEntityType, id: conflict.dependentEntityId }],
+        });
 
         if (res.success && res.dependencies && res.dependencies.length > 0) {
           const childDependencies: ConflictItem[] = res.dependencies;
@@ -385,16 +378,12 @@ export function DependencyResolutionDialog({
 
       if (needsInspection.length > 0) {
         try {
-          const res = await fetch("/api/admin/trash/check-dependencies", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              items: needsInspection.map((c) => ({
-                type: c.dependentEntityType,
-                id: c.dependentEntityId,
-              })),
-            }),
-          }).then((r) => r.json());
+          const res = await postJson("/api/admin/trash/check-dependencies", {
+            items: needsInspection.map((c) => ({
+              type: c.dependentEntityType,
+              id: c.dependentEntityId,
+            })),
+          });
 
           if (res.success && res.dependencies && res.dependencies.length > 0) {
             const childDependencies: ConflictItem[] = res.dependencies;
@@ -488,14 +477,10 @@ export function DependencyResolutionDialog({
         };
       });
 
-      const res = await fetch("/api/admin/trash/execute-delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rootItems: activeItems.map((it) => ({ type: it.type, id: it.id })),
-          resolutions: formattedResolutions,
-        }),
-      }).then((r) => r.json());
+      const res = await postJson("/api/admin/trash/execute-delete", {
+        rootItems: activeItems.map((it) => ({ type: it.type, id: it.id })),
+        resolutions: formattedResolutions,
+      });
 
       if (res.success) {
         onOpenChange(false);

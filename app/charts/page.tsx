@@ -340,7 +340,7 @@ export default function ChartsPage() {
                   return (
                     <Card
                       key={ac.id}
-                      className="border-primary/30 bg-primary/[0.02] hover:border-primary/60 transition-all shadow-2xs flex flex-col justify-between"
+                      className="border-primary/30 bg-primary/2 hover:border-primary/60 transition-all shadow-2xs flex flex-col justify-between"
                     >
                       <CardHeader className="pb-3">
                         <div className="flex items-start justify-between gap-2">

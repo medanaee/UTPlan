@@ -18,7 +18,7 @@ export async function POST(request: Request) {
 
     let full = true;
     try {
-      const body = await request.json();
+      const body: any = await request.json();
       if (body?.full !== undefined) full = Boolean(body.full);
     } catch {}
 

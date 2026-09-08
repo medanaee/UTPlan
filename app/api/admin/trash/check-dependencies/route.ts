@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response! as NextResponse;
 
-    const body = await request.json();
+    const body: any = await request.json();
     const rawItems: Array<{ type: string; id: string }> =
       body?.items || (body?.entityType && body?.entityId ? [{ type: body.entityType, id: body.entityId }] : []);
 
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
           code: c.code as string,
         }));
       }
-      return cachedCourseCandidates.filter((c) => !selectedDeleteKeys.has(`course:${c.id}`));
+      return (cachedCourseCandidates || []).filter((c) => !selectedDeleteKeys.has(`course:${c.id}`));
     };
 
     let cachedProfCandidates: Array<{ id: string; label: string; code?: string }> | null = null;
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
           code: p.code as string,
         }));
       }
-      return cachedProfCandidates.filter((p) => !selectedDeleteKeys.has(`professor:${p.id}`));
+      return (cachedProfCandidates || []).filter((p) => !selectedDeleteKeys.has(`professor:${p.id}`));
     };
 
     let cachedOfferingCandidates: Array<{ id: string; label: string; code?: string }> | null = null;
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
           code: o.code as string,
         }));
       }
-      return cachedOfferingCandidates.filter((o) => !selectedDeleteKeys.has(`offering:${o.id}`));
+      return (cachedOfferingCandidates || []).filter((o) => !selectedDeleteKeys.has(`offering:${o.id}`));
     };
 
     let cachedFacultyCandidates: Array<{ id: string; label: string; code?: string }> | null = null;
@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
           code: f.code as string,
         }));
       }
-      return cachedFacultyCandidates.filter((f) => !selectedDeleteKeys.has(`faculty:${f.id}`));
+      return (cachedFacultyCandidates || []).filter((f) => !selectedDeleteKeys.has(`faculty:${f.id}`));
     };
 
     let cachedMajorCandidates: Array<{ id: string; label: string; code?: string }> | null = null;
@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
           code: m.code as string,
         }));
       }
-      return cachedMajorCandidates.filter((m) => !selectedDeleteKeys.has(`major:${m.id}`));
+      return (cachedMajorCandidates || []).filter((m) => !selectedDeleteKeys.has(`major:${m.id}`));
     };
 
     let cachedTrackCandidates: Array<{ id: string; label: string; code?: string }> | null = null;
@@ -186,7 +186,7 @@ export async function POST(request: NextRequest) {
           code: t.code as string,
         }));
       }
-      return cachedTrackCandidates.filter((t) => !selectedDeleteKeys.has(`track:${t.id}`));
+      return (cachedTrackCandidates || []).filter((t) => !selectedDeleteKeys.has(`track:${t.id}`));
     };
 
     // ----------------------------------------------------
@@ -230,7 +230,7 @@ export async function POST(request: NextRequest) {
         ]);
 
         const courseMap = new Map((courseRows || []).map((c: any) => [c.id, c]));
-        const chartCountMap = new Map((chartCounts || []).map((cc: any) => [cc.course_id, Number(cc.count) || 0]));
+        const chartCountMap = new Map<string, number>((chartCounts || []).map((cc: any) => [cc.course_id, Number(cc.count) || 0]));
 
         for (const item of chunk) {
           const entityId = item.id;

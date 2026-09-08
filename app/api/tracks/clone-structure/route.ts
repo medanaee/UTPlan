@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+    const body: any = await request.json();
     const { sourceTrackId, targetTrackId, options } = body;
 
     if (!sourceTrackId || !targetTrackId) {

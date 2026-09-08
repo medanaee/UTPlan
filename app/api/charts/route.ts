@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
 
     const { isAdmin, userId } = await getEffectiveUserRole(session);
 
-    const body = await req.json();
+    const body: any = await req.json();
     const { title, trackId, cloneFromId, isApprovedDefault, semesters, waivedCourseIds } = body;
 
     if (!trackId) {
@@ -119,7 +119,7 @@ export async function PUT(req: NextRequest) {
 
     const { isAdmin, userId } = await getEffectiveUserRole(session);
 
-    const body = await req.json();
+    const body: any = await req.json();
     const { id, title, trackId, semesters, isApprovedDefault, waivedCourseIds } = body;
 
     if (!id) {
@@ -227,7 +227,7 @@ export async function PATCH(req: NextRequest) {
 
     const { isAdmin, userId } = await getEffectiveUserRole(session);
 
-    const body = await req.json();
+    const body: any = await req.json();
     const { chartId, termIndex, courseId, selectedEventId } = body;
 
     if (!chartId || termIndex === undefined || !courseId) {

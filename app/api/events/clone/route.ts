@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response! as NextResponse;
 
-    const body = await request.json();
+    const body: any = await request.json();
     const { sourceTerm, targetTerm, resetExamDates = false } = body;
 
     if (!sourceTerm || !targetTerm) {
@@ -37,7 +37,6 @@ export async function POST(request: NextRequest) {
       await createEvent({
         offeringId: evt.offeringId,
         term: targetTerm,
-        capacity: evt.capacity || 40,
         location: evt.location || "",
         examDate: resetExamDates ? "" : evt.examDate || "",
         examStartTime: resetExamDates ? "" : evt.examStartTime || "",

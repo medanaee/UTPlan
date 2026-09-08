@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     const token = getAuthTokenFromRequest(request);
     const session = token ? await verifySessionToken(token) : null;
 
-    const body = await request.json();
+    const body: any = await request.json();
     const { offeringId, comment, isAnonymous, criteriaRatings, studentGrade } = body;
 
     if (!offeringId || !comment || !comment.trim()) {
@@ -114,7 +114,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+    const body: any = await request.json();
     const { id, comment, isAnonymous, criteriaRatings, studentGrade } = body;
 
     if (!id || !comment || !comment.trim()) {

@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
           }
         );
 
-        const cldData = await cldRes.json();
+        const cldData: any = await cldRes.json();
         if (cldData.secure_url) {
           return NextResponse.json({
             success: true,
