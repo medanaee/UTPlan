@@ -6,25 +6,17 @@ import { useRouter } from "next/navigation";
 import {
   User,
   GraduationCap,
-  BookOpen,
-  Calendar,
   Lock,
   Save,
-  Camera,
   Upload,
   Check,
   RefreshCw,
   AlertTriangle,
-  ArrowRight,
-  Shield,
-  Layers,
-  Sparkles,
 } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -127,15 +119,15 @@ export default function ProfilePage() {
   const filteredTracks = useMemo(() => tracks.filter((t) => !majorId || t.majorId === majorId), [tracks, majorId]);
 
   const facultyOptions = useMemo(
-    () => faculties.map((f) => ({ value: f.id, label: `${f.name} (${f.code})` })),
+    () => faculties.map((f) => ({ value: f.id, label: `${f.name}` })),
     [faculties]
   );
   const majorOptions = useMemo(
-    () => filteredMajors.map((m) => ({ value: m.id, label: `${m.name} (${m.code})` })),
+    () => filteredMajors.map((m) => ({ value: m.id, label: `${m.name}` })),
     [filteredMajors]
   );
   const trackOptions = useMemo(
-    () => filteredTracks.map((t) => ({ value: t.id, label: `${t.name} (${t.code})` })),
+    () => filteredTracks.map((t) => ({ value: t.id, label: `${t.name} ` })),
     [filteredTracks]
   );
   const yearOptions = useMemo(
@@ -415,7 +407,6 @@ export default function ProfilePage() {
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold">دانشکده</Label>
                   <Select
-                    items={facultyOptions}
                     value={facultyId}
                     onValueChange={(val) => {
                       if (val) {
@@ -448,7 +439,6 @@ export default function ProfilePage() {
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold">رشته تحصیلی</Label>
                   <Select
-                    items={majorOptions}
                     value={majorId}
                     onValueChange={(val) => {
                       if (val) {
@@ -479,7 +469,6 @@ export default function ProfilePage() {
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold">گرایش تخصصی</Label>
                   <Select
-                    items={trackOptions}
                     value={trackId}
                     onValueChange={(val) => val && setTrackId(val)}
                   >
@@ -502,7 +491,7 @@ export default function ProfilePage() {
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold">نیمسال ورود به دانشگاه</Label>
                   <div className="grid grid-cols-2 gap-2">
-                    <Select items={yearOptions} value={entryYear} onValueChange={(val) => val && setEntryYear(val)}>
+                    <Select value={entryYear} onValueChange={(val) => val && setEntryYear(val)}>
                       <SelectTrigger className="w-full text-xs h-9">
                         <SelectValue />
                       </SelectTrigger>
@@ -517,7 +506,7 @@ export default function ProfilePage() {
                       </SelectContent>
                     </Select>
 
-                    <Select items={semesterTypeOptions} value={entryType} onValueChange={(val) => val && setEntryType(val)}>
+                    <Select value={entryType} onValueChange={(val) => val && setEntryType(val)}>
                       <SelectTrigger className="w-full text-xs h-9">
                         <SelectValue />
                       </SelectTrigger>
@@ -537,7 +526,6 @@ export default function ProfilePage() {
 
               {/* Calendar mapping helper alert */}
               <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-[11px] text-muted-foreground flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-primary shrink-0" />
                 <span>
                   با ثبت ورودی <strong>{entryType === "1" ? "بهار" : "پاییز"} {entryYear}</strong>، ترم ۱ چارت شما متناظر با {entryType === "1" ? "بهار" : "پاییز"} {entryYear} و ترم ۲ متناظر با {entryType === "1" ? `پاییز ${entryYear}` : `بهار ${Number(entryYear) + 1}`} در تقویم هفتگی قرار خواهد گرفت.
                 </span>

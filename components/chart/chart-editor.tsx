@@ -37,9 +37,12 @@ import {
   PanelRightOpen,
   Camera,
   GraduationCap,
+  Cloud,
+  CloudOff,
 } from "lucide-react";
 import { toPng } from "html-to-image";
 import { searchCourses } from "@/lib/search/persian-search";
+import { cn } from "@/lib/utils";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -175,10 +178,14 @@ export function ChartEditor({
   // Hovered Course for SVG Arrow Highlighting
   const [hoveredCourseId, setHoveredCourseId] = useState<string | null>(null);
 
-  // Saving & Cloning Status
-  const [isSaving, setIsSaving] = useState(false);
+  // Auto-Save Status & References
+  type AutoSaveStatus = "saved" | "saving" | "pending" | "offline";
+  const [saveStatus, setSaveStatus] = useState<AutoSaveStatus>("saved");
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSavedPayloadRef = useRef<string>("");
+  const isInitialMountRef = useRef<boolean>(true);
+
   const [isCloning, setIsCloning] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isExportingImage, setIsExportingImage] = useState(false);
 
@@ -638,38 +645,189 @@ export function ChartEditor({
     setLoadApprovedModalOpen(false);
   };
 
-  // Save chart changes to backend
-  const handleSaveChart = async () => {
+  // Sync chart changes to backend (Auto-Save / Manual trigger)
+  const syncToServer = async (payloadToSend?: string) => {
     if (isReadOnly) return;
-    setIsSaving(true);
-    setSaveSuccess(false);
+
+    const payload =
+      payloadToSend ||
+      JSON.stringify({
+        id: chart.id,
+        title,
+        trackId: selectedTrackId,
+        semesters: chart.semesters,
+        waivedCourseIds,
+      });
+
+    if (payload === lastSavedPayloadRef.current) {
+      setSaveStatus("saved");
+      return;
+    }
+
+    setSaveStatus("saving");
     setErrorMsg(null);
 
     try {
       const res = await fetch("/api/charts", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: chart.id,
-          title,
-          trackId: selectedTrackId,
-          semesters: chart.semesters,
-          waivedCourseIds,
-        }),
+        body: payload,
       }).then((r) => r.json());
 
       if (res.success) {
-        setSaveSuccess(true);
-        setTimeout(() => setSaveSuccess(false), 3000);
+        lastSavedPayloadRef.current = payload;
+        setSaveStatus("saved");
+
+        // Mark local draft as synced
+        try {
+          const cached = localStorage.getItem(`ut_ece_chart_draft_${chart.id}`);
+          if (cached) {
+            const draft = JSON.parse(cached);
+            draft.syncedWithServer = true;
+            localStorage.setItem(`ut_ece_chart_draft_${chart.id}`, JSON.stringify(draft));
+          }
+        } catch {}
       } else {
-        setErrorMsg(res.message || "خطا در ذخیره‌سازی چارت");
+        console.warn("Auto-save server response:", res.message);
+        setSaveStatus(typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "pending");
       }
-    } catch (err: any) {
-      setErrorMsg("خطا در برقراری ارتباط با سرور");
-    } finally {
-      setIsSaving(false);
+    } catch (err) {
+      console.error("Auto-save server error:", err);
+      setSaveStatus(typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "pending");
     }
   };
+
+  // 1. Initial Draft Recovery & Setting baseline payload on mount
+  useEffect(() => {
+    if (isReadOnly) return;
+    try {
+      const draftKey = `ut_ece_chart_draft_${initialChart.id}`;
+      const cached = localStorage.getItem(draftKey);
+      if (cached) {
+        const draft = JSON.parse(cached);
+        const serverUpdated = initialChart.updatedAt ? new Date(initialChart.updatedAt).getTime() : 0;
+        // If local draft is newer than server update time by at least 2 seconds
+        if (draft.savedAt && draft.savedAt > serverUpdated + 2000) {
+          if (draft.semesters && Array.isArray(draft.semesters)) {
+            setChart((prev) => ({ ...prev, semesters: draft.semesters }));
+          }
+          if (draft.title) setTitle(draft.title);
+          if (draft.trackId) {
+            setSelectedTrackId(draft.trackId);
+            setActiveTrack(allTracks.find((t) => t.id === draft.trackId) || null);
+          }
+          if (draft.waivedCourseIds && Array.isArray(draft.waivedCourseIds)) {
+            setWaivedCourseIds(draft.waivedCourseIds);
+          }
+          if (!draft.syncedWithServer) {
+            setSaveStatus("pending");
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Failed to recover local chart draft:", e);
+    }
+
+    lastSavedPayloadRef.current = JSON.stringify({
+      id: initialChart.id,
+      title: initialChart.title,
+      trackId: initialChart.trackId,
+      semesters: initialChart.semesters,
+      waivedCourseIds: initialChart.waivedCourseIds || [],
+    });
+  }, [initialChart.id, isReadOnly]);
+
+  // 2. Dual-Tier Auto-Save Effect (Immediate LocalStorage + Debounced Server Sync)
+  useEffect(() => {
+    if (isReadOnly) return;
+
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
+      return;
+    }
+
+    const currentPayloadObj = {
+      id: chart.id,
+      title,
+      trackId: selectedTrackId,
+      semesters: chart.semesters,
+      waivedCourseIds,
+    };
+    const currentPayloadStr = JSON.stringify(currentPayloadObj);
+
+    if (currentPayloadStr === lastSavedPayloadRef.current) {
+      return;
+    }
+
+    // Tier 1: Instant LocalStorage persistence (< 1ms)
+    try {
+      localStorage.setItem(
+        `ut_ece_chart_draft_${chart.id}`,
+        JSON.stringify({
+          ...currentPayloadObj,
+          savedAt: Date.now(),
+          syncedWithServer: false,
+        })
+      );
+    } catch (e) {
+      console.warn("Failed to persist chart draft to localStorage:", e);
+    }
+
+    // Update status to pending
+    setSaveStatus((prev) => (prev === "saving" ? prev : "pending"));
+
+    // Tier 2: Debounced Server Sync (2.5 seconds idle time)
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      syncToServer(currentPayloadStr);
+    }, 2500);
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [chart.id, chart.semesters, title, selectedTrackId, waivedCourseIds, isReadOnly]);
+
+  // 3. Re-sync when network recovers from offline
+  useEffect(() => {
+    const handleOnline = () => {
+      if (saveStatus === "offline" || saveStatus === "pending") {
+        syncToServer();
+      }
+    };
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
+  }, [saveStatus, chart.id, chart.semesters, title, selectedTrackId, waivedCourseIds]);
+
+  // 4. Keepalive background flush on tab close/unload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (isReadOnly) return;
+      const payload = JSON.stringify({
+        id: chart.id,
+        title,
+        trackId: selectedTrackId,
+        semesters: chart.semesters,
+        waivedCourseIds,
+      });
+      if (payload !== lastSavedPayloadRef.current) {
+        try {
+          fetch("/api/charts", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: payload,
+            keepalive: true,
+          });
+        } catch {}
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [chart.id, chart.semesters, title, selectedTrackId, waivedCourseIds, isReadOnly]);
 
   // Export High-Quality Image of the Entire Chart
   const handleExportImage = async () => {
@@ -1018,7 +1176,7 @@ export function ChartEditor({
                 </span>
               </Button>
 
-              {/* Save Button OR Clone Button */}
+              {/* Auto-Save Status Indicator OR Clone Button */}
               {isReadOnly ? (
                 <Button
                   size="sm"
@@ -1030,21 +1188,61 @@ export function ChartEditor({
                   <span>{isCloning ? "در حال ایجاد..." : "کپی در چارت‌های من"}</span>
                 </Button>
               ) : (
-                <Button
-                  size="sm"
-                  onClick={handleSaveChart}
-                  disabled={isSaving}
-                  className="h-8 gap-1.5 text-xs px-3.5 rounded-lg font-semibold shadow-2xs border border-primary/40 bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex items-center"
-                >
-                  {isSaving ? (
-                    <RefreshCw className="h-3.5 w-3.5 animate-spin text-primary-foreground shrink-0" />
-                  ) : saveSuccess ? (
-                    <Check className="h-3.5 w-3.5 text-primary-foreground shrink-0" />
-                  ) : (
-                    <Save className="h-3.5 w-3.5 text-primary-foreground shrink-0" />
+                <div
+                  onClick={() => {
+                    if (saveStatus === "pending" || saveStatus === "offline") {
+                      syncToServer();
+                    }
+                  }}
+                  title={
+                    saveStatus === "saved"
+                      ? "تمام تغییرات در مرورگر و سرور ذخیره شده است"
+                      : saveStatus === "saving"
+                      ? "در حال ذخیره‌سازی در دیتابیس..."
+                      : saveStatus === "offline"
+                      ? "ارتباط با سرور برقرار نیست؛ تغییرات در حافظه مرورگر امن است (جهت تلاش مجدد کلیک کنید)"
+                      : "تغییرات در صف ذخیره‌سازی خودکار (جهت ذخیره آنی کلیک کنید)"
+                  }
+                  className={cn(
+                    "h-8 text-xs px-3 rounded-lg border transition-all flex items-center gap-1.5 shadow-2xs select-none",
+                    saveStatus === "saved" &&
+                      "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400 font-medium",
+                    saveStatus === "saving" &&
+                      "bg-primary/10 border-primary/30 text-primary font-medium",
+                    saveStatus === "pending" &&
+                      "bg-muted/80 border-border text-muted-foreground hover:text-foreground cursor-pointer hover:bg-muted",
+                    saveStatus === "offline" &&
+                      "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400 font-medium cursor-pointer hover:bg-amber-500/20"
                   )}
-                  <span>{saveSuccess ? "ذخیره شد!" : "ذخیره چارت"}</span>
-                </Button>
+                >
+                  {saveStatus === "saved" && (
+                    <>
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span className="hidden sm:inline">ذخیره خودکار</span>
+                      <span className="sm:hidden">ذخیره شد</span>
+                    </>
+                  )}
+                  {saveStatus === "saving" && (
+                    <>
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin text-primary shrink-0" />
+                      <span>در حال ذخیره...</span>
+                    </>
+                  )}
+                  {saveStatus === "pending" && (
+                    <>
+                      <Cloud className="h-3.5 w-3.5 text-muted-foreground animate-pulse shrink-0" />
+                      <span className="hidden sm:inline">در انتظار ذخیره...</span>
+                      <span className="sm:hidden">در انتظار...</span>
+                    </>
+                  )}
+                  {saveStatus === "offline" && (
+                    <>
+                      <CloudOff className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                      <span className="hidden sm:inline">ذخیره محلی (آفلاین)</span>
+                      <span className="sm:hidden">آفلاین</span>
+                    </>
+                  )}
+                </div>
               )}
 
               {/* Dark / Light Mode Toggle */}
