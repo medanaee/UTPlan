@@ -35,6 +35,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import type { Course, CourseEvent } from "@/lib/types";
+import { postJson, putJson } from "@/lib/api-client";
 import { SelectGroup } from "radix-ui/select";
 
 interface CustomEventDialogProps {
@@ -173,20 +174,16 @@ export function CustomEventDialog({
 
       if (eventToEdit) {
         // Edit existing custom event
-        const res = await fetch("/api/events", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: eventToEdit.id,
-            professorName: professorName.trim(),
-            term: term || "1403-1",
-            location: location.trim(),
-            examDate,
-            examStartTime,
-            examEndTime,
-            slots,
-          }),
-        }).then((r) => r.json());
+        const res = await putJson("/api/events", {
+          id: eventToEdit.id,
+          professorName: professorName.trim(),
+          term: term || "1403-1",
+          location: location.trim(),
+          examDate,
+          examStartTime,
+          examEndTime,
+          slots,
+        });
 
         if (!res.success) {
           setError(res.message || "خطا در ویرایش رویداد شخصی");
@@ -211,21 +208,17 @@ export function CustomEventDialog({
         onOpenChange(false);
       } else {
         // Create new
-        const res = await fetch("/api/events", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            courseId: course.id,
-            professorName: professorName.trim(),
-            term: term || "1403-1",
-            location: location.trim(),
-            examDate,
-            examStartTime,
-            examEndTime,
-            slots,
-            isUserCustom: true,
-          }),
-        }).then((r) => r.json());
+        const res = await postJson("/api/events", {
+          courseId: course.id,
+          professorName: professorName.trim(),
+          term: term || "1403-1",
+          location: location.trim(),
+          examDate,
+          examStartTime,
+          examEndTime,
+          slots,
+          isUserCustom: true,
+        });
 
         if (!res.success || !res.data) {
           setError(res.message || "خطا در ثبت رویداد شخصی");

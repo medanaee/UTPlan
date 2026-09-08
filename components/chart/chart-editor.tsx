@@ -43,6 +43,7 @@ import {
 import { toPng } from "html-to-image";
 import { searchCourses } from "@/lib/search/persian-search";
 import { cn } from "@/lib/utils";
+import { fetchJson, postJson, putJson } from "@/lib/api-client";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -198,15 +199,11 @@ export function ChartEditor({
     setIsCloning(true);
     setErrorMsg(null);
     try {
-      const res = await fetch("/api/charts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: `نسخه من از ${chart.title}`,
-          trackId: chart.trackId,
-          cloneFromId: chart.id,
-        }),
-      }).then((r) => r.json());
+      const res = await postJson("/api/charts", {
+        title: `نسخه من از ${chart.title}`,
+        trackId: chart.trackId,
+        cloneFromId: chart.id,
+      });
 
       if (res.success && res.data) {
         router.push(`/charts/${res.data.id}`);
@@ -619,7 +616,7 @@ export function ChartEditor({
     setLoadApprovedModalOpen(true);
     setLoadingApprovedCharts(true);
     try {
-      const res = await fetch(`/api/charts?trackId=${selectedTrackId}&approved=true`).then((r) => r.json());
+      const res = await fetchJson(`/api/charts?trackId=${selectedTrackId}&approved=true`);
       if (res.success && Array.isArray(res.data)) {
         setApprovedChartsList(res.data);
       } else {
@@ -668,11 +665,11 @@ export function ChartEditor({
     setErrorMsg(null);
 
     try {
-      const res = await fetch("/api/charts", {
+      const res = await fetchJson("/api/charts", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: payload,
-      }).then((r) => r.json());
+      });
 
       if (res.success) {
         lastSavedPayloadRef.current = payload;
@@ -1574,7 +1571,7 @@ export function ChartEditor({
                       >
                         <Plus className="h-3.5 w-3.5 text-foreground shrink-0" />
                       </Button>
-                      <span className="text-xs font-bold text-foreground px-1 min-w-[38px] text-center">
+                      <span className="text-xs font-bold text-foreground px-1 min-w-9.5 text-center">
                         ترم {startSem}
                       </span>
                       <Button
@@ -1607,7 +1604,7 @@ export function ChartEditor({
                       >
                         <Plus className="h-3.5 w-3.5 text-foreground shrink-0" />
                       </Button>
-                      <span className="text-xs font-bold text-foreground px-1 min-w-[38px] text-center">
+                      <span className="text-xs font-bold text-foreground px-1 min-w-9.5 text-center">
                         ترم {endSem}
                       </span>
                       <Button
@@ -1838,7 +1835,7 @@ export function ChartEditor({
                         </div>
 
                         {/* Semester Course Cards Grid (Drop Zone with Reordering) */}
-                        <div className="p-2.5 sm:p-3 min-h-[60px]">
+                        <div className="p-2.5 sm:p-3 min-h-15">
                           {sem.courseIds.length > 0 ? (
                             <div className={`grid ${gridColsClass} gap-2.5`}>
                               {sem.courseIds.map((cId) => {
@@ -1951,7 +1948,7 @@ export function ChartEditor({
                                             <TooltipContent
                                               side="top"
                                               sideOffset={5}
-                                              className="max-w-[280px] bg-red-500 text-destructive-foreground p-2.5 text-xs text-right leading-relaxed shadow-lg rounded-lg border border-destructive/20 z-50"
+                                              className="max-w-70 bg-red-500 text-destructive-foreground p-2.5 text-xs text-right leading-relaxed shadow-lg rounded-lg border border-destructive/20 z-50"
                                               dir="rtl"
                                             >
                                               <div className="flex items-start gap-1.5">
@@ -1981,7 +1978,7 @@ export function ChartEditor({
                                             <TooltipContent
                                               side="top"
                                               sideOffset={5}
-                                              className="max-w-[280px] bg-violet-600 text-white p-2.5 text-xs text-right leading-relaxed shadow-lg rounded-lg border border-violet-500/20 z-50"
+                                              className="max-w-70 bg-violet-600 text-white p-2.5 text-xs text-right leading-relaxed shadow-lg rounded-lg border border-violet-500/20 z-50"
                                               dir="rtl"
                                             >
                                               <div className="flex items-start gap-1.5">
@@ -2050,7 +2047,7 @@ export function ChartEditor({
                               })}
                             </div>
                           ) : (
-                            <div className="border-2 border-dashed border-border/60 rounded-xl flex items-center justify-center p-3.5 text-center text-muted-foreground/60 text-xs gap-2 min-h-[44px]">
+                            <div className="border-2 border-dashed border-border/60 rounded-xl flex items-center justify-center p-3.5 text-center text-muted-foreground/60 text-xs gap-2 min-h-11">
                               <Layers className="h-4 w-4 opacity-40" />
                               <span>درسی در این ترم قرار ندارد — دروس را از پنل راست به اینجا بکشید</span>
                             </div>

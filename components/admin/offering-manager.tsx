@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import type { Course, Professor, CourseOffering, Faculty, OfferingResource, OfferingResourceType } from "@/lib/types";
+import { fetchJson, postJson, putJson, deleteJson } from "@/lib/api-client";
 import {
   Card,
   CardHeader,
@@ -148,7 +149,7 @@ export function OfferingManager({
   const loadResources = async (offeringId: string) => {
     try {
       setLoadingResources(true);
-      const res = await fetch(`/api/offerings/resources?offeringId=${offeringId}`).then((r) => r.json());
+      const res = await fetchJson(`/api/offerings/resources?offeringId=${offeringId}`);
       if (res.success) {
         setResources(res.data);
       }
@@ -215,17 +216,13 @@ export function OfferingManager({
       const term = resHasTerm ? `${resTermYear}-${resTermType}` : undefined;
 
       if (editingResourceId) {
-        const res = await fetch("/api/offerings/resources", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: editingResourceId,
-            title: resTitle.trim(),
-            term,
-            type: resType,
-            url: resUrl.trim(),
-          }),
-        }).then((r) => r.json());
+        const res = await putJson("/api/offerings/resources", {
+          id: editingResourceId,
+          title: resTitle.trim(),
+          term,
+          type: resType,
+          url: resUrl.trim(),
+        });
 
         if (res.success) {
           handleCancelEditResource();
@@ -234,17 +231,13 @@ export function OfferingManager({
           setResourceError(res.message || "خطا در ویرایش منبع");
         }
       } else {
-        const res = await fetch("/api/offerings/resources", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            offeringId: resourcesOffering.id,
-            title: resTitle.trim(),
-            term,
-            type: resType,
-            url: resUrl.trim(),
-          }),
-        }).then((r) => r.json());
+        const res = await postJson("/api/offerings/resources", {
+          offeringId: resourcesOffering.id,
+          title: resTitle.trim(),
+          term,
+          type: resType,
+          url: resUrl.trim(),
+        });
 
         if (res.success) {
           handleCancelEditResource();
@@ -264,9 +257,7 @@ export function OfferingManager({
   const handleDeleteResource = async (id: string, title: string) => {
     if (!confirm(`آیا از حذف منبع «${title}» اطمینان دارید؟`)) return;
     try {
-      const res = await fetch(`/api/offerings/resources?id=${id}`, {
-        method: "DELETE",
-      }).then((r) => r.json());
+      const res = await deleteJson(`/api/offerings/resources?id=${id}`);
 
       if (res.success && resourcesOffering) {
         await loadResources(resourcesOffering.id);
@@ -285,7 +276,7 @@ export function OfferingManager({
       const url = selectedFacultyId
         ? `/api/offerings?facultyId=${selectedFacultyId}`
         : "/api/offerings";
-      const res = await fetch(url).then((r) => r.json());
+      const res = await fetchJson(url);
       if (res.success) {
         setOfferings(res.data);
       }
@@ -415,14 +406,10 @@ export function OfferingManager({
     setIsSubmitting(true);
     try {
       if (editingOffering) {
-        const res = await fetch("/api/offerings", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: editingOffering.id,
-            ...form,
-          }),
-        }).then((r) => r.json());
+        const res = await putJson("/api/offerings", {
+          id: editingOffering.id,
+          ...form,
+        });
 
         if (res.success) {
           setIsModalOpen(false);
@@ -431,11 +418,7 @@ export function OfferingManager({
           alert(res.message || "خطا در ویرایش ارائه");
         }
       } else {
-        const res = await fetch("/api/offerings", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
-        }).then((r) => r.json());
+        const res = await postJson("/api/offerings", form);
 
         if (res.success) {
           setIsModalOpen(false);
@@ -455,9 +438,7 @@ export function OfferingManager({
     if (!confirm(`آیا از حذف اتصال ارائه درس "${name}" مطمئن هستید؟`)) return;
 
     try {
-      const res = await fetch(`/api/offerings?id=${id}`, { method: "DELETE" }).then((r) =>
-        r.json()
-      );
+      const res = await deleteJson(`/api/offerings?id=${id}`);
       if (res.success) {
         await loadOfferings();
       }
@@ -472,7 +453,7 @@ export function OfferingManager({
       const url = selectedFacultyId
         ? `/api/offerings/export?facultyId=${selectedFacultyId}`
         : "/api/offerings/export";
-      const res = await fetch(url).then((r) => r.json());
+      const res = await fetchJson(url);
       if (res.success && Array.isArray(res.data)) {
         const blob = new Blob([JSON.stringify(res.data, null, 2)], {
           type: "application/json",
@@ -617,9 +598,7 @@ export function OfferingManager({
                     }» مطمئن هستید؟ ارائه‌ها به صورت موقت (Soft Delete) حذف می‌شوند و با ثبت مجدد کدهای مشابه یا ویرایش بازگردانده خواهند شد.`
                   )
                 ) {
-                  const res = await fetch(`/api/offerings?all=true&facultyId=${selectedFacultyId}`, {
-                    method: "DELETE",
-                  }).then((r) => r.json());
+                  const res = await deleteJson(`/api/offerings?all=true&facultyId=${selectedFacultyId}`);
                   if (res.success) {
                     await loadOfferings();
                   } else {
@@ -689,7 +668,7 @@ export function OfferingManager({
                     <tr
                       key={off.id}
                       className={`transition-colors ${
-                        isLinked ? "bg-amber-500/[0.02] hover:bg-amber-500/[0.04]" : "hover:bg-muted/20"
+                        isLinked ? "bg-amber-500/2 hover:bg-amber-500/4" : "hover:bg-muted/20"
                       }`}
                     >
                       {/* Course */}

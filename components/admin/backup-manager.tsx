@@ -29,6 +29,7 @@ import {
   AlertOctagon,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { fetchJson, postJson, deleteJson } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -129,9 +130,7 @@ export function BackupManager() {
       setIsPurging(true);
       setPurgeResult(null);
 
-      const res = await fetch("/api/admin/backup", {
-        method: "DELETE",
-      }).then((r) => r.json());
+      const res = await deleteJson("/api/admin/backup");
 
       setPurgeResult(res);
       setIsPurgeModalOpen(false);
@@ -154,7 +153,7 @@ export function BackupManager() {
   const fetchStats = async () => {
     try {
       setLoadingStats(true);
-      const res = await fetch("/api/admin/backup?stats=1").then((r) => r.json());
+      const res = await fetchJson("/api/admin/backup?stats=1");
       if (res.success && res.data) {
         setStats(res.data);
       }
@@ -241,11 +240,7 @@ export function BackupManager() {
         return;
       }
 
-      const res = await fetch("/api/admin/backup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      }).then((r) => r.json());
+      const res = await postJson("/api/admin/backup", payload);
 
       setRestoreResult(res);
       setIsRestoreModalOpen(false);
@@ -312,7 +307,7 @@ export function BackupManager() {
 
           <CardContent className="space-y-4 flex-1">
             <div className="p-3.5 rounded-2xl bg-muted/20 border border-border/60 text-xs space-y-2 leading-relaxed">
-              <span className="font-bold text-foreground block flex items-center gap-1.5">
+              <span className="font-bold text-foreground flex items-center gap-1.5">
                 <Sparkles className="h-3.5 w-3.5 text-primary" />
                 محتویات فایل پشتیبان JSON:
               </span>

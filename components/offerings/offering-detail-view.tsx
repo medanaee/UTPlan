@@ -468,7 +468,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
 
           {/* Quick Score Box */}
           <div className="flex items-center gap-3 shrink-0 self-start lg:self-end">
-            <div className="rounded-xl border border-border/80 p-4 text-center min-w-[110px] shadow-2xs">
+            <div className="rounded-xl border border-border/80 p-4 text-center min-w-27.5 shadow-2xs">
               <div className="flex items-center justify-center gap-1 text-primary">
                 <Star className="h-5 w-5 fill-primary text-primary" />
                 <span className="text-2xl font-black">{totalAvg || "۱۰"}</span>
@@ -478,7 +478,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
               </span>
             </div>
 
-            <div className="rounded-xl border border-border/80 p-4 text-center min-w-[90px] shadow-2xs">
+            <div className="rounded-xl border border-border/80 p-4 text-center min-w-22.5 shadow-2xs">
               <span className="text-2xl font-black text-foreground block">{reviews.length}</span>
               <span className="text-[10px] text-muted-foreground font-medium mt-1 block">
                 نظر و تجربه
@@ -486,7 +486,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
             </div>
 
             {avgReportedGrade && (
-              <div className="rounded-2xl border border-emerald-500/30 bg-card p-4 text-center min-w-[110px] shadow-2xs">
+              <div className="rounded-2xl border border-emerald-500/30 bg-card p-4 text-center min-w-27.5 shadow-2xs">
                 <div className="flex items-center justify-center gap-1 text-emerald-600">
                   <GraduationCap className="h-5 w-5" />
                   <span className="text-2xl font-black">{avgReportedGrade}</span>

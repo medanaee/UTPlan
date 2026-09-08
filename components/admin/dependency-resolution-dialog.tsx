@@ -597,7 +597,7 @@ export function DependencyResolutionDialog({
                     <Badge variant="destructive" className="text-[10px] font-mono shrink-0">
                       {activeItems[0].code || activeItems[0].type}
                     </Badge>
-                    <span className="font-bold text-foreground text-xs break-words">
+                    <span className="font-bold text-foreground text-xs wrap-break-word">
                       {activeItems[0].title}
                     </span>
                   </div>
@@ -627,7 +627,7 @@ export function DependencyResolutionDialog({
             {error && (
               <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-xs flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 shrink-0" />
-                <span className="break-words">{error}</span>
+                <span className="wrap-break-word">{error}</span>
               </div>
             )}
 
@@ -642,7 +642,7 @@ export function DependencyResolutionDialog({
                       : "این موجودیت هیچ‌گونه وابستگی یا ارجاع فعالی ندارد."}
                   </span>
                 </div>
-                <p className="text-[11px] text-muted-foreground leading-relaxed break-words">
+                <p className="text-[11px] text-muted-foreground leading-relaxed wrap-break-word">
                   {isBulkMode
                     ? "وابستگی‌های متقابل اقلام انتخابی با حذف همزمان برطرف می‌شوند و می‌توانید با اطمینان کامل همه را به صورت فیزیکی پاک کنید."
                     : "می‌توانید با اطمینان کامل آن را به صورت فیزیکی از دیتابیس پاک کنید. این عملیات غیرقابل بازگشت خواهد بود."}
@@ -733,7 +733,7 @@ export function DependencyResolutionDialog({
                             <div className="flex flex-wrap items-center gap-2">
                               {/* Batch Replace Combobox */}
                               {canBatchReplace && (
-                                <div className="flex items-center gap-2 flex-1 min-w-[280px]">
+                                <div className="flex items-center gap-2 flex-1 min-w-70">
                                   <span className="text-[11px] font-medium text-muted-foreground shrink-0">
                                     انتقال همگی به:
                                   </span>
@@ -825,7 +825,7 @@ export function DependencyResolutionDialog({
                                     <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary/10 text-primary text-[10px] font-bold shrink-0">
                                       {idx + 1}
                                     </span>
-                                    <span className="text-xs font-bold text-foreground break-words">
+                                    <span className="text-xs font-bold text-foreground wrap-break-word">
                                       {conflict.dependentEntityName}
                                     </span>
                                   </div>
@@ -845,7 +845,7 @@ export function DependencyResolutionDialog({
                                   </div>
                                 </div>
 
-                                <p className="text-[11px] text-muted-foreground leading-relaxed break-words">
+                                <p className="text-[11px] text-muted-foreground leading-relaxed wrap-break-word">
                                   {conflict.description}
                                 </p>
 
@@ -939,7 +939,7 @@ export function DependencyResolutionDialog({
 
                                 {/* Notice if Cascade is selected and sub-items are added */}
                                 {currentRes.action === "cascade_delete" && conflict.requiresCascadeInspection && (
-                                  <div className="text-[10px] text-amber-600 dark:text-amber-400 bg-amber-500/10 p-1.5 rounded-md break-words">
+                                  <div className="text-[10px] text-amber-600 dark:text-amber-400 bg-amber-500/10 p-1.5 rounded-md wrap-break-word">
                                     با انتخاب حذف این مورد، وابستگی‌های متصل به آن نیز به انتهای صف تصمیم‌گیری اضافه می‌شوند.
                                   </div>
                                 )}

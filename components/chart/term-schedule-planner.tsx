@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { calculateSemesterForTerm, formatSemesterLabel } from "@/lib/semester-utils";
 import { searchCourses } from "@/lib/search/persian-search";
+import { fetchJson, postJson, putJson, deleteJson } from "@/lib/api-client";
 import {
   Calendar,
   Clock,
@@ -138,7 +139,7 @@ export function TermSchedulePlanner({
   const loadEvents = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/events?term=${activeTerm}`).then((r) => r.json());
+      const res = await fetchJson(`/api/events?term=${activeTerm}`);
       if (res.success && Array.isArray(res.data)) {
         setEvents(res.data);
       }
@@ -262,7 +263,7 @@ export function TermSchedulePlanner({
     if (!confirm("آیا از حذف این ارائه شخصی اطمینان دارید؟")) return;
     try {
       setSavingCourseId(courseId);
-      const res = await fetch(`/api/events?id=${eventId}`, { method: "DELETE" }).then((r) => r.json());
+      const res = await deleteJson(`/api/events?id=${eventId}`);
       if (res.success) {
         if (selectedEventsMap[courseId] === eventId) {
           await handleSelectEvent(courseId, null);
@@ -761,7 +762,7 @@ export function TermSchedulePlanner({
           )}
 
           {/* Timetable Grid Canvas */}
-          <div className="flex-1 overflow-auto p-4 sm:p-6 flex flex-col min-w-[700px]">
+          <div className="flex-1 overflow-auto p-4 sm:p-6 flex flex-col min-w-175">
             <div className="flex-1 rounded-2xl border bg-card shadow-xs flex flex-col overflow-hidden">
               {/* Hours Header Row */}
               <div className="h-10 border-b bg-muted/30 flex items-center text-xs  text-muted-foreground select-none">
@@ -786,7 +787,7 @@ export function TermSchedulePlanner({
                   return (
                     <div
                       key={day.value}
-                      className="flex-1 flex min-h-[90px] group relative hover:bg-muted/10 transition-colors"
+                      className="flex-1 flex min-h-22.5 group relative hover:bg-muted/10 transition-colors"
                     >
                       {/* Day Label Column */}
                       <div className="w-20 border-l bg-muted/15 flex flex-col items-center justify-center gap-0.5 select-none shrink-0">
@@ -883,7 +884,7 @@ export function TermSchedulePlanner({
                                     {slot.startTime} - {slot.endTime}
                                   </span>
                                   {event.location && (
-                                    <span className="truncate max-w-[80px]">
+                                    <span className="truncate max-w-20">
                                       {event.location}
                                     </span>
                                   )}
@@ -1027,8 +1028,7 @@ function CustomEventDialog({
     if (!course || !open) return;
     let isMounted = true;
     setLoadingOfferings(true);
-    fetch(`/api/offerings?courseId=${course.id}`)
-      .then((r) => r.json())
+    fetchJson(`/api/offerings?courseId=${course.id}`)
       .then((res) => {
         if (isMounted && res.success && Array.isArray(res.data)) {
           setOfferings(res.data);
@@ -1142,20 +1142,16 @@ function CustomEventDialog({
 
       if (eventToEdit) {
         // Edit existing custom event
-        const res = await fetch("/api/events", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: eventToEdit.id,
-            offeringId: selectedOfferingId,
-            term: term || "1403-1",
-            location: location.trim(),
-            examDate,
-            examStartTime,
-            examEndTime,
-            slots,
-          }),
-        }).then((r) => r.json());
+        const res = await putJson("/api/events", {
+          id: eventToEdit.id,
+          offeringId: selectedOfferingId,
+          term: term || "1403-1",
+          location: location.trim(),
+          examDate,
+          examStartTime,
+          examEndTime,
+          slots,
+        });
 
         if (!res.success) {
           setError(res.message || "خطا در ویرایش رویداد شخصی");
@@ -1183,20 +1179,16 @@ function CustomEventDialog({
         onOpenChange(false);
       } else {
         // Create new
-        const res = await fetch("/api/events", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            offeringId: selectedOfferingId,
-            term: term || "1403-1",
-            location: location.trim(),
-            examDate,
-            examStartTime,
-            examEndTime,
-            slots,
-            isUserCustom: true,
-          }),
-        }).then((r) => r.json());
+        const res = await postJson("/api/events", {
+          offeringId: selectedOfferingId,
+          term: term || "1403-1",
+          location: location.trim(),
+          examDate,
+          examStartTime,
+          examEndTime,
+          slots,
+          isUserCustom: true,
+        });
 
         if (!res.success || !res.data) {
           setError(res.message || "خطا در ثبت رویداد شخصی");
@@ -1349,7 +1341,7 @@ function CustomEventDialog({
                         </Select>
                       </div>
 
-                      <div className="flex items-center gap-1.5 flex-1 min-w-[200px]">
+                      <div className="flex items-center gap-1.5 flex-1 min-w-50">
                         <span className="text-[11px] text-muted-foreground">از</span>
                         <TimePicker
                           value={slot.startTime}

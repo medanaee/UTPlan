@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { searchCourses } from "@/lib/search/persian-search";
+import { fetchJson, postJson } from "@/lib/api-client";
 import {
   Layers,
   Save,
@@ -65,7 +66,7 @@ export function CourseCategoryManager({
 
     async function loadAssignments() {
       try {
-        const res = await fetch(`/api/tracks/assignments?trackId=${trackId}`).then((r) => r.json());
+        const res = await fetchJson(`/api/tracks/assignments?trackId=${trackId}`);
         if (res.success && Array.isArray(res.data)) {
           const map = new Map<string, { vcatId?: string; rcatId?: string }>();
           for (const item of res.data as TrackCourseAssignment[]) {
@@ -148,14 +149,10 @@ export function CourseCategoryManager({
         ruleCategoryId: data.rcatId || null,
       }));
 
-      const res = await fetch("/api/tracks/assignments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          trackId,
-          assignments: payload,
-        }),
-      }).then((r) => r.json());
+      const res = await postJson("/api/tracks/assignments", {
+        trackId,
+        assignments: payload,
+      });
 
       if (res.success) {
         setSavedSuccess(true);
@@ -249,7 +246,7 @@ export function CourseCategoryManager({
               value={filterVcat}
               onValueChange={(val) => val && setFilterVcat(val)}
             >
-              <SelectTrigger className="min-w-[130px]">
+              <SelectTrigger className="min-w-32.5">
                 <SelectValue placeholder="فیلتر دسته بصری..." />
               </SelectTrigger>
               <SelectContent>
@@ -275,7 +272,7 @@ export function CourseCategoryManager({
                 value={bulkVcat}
                 onValueChange={(val) => val && setBulkVcat(val)}
               >
-                <SelectTrigger size="sm" className="h-7 min-w-[120px] text-xs bg-background">
+                <SelectTrigger size="sm" className="h-7 min-w-30 text-xs bg-background">
                   <SelectValue placeholder="دسته بصری..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -365,7 +362,7 @@ export function CourseCategoryManager({
                             val && handleUpdateCourseAssignment(course.id, "vcatId", val)
                           }
                         >
-                          <SelectTrigger className="h-8 w-full max-w-[200px]">
+                          <SelectTrigger className="h-8 w-full max-w-50">
                             <SelectValue placeholder="-- انتخاب دسته بصری --" />
                           </SelectTrigger>
                           <SelectContent>

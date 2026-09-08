@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { searchCourses } from "@/lib/search/persian-search";
+import { fetchJson, postJson, putJson, deleteJson } from "@/lib/api-client";
 import {
   BookOpen,
   Building2,
@@ -101,20 +102,16 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
     }
 
     if (editingCourse) {
-      const res = await fetch("/api/courses", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: editingCourse.id,
-          name: courseForm.name,
-          code: courseForm.code,
-          abbreviation: courseForm.abbreviation?.trim() || undefined,
-          units: Number(courseForm.units) || 3,
-          facultyId: selectedFacultyId,
-          offeredIn: courseForm.offeredIn,
-          description: courseForm.description || "",
-        }),
-      }).then((r) => r.json());
+      const res = await putJson("/api/courses", {
+        id: editingCourse.id,
+        name: courseForm.name,
+        code: courseForm.code,
+        abbreviation: courseForm.abbreviation?.trim() || undefined,
+        units: Number(courseForm.units) || 3,
+        facultyId: selectedFacultyId,
+        offeredIn: courseForm.offeredIn,
+        description: courseForm.description || "",
+      });
 
       if (res.success) {
         setCourseModalOpen(false);
@@ -136,19 +133,15 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
         alert(res.message || "خطا در ویرایش درس");
       }
     } else {
-      const res = await fetch("/api/courses", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: courseForm.name,
-          code: courseForm.code,
-          abbreviation: courseForm.abbreviation?.trim() || undefined,
-          units: Number(courseForm.units) || 3,
-          facultyId: selectedFacultyId,
-          offeredIn: courseForm.offeredIn,
-          description: courseForm.description || "",
-        }),
-      }).then((r) => r.json());
+      const res = await postJson("/api/courses", {
+        name: courseForm.name,
+        code: courseForm.code,
+        abbreviation: courseForm.abbreviation?.trim() || undefined,
+        units: Number(courseForm.units) || 3,
+        facultyId: selectedFacultyId,
+        offeredIn: courseForm.offeredIn,
+        description: courseForm.description || "",
+      });
 
       if (res.success) {
         setCourseModalOpen(false);
@@ -163,10 +156,10 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
           ruleCategoryId: "",
           description: "",
         });
-        setActionMessage("درس جدید با موفقیت اضافه شد.");
+        setActionMessage("درس جدید با موفقیت ایجاد شد.");
         await loadAllData();
       } else {
-        alert(res.message || "خطا در ثبت درس");
+        alert(res.message || "خطا در ایجاد درس");
       }
     }
   };
@@ -177,16 +170,12 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
     setPrereqError(null);
     if (!selectedCourseForPrereq || !prereqForm.requiredCourseId) return;
 
-    const res = await fetch("/api/courses", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "add_prerequisite",
-        courseId: selectedCourseForPrereq.id,
-        requiredCourseId: prereqForm.requiredCourseId,
-        type: prereqForm.type,
-      }),
-    }).then((r) => r.json());
+    const res = await putJson("/api/courses", {
+      action: "add_prerequisite",
+      courseId: selectedCourseForPrereq.id,
+      requiredCourseId: prereqForm.requiredCourseId,
+      type: prereqForm.type,
+    });
 
     if (!res.success) {
       setPrereqError(res.message);
@@ -195,23 +184,19 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
 
     setPrereqForm({ requiredCourseId: "", type: "prerequisite" });
     await loadAllData();
-    const updatedCourse = await fetch(`/api/courses?id=${selectedCourseForPrereq.id}`).then((r) => r.json());
+    const updatedCourse = await fetchJson(`/api/courses?id=${selectedCourseForPrereq.id}`);
     if (updatedCourse.success) setSelectedCourseForPrereq(updatedCourse.data);
   };
 
   // Remove Prerequisite
   const handleRemovePrerequisite = async (relationId: string) => {
     if (!selectedCourseForPrereq) return;
-    await fetch("/api/courses", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "remove_prerequisite",
-        relationId,
-      }),
+    await putJson("/api/courses", {
+      action: "remove_prerequisite",
+      relationId,
     });
     await loadAllData();
-    const updatedCourse = await fetch(`/api/courses?id=${selectedCourseForPrereq.id}`).then((r) => r.json());
+    const updatedCourse = await fetchJson(`/api/courses?id=${selectedCourseForPrereq.id}`);
     if (updatedCourse.success) setSelectedCourseForPrereq(updatedCourse.data);
   };
 
@@ -334,9 +319,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                     }» مطمئن هستید؟ دروس به صورت موقت (Soft Delete) حذف می‌شوند و با ثبت مجدد کدهای مشابه یا ویرایش بازگردانده خواهند شد.`
                   )
                 ) {
-                  const res = await fetch(`/api/courses?all=true&facultyId=${selectedFacultyId}`, {
-                    method: "DELETE",
-                  }).then((r) => r.json());
+                  const res = await deleteJson(`/api/courses?all=true&facultyId=${selectedFacultyId}`);
                   if (res.success) {
                     setActionMessage("کلیه دروس دانشکده با موفقیت حذف (Soft Delete) شدند.");
                     await loadAllData();
@@ -402,7 +385,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                   key={course.id}
                   className={`flex flex-col justify-between rounded-xl border p-3.5 shadow-2xs transition-colors ${
                     isLinked
-                      ? "border-amber-500/40 bg-amber-500/[0.02]"
+                      ? "border-amber-500/40 bg-amber-500/2"
                       : "border-border/80 bg-card hover:border-primary/40"
                   }`}
                 >
@@ -532,7 +515,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                             size="sm"
                             onClick={async () => {
                               if (confirm(`آیا از حذف درس ${course.name} مطمئن هستید؟`)) {
-                                await fetch(`/api/courses?id=${course.id}`, { method: "DELETE" });
+                                await deleteJson(`/api/courses?id=${course.id}`);
                                 setActionMessage(`درس «${course.name}» حذف شد.`);
                                 await loadAllData();
                               }

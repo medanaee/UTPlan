@@ -295,7 +295,7 @@ export function CategoryCourseAssignDialog({
         </div>
 
         {/* Course List Scrollable */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-1.5 min-h-[220px] max-h-[360px]">
+        <div className="flex-1 overflow-y-auto p-3 space-y-1.5 min-h-55 max-h-90">
           {filteredCourses.length === 0 ? (
             <div className="py-12 text-center text-xs text-muted-foreground space-y-1">
               <BookOpen className="h-8 w-8 text-muted-foreground/40 mx-auto" />

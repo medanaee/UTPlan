@@ -41,6 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { fetchJson, postJson, putJson, deleteJson } from "@/lib/api-client";
 import type { Faculty, Major, Track, Course, StudentChart } from "@/lib/types";
 
 interface ApprovedChartsManagerProps {
@@ -92,8 +93,7 @@ export function ApprovedChartsManager({
   const loadApprovedCharts = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/charts");
-      const json = await res.json();
+      const json = await fetchJson("/api/charts");
       if (json.success && Array.isArray(json.data)) {
         const approved = json.data.filter((c: StudentChart) => c.isApprovedDefault);
         setAllApprovedCharts(approved);
@@ -117,16 +117,11 @@ export function ApprovedChartsManager({
     setIsSubmitting(true);
     try {
       const defaultTitle = newTitle.trim() || `چارت مصوب ${currentTrack?.name || "گرایش"}`;
-      const res = await fetch("/api/charts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          trackId: selectedTrackId,
-          title: defaultTitle,
-          isApprovedDefault: true,
-        }),
+      const data = await postJson("/api/charts", {
+        trackId: selectedTrackId,
+        title: defaultTitle,
+        isApprovedDefault: true,
       });
-      const data = await res.json();
       if (data.success) {
         setActionMessage("چارت مصوب رسمی با موفقیت ایجاد شد.");
         setCreateModalOpen(false);
@@ -151,17 +146,12 @@ export function ApprovedChartsManager({
     setIsSubmitting(true);
     try {
       const defaultTitle = newTitle.trim() || `چارت مصوب ${currentTrack?.name || "گرایش"}`;
-      const res = await fetch("/api/charts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          trackId: selectedTrackId,
-          title: defaultTitle,
-          cloneFromId: sourceChartIdToClone,
-          isApprovedDefault: true,
-        }),
+      const data = await postJson("/api/charts", {
+        trackId: selectedTrackId,
+        title: defaultTitle,
+        cloneFromId: sourceChartIdToClone,
+        isApprovedDefault: true,
       });
-      const data = await res.json();
       if (data.success) {
         setActionMessage("چارت مصوب با موفقیت کپی و ایجاد شد.");
         setCloneModalOpen(false);
@@ -184,8 +174,7 @@ export function ApprovedChartsManager({
     if (!confirm("آیا از حذف این چارت مصوب اطمینان دارید؟")) return;
 
     try {
-      const res = await fetch(`/api/charts?id=${chartId}`, { method: "DELETE" });
-      const data = await res.json();
+      const data = await deleteJson(`/api/charts?id=${chartId}`);
       if (data.success) {
         setActionMessage("چارت مصوب با موفقیت حذف شد.");
         await loadApprovedCharts();
@@ -205,15 +194,10 @@ export function ApprovedChartsManager({
 
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/charts", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: editingChart.id,
-          title: editTitleInput.trim(),
-        }),
+      const data = await putJson("/api/charts", {
+        id: editingChart.id,
+        title: editTitleInput.trim(),
       });
-      const data = await res.json();
       if (data.success) {
         setActionMessage("نام چارت با موفقیت ویرایش شد.");
         setEditTitleModalOpen(false);

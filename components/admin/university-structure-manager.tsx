@@ -26,6 +26,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import type { Faculty, Major, Track } from "@/lib/types";
+import { fetchJson, postJson, putJson, deleteJson } from "@/lib/api-client";
 import { useAdminStore } from "@/lib/stores/admin-store";
 
 export function UniversityStructureManager() {
@@ -70,11 +71,7 @@ export function UniversityStructureManager() {
   const handleSaveFaculty = async (e: React.FormEvent) => {
     e.preventDefault();
     if (editingFaculty) {
-      const res = await fetch("/api/faculties", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editingFaculty.id, ...facultyForm }),
-      }).then((r) => r.json());
+      const res = await putJson("/api/faculties", { id: editingFaculty.id, ...facultyForm });
 
       if (res.success) {
         setFacultyModalOpen(false);
@@ -86,11 +83,7 @@ export function UniversityStructureManager() {
         alert(res.message || "خطا در ویرایش دانشکده");
       }
     } else {
-      const res = await fetch("/api/faculties", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(facultyForm),
-      }).then((r) => r.json());
+      const res = await postJson("/api/faculties", facultyForm);
 
       if (res.success) {
         setFacultyModalOpen(false);
@@ -107,7 +100,7 @@ export function UniversityStructureManager() {
   const handleDeleteFaculty = async (id: string, name: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm(`آیا از حذف دانشکده «${name}» و تمام رشته‌ها، گرایش‌ها و دروس وابسته به آن مطمئن هستید؟`)) return;
-    const res = await fetch(`/api/faculties?id=${id}`, { method: "DELETE" }).then((r) => r.json());
+    const res = await deleteJson(`/api/faculties?id=${id}`);
     if (res.success) {
       setActionMessage(`دانشکده «${name}» با موفقیت حذف شد.`);
       await loadAllData();
@@ -132,14 +125,10 @@ export function UniversityStructureManager() {
     if (!linkingFaculty) return;
     try {
       setSavingLinks(true);
-      const res = await fetch("/api/faculties/links", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          targetFacultyId: linkingFaculty.id,
-          sourceFacultyIds: selectedSourceIds,
-        }),
-      }).then((r) => r.json());
+      const res = await postJson("/api/faculties/links", {
+        targetFacultyId: linkingFaculty.id,
+        sourceFacultyIds: selectedSourceIds,
+      });
 
       if (res.success) {
         setLinksModalOpen(false);
@@ -161,11 +150,7 @@ export function UniversityStructureManager() {
     if (!selectedFacultyId) return;
 
     if (editingMajor) {
-      const res = await fetch("/api/majors", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editingMajor.id, ...majorForm }),
-      }).then((r) => r.json());
+      const res = await putJson("/api/majors", { id: editingMajor.id, ...majorForm });
 
       if (res.success) {
         setMajorModalOpen(false);
@@ -177,11 +162,7 @@ export function UniversityStructureManager() {
         alert(res.message || "خطا در ویرایش رشته");
       }
     } else {
-      const res = await fetch("/api/majors", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ facultyId: selectedFacultyId, ...majorForm }),
-      }).then((r) => r.json());
+      const res = await postJson("/api/majors", { facultyId: selectedFacultyId, ...majorForm });
 
       if (res.success) {
         setMajorModalOpen(false);
@@ -198,7 +179,7 @@ export function UniversityStructureManager() {
   const handleDeleteMajor = async (id: string, name: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm(`آیا از حذف رشته «${name}» و تمام گرایش‌های وابسته به آن مطمئن هستید؟`)) return;
-    const res = await fetch(`/api/majors?id=${id}`, { method: "DELETE" }).then((r) => r.json());
+    const res = await deleteJson(`/api/majors?id=${id}`);
     if (res.success) {
       setActionMessage(`رشته «${name}» با موفقیت حذف شد.`);
       await loadAllData();
@@ -213,11 +194,7 @@ export function UniversityStructureManager() {
     if (!selectedMajorId) return;
 
     if (editingTrack) {
-      const res = await fetch("/api/tracks", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editingTrack.id, ...trackForm }),
-      }).then((r) => r.json());
+      const res = await putJson("/api/tracks", { id: editingTrack.id, ...trackForm });
 
       if (res.success) {
         setTrackModalOpen(false);
@@ -229,11 +206,7 @@ export function UniversityStructureManager() {
         alert(res.message || "خطا در ویرایش گرایش");
       }
     } else {
-      const res = await fetch("/api/tracks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ majorId: selectedMajorId, ...trackForm }),
-      }).then((r) => r.json());
+      const res = await postJson("/api/tracks", { majorId: selectedMajorId, ...trackForm });
 
       if (res.success) {
         setTrackModalOpen(false);
@@ -250,7 +223,7 @@ export function UniversityStructureManager() {
   const handleDeleteTrack = async (id: string, name: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm(`آیا از حذف گرایش «${name}» مطمئن هستید؟`)) return;
-    const res = await fetch(`/api/tracks?id=${id}`, { method: "DELETE" }).then((r) => r.json());
+    const res = await deleteJson(`/api/tracks?id=${id}`);
     if (res.success) {
       setActionMessage(`گرایش «${name}» با موفقیت حذف شد.`);
       await loadAllData();

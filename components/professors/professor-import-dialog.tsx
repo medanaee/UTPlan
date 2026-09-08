@@ -12,6 +12,7 @@ import {
   Sparkles,
   BookUser,
   Info,
+  RefreshCw,
 } from "lucide-react";
 import {
   Dialog,

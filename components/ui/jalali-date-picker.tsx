@@ -334,7 +334,7 @@ function JalaliWheelColumn({
           ref={scrollRef}
           className={cn(
             "h-full overflow-y-auto overscroll-contain select-none",
-            "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+            "scrollbar-none [&::-webkit-scrollbar]:hidden",
             disabled ? "pointer-events-none" : "cursor-grab active:cursor-grabbing",
           )}
           onScroll={handleScroll}

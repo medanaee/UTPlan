@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import type { CourseOffering, CourseEvent, Faculty } from "@/lib/types";
 import { useAdminStore } from "@/lib/stores/admin-store";
+import { fetchJson, postJson, putJson, deleteJson } from "@/lib/api-client";
 import {
   Card,
   CardHeader,
@@ -149,8 +150,8 @@ export function EventManager({
       const offUrl = selectedFacultyId ? `/api/offerings?facultyId=${selectedFacultyId}` : "/api/offerings";
       const evUrl = selectedFacultyId ? `/api/events?facultyId=${selectedFacultyId}` : "/api/events";
       const [offRes, evRes] = await Promise.all([
-        fetch(offUrl).then((r) => r.json()),
-        fetch(evUrl).then((r) => r.json()),
+        fetchJson(offUrl),
+        fetchJson(evUrl),
       ]);
 
       if (offRes.success) setOfferings(offRes.data);
@@ -281,38 +282,30 @@ export function EventManager({
               ? [targetOffering.professorId]
               : []);
 
-          await fetch("/api/offerings", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              id: targetOffering.id,
-              courseId: targetOffering.courseId,
-              professorIds: profIds,
-              code: targetOffering.code,
-              description: targetOffering.description,
-              finalizedSemesters: updatedFinalized,
-            }),
+          await putJson("/api/offerings", {
+            id: targetOffering.id,
+            courseId: targetOffering.courseId,
+            professorIds: profIds,
+            code: targetOffering.code,
+            description: targetOffering.description,
+            finalizedSemesters: updatedFinalized,
           });
         }
       }
 
       if (editingEvent) {
         // Edit existing
-        const res = await fetch("/api/events", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: editingEvent.id,
-            code: code.trim() || undefined,
-            offeringId: selectedOfferingId,
-            term: activeTerm,
-            location,
-            examDate,
-            examStartTime,
-            examEndTime,
-            slots,
-          }),
-        }).then((r) => r.json());
+        const res = await putJson("/api/events", {
+          id: editingEvent.id,
+          code: code.trim() || undefined,
+          offeringId: selectedOfferingId,
+          term: activeTerm,
+          location,
+          examDate,
+          examStartTime,
+          examEndTime,
+          slots,
+        });
 
         if (res.success) {
           setIsModalOpen(false);
@@ -322,20 +315,16 @@ export function EventManager({
         }
       } else {
         // Create new
-        const res = await fetch("/api/events", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            code: code.trim() || undefined,
-            offeringId: selectedOfferingId,
-            term: activeTerm,
-            location,
-            examDate,
-            examStartTime,
-            examEndTime,
-            slots,
-          }),
-        }).then((r) => r.json());
+        const res = await postJson("/api/events", {
+          code: code.trim() || undefined,
+          offeringId: selectedOfferingId,
+          term: activeTerm,
+          location,
+          examDate,
+          examStartTime,
+          examEndTime,
+          slots,
+        });
 
         if (res.success) {
           setIsModalOpen(false);
@@ -360,15 +349,11 @@ export function EventManager({
 
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/events/clone", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sourceTerm: cloneSourceTerm,
-          targetTerm: activeTerm,
-          resetExamDates,
-        }),
-      }).then((r) => r.json());
+      const res = await postJson("/api/events/clone", {
+        sourceTerm: cloneSourceTerm,
+        targetTerm: activeTerm,
+        resetExamDates,
+      });
 
       if (res.success) {
         setIsCloneModalOpen(false);
@@ -398,9 +383,7 @@ export function EventManager({
     if (!confirm("آیا از حذف این رویداد کلاسی مطمئن هستید؟")) return;
 
     try {
-      const res = await fetch(`/api/events?id=${id}`, { method: "DELETE" }).then((r) =>
-        r.json()
-      );
+      const res = await deleteJson(`/api/events?id=${id}`);
       if (res.success) {
         await loadData();
       }
@@ -418,11 +401,7 @@ export function EventManager({
       return;
 
     try {
-      const res = await fetch("/api/admin/events/promote", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventId: id }),
-      }).then((r) => r.json());
+      const res = await postJson("/api/admin/events/promote", { eventId: id });
 
       if (res.success) {
         alert(res.message || "رویداد با موفقیت به عنوان ارائه رسمی ثبت شد.");
@@ -640,10 +619,9 @@ export function EventManager({
                   )
                 ) {
                   try {
-                    const res = await fetch(
-                      `/api/events?all=true&facultyId=${selectedFacultyId}&term=${encodeURIComponent(activeTerm)}`,
-                      { method: "DELETE" }
-                    ).then((r) => r.json());
+                    const res = await deleteJson(
+                      `/api/events?all=true&facultyId=${selectedFacultyId}&term=${encodeURIComponent(activeTerm)}`
+                    );
                     if (res.success) {
                       await loadData();
                     } else {
@@ -751,7 +729,7 @@ export function EventManager({
                     <tr
                       key={evt.id}
                       className={`transition-colors ${
-                        isLinked ? "bg-amber-500/[0.02] hover:bg-amber-500/[0.04]" : "hover:bg-muted/20"
+                        isLinked ? "bg-amber-500/2 hover:bg-amber-500/4" : "hover:bg-muted/20"
                       }`}
                     >
                       {/* Course & Prof */}
@@ -1132,7 +1110,7 @@ export function EventManager({
                         </div>
 
                         {/* Time Pickers */}
-                        <div className="flex items-center gap-1.5 flex-1 min-w-[200px]">
+                        <div className="flex items-center gap-1.5 flex-1 min-w-50">
                           <span className="text-[11px] text-muted-foreground">از</span>
                           <TimePicker
                             value={slot.startTime}

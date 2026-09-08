@@ -475,7 +475,7 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
             })
           }
         >
-          <SelectTrigger className="min-w-[210px] font-semibold">
+          <SelectTrigger className="min-w-52.5 font-semibold">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -590,7 +590,7 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
                 onChange={(val) => onUpdate({ ...leaf, targetCourseId: val })}
                 placeholder="-- انتخاب یا جستجوی درس --"
                 searchPlaceholder="جستجوی نام یا کد درس..."
-                className="h-7 text-xs max-w-[160px]"
+                className="h-7 text-xs max-w-40"
               />
            
 
@@ -611,7 +611,7 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
         {leaf.type === "MANDATORY_COURSES" && (
           <div className="flex items-center gap-1.5">
             <span className="text-muted-foreground text-xs shrink-0">درس اجباری:</span>
-            <div className="min-w-[200px]">
+            <div className="min-w-50">
               <Combobox
                 items={courses.map((c) => ({
                   value: c.id,

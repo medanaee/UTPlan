@@ -44,6 +44,7 @@ import { VisualCategoryNode } from "./visual-category-node";
 import { RuleCategoryImportDialog } from "./rule-category-import-dialog";
 import { VisualCategoryImportDialog } from "./visual-category-import-dialog";
 import { usePersistedState } from "@/lib/hooks/use-persisted-state";
+import { fetchJson, postJson, putJson, deleteJson } from "@/lib/api-client";
 import type { Course, VisualCategory, RuleCategory } from "@/lib/types";
 
 const COLOR_PRESETS = [
@@ -308,20 +309,14 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
     if (!selectedTrackId) return;
     const currentList = getVisualCategoryCourses(catId).map((c) => c.id);
     const updated = currentList.filter((id) => id !== courseId);
-    await fetch("/api/tracks/assignments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "assign_category_courses",
-        trackId: selectedTrackId,
-        type: "visual",
-        categoryId: catId,
-        courseIds: updated,
-      }),
+    await postJson("/api/tracks/assignments", {
+      action: "assign_category_courses",
+      trackId: selectedTrackId,
+      type: "visual",
+      categoryId: catId,
+      courseIds: updated,
     });
-    const assignRes = await fetch("/api/tracks/assignments?trackId=" + selectedTrackId).then((r) =>
-      r.json()
-    );
+    const assignRes = await fetchJson("/api/tracks/assignments?trackId=" + selectedTrackId);
     if (assignRes.success) setTrackAssignments(assignRes.data);
   };
 
@@ -330,20 +325,14 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
     if (!selectedTrackId) return;
     const currentList = getRuleCategoryCourses(catId).map((c) => c.id);
     const updated = currentList.filter((id) => id !== courseId);
-    await fetch("/api/tracks/assignments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "assign_category_courses",
-        trackId: selectedTrackId,
-        type: "rule",
-        categoryId: catId,
-        courseIds: updated,
-      }),
+    await postJson("/api/tracks/assignments", {
+      action: "assign_category_courses",
+      trackId: selectedTrackId,
+      type: "rule",
+      categoryId: catId,
+      courseIds: updated,
     });
-    const assignRes = await fetch("/api/tracks/assignments?trackId=" + selectedTrackId).then((r) =>
-      r.json()
-    );
+    const assignRes = await fetchJson("/api/tracks/assignments?trackId=" + selectedTrackId);
     if (assignRes.success) setTrackAssignments(assignRes.data);
   };
 
@@ -360,19 +349,15 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
       }
     }
 
-    const res = await fetch("/api/categories", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: "visual",
-        trackId: selectedTrackId,
-        code: vcatForm.code?.trim() || undefined,
-        name: (vcatForm.name || "").trim(),
-        color: vcatForm.color,
-        sortOrder: vcatForm.sortOrder,
-        parentId: vcatForm.parentId || null,
-      }),
-    }).then((r) => r.json());
+    const res = await postJson("/api/categories", {
+      type: "visual",
+      trackId: selectedTrackId,
+      code: vcatForm.code?.trim() || undefined,
+      name: (vcatForm.name || "").trim(),
+      color: vcatForm.color,
+      sortOrder: vcatForm.sortOrder,
+      parentId: vcatForm.parentId || null,
+    });
 
     if (res.success) {
       setVcatModalOpen(false);
@@ -416,19 +401,15 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
       }
     }
 
-    const res = await fetch("/api/categories", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "update",
-        type: "visual",
-        id: editingVcat.id,
-        code: vcatEditForm.code?.trim() || null,
-        name: (vcatEditForm.name || "").trim(),
-        color: vcatEditForm.color,
-        parentId: vcatEditForm.parentId || null,
-      }),
-    }).then((r) => r.json());
+    const res = await putJson("/api/categories", {
+      action: "update",
+      type: "visual",
+      id: editingVcat.id,
+      code: vcatEditForm.code?.trim() || null,
+      name: (vcatEditForm.name || "").trim(),
+      color: vcatEditForm.color,
+      parentId: vcatEditForm.parentId || null,
+    });
 
     if (res.success) {
       setVcatEditModalOpen(false);
@@ -453,17 +434,13 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
       }
     }
 
-    const res = await fetch("/api/categories", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: "rule",
-        trackId: selectedTrackId,
-        code: rcatForm.code?.trim() || undefined,
-        name: (rcatForm.name || "").trim(),
-        parentId: rcatForm.parentId,
-      }),
-    }).then((r) => r.json());
+    const res = await postJson("/api/categories", {
+      type: "rule",
+      trackId: selectedTrackId,
+      code: rcatForm.code?.trim() || undefined,
+      name: (rcatForm.name || "").trim(),
+      parentId: rcatForm.parentId,
+    });
 
     if (res.success) {
       setRcatModalOpen(false);
@@ -502,18 +479,14 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
       }
     }
 
-    const res = await fetch("/api/categories", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "update",
-        type: "rule",
-        id: editingRcat.id,
-        code: rcatEditForm.code?.trim() || null,
-        name: (rcatEditForm.name || "").trim(),
-        parentId: rcatEditForm.parentId || null,
-      }),
-    }).then((r) => r.json());
+    const res = await putJson("/api/categories", {
+      action: "update",
+      type: "rule",
+      id: editingRcat.id,
+      code: rcatEditForm.code?.trim() || null,
+      name: (rcatEditForm.name || "").trim(),
+      parentId: rcatEditForm.parentId || null,
+    });
 
     if (res.success) {
       setRcatEditModalOpen(false);
@@ -538,14 +511,10 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
 
     setIsSyncing(true);
     try {
-      const res = await fetch("/api/categories", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "sync_from_rules",
-          trackId: selectedTrackId,
-        }),
-      }).then((r) => r.json());
+      const res = await postJson("/api/categories", {
+        action: "sync_from_rules",
+        trackId: selectedTrackId,
+      });
 
       if (res.success) {
         setActionMessage(res.message || "دسته‌های بصری با موفقیت بر اساس ساختار درختی قوانین بازتولید شدند.");
@@ -596,11 +565,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
         sortOrder: idx + 1,
         parentId: parentId || null,
       }));
-      await fetch("/api/categories", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "reorder", type: "visual", items: itemsPayload }),
-      });
+      await putJson("/api/categories", { action: "reorder", type: "visual", items: itemsPayload });
     } catch (err) {
       console.error("Reorder visual categories error:", err);
     }
@@ -655,11 +620,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
         sortOrder: idx + 1,
         parentId: parentId || null,
       }));
-      await fetch("/api/categories", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "reorder", type: "rule", items: itemsPayload }),
-      });
+      await putJson("/api/categories", { action: "reorder", type: "rule", items: itemsPayload });
     } catch (err) {
       console.error("Reorder rule categories error:", err);
     }
@@ -1092,9 +1053,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
           }
           onSuccess={async () => {
             if (selectedTrackId) {
-              const assignRes = await fetch("/api/tracks/assignments?trackId=" + selectedTrackId).then((r) =>
-                r.json()
-              );
+              const assignRes = await fetchJson("/api/tracks/assignments?trackId=" + selectedTrackId);
               if (assignRes.success) setTrackAssignments(assignRes.data);
             }
           }}

@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import type { Professor, Faculty } from "@/lib/types";
+import { fetchJson, postJson, putJson, deleteJson } from "@/lib/api-client";
 import {
   Card,
   CardHeader,
@@ -127,10 +128,7 @@ export function ProfessorManager({
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      }).then((r) => r.json());
+      const res = await postJson("/api/upload", formData);
 
       if (res.success && res.url) {
         setForm((prev) => ({ ...prev, avatarUrl: res.url }));
@@ -173,14 +171,10 @@ export function ProfessorManager({
 
       if (editingProfessor) {
         // Edit existing
-        const res = await fetch("/api/professors", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: editingProfessor.id,
-            ...payload,
-          }),
-        }).then((r) => r.json());
+        const res = await putJson("/api/professors", {
+          id: editingProfessor.id,
+          ...payload,
+        });
 
         if (res.success) {
           setIsModalOpen(false);
@@ -190,11 +184,7 @@ export function ProfessorManager({
         }
       } else {
         // Create new
-        const res = await fetch("/api/professors", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }).then((r) => r.json());
+        const res = await postJson("/api/professors", payload);
 
         if (res.success) {
           setIsModalOpen(false);
@@ -215,9 +205,7 @@ export function ProfessorManager({
     if (!confirm(`آیا از حذف "${prof.name}" مطمئن هستید؟`)) return;
 
     try {
-      const res = await fetch(`/api/professors?id=${prof.id}`, {
-        method: "DELETE",
-      }).then((r) => r.json());
+      const res = await deleteJson(`/api/professors?id=${prof.id}`);
 
       if (res.success) {
         await onDataChanged();
@@ -234,7 +222,7 @@ export function ProfessorManager({
         ? `/api/professors/export?facultyId=${selectedFacultyId}`
         : "/api/professors/export";
 
-      const res = await fetch(url).then((r) => r.json());
+      const res = await fetchJson(url);
       if (res.success && Array.isArray(res.data)) {
         const fileName = currentFaculty
           ? `professors-${currentFaculty.code.toLowerCase()}.json`
@@ -372,9 +360,7 @@ export function ProfessorManager({
                     }» مطمئن هستید؟ اساتید به صورت موقت (Soft Delete) حذف می‌شوند و با ثبت مجدد کدهای مشابه یا ویرایش بازگردانده خواهند شد.`
                   )
                 ) {
-                  const res = await fetch(`/api/professors?all=true&facultyId=${selectedFacultyId}`, {
-                    method: "DELETE",
-                  }).then((r) => r.json());
+                  const res = await deleteJson(`/api/professors?all=true&facultyId=${selectedFacultyId}`);
                   if (res.success) {
                     await onDataChanged();
                   } else {
@@ -433,7 +419,7 @@ export function ProfessorManager({
                   key={p.id}
                   className={`flex items-center justify-between rounded-xl border p-3.5 shadow-2xs transition-colors ${
                     isLinked
-                      ? "border-amber-500/40 bg-amber-500/[0.02]"
+                      ? "border-amber-500/40 bg-amber-500/2"
                       : "border-border/80 bg-card hover:border-primary/30"
                   }`}
                 >

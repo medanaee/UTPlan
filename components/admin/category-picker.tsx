@@ -247,7 +247,7 @@ export function CategoryPicker({
                       type="button"
                       onClick={() => setCurrentParentId(crumb.id)}
                       className={cn(
-                        "rounded px-1.5 py-0.5 hover:bg-muted font-medium transition-colors truncate max-w-[110px]",
+                        "rounded px-1.5 py-0.5 hover:bg-muted font-medium transition-colors truncate max-w-27.5",
                         idx === navBreadcrumbs.length - 1
                           ? "text-primary font-bold bg-primary/10"
                           : "text-muted-foreground"
@@ -283,7 +283,7 @@ export function CategoryPicker({
                 <div className="flex items-center gap-1.5 text-xs">
                   <Check className="h-3.5 w-3.5 text-primary shrink-0" />
                   <span className="text-muted-foreground">انتخاب همین دسته والد:</span>
-                  <span className="font-bold text-foreground truncate max-w-[130px]">
+                  <span className="font-bold text-foreground truncate max-w-32.5">
                     {currentParent.name}
                   </span>
                 </div>

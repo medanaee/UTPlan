@@ -338,7 +338,7 @@ export function RuleSandboxTester({
                 </div>
 
                 {/* Courses List in this Term */}
-                <div className="space-y-1.5 min-h-[100px] max-h-[180px] overflow-y-auto">
+                <div className="space-y-1.5 min-h-25 max-h-45 overflow-y-auto">
                   {courseIds.map((cId) => {
                     const crs = courses.find((item) => item.id === cId);
                     return (

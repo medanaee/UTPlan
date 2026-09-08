@@ -232,7 +232,7 @@ export function UserManager({ currentUser }: UserManagerProps) {
               value={roleFilter}
               onValueChange={(val) => val && setRoleFilter(val)}
             >
-              <SelectTrigger size="sm" className="h-8 min-w-[140px] text-xs">
+              <SelectTrigger size="sm" className="h-8 min-w-35 text-xs">
                 <SelectValue placeholder="فیلتر نقش..." />
               </SelectTrigger>
               <SelectContent>
