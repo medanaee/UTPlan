@@ -301,14 +301,25 @@ export function ChartEditor({
   // Total credits in chart
   const totalChartCredits = useMemo(() => {
     let total = 0;
+    const countedCourseIds = new Set<string>();
     chart.semesters.forEach((sem) => {
       sem.courseIds.forEach((cId) => {
-        const c = allCourses.find((course) => course.id === cId);
-        if (c) total += c.units;
+        if (!countedCourseIds.has(cId)) {
+          countedCourseIds.add(cId);
+          const c = allCourses.find((course) => course.id === cId);
+          if (c) total += c.units;
+        }
       });
     });
+    waivedCourseIds.forEach((cId) => {
+      if (!countedCourseIds.has(cId)) {
+        countedCourseIds.add(cId);
+        const c = allCourses.find((course) => course.id === cId);
+        if (c) total += c.units;
+      }
+    });
     return total;
-  }, [chart.semesters, allCourses]);
+  }, [chart.semesters, allCourses, waivedCourseIds]);
 
   // Validate prerequisites, corequisites, term credits, and graduation rules
   const validation = useMemo(() => {
@@ -935,14 +946,14 @@ export function ChartEditor({
       list = searchCourses(list, drawerSearch);
     }
 
-    // 3. Sort: unplaced courses first, placed courses pushed to the bottom (stable sort)
+    // 3. Sort: unplaced/unpassed courses first, placed or passed courses pushed to the bottom (stable sort)
     return list.slice().sort((a, b) => {
-      const aPlaced = placedCourseIdMap.has(a.id);
-      const bPlaced = placedCourseIdMap.has(b.id);
-      if (aPlaced === bPlaced) return 0;
-      return aPlaced ? 1 : -1;
+      const aDone = placedCourseIdMap.has(a.id) || waivedCourseIds.includes(a.id);
+      const bDone = placedCourseIdMap.has(b.id) || waivedCourseIds.includes(b.id);
+      if (aDone === bDone) return 0;
+      return aDone ? 1 : -1;
     });
-  }, [allCourses, drawerSearch, selectedCategoryFilter, selectedTrackId, placedCourseIdMap, visualCategories, getCategoryAndDescendantIds]);
+  }, [allCourses, drawerSearch, selectedCategoryFilter, selectedTrackId, placedCourseIdMap, visualCategories, getCategoryAndDescendantIds, waivedCourseIds]);
 
   // Dynamic grid column count based on zoom level:
   // Base (90%+): 3 -> 8 cols
@@ -1290,9 +1301,9 @@ export function ChartEditor({
               <div
                 onClick={() => setIsDrawerCollapsed(false)}
                 className="cursor-pointer text-[10px] text-muted-foreground hover:text-foreground bg-muted/60 px-1.5 py-0.5 rounded border border-border/40 font-bold"
-                title="تعداد دروس قرار گرفته در چارت"
+                title="تعداد دروس در چارت یا پاس‌شده"
               >
-                {placedCourseIdMap.size}/{allCourses.length}
+                {placedCourseIdMap.size + waivedCourseIds.length}/{allCourses.length}
               </div>
             </aside>
           ) : (
@@ -1306,7 +1317,7 @@ export function ChartEditor({
                   </span>
                   <div className="flex items-center gap-1.5">
                     <span className="text-[10px] text-muted-foreground">
-                      {placedCourseIdMap.size} در چارت
+                      {placedCourseIdMap.size} در چارت{waivedCourseIds.length > 0 ? ` + ${waivedCourseIds.length} پاس‌شده` : ""}
                     </span>
                     <Button
                       size="sm"
@@ -1387,6 +1398,8 @@ export function ChartEditor({
                   const vcat = visualCategories.find((vc) => vc.id === assignment?.visualCategoryId);
                   const placedSem = placedCourseIdMap.get(course.id);
                   const isPlaced = placedSem !== undefined;
+                  const isWaived = waivedCourseIds.includes(course.id);
+                  const isDone = isPlaced || isWaived;
                   const prereqs = course.prerequisites || [];
                   const baseColor = vcat?.color || "#64748b";
 
@@ -1412,7 +1425,7 @@ export function ChartEditor({
                       className={`p-2 rounded-xl border transition-all shadow-2xs ${isReadOnly
                           ? "cursor-default"
                           : "cursor-grab active:cursor-grabbing"
-                        } ${isPlaced
+                        } ${isDone
                           ? "opacity-60 bg-muted/40 hover:opacity-100"
                           : "hover:border-primary/50 hover:shadow-xs"
                         }`}
@@ -1438,11 +1451,15 @@ export function ChartEditor({
                               عدم ارائه
                             </span>
                           )}
-                          {isPlaced && (
+                          {isWaived ? (
+                            <Badge variant="secondary" className="text-[9px] h-4 px-1 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                              پاس شده
+                            </Badge>
+                          ) : isPlaced ? (
                             <Badge variant="secondary" className="text-[9px] h-4 px-1 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
                               ترم {placedSem}
                             </Badge>
-                          )}
+                          ) : null}
                         </div>
                       </div>
 

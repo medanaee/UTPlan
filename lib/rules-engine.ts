@@ -34,6 +34,24 @@ export interface ValidationEngineInput {
 }
 
 /**
+ * Helper to collect a category ID and all its recursive subcategory IDs
+ */
+export function getCategoryAndDescendantIds(targetCatId: string, allCategories: RuleCategory[]): Set<string> {
+  const result = new Set<string>([targetCatId]);
+  let added = true;
+  while (added) {
+    added = false;
+    for (const c of allCategories) {
+      if (c.parentId && result.has(c.parentId) && !result.has(c.id)) {
+        result.add(c.id);
+        added = true;
+      }
+    }
+  }
+  return result;
+}
+
+/**
  * Main Chart Validation Engine
  */
 export function validateFullChart(input: ValidationEngineInput): ValidationResult {
@@ -75,15 +93,27 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
   let totalCredits = 0;
   const termCreditsMap = new Map<number, number>();
   const activeTermIndices = new Set<number>();
+  const countedCourseIds = new Set<string>();
 
   for (const entry of chartCourses) {
     const course = courseMap.get(entry.courseId);
     const units = course ? course.units : 3;
-    totalCredits += units;
+    if (!countedCourseIds.has(entry.courseId)) {
+      countedCourseIds.add(entry.courseId);
+      totalCredits += units;
+    }
 
     const currentTermCredits = termCreditsMap.get(entry.termIndex) || 0;
     termCreditsMap.set(entry.termIndex, currentTermCredits + units);
     activeTermIndices.add(entry.termIndex);
+  }
+
+  for (const waivedId of waivedCourseIds) {
+    if (!countedCourseIds.has(waivedId)) {
+      countedCourseIds.add(waivedId);
+      const course = courseMap.get(waivedId);
+      totalCredits += course ? course.units : 3;
+    }
   }
 
   const totalTerms = inputTotalTerms ?? (activeTermIndices.size > 0 ? Math.max(...Array.from(activeTermIndices)) : 1);
@@ -249,15 +279,28 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
 
   // 5. Calculate Category Stats
   const categoryStats: CategoryStat[] = ruleCategories.map((rcat) => {
-    // Find all courses assigned to this category
-    const assignedCourses = chartCourses.filter(
-      (entry) => courseToRuleCatMap.get(entry.courseId) === rcat.id
-    );
+    const targetCatIds = getCategoryAndDescendantIds(rcat.id, ruleCategories);
 
-    const earnedCredits = assignedCourses.reduce((sum, entry) => {
-      const c = courseMap.get(entry.courseId);
-      return sum + (c ? c.units : 3);
-    }, 0);
+    // Find all distinct courses assigned to this category (from chart and waived)
+    const takenCourseIds = new Set<string>();
+    for (const entry of chartCourses) {
+      const assignedCatId = courseToRuleCatMap.get(entry.courseId);
+      if (assignedCatId && targetCatIds.has(assignedCatId)) {
+        takenCourseIds.add(entry.courseId);
+      }
+    }
+    for (const waivedId of waivedCourseIds) {
+      const assignedCatId = courseToRuleCatMap.get(waivedId);
+      if (assignedCatId && targetCatIds.has(assignedCatId)) {
+        takenCourseIds.add(waivedId);
+      }
+    }
+
+    let earnedCredits = 0;
+    for (const cId of takenCourseIds) {
+      const c = courseMap.get(cId);
+      earnedCredits += c ? c.units : 3;
+    }
 
     // Extract requirement dynamically from rulesTree if defined
     let required = 0;
@@ -288,7 +331,7 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
       requiredCredits: required > 0 ? required : undefined,
       maxCredits: maxAllowed,
       earnedCredits,
-      totalCoursesPassed: assignedCourses.length,
+      totalCoursesPassed: takenCourseIds.size,
       isSatisfied,
     };
   });
@@ -302,7 +345,8 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
       chartCourses,
       courseMap,
       courseToRuleCatMap,
-      ruleCategories
+      ruleCategories,
+      waivedCourseIds
     );
 
     if (!treeResult.satisfied) {
@@ -332,7 +376,8 @@ function evaluateRuleNode(
   chartCourses: ChartCourseEntry[],
   courseMap: Map<string, Course>,
   courseToRuleCatMap: Map<string, string>,
-  ruleCategories: RuleCategory[]
+  ruleCategories: RuleCategory[],
+  waivedCourseIds: string[] = []
 ): { satisfied: boolean; issues: ValidationIssue[] } {
   // 1. Group Node
   if (node.type === "GROUP") {
@@ -342,7 +387,7 @@ function evaluateRuleNode(
     }
 
     const childResults = group.children.map((child) =>
-      evaluateRuleNode(child, chartCourses, courseMap, courseToRuleCatMap, ruleCategories)
+      evaluateRuleNode(child, chartCourses, courseMap, courseToRuleCatMap, ruleCategories, waivedCourseIds)
     );
 
     if (group.operator === "AND") {
@@ -370,97 +415,104 @@ function evaluateRuleNode(
     }
   }
 
-// Helper to collect a category ID and all its recursive subcategory IDs
-function getCategoryAndDescendantIds(targetCatId: string, allCategories: RuleCategory[]): Set<string> {
-  const result = new Set<string>([targetCatId]);
-  let added = true;
-  while (added) {
-    added = false;
-    for (const c of allCategories) {
-      if (c.parentId && result.has(c.parentId) && !result.has(c.id)) {
-        result.add(c.id);
-        added = true;
-      }
-    }
-  }
-  return result;
-}
+  // 2. Leaf Nodes
+  const leaf = node as RuleLeafNode;
+  const issues: ValidationIssue[] = [];
 
-// 2. Leaf Nodes
-const leaf = node as RuleLeafNode;
-const issues: ValidationIssue[] = [];
+  switch (leaf.type) {
+    case "MIN_CREDITS_IN_CATEGORY": {
+      const cat = ruleCategories.find((c) => c.id === leaf.ruleCategoryId);
+      const catName = cat ? cat.name : "دسته نامشخص";
+      const required = leaf.minCredits || 0;
+      const targetCatIds = getCategoryAndDescendantIds(leaf.ruleCategoryId || "", ruleCategories);
 
-switch (leaf.type) {
-  case "MIN_CREDITS_IN_CATEGORY": {
-    const cat = ruleCategories.find((c) => c.id === leaf.ruleCategoryId);
-    const catName = cat ? cat.name : "دسته نامشخص";
-    const required = leaf.minCredits || 0;
-    const targetCatIds = getCategoryAndDescendantIds(leaf.ruleCategoryId || "", ruleCategories);
-
-    const earned = chartCourses
-      .filter((entry) => {
+      const takenCourseIds = new Set<string>();
+      for (const entry of chartCourses) {
         const assignedCatId = courseToRuleCatMap.get(entry.courseId);
-        return assignedCatId && targetCatIds.has(assignedCatId);
-      })
-      .reduce((sum, entry) => {
-        const c = courseMap.get(entry.courseId);
-        return sum + (c ? c.units : 3);
-      }, 0);
-
-    const satisfied = earned >= required;
-    if (!satisfied) {
-      issues.push({
-        id: `issue_leaf_${leaf.id}`,
-        type: "error",
-        message: `شرط حداقل واحد: در دسته «${catName}» باید حداقل ${required} واحد گذرانده شود (واحدهای فعلی: ${earned}).`,
-        ruleNodeId: leaf.id,
-      });
-    }
-    return { satisfied, issues };
-  }
-
-  case "MAX_CREDITS_IN_CATEGORY": {
-    const cat = ruleCategories.find((c) => c.id === leaf.ruleCategoryId);
-    const catName = cat ? cat.name : "دسته نامشخص";
-    const maxAllowed = leaf.maxCredits !== undefined ? leaf.maxCredits : (leaf.minCredits || 0);
-    const targetCatIds = getCategoryAndDescendantIds(leaf.ruleCategoryId || "", ruleCategories);
-
-    const earned = chartCourses
-      .filter((entry) => {
-        const assignedCatId = courseToRuleCatMap.get(entry.courseId);
-        return assignedCatId && targetCatIds.has(assignedCatId);
-      })
-      .reduce((sum, entry) => {
-        const c = courseMap.get(entry.courseId);
-        return sum + (c ? c.units : 3);
-      }, 0);
-
-    const satisfied = earned <= maxAllowed;
-    if (!satisfied) {
-      issues.push({
-        id: `issue_leaf_${leaf.id}`,
-        type: "error",
-        message: `شرط حداکثر واحد: در دسته «${catName}» حداکثر می‌توان ${maxAllowed} واحد اخذ نمود (واحدهای فعلی اخذ شده: ${earned}).`,
-        ruleNodeId: leaf.id,
-      });
-    }
-    return { satisfied, issues };
-  }
-
-  case "ALL_COURSES_IN_CATEGORY": {
-    const cat = ruleCategories.find((c) => c.id === leaf.ruleCategoryId);
-    const catName = cat ? cat.name : "دسته نامشخص";
-    const targetCatIds = getCategoryAndDescendantIds(leaf.ruleCategoryId || "", ruleCategories);
-
-    // Find all courses assigned to this category or its subcategories
-    const requiredCourseIds: string[] = [];
-    courseToRuleCatMap.forEach((catId, courseId) => {
-      if (targetCatIds.has(catId)) {
-        requiredCourseIds.push(courseId);
+        if (assignedCatId && targetCatIds.has(assignedCatId)) {
+          takenCourseIds.add(entry.courseId);
+        }
       }
-    });
+      for (const waivedId of waivedCourseIds) {
+        const assignedCatId = courseToRuleCatMap.get(waivedId);
+        if (assignedCatId && targetCatIds.has(assignedCatId)) {
+          takenCourseIds.add(waivedId);
+        }
+      }
 
-      const takenCourseIds = new Set(chartCourses.map((c) => c.courseId));
+      let earned = 0;
+      for (const cId of takenCourseIds) {
+        const c = courseMap.get(cId);
+        earned += c ? c.units : 3;
+      }
+
+      const satisfied = earned >= required;
+      if (!satisfied) {
+        issues.push({
+          id: `issue_leaf_${leaf.id}`,
+          type: "error",
+          message: `شرط حداقل واحد: در دسته «${catName}» باید حداقل ${required} واحد گذرانده شود (واحدهای فعلی: ${earned}).`,
+          ruleNodeId: leaf.id,
+        });
+      }
+      return { satisfied, issues };
+    }
+
+    case "MAX_CREDITS_IN_CATEGORY": {
+      const cat = ruleCategories.find((c) => c.id === leaf.ruleCategoryId);
+      const catName = cat ? cat.name : "دسته نامشخص";
+      const maxAllowed = leaf.maxCredits !== undefined ? leaf.maxCredits : (leaf.minCredits || 0);
+      const targetCatIds = getCategoryAndDescendantIds(leaf.ruleCategoryId || "", ruleCategories);
+
+      const takenCourseIds = new Set<string>();
+      for (const entry of chartCourses) {
+        const assignedCatId = courseToRuleCatMap.get(entry.courseId);
+        if (assignedCatId && targetCatIds.has(assignedCatId)) {
+          takenCourseIds.add(entry.courseId);
+        }
+      }
+      for (const waivedId of waivedCourseIds) {
+        const assignedCatId = courseToRuleCatMap.get(waivedId);
+        if (assignedCatId && targetCatIds.has(assignedCatId)) {
+          takenCourseIds.add(waivedId);
+        }
+      }
+
+      let earned = 0;
+      for (const cId of takenCourseIds) {
+        const c = courseMap.get(cId);
+        earned += c ? c.units : 3;
+      }
+
+      const satisfied = earned <= maxAllowed;
+      if (!satisfied) {
+        issues.push({
+          id: `issue_leaf_${leaf.id}`,
+          type: "error",
+          message: `شرط حداکثر واحد: در دسته «${catName}» حداکثر می‌توان ${maxAllowed} واحد اخذ نمود (واحدهای فعلی اخذ شده: ${earned}).`,
+          ruleNodeId: leaf.id,
+        });
+      }
+      return { satisfied, issues };
+    }
+
+    case "ALL_COURSES_IN_CATEGORY": {
+      const cat = ruleCategories.find((c) => c.id === leaf.ruleCategoryId);
+      const catName = cat ? cat.name : "دسته نامشخص";
+      const targetCatIds = getCategoryAndDescendantIds(leaf.ruleCategoryId || "", ruleCategories);
+
+      // Find all courses assigned to this category or its subcategories
+      const requiredCourseIds: string[] = [];
+      courseToRuleCatMap.forEach((catId, courseId) => {
+        if (targetCatIds.has(catId)) {
+          requiredCourseIds.push(courseId);
+        }
+      });
+
+      const takenCourseIds = new Set([
+        ...chartCourses.map((c) => c.courseId),
+        ...waivedCourseIds,
+      ]);
       const missing = requiredCourseIds.filter((id) => !takenCourseIds.has(id));
 
       const satisfied = missing.length === 0;
@@ -480,11 +532,23 @@ switch (leaf.type) {
       const cat = ruleCategories.find((c) => c.id === leaf.ruleCategoryId);
       const catName = cat ? cat.name : "دسته نامشخص";
       const countNeeded = leaf.exactCount || 0;
+      const targetCatIds = getCategoryAndDescendantIds(leaf.ruleCategoryId || "", ruleCategories);
 
-      const takenCount = chartCourses.filter(
-        (entry) => courseToRuleCatMap.get(entry.courseId) === leaf.ruleCategoryId
-      ).length;
+      const takenCourseIds = new Set<string>();
+      for (const entry of chartCourses) {
+        const assignedCatId = courseToRuleCatMap.get(entry.courseId);
+        if (assignedCatId && targetCatIds.has(assignedCatId)) {
+          takenCourseIds.add(entry.courseId);
+        }
+      }
+      for (const waivedId of waivedCourseIds) {
+        const assignedCatId = courseToRuleCatMap.get(waivedId);
+        if (assignedCatId && targetCatIds.has(assignedCatId)) {
+          takenCourseIds.add(waivedId);
+        }
+      }
 
+      const takenCount = takenCourseIds.size;
       const satisfied = takenCount === countNeeded;
       if (!satisfied) {
         issues.push({
@@ -509,12 +573,25 @@ switch (leaf.type) {
       }
 
       // Calculate total credits passed before targetEntry.termIndex
-      const creditsBefore = chartCourses
-        .filter((c) => c.termIndex < targetEntry.termIndex)
-        .reduce((sum, c) => {
+      // Waived courses are passed beforehand, so they count towards creditsBefore
+      const countedBeforeIds = new Set<string>();
+      let creditsBefore = 0;
+
+      for (const waivedId of waivedCourseIds) {
+        if (waivedId !== leaf.targetCourseId && !countedBeforeIds.has(waivedId)) {
+          countedBeforeIds.add(waivedId);
+          const course = courseMap.get(waivedId);
+          creditsBefore += course ? course.units : 3;
+        }
+      }
+
+      for (const c of chartCourses) {
+        if (c.termIndex < targetEntry.termIndex && !countedBeforeIds.has(c.courseId)) {
+          countedBeforeIds.add(c.courseId);
           const course = courseMap.get(c.courseId);
-          return sum + (course ? course.units : 3);
-        }, 0);
+          creditsBefore += course ? course.units : 3;
+        }
+      }
 
       const satisfied = creditsBefore >= requiredBefore;
       if (!satisfied) {
@@ -532,7 +609,10 @@ switch (leaf.type) {
 
     case "MANDATORY_COURSES": {
       const neededIds = leaf.mandatoryCourseIds || [];
-      const takenIds = new Set(chartCourses.map((c) => c.courseId));
+      const takenIds = new Set([
+        ...chartCourses.map((c) => c.courseId),
+        ...waivedCourseIds,
+      ]);
       const missing = neededIds.filter((id) => !takenIds.has(id));
 
       const satisfied = missing.length === 0;
