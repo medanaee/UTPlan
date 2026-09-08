@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Navbar } from "@/components/navbar";
 import type { Faculty, Major, Track, UserSession } from "@/lib/types";
+import { fetchJson, postJson, putJson } from "@/lib/api-client";
 
 const ACADEMIC_YEARS = ["1400", "1401", "1402", "1403", "1404", "1405", "1406"];
 
@@ -69,10 +70,10 @@ export default function ProfilePage() {
       try {
         setLoading(true);
         const [authRes, facRes, majRes, trkRes] = await Promise.all([
-          fetch("/api/auth/me").then((r) => r.json()),
-          fetch("/api/faculties").then((r) => r.json()),
-          fetch("/api/majors").then((r) => r.json()),
-          fetch("/api/tracks").then((r) => r.json()),
+          fetchJson("/api/auth/me"),
+          fetchJson("/api/faculties"),
+          fetchJson("/api/majors"),
+          fetchJson("/api/tracks"),
         ]);
 
         if (!authRes.authenticated || !authRes.user) {
@@ -153,10 +154,7 @@ export default function ProfilePage() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      }).then((r) => r.json());
+      const res = await postJson("/api/upload", formData);
 
       if (res.success && res.url) {
         setAvatarUrl(res.url);
@@ -200,22 +198,18 @@ export default function ProfilePage() {
     const formattedEntrySemester = `${entryYear}-${entryType}`;
 
     try {
-      const res = await fetch("/api/auth/me", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          name: [firstName.trim(), lastName.trim()].filter(Boolean).join(" "),
-          avatarUrl,
-          facultyId,
-          majorId,
-          trackId,
-          entrySemester: formattedEntrySemester,
-          currentPassword: currentPassword || undefined,
-          newPassword: newPassword || undefined,
-        }),
-      }).then((r) => r.json());
+      const res = await putJson("/api/auth/me", {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        name: [firstName.trim(), lastName.trim()].filter(Boolean).join(" "),
+        avatarUrl,
+        facultyId,
+        majorId,
+        trackId,
+        entrySemester: formattedEntrySemester,
+        currentPassword: currentPassword || undefined,
+        newPassword: newPassword || undefined,
+      });
 
       if (res.success && res.user) {
         setUser(res.user);

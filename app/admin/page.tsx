@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { fetchJson, postJson } from "@/lib/api-client";
 
 import { useAdminStore } from "@/lib/stores/admin-store";
 import { UniversityStructureManager } from "@/components/admin/university-structure-manager";
@@ -72,13 +73,8 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     async function checkAuthAndLoad() {
       try {
-        const res = await fetch("/api/auth/me");
-        if (!res.ok) {
-          router.push("/login");
-          return;
-        }
-        const data = await res.json();
-        if (!data.authenticated || (data.user.role !== "admin" && data.user.role !== "super_admin")) {
+        const data = await fetchJson("/api/auth/me");
+        if (!data.authenticated || (data.user?.role !== "admin" && data.user?.role !== "super_admin")) {
           router.push("/login");
           return;
         }
@@ -92,7 +88,7 @@ export default function AdminDashboardPage() {
   }, [router, setUser, loadAllData]);
 
   const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
+    await postJson("/api/auth/logout");
     router.push("/login");
   };
 
@@ -225,7 +221,7 @@ export default function AdminDashboardPage() {
                       "آیا مایل به بازنشانی و بارگذاری کامل داده‌های نمونه دولوپ (شامل دروس، اساتید، ارائه‌ها و چارت نمونه) هستید؟"
                     )
                   ) {
-                    const res = await fetch("/api/admin/seed", { method: "POST" }).then((r) => r.json());
+                    const res = await postJson("/api/admin/seed");
                     if (res.success) {
                       await loadAllData();
                       alert("داده‌های نمونه دانشگاهی با موفقیت در محیط دولوپ بارگذاری شدند.");

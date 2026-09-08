@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { fetchJson, postJson, putJson, deleteJson } from "@/lib/api-client";
 import {
   Users,
   BookOpen,
@@ -84,8 +85,7 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
 
   // Load current user session
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => r.json())
+    fetchJson("/api/auth/me")
       .then((data) => {
         if (data.authenticated) {
           setCurrentUser(data.user);
@@ -98,7 +98,7 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
   const loadReviews = async () => {
     try {
       setLoadingReviews(true);
-      const res = await fetch(`/api/professors/reviews?professorId=${professor.id}`).then((r) => r.json());
+      const res = await fetchJson(`/api/professors/reviews?professorId=${professor.id}`);
       if (res.success && Array.isArray(res.data)) {
         setReviews(res.data);
       }

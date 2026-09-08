@@ -686,7 +686,6 @@ export function ProfessorManager({
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">مرتبه علمی:</Label>
               <Select
-                items={rankOptions}
                 value={form.title}
                 onValueChange={(val) => val && setForm({ ...form, title: val })}
               >

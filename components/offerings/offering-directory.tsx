@@ -32,6 +32,7 @@ import {
 import type { CourseOffering, Faculty } from "@/lib/types";
 import { usePersistedState } from "@/lib/hooks/use-persisted-state";
 import { searchCourses } from "@/lib/search/persian-search";
+import { fetchJson } from "@/lib/api-client";
 
 interface OfferingDirectoryProps {
   initialOfferings?: CourseOffering[];
@@ -60,8 +61,8 @@ export function OfferingDirectory({
       try {
         setLoading(true);
         const [offRes, facRes] = await Promise.all([
-          fetch("/api/offerings").then((r) => r.json()),
-          fetch("/api/faculties").then((r) => r.json()),
+          fetchJson("/api/offerings"),
+          fetchJson("/api/faculties"),
         ]);
 
         if (offRes.success) setOfferings(offRes.data);

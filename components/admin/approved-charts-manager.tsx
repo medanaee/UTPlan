@@ -651,7 +651,6 @@ export function ApprovedChartsManager({
             <div className="space-y-1.5">
               <Label className="text-xs">انتخاب چارت مبدا برای کپی</Label>
               <Select
-                items={cloneOptions}
                 value={sourceChartIdToClone}
                 onValueChange={setSourceChartIdToClone}
                 required

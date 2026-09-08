@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { postJson } from "@/lib/api-client";
 import {
   Lock,
   Mail,
@@ -72,17 +73,9 @@ export default function LoginPage() {
               password,
             };
 
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const data = await postJson(endpoint, payload);
 
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
+      if (!data.success) {
         setError(data.message || (mode === "login" ? "اطلاعات ورود نامعتبر است." : "خطا در ثبت‌نام"));
         setLoading(false);
         return;

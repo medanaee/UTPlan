@@ -1256,10 +1256,6 @@ export function EventManager({
             <div className="space-y-2">
               <Label className="text-sm font-semibold">نیمسال مبدأ (جهت کپی رویدادها):</Label>
               <Select
-                items={cloneableSourceTerms.map((t) => ({
-                  value: t,
-                  label: `${formatSemesterLabel(t)} (${events.filter((e) => e.term === t).length} رویداد کلاسی)`,
-                }))}
                 value={cloneSourceTerm}
                 onValueChange={(val) => val && setCloneSourceTerm(val)}
               >
@@ -1345,7 +1341,6 @@ export function EventManager({
             <div className="space-y-2">
               <Label className="text-sm font-semibold">دوره نیمسال:</Label>
               <Select
-                items={semesterTypeOptions}
                 value={newTermType}
                 onValueChange={(val) => val && setNewTermType(val as any)}
               >

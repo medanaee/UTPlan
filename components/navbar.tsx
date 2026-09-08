@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
+import { fetchJson, postJson } from "@/lib/api-client";
 import {
   GraduationCap,
   LogIn,
@@ -34,14 +35,11 @@ export function Navbar({ user: initialUser }: NavbarProps) {
   useEffect(() => {
     async function fetchSession() {
       try {
-        const res = await fetch("/api/auth/me");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.authenticated) {
-            setUser(data.user);
-          } else {
-            setUser(null);
-          }
+        const data = await fetchJson("/api/auth/me");
+        if (data.authenticated) {
+          setUser(data.user);
+        } else {
+          setUser(null);
         }
       } catch (err) {
         console.error("Session fetch error:", err);
@@ -57,7 +55,7 @@ export function Navbar({ user: initialUser }: NavbarProps) {
 
   const handleLogout = async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      await postJson("/api/auth/logout");
       setUser(null);
       router.push("/");
       router.refresh();

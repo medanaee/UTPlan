@@ -768,7 +768,6 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">ترم ارائه:</Label>
                 <Select
-                  items={offeredInSelectItems}
                   value={courseForm.offeredIn}
                   onValueChange={(val) =>
                     val &&

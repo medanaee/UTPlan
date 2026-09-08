@@ -32,6 +32,7 @@ import {
 import type { Professor, Faculty } from "@/lib/types";
 import { usePersistedState } from "@/lib/hooks/use-persisted-state";
 import { searchCourses } from "@/lib/search/persian-search";
+import { fetchJson } from "@/lib/api-client";
 
 interface ProfessorDirectoryProps {
   initialProfessors?: Professor[];
@@ -73,8 +74,8 @@ export function ProfessorDirectory({
       try {
         setLoading(true);
         const [profRes, facRes] = await Promise.all([
-          fetch("/api/professors").then((r) => r.json()),
-          fetch("/api/faculties").then((r) => r.json()),
+          fetchJson("/api/professors"),
+          fetchJson("/api/faculties"),
         ]);
 
         if (profRes.success) setProfessors(profRes.data);

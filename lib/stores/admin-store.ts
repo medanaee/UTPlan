@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { fetchJson } from "@/lib/api-client";
 import type {
   User,
   Faculty,
@@ -167,11 +168,11 @@ export const useAdminStore = create<AdminState>()(
         try {
           set({ loading: true });
           const [facRes, majRes, trkRes, crsRes, prfRes] = await Promise.all([
-            fetch("/api/faculties").then((r) => r.json()),
-            fetch("/api/majors").then((r) => r.json()),
-            fetch("/api/tracks").then((r) => r.json()),
-            fetch("/api/courses").then((r) => r.json()),
-            fetch("/api/professors").then((r) => r.json()),
+            fetchJson("/api/faculties"),
+            fetchJson("/api/majors"),
+            fetchJson("/api/tracks"),
+            fetchJson("/api/courses"),
+            fetchJson("/api/professors"),
           ]);
 
           const faculties = facRes.success ? facRes.data : [];
@@ -247,8 +248,8 @@ export const useAdminStore = create<AdminState>()(
         if (!trackId) return;
         try {
           const [catRes, assignRes] = await Promise.all([
-            fetch(`/api/categories?trackId=${trackId}`).then((r) => r.json()),
-            fetch(`/api/tracks/assignments?trackId=${trackId}`).then((r) => r.json()),
+            fetchJson(`/api/categories?trackId=${trackId}`),
+            fetchJson(`/api/tracks/assignments?trackId=${trackId}`),
           ]);
 
           set({

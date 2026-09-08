@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/select";
 import { Navbar } from "@/components/navbar";
 import { usePersistedState } from "@/lib/hooks/use-persisted-state";
+import { fetchJson, postJson, deleteJson } from "@/lib/api-client";
 import type { StudentChart, Track, UserSession } from "@/lib/types";
 
 export default function ChartsPage() {
@@ -82,9 +83,9 @@ export default function ChartsPage() {
     try {
       setLoading(true);
       const [authRes, chartsRes, tracksRes] = await Promise.all([
-        fetch("/api/auth/me").then((r) => r.json()),
-        fetch("/api/charts").then((r) => r.json()),
-        fetch("/api/tracks").then((r) => r.json()),
+        fetchJson("/api/auth/me"),
+        fetchJson("/api/charts"),
+        fetchJson("/api/tracks"),
       ]);
 
       if (!authRes.authenticated || !authRes.user) {
@@ -127,15 +128,11 @@ export default function ChartsPage() {
 
     setIsCreating(true);
     try {
-      const res = await fetch("/api/charts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: newTitle.trim() || "چارت تحصیلی جدید",
-          trackId: selectedTrackId,
-          cloneFromId: selectedTemplateChartId !== "empty" ? selectedTemplateChartId : undefined,
-        }),
-      }).then((r) => r.json());
+      const res = await postJson("/api/charts", {
+        title: newTitle.trim() || "چارت تحصیلی جدید",
+        trackId: selectedTrackId,
+        cloneFromId: selectedTemplateChartId !== "empty" ? selectedTemplateChartId : undefined,
+      });
 
       if (res.success && res.data) {
         setCreateModalOpen(false);
@@ -159,15 +156,11 @@ export default function ChartsPage() {
     }
 
     try {
-      const res = await fetch("/api/charts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: `نسخه من از ${approvedChart.title}`,
-          trackId: approvedChart.trackId,
-          cloneFromId: approvedChart.id,
-        }),
-      }).then((r) => r.json());
+      const res = await postJson("/api/charts", {
+        title: `نسخه من از ${approvedChart.title}`,
+        trackId: approvedChart.trackId,
+        cloneFromId: approvedChart.id,
+      });
 
       if (res.success && res.data) {
         router.push(`/charts/${res.data.id}`);
@@ -183,7 +176,7 @@ export default function ChartsPage() {
     if (!confirm(`آیا از حذف چارت «${title}» مطمئن هستید؟`)) return;
 
     try {
-      const res = await fetch(`/api/charts?id=${id}`, { method: "DELETE" }).then((r) => r.json());
+      const res = await deleteJson(`/api/charts?id=${id}`);
       if (res.success) {
         await loadData();
       } else {
@@ -459,7 +452,6 @@ export default function ChartsPage() {
             <div className="space-y-1">
               <Label className="text-xs">الگوی اولیه چارت (اختیاری)</Label>
               <Select
-                items={templateSelectItems}
                 value={selectedTemplateChartId}
                 onValueChange={(val) => setSelectedTemplateChartId(val || "empty")}
               >

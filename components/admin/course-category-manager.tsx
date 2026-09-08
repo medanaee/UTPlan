@@ -246,7 +246,6 @@ export function CourseCategoryManager({
 
             {/* Filter by Visual Category */}
             <Select
-              items={visualCategoryFilterItems}
               value={filterVcat}
               onValueChange={(val) => val && setFilterVcat(val)}
             >
@@ -273,7 +272,6 @@ export function CourseCategoryManager({
               </span>
 
               <Select
-                items={bulkVisualCategoryItems}
                 value={bulkVcat}
                 onValueChange={(val) => val && setBulkVcat(val)}
               >

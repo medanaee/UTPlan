@@ -15,6 +15,7 @@ import type {
   RuleCategory,
   UserSession,
 } from "@/lib/types";
+import { fetchJson } from "@/lib/api-client";
 
 export default function ChartEditorPage() {
   const params = useParams();
@@ -40,10 +41,10 @@ export default function ChartEditorPage() {
 
         // Fetch auth session, chart, tracks, and courses in parallel
         const [authRes, chartRes, tracksRes, coursesRes] = await Promise.all([
-          fetch("/api/auth/me").then((r) => r.json()),
-          fetch(`/api/charts?id=${chartId}`).then((r) => r.json()),
-          fetch("/api/tracks").then((r) => r.json()),
-          fetch("/api/courses").then((r) => r.json()),
+          fetchJson("/api/auth/me"),
+          fetchJson(`/api/charts?id=${chartId}`),
+          fetchJson("/api/tracks"),
+          fetchJson("/api/courses"),
         ]);
 
         if (!authRes.authenticated || !authRes.user) {
@@ -66,7 +67,7 @@ export default function ChartEditorPage() {
 
         // Fetch categories for the chart's track
         if (loadedChart.trackId) {
-          const catsRes = await fetch(`/api/categories?trackId=${loadedChart.trackId}`).then((r) => r.json());
+          const catsRes = await fetchJson(`/api/categories?trackId=${loadedChart.trackId}`);
           if (catsRes.success && catsRes.data) {
             setVisualCategories(catsRes.data.visualCategories || catsRes.data.visual || []);
             setRuleCategories(catsRes.data.ruleCategories || catsRes.data.rule || []);

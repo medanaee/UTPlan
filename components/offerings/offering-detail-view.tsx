@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { usePersistedState } from "@/lib/hooks/use-persisted-state";
+import { fetchJson, postJson, putJson, deleteJson } from "@/lib/api-client";
 import {
   Layers,
   BookOpen,
@@ -98,8 +99,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
   const [loadingResources, setLoadingResources] = useState(!offering.resources);
 
   useEffect(() => {
-    fetch(`/api/offerings/resources?offeringId=${offering.id}`)
-      .then((r) => r.json())
+    fetchJson(`/api/offerings/resources?offeringId=${offering.id}`)
       .then((d) => {
         if (d.success && Array.isArray(d.data)) {
           setResources(d.data);
@@ -189,8 +189,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
 
   // Load current user
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => r.json())
+    fetchJson("/api/auth/me")
       .then((data) => {
         if (data.authenticated) {
           setCurrentUser(data.user);
@@ -203,7 +202,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
   const loadReviews = async () => {
     try {
       setLoadingReviews(true);
-      const res = await fetch(`/api/offerings/reviews?offeringId=${offering.id}`).then((r) => r.json());
+      const res = await fetchJson(`/api/offerings/reviews?offeringId=${offering.id}`);
       if (res.success && Array.isArray(res.data)) {
         setReviews(res.data);
       }
@@ -245,17 +244,13 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
 
     try {
       setSubmitting(true);
-      const res = await fetch("/api/offerings/reviews", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          offeringId: offering.id,
-          comment: commentText.trim(),
-          isAnonymous,
-          criteriaRatings: scores,
-          studentGrade: studentGrade ? Number(studentGrade) : null,
-        }),
-      }).then((r) => r.json());
+      const res = await postJson("/api/offerings/reviews", {
+        offeringId: offering.id,
+        comment: commentText.trim(),
+        isAnonymous,
+        criteriaRatings: scores,
+        studentGrade: studentGrade ? Number(studentGrade) : null,
+      });
 
       if (res.success) {
         setSubmitSuccess("نظر شما با موفقیت ثبت شد و در دسترس دانشجویان قرار گرفت.");
@@ -298,17 +293,13 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
 
     try {
       setSavingEdit(true);
-      const res = await fetch("/api/offerings/reviews", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: editingReview.id,
-          comment: editComment.trim(),
-          isAnonymous: editIsAnonymous,
-          criteriaRatings: editScores,
-          studentGrade: editStudentGrade ? Number(editStudentGrade) : null,
-        }),
-      }).then((r) => r.json());
+      const res = await putJson("/api/offerings/reviews", {
+        id: editingReview.id,
+        comment: editComment.trim(),
+        isAnonymous: editIsAnonymous,
+        criteriaRatings: editScores,
+        studentGrade: editStudentGrade ? Number(editStudentGrade) : null,
+      });
 
       if (res.success) {
         setEditingReview(null);
@@ -329,9 +320,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
     if (!confirm("آیا از حذف این نظر اطمینان دارید؟")) return;
 
     try {
-      const res = await fetch(`/api/offerings/reviews?id=${reviewId}`, {
-        method: "DELETE",
-      }).then((r) => r.json());
+      const res = await deleteJson(`/api/offerings/reviews?id=${reviewId}`);
 
       if (res.success) {
         setReviews((prev) => prev.filter((r) => r.id !== reviewId));

@@ -29,6 +29,7 @@ import type { Course, Faculty, UserSession } from "@/lib/types";
 import { Download, Upload } from "lucide-react";
 import { usePersistedState } from "@/lib/hooks/use-persisted-state";
 import { searchCourses } from "@/lib/search/persian-search";
+import { fetchJson } from "@/lib/api-client";
 
 interface CourseDirectoryProps {
   initialCourses?: Course[];
@@ -64,8 +65,8 @@ export function CourseDirectory({
       try {
         setLoading(true);
         const [coursesRes, facultiesRes] = await Promise.all([
-          fetch("/api/courses").then((r) => r.json()),
-          fetch("/api/faculties").then((r) => r.json()),
+          fetchJson("/api/courses"),
+          fetchJson("/api/faculties"),
         ]);
 
         if (coursesRes.success) setCourses(coursesRes.data);
@@ -77,8 +78,7 @@ export function CourseDirectory({
       }
     }
 
-    fetch("/api/auth/me")
-      .then((r) => r.json())
+    fetchJson("/api/auth/me")
       .then((d) => {
         if (d.authenticated) setCurrentUser(d.user);
       })

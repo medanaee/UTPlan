@@ -229,12 +229,6 @@ export function UserManager({ currentUser }: UserManagerProps) {
             </div>
 
             <Select
-              items={[
-                { value: "all", label: "تمام نقش‌ها" },
-                { value: "super_admin", label: "مدیران ارشد" },
-                { value: "admin", label: "مدیران سامانه" },
-                { value: "user", label: "دانشجویان / کاربران" },
-              ]}
               value={roleFilter}
               onValueChange={(val) => val && setRoleFilter(val)}
             >
@@ -330,11 +324,6 @@ export function UserManager({ currentUser }: UserManagerProps) {
                       {/* Role Selector */}
                       <td className="py-2.5 px-3">
                         <Select
-                          items={[
-                            { value: "super_admin", label: "مدیر ارشد" },
-                            { value: "admin", label: "مدیر سامانه" },
-                            { value: "user", label: "دانشجو / کاربر" },
-                          ]}
                           value={user.role}
                           onValueChange={(val) => {
                             if (val && val !== user.role) {

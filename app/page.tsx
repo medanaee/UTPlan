@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { fetchJson } from "@/lib/api-client";
 import {
   GraduationCap,
   LogIn,
@@ -35,12 +36,9 @@ export default function Home() {
   useEffect(() => {
     async function fetchSession() {
       try {
-        const res = await fetch("/api/auth/me");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.authenticated) {
-            setUser(data.user);
-          }
+        const data = await fetchJson("/api/auth/me");
+        if (data.authenticated) {
+          setUser(data.user);
         }
       } catch (err) {
         console.error("Session fetch error:", err);
