@@ -5,11 +5,14 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const facultyId = searchParams.get("facultyId") || undefined;
+    const directOnly = searchParams.get("directOnly") !== "false";
 
-    const professors = await getProfessors(facultyId);
+    // When exporting professors for a specific faculty, only export professors directly belonging to that faculty
+    const professors = await getProfessors(facultyId, directOnly);
+    const exportProfessors = facultyId && directOnly ? professors.filter((p) => p.facultyId === facultyId) : professors;
 
     // Format clean JSON schema without internal database artifacts
-    const exportData = professors.map((p) => {
+    const exportData = exportProfessors.map((p) => {
       const fName = p.firstName || "";
       const lName = p.lastName || "";
       return {

@@ -11,7 +11,8 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const facultyId = searchParams.get("facultyId") || undefined;
-    const profs = await getProfessors(facultyId);
+    const directOnly = searchParams.get("directOnly") === "true";
+    const profs = await getProfessors(facultyId, directOnly);
     return Response.json({ success: true, data: profs });
   } catch (error) {
     console.error("Get professors error:", error);

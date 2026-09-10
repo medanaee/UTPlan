@@ -4,12 +4,17 @@ import { getEvents } from "./events";
 import { getOfferingResources } from "./resources";
 import { getEffectiveFacultyIds } from "./structure";
 
-export async function getOfferings(filter?: {
-  courseId?: string;
-  professorId?: string;
-  facultyId?: string;
-} | string): Promise<CourseOffering[]> {
+export async function getOfferings(
+  filter?: {
+    courseId?: string;
+    professorId?: string;
+    facultyId?: string;
+    directOnly?: boolean;
+  } | string,
+  directOnly: boolean = false
+): Promise<CourseOffering[]> {
   const normFilter = typeof filter === "string" ? { facultyId: filter } : filter;
+  const isDirectOnly = directOnly || Boolean(normFilter?.directOnly);
   const d1 = getD1();
   if (!d1) return [];
 
@@ -29,10 +34,15 @@ export async function getOfferings(filter?: {
       params.push(normFilter.courseId);
     }
     if (normFilter?.facultyId) {
-      const effectiveIds = await getEffectiveFacultyIds(normFilter.facultyId);
-      const placeholders = effectiveIds.map(() => "?").join(",");
-      query += ` AND c.faculty_id IN (${placeholders})`;
-      params.push(...effectiveIds);
+      if (isDirectOnly) {
+        query += ` AND c.faculty_id = ?`;
+        params.push(normFilter.facultyId);
+      } else {
+        const effectiveIds = await getEffectiveFacultyIds(normFilter.facultyId);
+        const placeholders = effectiveIds.map(() => "?").join(",");
+        query += ` AND c.faculty_id IN (${placeholders})`;
+        params.push(...effectiveIds);
+      }
     }
     query += " ORDER BY c.name ASC";
 

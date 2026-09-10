@@ -5,12 +5,18 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const facultyId = searchParams.get("facultyId") || undefined;
+    const directOnly = searchParams.get("directOnly") !== "false";
 
+    // When exporting offerings for a specific faculty, only export offerings of courses directly belonging to that faculty
     const [offerings, courses, professors] = await Promise.all([
-      getOfferings(facultyId),
+      getOfferings(facultyId ? { facultyId, directOnly } : undefined, directOnly),
       getCourses(facultyId),
       getProfessors(facultyId),
     ]);
+
+    const exportOfferings = facultyId && directOnly
+      ? offerings.filter((o) => o.facultyId === facultyId)
+      : offerings;
 
     const courseMap = new Map<string, typeof courses[0]>();
     courses.forEach((c) => courseMap.set(c.id, c));
@@ -18,7 +24,7 @@ export async function GET(request: NextRequest) {
     const profMap = new Map<string, typeof professors[0]>();
     professors.forEach((p) => profMap.set(p.id, p));
 
-    const exportData = offerings.map((o) => {
+    const exportData = exportOfferings.map((o) => {
       const crs = courseMap.get(o.courseId);
 
       // Extract all professor codes in order

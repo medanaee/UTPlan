@@ -12,8 +12,9 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const facultyId = searchParams.get("facultyId") || undefined;
+    const directOnly = searchParams.get("directOnly") === "true";
 
-    const data = await getOfferings(facultyId);
+    const data = await getOfferings(facultyId, directOnly);
     return NextResponse.json({ success: true, data });
   } catch (error) {
     console.error("GET offerings error:", error);

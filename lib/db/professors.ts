@@ -2,7 +2,10 @@ import type { Professor } from "../types";
 import { getD1 } from "./client";
 import { getEffectiveFacultyIds } from "./structure";
 
-export async function getProfessors(facultyId?: string): Promise<Professor[]> {
+export async function getProfessors(
+  facultyId?: string,
+  directOnly: boolean = false
+): Promise<Professor[]> {
   const d1 = getD1();
   if (!d1) return [];
 
@@ -15,10 +18,15 @@ export async function getProfessors(facultyId?: string): Promise<Professor[]> {
     `;
     const params: any[] = [];
     if (facultyId) {
-      const effectiveIds = await getEffectiveFacultyIds(facultyId);
-      const placeholders = effectiveIds.map(() => "?").join(",");
-      query += ` AND p.faculty_id IN (${placeholders})`;
-      params.push(...effectiveIds);
+      if (directOnly) {
+        query += ` AND p.faculty_id = ?`;
+        params.push(facultyId);
+      } else {
+        const effectiveIds = await getEffectiveFacultyIds(facultyId);
+        const placeholders = effectiveIds.map(() => "?").join(",");
+        query += ` AND p.faculty_id IN (${placeholders})`;
+        params.push(...effectiveIds);
+      }
     }
     query += " ORDER BY p.last_name ASC, p.first_name ASC";
     const { results } = await d1.prepare(query).bind(...params).all();
