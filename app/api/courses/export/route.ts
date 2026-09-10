@@ -5,10 +5,13 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const facultyId = searchParams.get("facultyId") || undefined;
+    const directOnly = searchParams.get("directOnly") !== "false";
 
-    const courses = await getCourses(facultyId);
+    // When exporting courses for a specific faculty, only export courses directly belonging to that faculty (no linked faculties)
+    const courses = await getCourses(facultyId, undefined, directOnly);
+    const exportCourses = facultyId && directOnly ? courses.filter((c) => c.facultyId === facultyId) : courses;
 
-    const exportData = courses.map((course) => {
+    const exportData = exportCourses.map((course) => {
       const prereqCodes: string[] = [];
       const coreqCodes: string[] = [];
       const recommendedCodes: string[] = [];

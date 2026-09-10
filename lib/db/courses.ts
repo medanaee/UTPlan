@@ -5,7 +5,11 @@ import { assignCourseToCategories, getEffectiveFacultyIds } from "./structure";
 // ----------------------------------------------------
 // COURSES CRUD
 // ----------------------------------------------------
-export async function getCourses(facultyId?: string, trackId?: string): Promise<Course[]> {
+export async function getCourses(
+  facultyId?: string,
+  trackId?: string,
+  directOnly: boolean = false
+): Promise<Course[]> {
   const d1 = getD1();
   if (!d1) return [];
 
@@ -18,10 +22,15 @@ export async function getCourses(facultyId?: string, trackId?: string): Promise<
     `;
     const params: any[] = [];
     if (facultyId) {
-      const effectiveIds = await getEffectiveFacultyIds(facultyId);
-      const placeholders = effectiveIds.map(() => "?").join(",");
-      query += ` AND c.faculty_id IN (${placeholders})`;
-      params.push(...effectiveIds);
+      if (directOnly) {
+        query += ` AND c.faculty_id = ?`;
+        params.push(facultyId);
+      } else {
+        const effectiveIds = await getEffectiveFacultyIds(facultyId);
+        const placeholders = effectiveIds.map(() => "?").join(",");
+        query += ` AND c.faculty_id IN (${placeholders})`;
+        params.push(...effectiveIds);
+      }
     }
     query += " ORDER BY c.name ASC";
     const { results: courseRows } = await d1.prepare(query).bind(...params).all();
@@ -240,7 +249,7 @@ export async function createCourse(data: {
   facultyId: string;
   name: string;
   code: string;
-  abbreviation?: string;
+  abbreviation?: string | null;
   units: number;
   offeredIn?: "fall" | "spring" | "both" | "none";
   description?: string;
@@ -251,7 +260,7 @@ export async function createCourse(data: {
   const id = `crs_${crypto.randomUUID().slice(0, 8)}`;
   const now = new Date().toISOString();
   const cleanCode = data.code.trim().toUpperCase();
-  const cleanAbbr = data.abbreviation?.trim() || null;
+  const cleanAbbr = data.abbreviation ? data.abbreviation.trim() || null : null;
   const units = Number(data.units) || 3;
   const offeredIn = data.offeredIn || "both";
 
@@ -291,7 +300,8 @@ export async function createCourse(data: {
 
 export async function updateCourse(
   id: string,
-  data: Partial<Pick<Course, "name" | "code" | "abbreviation" | "units" | "offeredIn" | "description" | "facultyId">> & {
+  data: Partial<Pick<Course, "name" | "code" | "units" | "offeredIn" | "description" | "facultyId">> & {
+    abbreviation?: string | null;
     trackId?: string;
     visualCategoryId?: string;
     ruleCategoryId?: string;
@@ -307,7 +317,9 @@ export async function updateCourse(
 
     const name = data.name !== undefined ? data.name.trim() : existing.name;
     const code = data.code !== undefined ? data.code.trim().toUpperCase() : existing.code;
-    const abbreviation = data.abbreviation !== undefined ? (data.abbreviation?.trim() || null) : (existing.abbreviation || null);
+    const abbreviation = data.abbreviation !== undefined
+      ? (typeof data.abbreviation === "string" ? (data.abbreviation.trim() || null) : null)
+      : (existing.abbreviation || null);
     const units = data.units !== undefined ? Number(data.units) : existing.units;
     const offeredIn = data.offeredIn !== undefined ? data.offeredIn : existing.offeredIn;
     const description = data.description !== undefined ? data.description : (existing.description || "");

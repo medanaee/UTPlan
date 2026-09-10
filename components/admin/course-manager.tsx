@@ -106,7 +106,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
         id: editingCourse.id,
         name: courseForm.name,
         code: courseForm.code,
-        abbreviation: courseForm.abbreviation?.trim() || undefined,
+        abbreviation: courseForm.abbreviation?.trim() || null,
         units: Number(courseForm.units) || 3,
         facultyId: selectedFacultyId,
         offeredIn: courseForm.offeredIn,
@@ -136,7 +136,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
       const res = await postJson("/api/courses", {
         name: courseForm.name,
         code: courseForm.code,
-        abbreviation: courseForm.abbreviation?.trim() || undefined,
+        abbreviation: courseForm.abbreviation?.trim() || null,
         units: Number(courseForm.units) || 3,
         facultyId: selectedFacultyId,
         offeredIn: courseForm.offeredIn,

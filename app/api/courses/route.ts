@@ -27,7 +27,8 @@ export async function GET(request: Request) {
       return Response.json({ success: true, data: course });
     }
 
-    const courses = await getCourses(facultyId, trackId);
+    const directOnly = searchParams.get("directOnly") === "true";
+    const courses = await getCourses(facultyId, trackId, directOnly);
     return Response.json({ success: true, data: courses });
   } catch (error) {
     console.error("Get courses error:", error);
