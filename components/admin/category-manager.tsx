@@ -51,7 +51,7 @@ const COLOR_PRESETS = [
   { name: "آبی", hex: "#3b82f6" },
   { name: "سبز", hex: "#10b981" },
   { name: "زرد", hex: "#f59e0b" },
-  { name: "قرمز", hex: "#ef4444" },
+  { name: "فیروزه ای", hex: "#44efc7" },
   { name: "بنفش", hex: "#8b5cf6" },
   { name: "صورتی", hex: "#ec4899" },
   { name: "نارنجی", hex: "#f97316" },

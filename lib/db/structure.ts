@@ -1359,14 +1359,35 @@ export async function syncVisualFromRuleCategories(trackId: string): Promise<boo
       .all();
     const assignments = (assignRows || []) as any[];
 
-    // 3. Clear all existing visual categories for this track and unassign their visual references
-    await d1.prepare("DELETE FROM visual_categories WHERE track_id = ?").bind(trackId).run();
+    // 3. Clear all existing visual categories for this track safely:
+    // a) Nullify all visual category references in assignments for this track first so they don't block deletion
     await d1
-      .prepare("UPDATE track_course_assignments SET visual_category_id = NULL WHERE track_id = ?")
+      .prepare(
+        "UPDATE track_course_assignments SET visual_category_id = NULL WHERE track_id = ? OR visual_category_id IN (SELECT id FROM visual_categories WHERE track_id = ?)"
+      )
+      .bind(trackId, trackId)
+      .run();
+
+    // b) Nullify self-referencing parent_ids in visual_categories for this track to prevent intra-table foreign key errors
+    await d1
+      .prepare("UPDATE visual_categories SET parent_id = NULL WHERE track_id = ?")
+      .bind(trackId)
+      .run();
+
+    // c) Safely delete existing visual categories for this track
+    await d1
+      .prepare("DELETE FROM visual_categories WHERE track_id = ?")
       .bind(trackId)
       .run();
 
     if (ruleCategories.length === 0) {
+      // Clean up orphan assignments that have neither category
+      await d1
+        .prepare(
+          "DELETE FROM track_course_assignments WHERE track_id = ? AND visual_category_id IS NULL AND rule_category_id IS NULL"
+        )
+        .bind(trackId)
+        .run();
       return true;
     }
 

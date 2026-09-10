@@ -2259,7 +2259,7 @@ export function ChartEditor({
                       return (
                         <div
                           key={cId}
-                          className="p-3 rounded-xl border border-border/80 bg-card flex items-center justify-between gap-3 shadow-2xs hover:border-border transition-colors"
+                          className="px-3 py-1 rounded-xl border border-border/80 bg-card flex items-center justify-between gap-3 shadow-2xs hover:border-border transition-colors"
                         >
                           <div className="space-y-0.5 min-w-0">
                             <div className="flex items-center gap-2">
@@ -2275,9 +2275,6 @@ export function ChartEditor({
                                 </span>
                               )}
                             </div>
-                            <div className="text-[11px] text-emerald-600 dark:text-emerald-400">
-                              این درس پاس‌شده تلقی شده و وابستگی سایر دروس به آن ارضا است.
-                            </div>
                           </div>
 
                           {!isReadOnly && (
@@ -2286,7 +2283,7 @@ export function ChartEditor({
                               size="sm"
                               variant="ghost"
                               onClick={() => handleUnwaiveCourse(cId)}
-                              className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 transition-colors"
+                              className="p-0 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 transition-colors"
                               title="حذف از لیست دروس گذرانده‌شده"
                             >
                               <Trash2 className="h-4 w-4" />
