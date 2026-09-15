@@ -168,12 +168,14 @@ export async function POST(request: NextRequest) {
     const now = new Date().toISOString();
 
     for (const item of rawList) {
-      if (!item.code || !item.name) {
-        errors.push(`سطر بدون کد یا نام درس رد شد: ${JSON.stringify(item)}`);
+      if (!item.name || !String(item.name).trim()) {
+        errors.push(`سطر بدون نام درس رد شد: ${JSON.stringify(item)}`);
         continue;
       }
 
-      const cleanCode = String(item.code).trim().toUpperCase();
+      const cleanCode = item.code && String(item.code).trim()
+        ? String(item.code).trim().toUpperCase()
+        : `CRS-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
       const cleanName = String(item.name).trim();
       const cleanUnits = Number(item.units) || 3;
       const rawOff = item.offeredIn ? String(item.offeredIn).trim().toLowerCase() : "";

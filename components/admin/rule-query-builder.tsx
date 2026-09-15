@@ -450,6 +450,8 @@ const RULE_TYPE_ITEMS = [
   { value: "EXACT_N_COURSES_IN_CATEGORY", label: "دقیقاً N درس از دسته قوانین" },
   { value: "MIN_TOTAL_CREDITS_BEFORE_COURSE", label: "حداقل N واحد قبل از اخذ درس خاص" },
   { value: "MANDATORY_COURSES", label: "دروس اجباری مشخص" },
+  { value: "FORBIDDEN_CATEGORY", label: "ممنوعیت تمام دروس دسته قوانین" },
+  { value: "FORBIDDEN_COURSE", label: "ممنوعیت درس خاص" },
 ];
 
 function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: RuleLeafItemProps) {
@@ -468,6 +470,12 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
               type: val as any,
               ...(val === "MAX_CREDITS_IN_CATEGORY" && !leaf.maxCredits
                 ? { maxCredits: leaf.minCredits || 10, minCredits: leaf.minCredits || 10 }
+                : {}),
+              ...(val === "FORBIDDEN_CATEGORY" && !leaf.ruleCategoryId && ruleCategories.length > 0
+                ? { ruleCategoryId: ruleCategories[0]?.id }
+                : {}),
+              ...(val === "FORBIDDEN_COURSE" && !leaf.targetCourseId && !leaf.forbiddenCourseIds?.[0] && courses.length > 0
+                ? { targetCourseId: courses[0]?.id, forbiddenCourseIds: [courses[0]?.id] }
                 : {}),
             })
           }
@@ -624,6 +632,46 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
                   })
                 }
                 placeholder="-- انتخاب یا جستجوی درس اجباری --"
+                searchPlaceholder="جستجوی نام یا کد درس..."
+                className="h-7 text-xs"
+              />
+            </div>
+          </div>
+        )}
+
+        {(leaf.type === "FORBIDDEN_CATEGORY" || (leaf.type as any) === "FORBIDDEN_ALL_COURSES_IN_CATEGORY") && (
+          <div className="flex items-center gap-1.5 whitespace-nowrap">
+            <span className="text-muted-foreground">از دسته قوانین:</span>
+            <CategoryPicker
+              categories={ruleCategories}
+              value={leaf.ruleCategoryId || null}
+              onChange={(val) => onUpdate({ ...leaf, ruleCategoryId: val || undefined })}
+              placeholder="انتخاب دسته قوانین ممنوعه..."
+              triggerClassName="min-w-[180px] text-xs"
+            />
+          </div>
+        )}
+
+        {(leaf.type === "FORBIDDEN_COURSE" || (leaf.type as any) === "FORBIDDEN_COURSES") && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-muted-foreground text-xs shrink-0">درس ممنوعه:</span>
+            <div className="min-w-50">
+              <Combobox
+                items={courses.map((c) => ({
+                  value: c.id,
+                  label: c.name,
+                  badge: c.code,
+                  keywords: [c.name, c.code],
+                }))}
+                value={leaf.targetCourseId || leaf.forbiddenCourseIds?.[0] || courses[0]?.id || ""}
+                onChange={(val) =>
+                  onUpdate({
+                    ...leaf,
+                    targetCourseId: val,
+                    forbiddenCourseIds: [val],
+                  })
+                }
+                placeholder="-- انتخاب یا جستجوی درس ممنوعه --"
                 searchPlaceholder="جستجوی نام یا کد درس..."
                 className="h-7 text-xs"
               />

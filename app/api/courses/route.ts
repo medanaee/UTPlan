@@ -54,14 +54,14 @@ export async function POST(request: Request) {
       ruleCategoryId,
     } = body;
 
-    if (!facultyId || !name || !code) {
-      return Response.json({ success: false, message: "دانشکده، نام و کد درس الزامی است." }, { status: 400 });
+    if (!facultyId || !name) {
+      return Response.json({ success: false, message: "دانشکده و نام درس الزامی است." }, { status: 400 });
     }
 
     const newCourse = await createCourse({
       facultyId,
       name,
-      code,
+      code: code ? String(code).trim() : undefined,
       abbreviation,
       units: Number(units) || 3,
       offeredIn,

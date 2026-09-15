@@ -105,7 +105,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
       const res = await putJson("/api/courses", {
         id: editingCourse.id,
         name: courseForm.name,
-        code: courseForm.code,
+        code: courseForm.code?.trim() ? courseForm.code.trim().toUpperCase() : undefined,
         abbreviation: courseForm.abbreviation?.trim() || null,
         units: Number(courseForm.units) || 3,
         facultyId: selectedFacultyId,
@@ -135,7 +135,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
     } else {
       const res = await postJson("/api/courses", {
         name: courseForm.name,
-        code: courseForm.code,
+        code: courseForm.code?.trim() ? courseForm.code.trim().toUpperCase() : undefined,
         abbreviation: courseForm.abbreviation?.trim() || null,
         units: Number(courseForm.units) || 3,
         facultyId: selectedFacultyId,
@@ -715,12 +715,14 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
               </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div className="space-y-1">
-                <Label className="text-xs font-semibold">کد یکتای درس:</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold">کد یکتای درس:</Label>
+                  <span className="text-[10px] text-muted-foreground">اختیاری - خودکار</span>
+                </div>
                 <Input
-                  required
                   placeholder="مثلاً 8101101"
                   value={courseForm.code}
-                  onChange={(e) => setCourseForm({ ...courseForm, code: e.target.value })}
+                  onChange={(e) => setCourseForm({ ...courseForm, code: e.target.value.toUpperCase() })}
                   dir="ltr"
                 />
               </div>

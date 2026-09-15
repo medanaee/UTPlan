@@ -460,6 +460,7 @@ export default function AdminDashboardPage() {
                 {selectedTrackId ? (
                   <>
                     <RuleQueryBuilder
+                      key={selectedTrackId}
                       trackId={selectedTrackId}
                       trackName={tracks.find((t) => t.id === selectedTrackId)?.name || "گرایش انتخابی"}
                       initialTree={tracks.find((t) => t.id === selectedTrackId)?.rulesTree}

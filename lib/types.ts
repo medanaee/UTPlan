@@ -302,7 +302,11 @@ export type RuleNodeType =
   | "ALL_COURSES_IN_CATEGORY"
   | "EXACT_N_COURSES_IN_CATEGORY"
   | "MIN_TOTAL_CREDITS_BEFORE_COURSE"
-  | "MANDATORY_COURSES";
+  | "MANDATORY_COURSES"
+  | "FORBIDDEN_CATEGORY"
+  | "FORBIDDEN_ALL_COURSES_IN_CATEGORY"
+  | "FORBIDDEN_COURSE"
+  | "FORBIDDEN_COURSES";
 
 export interface RuleGroupNode {
   id: string;
@@ -322,6 +326,7 @@ export interface RuleLeafNode {
   targetCourseId?: string;
   requiredCreditsBefore?: number;
   mandatoryCourseIds?: string[];
+  forbiddenCourseIds?: string[];
   description?: string;
 }
 

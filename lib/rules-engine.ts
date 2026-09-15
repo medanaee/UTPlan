@@ -314,6 +314,15 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
         if (node.type === "MAX_CREDITS_IN_CATEGORY" && node.ruleCategoryId === rcat.id) {
           maxAllowed = node.maxCredits !== undefined ? node.maxCredits : node.minCredits;
         }
+        if (
+          (node.type === "FORBIDDEN_CATEGORY" || node.type === "FORBIDDEN_ALL_COURSES_IN_CATEGORY") &&
+          node.ruleCategoryId
+        ) {
+          const targetCatIds = getCategoryAndDescendantIds(node.ruleCategoryId, ruleCategories);
+          if (targetCatIds.has(rcat.id)) {
+            maxAllowed = 0;
+          }
+        }
         if (node.children && Array.isArray(node.children)) {
           node.children.forEach(findReq);
         }
@@ -625,6 +634,89 @@ function evaluateRuleNode(
           ruleNodeId: leaf.id,
         });
       }
+      return { satisfied, issues };
+    }
+
+    case "FORBIDDEN_CATEGORY":
+    case "FORBIDDEN_ALL_COURSES_IN_CATEGORY": {
+      if (!leaf.ruleCategoryId) {
+        return { satisfied: true, issues: [] };
+      }
+      const cat = ruleCategories.find((c) => c.id === leaf.ruleCategoryId);
+      const catName = cat ? cat.name : "دسته نامشخص";
+      const targetCatIds = getCategoryAndDescendantIds(leaf.ruleCategoryId, ruleCategories);
+
+      const forbiddenTakenIds = new Set<string>();
+      for (const entry of chartCourses) {
+        const assignedCatId = courseToRuleCatMap.get(entry.courseId);
+        if (assignedCatId && targetCatIds.has(assignedCatId)) {
+          forbiddenTakenIds.add(entry.courseId);
+        }
+      }
+      for (const waivedId of waivedCourseIds) {
+        const assignedCatId = courseToRuleCatMap.get(waivedId);
+        if (assignedCatId && targetCatIds.has(assignedCatId)) {
+          forbiddenTakenIds.add(waivedId);
+        }
+      }
+
+      const satisfied = forbiddenTakenIds.size === 0;
+      if (!satisfied) {
+        for (const violatedId of forbiddenTakenIds) {
+          const c = courseMap.get(violatedId);
+          const cName = c ? c.name : violatedId;
+          const entry = chartCourses.find((e) => e.courseId === violatedId);
+          issues.push({
+            id: `issue_leaf_${leaf.id}_${violatedId}`,
+            type: "error",
+            message: `درس «${cName}» متعلق به دسته قوانین ممنوعه «${catName}» است و اخذ آن برای این گرایش مجاز نمی‌باشد.`,
+            termIndex: entry?.termIndex,
+            courseId: violatedId,
+            ruleNodeId: leaf.id,
+          });
+        }
+      }
+      return { satisfied, issues };
+    }
+
+    case "FORBIDDEN_COURSE":
+    case "FORBIDDEN_COURSES": {
+      const forbiddenIds = new Set<string>();
+      if (leaf.targetCourseId) {
+        forbiddenIds.add(leaf.targetCourseId);
+      }
+      if (leaf.forbiddenCourseIds && Array.isArray(leaf.forbiddenCourseIds)) {
+        for (const id of leaf.forbiddenCourseIds) {
+          if (id) forbiddenIds.add(id);
+        }
+      }
+
+      if (forbiddenIds.size === 0) {
+        return { satisfied: true, issues: [] };
+      }
+
+      const takenIds = new Set([
+        ...chartCourses.map((c) => c.courseId),
+        ...waivedCourseIds,
+      ]);
+
+      const violatedIds = Array.from(forbiddenIds).filter((id) => takenIds.has(id));
+      const satisfied = violatedIds.length === 0;
+
+      for (const violatedId of violatedIds) {
+        const c = courseMap.get(violatedId);
+        const cName = c ? c.name : violatedId;
+        const entry = chartCourses.find((e) => e.courseId === violatedId);
+        issues.push({
+          id: `issue_leaf_${leaf.id}_${violatedId}`,
+          type: "error",
+          message: `درس «${cName}» جزء دروس ممنوعه برای این گرایش است و امکان اخذ آن وجود ندارد.`,
+          termIndex: entry?.termIndex,
+          courseId: violatedId,
+          ruleNodeId: leaf.id,
+        });
+      }
+
       return { satisfied, issues };
     }
 

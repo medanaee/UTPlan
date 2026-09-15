@@ -248,7 +248,7 @@ export async function getCourseById(id: string): Promise<Course | null> {
 export async function createCourse(data: {
   facultyId: string;
   name: string;
-  code: string;
+  code?: string;
   abbreviation?: string | null;
   units: number;
   offeredIn?: "fall" | "spring" | "both" | "none";
@@ -259,7 +259,9 @@ export async function createCourse(data: {
 }): Promise<Course> {
   const id = `crs_${crypto.randomUUID().slice(0, 8)}`;
   const now = new Date().toISOString();
-  const cleanCode = data.code.trim().toUpperCase();
+  const cleanCode = data.code?.trim()
+    ? data.code.trim().toUpperCase()
+    : `CRS-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
   const cleanAbbr = data.abbreviation ? data.abbreviation.trim() || null : null;
   const units = Number(data.units) || 3;
   const offeredIn = data.offeredIn || "both";
@@ -316,7 +318,9 @@ export async function updateCourse(
     if (!existing) return null;
 
     const name = data.name !== undefined ? data.name.trim() : existing.name;
-    const code = data.code !== undefined ? data.code.trim().toUpperCase() : existing.code;
+    const code = data.code !== undefined
+      ? (data.code.trim() ? data.code.trim().toUpperCase() : existing.code)
+      : existing.code;
     const abbreviation = data.abbreviation !== undefined
       ? (typeof data.abbreviation === "string" ? (data.abbreviation.trim() || null) : null)
       : (existing.abbreviation || null);
