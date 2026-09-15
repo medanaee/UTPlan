@@ -87,7 +87,7 @@ export async function getCourses(
         facultyName: c.faculty_name || undefined,
         name: c.name,
         code: c.code,
-        degreeLevel: (c.degree_level as DegreeLevel) || "undergraduate",
+        degreeLevel: (c.degree_level as DegreeLevel) || "undergrad",
         abbreviation: c.abbreviation || undefined,
         units: Number(c.units) || 3,
         offeredIn: c.offered_in || "both",
@@ -174,7 +174,7 @@ export async function getCourseById(id: string): Promise<Course | null> {
       facultyName: (c as any).faculty_name || undefined,
       name: (c as any).name,
       code: (c as any).code,
-      degreeLevel: ((c as any).degree_level as DegreeLevel) || "undergraduate",
+      degreeLevel: ((c as any).degree_level as DegreeLevel) || "undergrad",
       abbreviation: (c as any).abbreviation || undefined,
       units: Number((c as any).units) || 3,
       offeredIn: (c as any).offered_in || "both",
@@ -268,7 +268,7 @@ export async function createCourse(data: {
   const cleanAbbr = data.abbreviation ? data.abbreviation.trim() || null : null;
   const units = Number(data.units) || 3;
   const offeredIn = data.offeredIn || "both";
-  const degreeLevel: DegreeLevel = data.degreeLevel === "master" ? "master" : "undergraduate";
+  const degreeLevel: DegreeLevel = data.degreeLevel === "master" ? "master" : "undergrad";
 
   const d1 = getD1();
   if (!d1) throw new Error("پایگاه‌داده در دسترس نیست.");
@@ -327,8 +327,8 @@ export async function updateCourse(
       ? (data.code.trim() ? data.code.trim().toUpperCase() : existing.code)
       : existing.code;
     const degreeLevel: DegreeLevel = data.degreeLevel !== undefined
-      ? (data.degreeLevel === "master" ? "master" : "undergraduate")
-      : (existing.degreeLevel || "undergraduate");
+      ? (data.degreeLevel === "master" ? "master" : "undergrad")
+      : (existing.degreeLevel || "undergrad");
     const abbreviation = data.abbreviation !== undefined
       ? (typeof data.abbreviation === "string" ? (data.abbreviation.trim() || null) : null)
       : (existing.abbreviation || null);

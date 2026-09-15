@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
         code: course.code,
         abbreviation: course.abbreviation || undefined,
         name: course.name,
-        degreeLevel: course.degreeLevel || "undergraduate",
+        degreeLevel: course.degreeLevel || "undergrad",
         units: course.units || 3,
         offeredIn: course.offeredIn || "both",
         description: course.description || "",

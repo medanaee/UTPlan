@@ -89,7 +89,7 @@ export interface RuleCategory {
 }
 
 export type CourseTermOffering = "fall" | "spring" | "both" | "none";
-export type DegreeLevel = "undergraduate" | "master";
+export type DegreeLevel = "undergrad" | "master";
 
 export interface Course {
   id: string;

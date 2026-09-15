@@ -1,0 +1,942 @@
+[
+	{
+		"code": "CRS-XAJI0Y",
+		"name": "بینایی ماشین",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "both",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-6DPBHS",
+		"name": "یادگیری ماشین",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "both",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-AHXTHV",
+		"name": "سیستمهای کنترل تحمل پذیر خطا",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "both",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-3A3ZMF",
+		"name": "نانو بیوالکترونیک",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "both",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-8MDD4V",
+		"name": "فناوری عایق ها و فشارقوی",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "both",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-3W5UZB",
+		"name": "سیستمهای الکترومغناطیسی حرکت خطی",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-IKCIDK",
+		"name": "توزیع انرژی الکتریکی",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-WNNHJ7",
+		"name": "حفاظت پیشرفته سیستمهای قدرت",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-XVG0FN",
+		"name": "اتوماسیون ، دیسپاچینگ و SCADA در قدرت",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-9XUY41",
+		"name": "کنترل توان راکتیو در سیستمهای قدرت",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-IBLJH7",
+		"name": "طراحی ماشینهای الکتریکی دوار کوچک",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-5LXO6Q",
+		"name": "کاربرد الکترونیک قدرت در ریز شبکه ها و شبکه های توزیع فعال",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-JIUJV6",
+		"name": "ماشینهای الکتریکی مخصوص پیشرفته",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-OH9SDB",
+		"name": "مبدلهای الکتریکی توان بالا",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-DW2PCN",
+		"name": "نظریه بازیها",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-9T84AZ",
+		"name": "مدلسازی سیستمهای بیولوژیکی",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-YTJXEP",
+		"name": "سیستمهای فازی (مباحث ویژه در کنترل ۱)",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-Q85JSG",
+		"name": "تکنیک های کارآمد در کنترل",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-65KXVF",
+		"name": "سیستمهای کنترل شبکه (مباحث ویژه در کاربردهای کنترل ۲)",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-1T2TAL",
+		"name": "حسابان گسسته در کنترل و پردازش داده",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-A753LC",
+		"name": "فلسفه تکنولوژی",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-58DRC1",
+		"name": "مخابرات سلولی",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-1ERTJ5",
+		"name": "مخابرات پیشرفته",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-PHT0HL",
+		"name": "آشکارسازی و تخمین",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-9XPSEI",
+		"name": "تئوری اطلاعات",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-MVIHCW",
+		"name": "جداسازی کور منابع",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-I64CIY",
+		"name": "دایادهای گرین",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-HE7UR2",
+		"name": "آنتن ۲",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-3GDPPQ",
+		"name": "نور فوریه",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-0Y9DOM",
+		"name": "مبانی فوتونیک",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-5IGQPK",
+		"name": "فیبر نوری",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-I7P5TB",
+		"name": "ریز موج ۲ (مایکروویو ۲)",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-94874F",
+		"name": "سازگاری الکترو مغناطیسی EMC",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-RHOCN9",
+		"name": "ابزار دقیق پیشرفته الکترونیکی",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-J2QP89",
+		"name": "نانو الکترونیک (نانو تکنولوژی)",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-UZFK8U",
+		"name": "مبدلهای داده",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-T0CVS4",
+		"name": "طراحی مدارهای مجتمع دیجیتال از RTL تا GDSII",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-F8CGVY",
+		"name": "رابط های سریال پرسرعت",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-IE6IVW",
+		"name": "افزاره های نیمه رسانا",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-PVS7HZ",
+		"name": "فیزیک حالت جامد پیشرفته",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-IOYKL1",
+		"name": "سلول خورشیدی",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-CQ99CH",
+		"name": "افزاره های ذخیره انرژی ۲",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-J755NF",
+		"name": "مباحث ویژه در پایگاه داده ها",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-4ZW9XA",
+		"name": "شبکه های پیچیده (مباحث ویژه در مهندسی پزشکی ۱)",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-3KX7EE",
+		"name": "سیستمهای تصویر برداری کارکردی",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-DTJVZH",
+		"name": "اولتراسوند",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-WJR64D",
+		"name": "روش تحقیق ۱",
+		"abbreviation": "",
+		"units": 1,
+		"offeredIn": "spring",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-PJA1WJ",
+		"name": "محاسبات درون حافظه",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-0TPAC5",
+		"name": "بیوالکتروشیمی (مباحث ویژه در الکترونیک ۱)",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-6T4UFE",
+		"name": "مکانیک کوانتومی",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-L6246H",
+		"name": "مشخصه یابی مواد و افزاره های نیمه رسانا",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-ID25OW",
+		"name": "مدار مجتمع توان پایین",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-F75935",
+		"name": "مدار مجتمع فرکانس رادیوئی (RFIC)",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-A0L725",
+		"name": "مدارها و سیستمهای مجتمع زیستی",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-3J2D54",
+		"name": "مدار مجتمع فعال خطی",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-I3QK2I",
+		"name": "مدار مجتمع فعال خطی پیشرفته",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-AGL58K",
+		"name": "تئوری تکنولوژی ساخت ادوات نیمه هادی",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-XO9T7E",
+		"name": "افزاره های ذخیره انرژی ۱",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-8G8JDP",
+		"name": "روشهای تجربی در بیوالکترونیک سرطان (مباحث ویژه در الکترونیک ۲)",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-0LVSNU",
+		"name": "حسگرهای نیمه هادی",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-JZA7TZ",
+		"name": "سیستمهای کنترل حرکت پیشرفته",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-0YNCXL",
+		"name": "تئوری جامع و تحلیل ماشینهای الکتریکی",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-L4ZKLO",
+		"name": "حفاظت دیجیتال سیستمهای قدرت",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-OKEP7Y",
+		"name": "الکترونیک قدرت ۲",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-6WKTAK",
+		"name": "الکترونیک قدرت ۱",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-PUXQPH",
+		"name": "دینامیک سیستمهای قدرت ۱",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-R62GDS",
+		"name": "فشارقوی پیشرفته",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-WM31YI",
+		"name": "بهره برداری از سیستمهای قدرت",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-HAIR4C",
+		"name": "خودروهای الکتریکی و ترکیبی",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-OWGZRI",
+		"name": "بررسی حالات گذرا در سیستمهای قدرت",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-XA11DP",
+		"name": "طراحی ماشینهای الکتریکی بزرگ",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-G8SBI4",
+		"name": "فرآیندهای اتفاقی",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-Q2Y9V8",
+		"name": "پردازش آرایه ای",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-6WZS3T",
+		"name": "تئوری کدینگ",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-60RJIW",
+		"name": "سیستمهای رادار",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-1SWJCK",
+		"name": "بیوالکترو مغناطیس",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-JLTEIY",
+		"name": "روشهای عددی در الکترومغناطیس",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-ZCOTOH",
+		"name": "ریاضی مهندسی پیشرفته",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-P6VZ41",
+		"name": "تئوری الکترومغناطیس (الکترومغناطیس پیشرفته)",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-NAM148",
+		"name": "فوتونیک مجتمع (مباحث ویژه در مخابرات)",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-P0TVHH",
+		"name": "اصول کنترل مدرن",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-PBMYOF",
+		"name": "سیستمهای غیر خطی",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-QEWAOU",
+		"name": "کنترل بهینه",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-AXEQBN",
+		"name": "بهینه سازی و یادگیری توزیع شده",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-HL1N13",
+		"name": "سیستمهای دینامیک در علوم اعصاب",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-JCAT9M",
+		"name": "ابزار دقیق پیشرفته",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-X2X18H",
+		"name": "هوش مصنوعی پیشرفته در کنترل و رباتیک (مباحث ویژه در کنترل ۱)",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-AFEYUH",
+		"name": "بازیابی هوشمند اطلاعات",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-Z1GV0E",
+		"name": "سیستمهای چند عاملی پیشرفته",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-38DALY",
+		"name": "پردازش سیگنالهای بیولوژیکی",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-8OZCYW",
+		"name": "ابزار دقیق پزشکی (بیواینسترومنت)",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-D14VE9",
+		"name": "سیستمهای تصویرگر پزشکی",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-2MPNSM",
+		"name": "آشوب و کاربردهای آن در مهندسی پزشکی",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	},
+	{
+		"code": "CRS-43D8W3",
+		"name": "MRI",
+		"abbreviation": "",
+		"units": 3,
+		"offeredIn": "fall",
+		"description": "",
+		"prerequisites": [],
+		"corequisites": []
+	}
+]

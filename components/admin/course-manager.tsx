@@ -68,7 +68,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
     code: "",
     abbreviation: "",
     units: 3,
-    degreeLevel: "undergraduate" as DegreeLevel,
+    degreeLevel: "undergrad" as DegreeLevel,
     facultyId: "",
     offeredIn: "both" as "fall" | "spring" | "both" | "none",
     visualCategoryId: "",
@@ -123,7 +123,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
           code: "",
           abbreviation: "",
           units: 3,
-          degreeLevel: "undergraduate",
+          degreeLevel: "undergrad",
           facultyId: selectedFacultyId,
           offeredIn: "both",
           visualCategoryId: "",
@@ -154,7 +154,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
           code: "",
           abbreviation: "",
           units: 3,
-          degreeLevel: "undergraduate",
+          degreeLevel: "undergrad",
           facultyId: selectedFacultyId,
           offeredIn: "both",
           visualCategoryId: "",
@@ -349,7 +349,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                   code: "",
                   abbreviation: "",
                   units: 3,
-                  degreeLevel: "undergraduate",
+                  degreeLevel: "undergrad",
                   facultyId: selectedFacultyId,
                   offeredIn: "both",
                   visualCategoryId: "",
@@ -508,7 +508,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                                 code: course.code,
                                 abbreviation: course.abbreviation || "",
                                 units: course.units,
-                                degreeLevel: course.degreeLevel || "undergraduate",
+                                degreeLevel: course.degreeLevel || "undergrad",
                                 facultyId: course.facultyId || selectedFacultyId,
                                 offeredIn: course.offeredIn || "both",
                                 visualCategoryId: "",
@@ -770,7 +770,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      <SelectItem value="undergraduate">کارشناسی</SelectItem>
+                      <SelectItem value="undergrad">کارشناسی</SelectItem>
                       <SelectItem value="master">کارشناسی ارشد</SelectItem>
                     </SelectGroup>
                   </SelectContent>

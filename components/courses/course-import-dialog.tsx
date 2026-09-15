@@ -44,13 +44,20 @@ const COURSE_SCHEMA_DESCRIPTOR = {
     properties: {
       code: {
         type: "string",
-        description: "کد رسمی یکتای درس (الزامی)",
+        description: "کد رسمی یکتای درس (اختیاری، در صورت خالی بودن خودکار تولید می‌شود)",
         example: "8101234"
       },
       name: {
         type: "string",
         description: "نام کامل درس (الزامی)",
         example: "برنامه‌نویسی پیشرفته"
+      },
+      degreeLevel: {
+        type: "string",
+        enum: ["undergrad", "master"],
+        description: "مقطع تحصیلی درس: 'undergrad' (کارشناسی) یا 'master' (کارشناسی ارشد). (اختیاری، پیش‌فرض: undergrad)",
+        default: "undergrad",
+        example: "undergrad"
       },
       abbreviation: {
         type: "string",
@@ -94,13 +101,14 @@ const COURSE_SCHEMA_DESCRIPTOR = {
         example: ["8101101"]
       }
     },
-    required: ["code", "name"]
+    required: ["name"]
   },
   examples: [
     [
       {
         code: "8101101",
         name: "مبانی کامپیوتر و برنامه‌سازی",
+        degreeLevel: "undergrad",
         abbreviation: "BP",
         units: 3,
         offeredIn: "both",
@@ -111,6 +119,7 @@ const COURSE_SCHEMA_DESCRIPTOR = {
       {
         code: "8101234",
         name: "برنامه‌نویسی پیشرفته",
+        degreeLevel: "undergrad",
         abbreviation: "AP",
         units: 3,
         offeredIn: "both",
@@ -121,11 +130,12 @@ const COURSE_SCHEMA_DESCRIPTOR = {
       },
       {
         code: "8101999",
-        name: "سمینار تخصصی",
+        name: "سمینار تخصصی کارشناسی ارشد",
+        degreeLevel: "master",
         abbreviation: "SEM",
         units: 2,
         offeredIn: "none",
-        description: "درس غیرفعال در ترم جاری.",
+        description: "درس دوره ارشد غیرفعال در ترم جاری.",
         prerequisites: [],
         corequisites: [],
         recommendedPrerequisites: ["8101234"]
@@ -364,7 +374,7 @@ export function CourseImportDialog({
             <CodeEditor
               value={jsonText}
               onChange={handleTextChange}
-              placeholder='[ { "code": "8101234", "name": "برنامه‌نویسی پیشرفته", "units": 3, "prerequisites": ["8101101"] } ]'
+              placeholder='[ { "code": "8101234", "name": "برنامه‌نویسی پیشرفته", "degreeLevel": "undergrad", "units": 3, "prerequisites": ["8101101"] } ]'
               maxHeight="18rem"
               minHeight="10rem"
               title="ویرایشگر ساختار JSON دروس"
@@ -388,26 +398,44 @@ export function CourseImportDialog({
               </span>
 
               <div className="max-h-36 overflow-y-auto space-y-1.5 text-xs pr-1">
-                {parsedData.slice(0, 10).map((c, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between p-2 rounded-xl bg-card border border-border/70 text-xs"
-                  >
-                    <div className="flex items-center gap-2 truncate">
-                      <Badge variant="outline" className="text-[10px]">
-                        {c.code || "بدون کد"}
-                      </Badge>
-                      <span className="font-semibold truncate text-foreground">{c.name || "بدون نام"}</span>
-                      <span className="text-[11px] text-muted-foreground">({c.units || 3} واحد)</span>
-                    </div>
+                {parsedData.slice(0, 10).map((c, idx) => {
+                  const isMaster =
+                    c.degreeLevel === "master" ||
+                    c.degree_level === "master" ||
+                    String(c.degreeLevel || c.degree_level || c.مقطع || "").toLowerCase().includes("ارشد") ||
+                    String(c.degreeLevel || c.degree_level || c.مقطع || "").toLowerCase().includes("master");
 
-                    {c.prerequisites && c.prerequisites.length > 0 && (
-                      <span className="text-[10px] text-muted-foreground shrink-0">
-                        {c.prerequisites.length} پیش‌نیاز
-                      </span>
-                    )}
-                  </div>
-                ))}
+                  return (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between p-2 rounded-xl bg-card border border-border/70 text-xs"
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <Badge variant="outline" className="text-[10px]">
+                          {c.code || "کد خودکار"}
+                        </Badge>
+                        <span className="font-semibold truncate text-foreground">{c.name || "بدون نام"}</span>
+                        <Badge
+                          variant="outline"
+                          className={`text-[9px] px-1.5 py-0 ${
+                            isMaster
+                              ? "bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/30"
+                              : "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30"
+                          }`}
+                        >
+                          {isMaster ? "ارشد" : "کارشناسی"}
+                        </Badge>
+                        <span className="text-[11px] text-muted-foreground">({c.units || 3} واحد)</span>
+                      </div>
+
+                      {c.prerequisites && c.prerequisites.length > 0 && (
+                        <span className="text-[10px] text-muted-foreground shrink-0">
+                          {c.prerequisites.length} پیش‌نیاز
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
                 {parsedData.length > 10 && (
                   <span className="text-[11px] text-muted-foreground block text-center pt-1">
                     ... و {parsedData.length - 10} درس دیگر

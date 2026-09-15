@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
       const cleanAbbr = item.abbreviation ? String(item.abbreviation).trim() : null;
       const cleanDesc = item.description || "";
       const rawDegree = String(item.degreeLevel || item.degree_level || item.مقطع || "").trim().toLowerCase();
-      const cleanDegree = rawDegree.includes("ارشد") || rawDegree.includes("master") ? "master" : "undergraduate";
+      const cleanDegree = rawDegree.includes("ارشد") || rawDegree.includes("master") ? "master" : "undergrad";
 
       const existingFacultyCourse = facultyCourseCodeMap.get(cleanCode);
 

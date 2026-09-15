@@ -100,7 +100,7 @@ export function CategoryCourseAssignDialog({
     let matched = searchCourses(allCourses, search);
 
     if (filterDegree !== "all") {
-      matched = matched.filter((c) => (c.degreeLevel || "undergraduate") === filterDegree);
+      matched = matched.filter((c) => (c.degreeLevel || "undergrad") === filterDegree);
     }
     if (filterUnits !== "all") {
       if (filterUnits === "5+") {
@@ -310,7 +310,7 @@ export function CategoryCourseAssignDialog({
               <SelectContent>
                 <SelectGroup>
                   <SelectItem value="all">همه مقاطع</SelectItem>
-                  <SelectItem value="undergraduate">کارشناسی</SelectItem>
+                  <SelectItem value="undergrad">کارشناسی</SelectItem>
                   <SelectItem value="master">کارشناسی ارشد</SelectItem>
                 </SelectGroup>
               </SelectContent>
