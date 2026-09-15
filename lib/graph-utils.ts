@@ -9,50 +9,86 @@ export interface Edge {
 }
 
 /**
- * Check if adding a new prerequisite edge (courseId -> requiredCourseId) would create a cycle.
- * In a prerequisite relation: `courseId` depends on `requiredCourseId`.
- * Dependency direction: `courseId` -> `requiredCourseId`.
- * A cycle occurs if there is already a path from `requiredCourseId` to `courseId`.
+ * Check if adding a new prerequisite/corequisite edge (courseId -> requiredCourseId) would create an invalid cycle.
+ * In a relation: `courseId` depends on `requiredCourseId`.
+ * - "prerequisite": strict temporal dependency (requiredCourse must be passed strictly before course: termP < termC).
+ * - "corequisite": simultaneous or earlier dependency (termP <= termC).
+ *
+ * An invalid cycle is one that contains at least one "prerequisite" relation,
+ * because strict temporal ordering along a cycle (e.g. termA < termB <= termA) is impossible.
+ * In contrast, pure "corequisite" cycles (termA <= termB <= termA => termA == termB) are valid
+ * mutual corequisites and represent courses that must be taken concurrently in the same semester.
  */
 export function wouldCreatePrerequisiteCycle(
-  existingPrerequisites: { courseId: string; requiredCourseId: string }[],
-  newPrerequisite: { courseId: string; requiredCourseId: string }
+  existingPrerequisites: { courseId: string; requiredCourseId: string; type?: string }[],
+  newPrerequisite: { courseId: string; requiredCourseId: string; type?: string }
 ): boolean {
-  const { courseId, requiredCourseId } = newPrerequisite;
+  const { courseId: u, requiredCourseId: v, type: newType } = newPrerequisite;
 
-  // Self-dependency is an immediate cycle
-  if (courseId === requiredCourseId) {
+  // Self-dependency is an immediate invalid cycle
+  if (u === v) {
     return true;
   }
 
-  // Build adjacency list where edge is A -> B (A requires B)
-  const adj = new Map<string, string[]>();
+  // Recommended relations are advisory only and never cause a blocking hard cycle
+  if (newType === "recommended") {
+    return false;
+  }
+
+  const isStrict = (type?: string) => type !== "corequisite" && type !== "recommended";
+  const newIsStrict = isStrict(newType);
+
+  // Build adjacency list: node -> array of { to: string, isStrict: boolean }
+  const adj = new Map<string, { to: string; isStrict: boolean }[]>();
 
   for (const edge of existingPrerequisites) {
+    // Ignore advisory recommended relations for hard cycle enforcement
+    if (edge.type === "recommended") continue;
+
     if (!adj.has(edge.courseId)) {
       adj.set(edge.courseId, []);
     }
-    adj.get(edge.courseId)!.push(edge.requiredCourseId);
+    adj.get(edge.courseId)!.push({
+      to: edge.requiredCourseId,
+      isStrict: isStrict(edge.type),
+    });
   }
 
-  // Check if we can already reach `courseId` starting from `requiredCourseId`
-  const visited = new Set<string>();
-  const queue = [requiredCourseId];
+  // We want to detect if there is a path from `v` to `u` such that the combined cycle
+  // (the path from v to u plus the new edge u -> v) contains at least one strict prerequisite edge.
+  const visitedStrict = new Set<string>();
+  const visitedNonStrict = new Set<string>();
+
+  const queue: { node: string; hasStrict: boolean }[] = [
+    { node: v, hasStrict: newIsStrict },
+  ];
 
   while (queue.length > 0) {
-    const current = queue.shift()!;
-    if (current === courseId) {
-      return true; // Found a path back to courseId -> would create a cycle!
+    const { node: curr, hasStrict } = queue.shift()!;
+
+    // If we reached `u` with at least one strict edge on the cycle, it is an impossible cycle
+    if (curr === u && hasStrict) {
+      return true;
     }
 
-    if (!visited.has(current)) {
-      visited.add(current);
-      const neighbors = adj.get(current) || [];
-      for (const neighbor of neighbors) {
-        if (!visited.has(neighbor)) {
-          queue.push(neighbor);
-        }
-      }
+    if (hasStrict) {
+      if (visitedStrict.has(curr)) continue;
+      visitedStrict.add(curr);
+    } else {
+      if (visitedNonStrict.has(curr)) continue;
+      visitedNonStrict.add(curr);
+    }
+
+    const edges = adj.get(curr) || [];
+    for (const edge of edges) {
+      const nextHasStrict = hasStrict || edge.isStrict;
+      if (nextHasStrict && visitedStrict.has(edge.to)) continue;
+      if (!nextHasStrict && visitedNonStrict.has(edge.to)) continue;
+
+      queue.push({
+        node: edge.to,
+        hasStrict: nextHasStrict,
+      });
     }
   }
 

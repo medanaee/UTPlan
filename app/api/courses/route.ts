@@ -100,6 +100,7 @@ export async function PUT(request: Request) {
       const causesCycle = wouldCreatePrerequisiteCycle(existingPrereqs, {
         courseId,
         requiredCourseId,
+        type: type || "prerequisite",
       });
 
       if (causesCycle) {

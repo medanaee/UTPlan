@@ -270,6 +270,7 @@ export async function POST(request: NextRequest) {
           const causesCycle = wouldCreatePrerequisiteCycle(allPrereqs, {
             courseId: sourceCourseId,
             requiredCourseId: targetCourseId,
+            type: "prerequisite",
           });
 
           if (causesCycle) {
