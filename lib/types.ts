@@ -89,6 +89,7 @@ export interface RuleCategory {
 }
 
 export type CourseTermOffering = "fall" | "spring" | "both" | "none";
+export type DegreeLevel = "undergraduate" | "master";
 
 export interface Course {
   id: string;
@@ -96,6 +97,7 @@ export interface Course {
   facultyName?: string;
   name: string;
   code: string;
+  degreeLevel?: DegreeLevel;
   abbreviation?: string;
   units: number;
   offeredIn: CourseTermOffering;

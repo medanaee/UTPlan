@@ -1,4 +1,4 @@
-import type { Course, PrerequisiteRelation, PrerequisiteType } from "../types";
+import type { Course, DegreeLevel, PrerequisiteRelation, PrerequisiteType } from "../types";
 import { getD1 } from "./client";
 import { assignCourseToCategories, getEffectiveFacultyIds } from "./structure";
 
@@ -87,6 +87,7 @@ export async function getCourses(
         facultyName: c.faculty_name || undefined,
         name: c.name,
         code: c.code,
+        degreeLevel: (c.degree_level as DegreeLevel) || "undergraduate",
         abbreviation: c.abbreviation || undefined,
         units: Number(c.units) || 3,
         offeredIn: c.offered_in || "both",
@@ -173,6 +174,7 @@ export async function getCourseById(id: string): Promise<Course | null> {
       facultyName: (c as any).faculty_name || undefined,
       name: (c as any).name,
       code: (c as any).code,
+      degreeLevel: ((c as any).degree_level as DegreeLevel) || "undergraduate",
       abbreviation: (c as any).abbreviation || undefined,
       units: Number((c as any).units) || 3,
       offeredIn: (c as any).offered_in || "both",
@@ -249,6 +251,7 @@ export async function createCourse(data: {
   facultyId: string;
   name: string;
   code?: string;
+  degreeLevel?: DegreeLevel;
   abbreviation?: string | null;
   units: number;
   offeredIn?: "fall" | "spring" | "both" | "none";
@@ -265,6 +268,7 @@ export async function createCourse(data: {
   const cleanAbbr = data.abbreviation ? data.abbreviation.trim() || null : null;
   const units = Number(data.units) || 3;
   const offeredIn = data.offeredIn || "both";
+  const degreeLevel: DegreeLevel = data.degreeLevel === "master" ? "master" : "undergraduate";
 
   const d1 = getD1();
   if (!d1) throw new Error("پایگاه‌داده در دسترس نیست.");
@@ -272,10 +276,10 @@ export async function createCourse(data: {
   try {
     await d1
       .prepare(
-        `INSERT INTO courses (id, faculty_id, name, code, abbreviation, units, offered_in, description, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO courses (id, faculty_id, name, code, degree_level, abbreviation, units, offered_in, description, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
-      .bind(id, data.facultyId, data.name.trim(), cleanCode, cleanAbbr, units, offeredIn, data.description || "", now)
+      .bind(id, data.facultyId, data.name.trim(), cleanCode, degreeLevel, cleanAbbr, units, offeredIn, data.description || "", now)
       .run();
 
     if (data.trackId) {
@@ -291,6 +295,7 @@ export async function createCourse(data: {
     facultyId: data.facultyId,
     name: data.name.trim(),
     code: cleanCode,
+    degreeLevel,
     abbreviation: cleanAbbr || undefined,
     units,
     offeredIn,
@@ -302,7 +307,7 @@ export async function createCourse(data: {
 
 export async function updateCourse(
   id: string,
-  data: Partial<Pick<Course, "name" | "code" | "units" | "offeredIn" | "description" | "facultyId">> & {
+  data: Partial<Pick<Course, "name" | "code" | "degreeLevel" | "units" | "offeredIn" | "description" | "facultyId">> & {
     abbreviation?: string | null;
     trackId?: string;
     visualCategoryId?: string;
@@ -321,6 +326,9 @@ export async function updateCourse(
     const code = data.code !== undefined
       ? (data.code.trim() ? data.code.trim().toUpperCase() : existing.code)
       : existing.code;
+    const degreeLevel: DegreeLevel = data.degreeLevel !== undefined
+      ? (data.degreeLevel === "master" ? "master" : "undergraduate")
+      : (existing.degreeLevel || "undergraduate");
     const abbreviation = data.abbreviation !== undefined
       ? (typeof data.abbreviation === "string" ? (data.abbreviation.trim() || null) : null)
       : (existing.abbreviation || null);
@@ -332,13 +340,14 @@ export async function updateCourse(
     const sets: string[] = [
       "name = ?",
       "code = ?",
+      "degree_level = ?",
       "abbreviation = ?",
       "units = ?",
       "offered_in = ?",
       "description = ?",
       "faculty_id = ?",
     ];
-    const params: any[] = [name, code, abbreviation, units, offeredIn, description, facultyId];
+    const params: any[] = [name, code, degreeLevel, abbreviation, units, offeredIn, description, facultyId];
 
     if (data.deletedAt !== undefined) {
       sets.push("deleted_at = ?");

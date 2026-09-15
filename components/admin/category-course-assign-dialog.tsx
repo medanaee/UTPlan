@@ -8,6 +8,14 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +30,8 @@ import {
   Scale,
   Link2,
   CheckCircle2,
+  Filter,
+  RotateCcw,
 } from "lucide-react";
 import type { Course } from "@/lib/types";
 import { searchCourses } from "@/lib/search/persian-search";
@@ -65,6 +75,9 @@ export function CategoryCourseAssignDialog({
 }: CategoryCourseAssignDialogProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
+  const [filterDegree, setFilterDegree] = useState<string>("all");
+  const [filterUnits, setFilterUnits] = useState<string>("all");
+  const [filterOffered, setFilterOffered] = useState<string>("all");
   const [isSaving, setIsSaving] = useState(false);
   const lastClickedIdRef = useRef<string | null>(null);
   const lastActionRef = useRef<"select" | "deselect">("select");
@@ -74,6 +87,9 @@ export function CategoryCourseAssignDialog({
     if (open) {
       setSelectedIds(new Set(currentAssignedCourseIds));
       setSearch("");
+      setFilterDegree("all");
+      setFilterUnits("all");
+      setFilterOffered("all");
       lastClickedIdRef.current = null;
       lastActionRef.current = "select";
       lastShiftRef.current = false;
@@ -81,7 +97,22 @@ export function CategoryCourseAssignDialog({
   }, [open, currentAssignedCourseIds]);
 
   const { filteredCourses, otherCategoryCount } = useMemo(() => {
-    const matched = searchCourses(allCourses, search);
+    let matched = searchCourses(allCourses, search);
+
+    if (filterDegree !== "all") {
+      matched = matched.filter((c) => (c.degreeLevel || "undergraduate") === filterDegree);
+    }
+    if (filterUnits !== "all") {
+      if (filterUnits === "5+") {
+        matched = matched.filter((c) => (c.units || 3) >= 5);
+      } else {
+        const uNum = Number(filterUnits);
+        matched = matched.filter((c) => (c.units || 3) === uNum);
+      }
+    }
+    if (filterOffered !== "all") {
+      matched = matched.filter((c) => (c.offeredIn || "both") === filterOffered);
+    }
 
     if (!otherCategoryAssignments || Object.keys(otherCategoryAssignments).length === 0) {
       return { filteredCourses: matched, otherCategoryCount: 0 };
@@ -102,7 +133,7 @@ export function CategoryCourseAssignDialog({
       filteredCourses: [...normalCourses, ...otherCatCourses],
       otherCategoryCount: otherCatCourses.length,
     };
-  }, [allCourses, search, otherCategoryAssignments]);
+  }, [allCourses, search, filterDegree, filterUnits, filterOffered, otherCategoryAssignments]);
 
   const handleCourseToggle = (courseId: string, index: number, isShift = false) => {
     if (isShift) {
@@ -265,6 +296,75 @@ export function CategoryCourseAssignDialog({
             </div>
           </div>
 
+          {/* Filters Row: Degree Level, Units, Offering Semester */}
+          <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-border/50">
+            <div className="flex items-center gap-1 text-[11px] text-muted-foreground shrink-0">
+              <Filter className="h-3 w-3" />
+              <span>فیلترها:</span>
+            </div>
+
+            <Select value={filterDegree} onValueChange={(val) => val && setFilterDegree(val)}>
+              <SelectTrigger className="h-7 text-[11px] w-[110px] bg-muted/30">
+                <SelectValue placeholder="مقطع" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="all">همه مقاطع</SelectItem>
+                  <SelectItem value="undergraduate">کارشناسی</SelectItem>
+                  <SelectItem value="master">کارشناسی ارشد</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+
+            <Select value={filterUnits} onValueChange={(val) => val && setFilterUnits(val)}>
+              <SelectTrigger className="h-7 text-[11px] w-[105px] bg-muted/30">
+                <SelectValue placeholder="واحد" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="all">همه واحدها</SelectItem>
+                  <SelectItem value="1">۱ واحد</SelectItem>
+                  <SelectItem value="2">۲ واحد</SelectItem>
+                  <SelectItem value="3">۳ واحد</SelectItem>
+                  <SelectItem value="4">۴ واحد</SelectItem>
+                  <SelectItem value="5+">۵ واحد و بیشتر</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+
+            <Select value={filterOffered} onValueChange={(val) => val && setFilterOffered(val)}>
+              <SelectTrigger className="h-7 text-[11px] w-[125px] bg-muted/30">
+                <SelectValue placeholder="نیمسال ارائه" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="all">همه نیمسال‌ها</SelectItem>
+                  <SelectItem value="both">هردو ترم</SelectItem>
+                  <SelectItem value="fall">فقط پاییز</SelectItem>
+                  <SelectItem value="spring">فقط بهار</SelectItem>
+                  <SelectItem value="none">عدم ارائه</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+
+            {(filterDegree !== "all" || filterUnits !== "all" || filterOffered !== "all") && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setFilterDegree("all");
+                  setFilterUnits("all");
+                  setFilterOffered("all");
+                }}
+                className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground gap-1"
+              >
+                <RotateCcw className="h-3 w-3" />
+                حذف فیلترها
+              </Button>
+            )}
+          </div>
+
           <div className="flex items-center justify-between text-xs text-muted-foreground px-1 flex-wrap gap-2">
             <div className="flex items-center gap-2">
               <span>
@@ -354,6 +454,16 @@ export function CategoryCourseAssignDialog({
                       <div>
                         <div className="font-bold text-foreground flex items-center flex-wrap gap-1.5">
                           <span>{c.name}</span>
+                          <Badge
+                            variant="outline"
+                            className={`text-[10px] font-medium px-1.5 py-0 ${
+                              c.degreeLevel === "master"
+                                ? "bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/30"
+                                : "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30"
+                            }`}
+                          >
+                            {c.degreeLevel === "master" ? "ارشد" : "کارشناسی"}
+                          </Badge>
                           {isLinked && (
                             <Badge
                               variant="outline"

@@ -18,6 +18,9 @@ interface ImportCourseItem {
   code: string;
   abbreviation?: string;
   name: string;
+  degreeLevel?: string;
+  degree_level?: string;
+  مقطع?: string;
   units?: number;
   offeredIn?: "fall" | "spring" | "both" | "none";
   description?: string;
@@ -189,6 +192,8 @@ export async function POST(request: NextRequest) {
           : "both";
       const cleanAbbr = item.abbreviation ? String(item.abbreviation).trim() : null;
       const cleanDesc = item.description || "";
+      const rawDegree = String(item.degreeLevel || item.degree_level || item.مقطع || "").trim().toLowerCase();
+      const cleanDegree = rawDegree.includes("ارشد") || rawDegree.includes("master") ? "master" : "undergraduate";
 
       const existingFacultyCourse = facultyCourseCodeMap.get(cleanCode);
 
@@ -196,9 +201,9 @@ export async function POST(request: NextRequest) {
         courseStmts.push(
           d1.prepare(`
             UPDATE courses
-            SET name = ?, abbreviation = ?, units = ?, offered_in = ?, description = ?, faculty_id = ?, deleted_at = NULL
+            SET name = ?, degree_level = ?, abbreviation = ?, units = ?, offered_in = ?, description = ?, faculty_id = ?, deleted_at = NULL
             WHERE id = ?
-          `).bind(cleanName, cleanAbbr, cleanUnits, cleanOffered, cleanDesc, targetFacultyId, existingFacultyCourse.id)
+          `).bind(cleanName, cleanDegree, cleanAbbr, cleanUnits, cleanOffered, cleanDesc, targetFacultyId, existingFacultyCourse.id)
         );
         updatedCount++;
         courseCodeToIdMap.set(cleanCode, existingFacultyCourse.id);
@@ -208,9 +213,9 @@ export async function POST(request: NextRequest) {
         const newId = `crs_${crypto.randomUUID().slice(0, 8)}`;
         courseStmts.push(
           d1.prepare(`
-            INSERT INTO courses (id, faculty_id, name, code, abbreviation, units, offered_in, description, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `).bind(newId, targetFacultyId, cleanName, cleanCode, cleanAbbr, cleanUnits, cleanOffered, cleanDesc, now)
+            INSERT INTO courses (id, faculty_id, name, code, degree_level, abbreviation, units, offered_in, description, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).bind(newId, targetFacultyId, cleanName, cleanCode, cleanDegree, cleanAbbr, cleanUnits, cleanOffered, cleanDesc, now)
         );
         createdCount++;
         courseCodeToIdMap.set(cleanCode, newId);

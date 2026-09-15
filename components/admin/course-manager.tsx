@@ -38,7 +38,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Course } from "@/lib/types";
+import type { Course, DegreeLevel } from "@/lib/types";
 import { CourseImportDialog } from "@/components/courses/course-import-dialog";
 import { Download, Upload } from "lucide-react";
 import { useAdminStore } from "@/lib/stores/admin-store";
@@ -68,6 +68,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
     code: "",
     abbreviation: "",
     units: 3,
+    degreeLevel: "undergraduate" as DegreeLevel,
     facultyId: "",
     offeredIn: "both" as "fall" | "spring" | "both" | "none",
     visualCategoryId: "",
@@ -106,6 +107,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
         id: editingCourse.id,
         name: courseForm.name,
         code: courseForm.code?.trim() ? courseForm.code.trim().toUpperCase() : undefined,
+        degreeLevel: courseForm.degreeLevel,
         abbreviation: courseForm.abbreviation?.trim() || null,
         units: Number(courseForm.units) || 3,
         facultyId: selectedFacultyId,
@@ -121,6 +123,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
           code: "",
           abbreviation: "",
           units: 3,
+          degreeLevel: "undergraduate",
           facultyId: selectedFacultyId,
           offeredIn: "both",
           visualCategoryId: "",
@@ -136,6 +139,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
       const res = await postJson("/api/courses", {
         name: courseForm.name,
         code: courseForm.code?.trim() ? courseForm.code.trim().toUpperCase() : undefined,
+        degreeLevel: courseForm.degreeLevel,
         abbreviation: courseForm.abbreviation?.trim() || null,
         units: Number(courseForm.units) || 3,
         facultyId: selectedFacultyId,
@@ -150,6 +154,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
           code: "",
           abbreviation: "",
           units: 3,
+          degreeLevel: "undergraduate",
           facultyId: selectedFacultyId,
           offeredIn: "both",
           visualCategoryId: "",
@@ -314,8 +319,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                 if (!selectedFacultyId) return;
                 if (
                   confirm(
-                    `هشدار: آیا از حذف کلیه دروس دانشکده «${
-                      currentFaculty?.name || ""
+                    `هشدار: آیا از حذف کلیه دروس دانشکده «${currentFaculty?.name || ""
                     }» مطمئن هستید؟ دروس به صورت موقت (Soft Delete) حذف می‌شوند و با ثبت مجدد کدهای مشابه یا ویرایش بازگردانده خواهند شد.`
                   )
                 ) {
@@ -345,6 +349,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                   code: "",
                   abbreviation: "",
                   units: 3,
+                  degreeLevel: "undergraduate",
                   facultyId: selectedFacultyId,
                   offeredIn: "both",
                   visualCategoryId: "",
@@ -383,11 +388,10 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
               return (
                 <div
                   key={course.id}
-                  className={`flex flex-col justify-between rounded-xl border p-3.5 shadow-2xs transition-colors ${
-                    isLinked
+                  className={`flex flex-col justify-between rounded-xl border p-3.5 shadow-2xs transition-colors ${isLinked
                       ? "border-amber-500/40 bg-amber-500/2"
                       : "border-border/80 bg-card hover:border-primary/40"
-                  }`}
+                    }`}
                 >
                   <div className="space-y-2">
                     {/* Course header */}
@@ -419,8 +423,17 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                             : course.offeredIn === "spring"
                               ? "فقط بهار"
                               : course.offeredIn === "none"
-                              ? "عدم ارائه"
-                              : "پاییز و بهار"}
+                                ? "عدم ارائه"
+                                : "پاییز و بهار"}
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] font-medium px-1.5 py-0 ${course.degreeLevel === "master"
+                              ? "bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/30"
+                              : "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30"
+                            }`}
+                        >
+                          {course.degreeLevel === "master" ? "ارشد" : "کارشناسی"}
                         </Badge>
                       </div>
                     </div>
@@ -435,19 +448,18 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                           {course.prerequisites.map((p) => (
                             <span
                               key={p.id}
-                              className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-medium border ${
-                                p.type === "prerequisite"
+                              className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-medium border ${p.type === "prerequisite"
                                   ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20"
                                   : p.type === "corequisite"
-                                  ? "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/20"
-                                  : "bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/20"
-                              }`}
+                                    ? "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/20"
+                                    : "bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/20"
+                                }`}
                             >
                               {p.type === "prerequisite"
                                 ? "پیش‌نیاز:"
                                 : p.type === "corequisite"
-                                ? "هم‌نیاز:"
-                                : "پیشنهادی:"}{" "}
+                                  ? "هم‌نیاز:"
+                                  : "پیشنهادی:"}{" "}
                               {p.requiredCourseName}
                             </span>
                           ))}
@@ -496,6 +508,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                                 code: course.code,
                                 abbreviation: course.abbreviation || "",
                                 units: course.units,
+                                degreeLevel: course.degreeLevel || "undergraduate",
                                 facultyId: course.facultyId || selectedFacultyId,
                                 offeredIn: course.offeredIn || "both",
                                 visualCategoryId: "",
@@ -631,19 +644,18 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                       <span className="font-semibold">{rel.requiredCourseName}</span>
                       <Badge
                         variant="outline"
-                        className={`mr-2 text-[10px] ${
-                          rel.type === "prerequisite"
+                        className={`mr-2 text-[10px] ${rel.type === "prerequisite"
                             ? "text-amber-600 border-amber-500/30 bg-amber-500/10"
                             : rel.type === "corequisite"
-                            ? "text-sky-600 border-sky-500/30 bg-sky-500/10"
-                            : "text-violet-600 border-violet-500/30 bg-violet-500/10"
-                        }`}
+                              ? "text-sky-600 border-sky-500/30 bg-sky-500/10"
+                              : "text-violet-600 border-violet-500/30 bg-violet-500/10"
+                          }`}
                       >
                         {rel.type === "prerequisite"
                           ? "پیش‌نیاز رسمی"
                           : rel.type === "corequisite"
-                          ? "هم‌نیاز رسمی"
-                          : "پیش‌نیاز پیشنهادی"}
+                            ? "هم‌نیاز رسمی"
+                            : "پیش‌نیاز پیشنهادی"}
                       </Badge>
                     </div>
                     <Button
@@ -705,14 +717,14 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
 
           <form onSubmit={handleSaveCourse} className="space-y-3 pt-1">
             <div className="space-y-1 sm:col-span-1">
-                <Label className="text-xs font-semibold">نام درس:</Label>
-                <Input
-                  required
-                  placeholder="مثلاً ریاضی عمومی ۱"
-                  value={courseForm.name}
-                  onChange={(e) => setCourseForm({ ...courseForm, name: e.target.value })}
-                />
-              </div>
+              <Label className="text-xs font-semibold">نام درس:</Label>
+              <Input
+                required
+                placeholder="مثلاً ریاضی عمومی ۱"
+                value={courseForm.name}
+                onChange={(e) => setCourseForm({ ...courseForm, name: e.target.value })}
+              />
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
@@ -740,7 +752,30 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">مقطع تحصیلی:</Label>
+                <Select
+                  value={courseForm.degreeLevel}
+                  onValueChange={(val) =>
+                    val &&
+                    setCourseForm({
+                      ...courseForm,
+                      degreeLevel: val as DegreeLevel,
+                    })
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="undergraduate">کارشناسی</SelectItem>
+                      <SelectItem value="master">کارشناسی ارشد</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">تعداد واحد:</Label>
                 <NumberInput
