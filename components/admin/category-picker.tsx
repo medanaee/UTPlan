@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import type { RuleCategory, VisualCategory } from "@/lib/types";
 import {
   Popover,
@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Folder,
   FolderOpen,
+  FolderMinus,
   ChevronLeft,
   ChevronRight,
   Check,
@@ -37,6 +38,7 @@ interface CategoryPickerProps {
   excludeId?: string; // Exclude category and its descendants (useful for selecting parent)
   className?: string;
   triggerClassName?: string;
+  showRemainingVirtualFolders?: boolean;
 }
 
 export function CategoryPicker({
@@ -49,6 +51,7 @@ export function CategoryPicker({
   excludeId,
   className,
   triggerClassName,
+  showRemainingVirtualFolders = false,
 }: CategoryPickerProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -80,6 +83,27 @@ export function CategoryPicker({
   // Selected Category
   const selectedCategory = value ? categoryMap.get(value) : null;
 
+  // Set initial drilldown when opening
+  useEffect(() => {
+    if (open) {
+      if (value?.startsWith("__REMAINING__:")) {
+        const parentId = value.slice("__REMAINING__:".length);
+        if (categoryMap.has(parentId)) {
+          setCurrentParentId(parentId);
+          return;
+        }
+      }
+      if (value && categoryMap.has(value)) {
+        const cat = categoryMap.get(value);
+        if (cat?.parentId) {
+          setCurrentParentId(cat.parentId);
+          return;
+        }
+      }
+      setCurrentParentId(null);
+    }
+  }, [open, value, categoryMap]);
+
   // Build breadcrumb path for a category
   const getCategoryPath = (catId: string): string[] => {
     const path: string[] = [];
@@ -90,6 +114,26 @@ export function CategoryPicker({
     }
     return path;
   };
+
+  // Resolve display label for selected value (including virtual options)
+  const displayLabel = useMemo(() => {
+    if (!value) return null;
+    if (value === "__UNCATEGORIZED__") {
+      return "دروس بدون دسته‌بندی";
+    }
+    if (value.startsWith("__REMAINING__:")) {
+      const parentId = value.slice("__REMAINING__:".length);
+      const parentPath = getCategoryPath(parentId);
+      return parentPath.length > 0
+        ? `${parentPath.join(" › ")} › دروس مستقیم این پوشه`
+        : "دروس مستقیم این پوشه";
+    }
+    const cat = categoryMap.get(value);
+    if (cat) {
+      return getCategoryPath(cat.id).join(" › ");
+    }
+    return null;
+  }, [value, categoryMap]);
 
   // Current navigation breadcrumbs
   const navBreadcrumbs = useMemo(() => {
@@ -117,8 +161,45 @@ export function CategoryPicker({
   const searchResults = useMemo(() => {
     if (!search.trim()) return [];
     const q = search.trim().toLowerCase();
-    return validCategories.filter((c) => c.name.toLowerCase().includes(q));
-  }, [validCategories, search]);
+    const results: { id: string; name: string; path: string[]; isVirtual?: boolean }[] = [];
+
+    if (showRemainingVirtualFolders) {
+      if ("دروس بدون دسته‌بندی".includes(q) || "بدون دسته".includes(q) || "مابقی".includes(q)) {
+        results.push({
+          id: "__UNCATEGORIZED__",
+          name: "دروس بدون دسته‌بندی",
+          path: ["دروس بدون دسته‌بندی"],
+          isVirtual: true,
+        });
+      }
+    }
+
+    validCategories
+      .filter((c) => c.name.toLowerCase().includes(q))
+      .forEach((cat) => {
+        results.push({
+          id: cat.id,
+          name: cat.name,
+          path: getCategoryPath(cat.id),
+        });
+      });
+
+    if (showRemainingVirtualFolders) {
+      validCategories
+        .filter((c) => validCategories.some((child) => child.parentId === c.id))
+        .filter((c) => c.name.toLowerCase().includes(q) || "دروس مستقیم این پوشه".includes(q) || "مابقی".includes(q))
+        .forEach((parentCat) => {
+          results.push({
+            id: `__REMAINING__:${parentCat.id}`,
+            name: `${parentCat.name} (دروس مستقیم این پوشه)`,
+            path: [...getCategoryPath(parentCat.id), "دروس مستقیم این پوشه"],
+            isVirtual: true,
+          });
+        });
+    }
+
+    return results;
+  }, [validCategories, search, showRemainingVirtualFolders]);
 
   const handleSelect = (catId: string | null) => {
     onChange(catId);
@@ -136,23 +217,27 @@ export function CategoryPicker({
             "flex h-7 items-center justify-between gap-2 rounded-lg border border-input bg-transparent px-3 py-1.5 text-xs outline-none transition-colors",
             "hover:bg-muted/30 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
             "disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30 dark:disabled:bg-input/80",
-            !selectedCategory && "text-muted-foreground",
+            !value && "text-muted-foreground",
             triggerClassName,
             className
           )}
         >
           <div className="flex items-center gap-2 truncate text-right">
-            <Folder className="h-4 w-4 shrink-0 text-primary/70" />
-            {selectedCategory ? (
+            {value === "__UNCATEGORIZED__" || value?.startsWith("__REMAINING__:") ? (
+              <Folder className="h-4 w-4 shrink-0 text-amber-500" />
+            ) : (
+              <Folder className="h-4 w-4 shrink-0 text-primary/70" />
+            )}
+            {displayLabel ? (
               <span className="truncate font-medium text-foreground">
-                {getCategoryPath(selectedCategory.id).join(" › ")}
+                {displayLabel}
               </span>
             ) : (
               <span className="truncate">{placeholder}</span>
             )}
           </div>
           <div className="flex items-center gap-1 shrink-0 text-muted-foreground">
-            {allowClear && selectedCategory && !disabled && (
+            {allowClear && value && !disabled && (
               <span
                 role="button"
                 onClick={(e) => {
@@ -199,8 +284,11 @@ export function CategoryPicker({
             </p>
             {searchResults.length > 0 ? (
               searchResults.map((cat) => {
-                const path = getCategoryPath(cat.id);
+                const path = cat.path;
                 const isSelected = value === cat.id;
+                const isUncategorized = cat.id === "__UNCATEGORIZED__";
+                const isRemaining = cat.id.startsWith("__REMAINING__:");
+                const isVirtual = isUncategorized || isRemaining;
                 return (
                   <button
                     key={cat.id}
@@ -214,7 +302,11 @@ export function CategoryPicker({
                     )}
                   >
                     <div className="flex items-center gap-2 truncate">
-                      <Folder className="h-3.5 w-3.5 text-primary shrink-0" />
+                      {isVirtual ? (
+                        <Folder className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                      ) : (
+                        <Folder className="h-3.5 w-3.5 text-primary shrink-0" />
+                      )}
                       <div className="truncate">
                         <div className="font-semibold">{cat.name}</div>
                         {path.length > 1 && (
@@ -280,10 +372,10 @@ export function CategoryPicker({
             {/* If currently inside a parent category, allow selecting this parent directly */}
             {currentParent && (
               <div className="flex items-center justify-between p-2 rounded-lg border border-primary/20 bg-primary/5">
-                <div className="flex items-center gap-1.5 text-xs">
+                <div className="flex items-center gap-1.5 text-xs truncate">
                   <Check className="h-3.5 w-3.5 text-primary shrink-0" />
-                  <span className="text-muted-foreground">انتخاب همین دسته والد:</span>
-                  <span className="font-bold text-foreground truncate max-w-32.5">
+                  <span className="text-muted-foreground shrink-0">انتخاب کل این دسته (با زیردسته‌ها):</span>
+                  <span className="font-bold text-foreground truncate max-w-28">
                     {currentParent.name}
                   </span>
                 </div>
@@ -292,7 +384,7 @@ export function CategoryPicker({
                   size="sm"
                   variant={value === currentParent.id ? "default" : "outline"}
                   onClick={() => handleSelect(currentParent.id)}
-                  className="h-6 text-[10px] px-2"
+                  className="h-6 text-[10px] px-2 shrink-0"
                 >
                   {value === currentParent.id ? "انتخاب شده" : "انتخاب"}
                 </Button>
@@ -301,7 +393,59 @@ export function CategoryPicker({
 
             {/* Items at current level */}
             <div className="max-h-56 overflow-y-auto space-y-1 pr-0.5">
-              {allowClear && !currentParentId && (
+              {/* Virtual Category item inside parent: "دروس مستقیم این پوشه" */}
+              {showRemainingVirtualFolders && currentParent && (
+                <div
+                  className={cn(
+                    "flex items-center justify-between gap-1.5 rounded-lg p-1 transition-colors border",
+                    value === `__REMAINING__:${currentParent.id}`
+                      ? "border-primary/40 bg-primary/10 text-primary font-semibold"
+                      : "border-transparent hover:bg-muted/30 text-foreground"
+                  )}
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleSelect(`__REMAINING__:${currentParent.id}`)}
+                    className="flex-1 flex items-center justify-between gap-2 px-2 py-1 text-right text-xs rounded-md"
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <Folder className="h-4 w-4 text-amber-500 shrink-0" />
+                      <span className="truncate">دروس مستقیم این پوشه</span>
+                    </div>
+                    {value === `__REMAINING__:${currentParent.id}` && (
+                      <Check className="h-3.5 w-3.5 text-primary shrink-0" />
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* Virtual Root item: "دروس بدون دسته‌بندی" */}
+              {showRemainingVirtualFolders && !currentParentId && (
+                <div
+                  className={cn(
+                    "flex items-center justify-between gap-1.5 rounded-lg p-1 transition-colors border",
+                    value === "__UNCATEGORIZED__"
+                      ? "border-primary/40 bg-primary/10 text-primary font-semibold"
+                      : "border-transparent hover:bg-muted/30 text-foreground"
+                  )}
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleSelect("__UNCATEGORIZED__")}
+                    className="flex-1 flex items-center justify-between gap-2 px-2 py-1 text-right text-xs rounded-md"
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <Folder className="h-4 w-4 text-amber-500 shrink-0" />
+                      <span className="truncate">دروس بدون دسته‌بندی</span>
+                    </div>
+                    {value === "__UNCATEGORIZED__" && (
+                      <Check className="h-3.5 w-3.5 text-primary shrink-0" />
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {allowClear && !showRemainingVirtualFolders && !currentParentId && (
                 <button
                   type="button"
                   onClick={() => handleSelect(null)}
@@ -383,7 +527,7 @@ export function CategoryPicker({
                 );
               })}
 
-              {currentLevelCategories.length === 0 && (
+              {currentLevelCategories.length === 0 && !showRemainingVirtualFolders && (
                 <div className="py-6 text-center text-xs text-muted-foreground">
                   زیردسته‌ای در این بخش وجود ندارد.
                 </div>

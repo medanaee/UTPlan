@@ -504,6 +504,7 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
               onChange={(val) => onUpdate({ ...leaf, ruleCategoryId: val || undefined })}
               placeholder="انتخاب دسته..."
               triggerClassName="h-7 min-w-[160px] text-xs"
+              showRemainingVirtualFolders
             />
 
             <span className="text-muted-foreground">حداقل:</span>
@@ -527,6 +528,7 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
               onChange={(val) => onUpdate({ ...leaf, ruleCategoryId: val || undefined })}
               placeholder="انتخاب دسته..."
               triggerClassName="h-7 min-w-[160px] text-xs"
+              showRemainingVirtualFolders
             />
 
             <span className="text-muted-foreground">حداکثر:</span>
@@ -553,6 +555,7 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
               onChange={(val) => onUpdate({ ...leaf, ruleCategoryId: val || undefined })}
               placeholder="انتخاب دسته..."
               triggerClassName="min-w-[180px] text-xs"
+              showRemainingVirtualFolders
             />
           </div>
         )}
@@ -566,6 +569,7 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
               onChange={(val) => onUpdate({ ...leaf, ruleCategoryId: val || undefined })}
               placeholder="انتخاب دسته..."
               triggerClassName="h-7 min-w-[160px] text-xs"
+              showRemainingVirtualFolders
             />
 
             <span className="text-muted-foreground">دقیقاً:</span>
@@ -648,6 +652,7 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
               onChange={(val) => onUpdate({ ...leaf, ruleCategoryId: val || undefined })}
               placeholder="انتخاب دسته ممنوعه..."
               triggerClassName="min-w-[180px] text-xs"
+              showRemainingVirtualFolders
             />
           </div>
         )}

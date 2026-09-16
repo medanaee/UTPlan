@@ -1066,16 +1066,30 @@ export async function cloneTrackStructure(
 
           const cloned = { ...node };
 
-          // Replace Category ID if present
-          if (cloned.categoryId && catMap.has(cloned.categoryId)) {
-            cloned.categoryId = catMap.get(cloned.categoryId);
+          // Replace Category ID if present (including virtual __REMAINING__:<parentId>)
+          const remapCatId = (id: string): string => {
+            if (id.startsWith("__REMAINING__:")) {
+              const oldPid = id.slice("__REMAINING__:".length);
+              if (catMap.has(oldPid)) {
+                return `__REMAINING__:${catMap.get(oldPid)}`;
+              }
+              return id;
+            }
+            if (catMap.has(id)) {
+              return catMap.get(id)!;
+            }
+            return id;
+          };
+
+          if (cloned.categoryId) {
+            cloned.categoryId = remapCatId(cloned.categoryId);
           }
-          if (cloned.ruleCategoryId && catMap.has(cloned.ruleCategoryId)) {
-            cloned.ruleCategoryId = catMap.get(cloned.ruleCategoryId);
+          if (cloned.ruleCategoryId) {
+            cloned.ruleCategoryId = remapCatId(cloned.ruleCategoryId);
             cloned.categoryId = cloned.ruleCategoryId;
           }
-          if (cloned.visualCategoryId && catMap.has(cloned.visualCategoryId)) {
-            cloned.visualCategoryId = catMap.get(cloned.visualCategoryId);
+          if (cloned.visualCategoryId) {
+            cloned.visualCategoryId = remapCatId(cloned.visualCategoryId);
           }
 
           // Recursive children / sub-rules
