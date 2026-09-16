@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import {
   getTrackById,
-  getVisualCategories,
-  createVisualCategory,
-  updateVisualCategory,
+  getCategories,
+  createCategory,
+  updateCategory,
   assignCategoryCourses,
   getCourses,
 } from "@/lib/db";
-import type { VisualCategory } from "@/lib/types";
+import type { Category } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,12 +35,12 @@ export async function POST(request: NextRequest) {
 
     if (!Array.isArray(categories) || categories.length === 0) {
       return NextResponse.json(
-        { success: false, message: "داده‌های ورودی باید یک آرایه شامل حداقل یک دسته بصری باشند." },
+        { success: false, message: "داده‌های ورودی باید یک آرایه شامل حداقل یک دسته باشند." },
         { status: 400 }
       );
     }
 
-    // 1. Recursive Structural Validation
+    // 1. Recursive Structural Validation (Arbitrary depth supported)
     const categoryCodes = new Set<string>();
     const validationErrors: string[] = [];
 
@@ -105,16 +105,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 3. Fetch existing visual categories for this track
-    const existingCats = await getVisualCategories(trackId);
-    const existingByCode = new Map<string, VisualCategory>();
+    // 3. Fetch existing categories for this track
+    const existingCats = await getCategories(trackId);
+    const existingByCode = new Map<string, Category>();
     for (const cat of existingCats) {
       if (cat.code) {
         existingByCode.set(cat.code.trim().toUpperCase(), cat);
       }
     }
 
-    // 4. Execution (Merge Strategy with Hierarchy)
+    // 4. Execution (Merge Strategy)
     const stats = {
       categoriesCreated: 0,
       categoriesUpdated: 0,
@@ -125,15 +125,15 @@ export async function POST(request: NextRequest) {
     async function processCategory(node: any, parentId: string | null, sortOrder: number) {
       const cleanCode = node.code.trim().toUpperCase();
       const cleanName = node.name.trim();
-      const color = node.color?.trim() || "#3b82f6";
+      const color = typeof node.color === "string" && node.color.trim() ? node.color.trim() : "#3b82f6";
 
       let categoryId: string;
       const existing = existingByCode.get(cleanCode);
 
       if (existing) {
-        await updateVisualCategory(existing.id, {
+        await updateCategory(existing.id, {
           name: cleanName,
-          color,
+          color: typeof node.color === "string" ? color : existing.color,
           parentId,
           sortOrder,
           code: cleanCode,
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
         categoryId = existing.id;
         stats.categoriesUpdated++;
       } else {
-        const created = await createVisualCategory({
+        const created = await createCategory({
           trackId,
           name: cleanName,
           color,
@@ -173,14 +173,14 @@ export async function POST(request: NextRequest) {
               }
             } else {
               stats.warnings.push(
-                `درس با کد «${trimmedCode}» در دسته بصری «${cleanName}» یافت نشد و نادیده گرفته شد.`
+                `درس با کد «${trimmedCode}» در دسته «${cleanName}» یافت نشد و نادیده گرفته شد.`
               );
             }
           }
         }
 
         if (validCourseIds.length > 0) {
-          await assignCategoryCourses(trackId, "visual", categoryId, validCourseIds);
+          await assignCategoryCourses(trackId, categoryId, validCourseIds);
           stats.coursesAssigned += validCourseIds.length;
         }
       }
@@ -204,13 +204,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `ورود دسته‌های بصری با موفقیت انجام شد (${stats.categoriesCreated} ایجاد، ${stats.categoriesUpdated} به‌روزرسانی و ${stats.coursesAssigned} درس منتسب گردید).`,
+      message: `ورود دسته‌ها با موفقیت انجام شد (${stats.categoriesCreated} ایجاد، ${stats.categoriesUpdated} به‌روزرسانی).`,
       stats,
     });
   } catch (error: any) {
-    console.error("Visual categories import error:", error);
+    console.error("Categories import error:", error);
     return NextResponse.json(
-      { success: false, message: error?.message || "خطا در پردازش و ورود دسته‌های بصری" },
+      { success: false, message: error?.message || "خطا در پردازش و ورود دسته‌ها" },
       { status: 500 }
     );
   }

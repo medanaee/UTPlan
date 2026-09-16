@@ -18,7 +18,7 @@ import {
   User,
   MapPin,
 } from "lucide-react";
-import type { Course, CourseEvent, VisualCategory } from "@/lib/types";
+import type { Course, CourseEvent, Category, VisualCategory } from "@/lib/types";
 
 interface ExamScheduleModalProps {
   open: boolean;
@@ -27,7 +27,8 @@ interface ExamScheduleModalProps {
   courses: Course[];
   selectedEventsMap: Record<string, string>; // courseId -> eventId
   allEvents: CourseEvent[];
-  visualCategories: VisualCategory[];
+  categories?: Category[];
+  visualCategories?: VisualCategory[];
 }
 
 interface ExamItem {
@@ -50,8 +51,11 @@ export function ExamScheduleModal({
   courses,
   selectedEventsMap,
   allEvents,
+  categories,
   visualCategories,
 }: ExamScheduleModalProps) {
+  const allCats = categories || visualCategories || [];
+
   // Collect all exams for selected courses
   const { examItems, sameDayConflicts, sameHourConflicts } = useMemo(() => {
     const items: ExamItem[] = [];
@@ -63,12 +67,11 @@ export function ExamScheduleModal({
       const evt = allEvents.find((e) => e.id === selectedEventId);
       if (!evt || !evt.examDate) return;
 
-      const catColor =
-        c.trackAssignments?.[0]?.visualCategoryId
-          ? visualCategories.find(
-              (vc) => vc.id === c.trackAssignments?.[0]?.visualCategoryId
-            )?.color || "#3b82f6"
-          : "#3b82f6";
+      const assign = c.trackAssignments?.[0];
+      const catId = assign?.categoryId || (assign as any)?.visualCategoryId || (assign as any)?.ruleCategoryId;
+      const catColor = catId
+        ? allCats.find((vc) => vc.id === catId)?.color || "#3b82f6"
+        : "#3b82f6";
 
       items.push({
         courseId: c.id,
@@ -123,7 +126,7 @@ export function ExamScheduleModal({
       sameDayConflicts: sameDay,
       sameHourConflicts: sameHour,
     };
-  }, [courses, selectedEventsMap, allEvents, visualCategories]);
+  }, [courses, selectedEventsMap, allEvents, allCats]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

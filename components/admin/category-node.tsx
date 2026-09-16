@@ -5,63 +5,61 @@ import { GripVertical, CornerDownLeft, BookOpen, Plus, Pencil, Trash2, Eraser, C
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { Course, VisualCategory } from "@/lib/types";
+import type { Course, Category } from "@/lib/types";
 import { fetchJson, deleteJson } from "@/lib/api-client";
 
-export interface VisualCategoryNodeProps {
-  category: VisualCategory;
+export interface CategoryNodeProps {
+  category: Category;
   depth?: number;
-  maxDepth?: number;
-  visualCats: VisualCategory[];
-  draggedVcatId: string | null;
-  dragOverVcatId: string | null;
+  categories: Category[];
+  draggedCatId: string | null;
+  dragOverCatId: string | null;
   selectedTrackId: string | null;
-  setDraggedVcatId: (id: string | null) => void;
-  setDragOverVcatId: (id: string | null) => void;
-  handleVcatDrop: (sourceId: string, targetParentId: string | null) => void;
-  handleOpenEditVcat: (cat: VisualCategory) => void;
-  setVcatForm: (form: { code: string; name: string; color: string; sortOrder: number; parentId: string | null }) => void;
-  setVcatModalOpen: (open: boolean) => void;
+  setDraggedCatId: (id: string | null) => void;
+  setDragOverCatId: (id: string | null) => void;
+  handleCatDrop: (sourceId: string, targetParentId: string | null) => void;
+  handleOpenEditCat: (cat: Category) => void;
+  setCatForm: (form: { code: string; name: string; color: string; parentId: string | null }) => void;
+  setCatModalOpen: (open: boolean) => void;
   setAssignModal: (data: {
     open: boolean;
-    type: "visual" | "rule";
     categoryId: string;
     categoryName: string;
     categoryColor?: string;
   }) => void;
-  setVisualCats: (cats: VisualCategory[]) => void;
-  getVisualCategoryCourses: (catId: string) => Course[];
-  renderCourseChips: (catId: string, type: "visual" | "rule", name: string, color?: string) => React.ReactNode;
+  setCategories: (cats: Category[]) => void;
+  getCategoryCourses: (catId: string) => Course[];
+  renderCourseChips: (catId: string, name: string, color?: string) => React.ReactNode;
   onAssignmentsChanged?: () => Promise<void>;
   collapsedIds?: Set<string>;
   onToggleCollapse?: (catId: string) => void;
 }
 
-export function VisualCategoryNode({
+export function CategoryNode({
   category,
   depth = 1,
-  maxDepth = 3,
-  visualCats,
-  draggedVcatId,
-  dragOverVcatId,
+  categories,
+  draggedCatId,
+  dragOverCatId,
   selectedTrackId,
-  setDraggedVcatId,
-  setDragOverVcatId,
-  handleVcatDrop,
-  handleOpenEditVcat,
-  setVcatForm,
-  setVcatModalOpen,
+  setDraggedCatId,
+  setDragOverCatId,
+  handleCatDrop,
+  handleOpenEditCat,
+  setCatForm,
+  setCatModalOpen,
   setAssignModal,
-  setVisualCats,
-  getVisualCategoryCourses,
+  setCategories,
+  getCategoryCourses,
   renderCourseChips,
   onAssignmentsChanged,
   collapsedIds,
   onToggleCollapse,
-}: VisualCategoryNodeProps) {
-  const children = visualCats.filter((c) => c.parentId === category.id);
-  const assignedCourses = getVisualCategoryCourses(category.id);
+}: CategoryNodeProps) {
+  const children = categories.filter((c) => c.parentId === category.id);
+  const assignedCourses = getCategoryCourses(category.id);
   const isExpanded = collapsedIds ? !collapsedIds.has(category.id) : true;
+  const categoryColor = category.color || "#3b82f6";
 
   // Collect all category IDs in this subtree (this category + all its recursive subcategories)
   const subtreeCategoryIds = useMemo(() => {
@@ -69,7 +67,7 @@ export function VisualCategoryNode({
     const queue = [category.id];
     while (queue.length > 0) {
       const currentId = queue.shift()!;
-      for (const cat of visualCats) {
+      for (const cat of categories) {
         if (cat.parentId === currentId) {
           ids.push(cat.id);
           queue.push(cat.id);
@@ -77,18 +75,18 @@ export function VisualCategoryNode({
       }
     }
     return ids;
-  }, [category.id, visualCats]);
+  }, [category.id, categories]);
 
-  // Aggregate all unique courses across the entire subtree (including all subcategories)
+  // Aggregate all unique courses across the entire subtree
   const totalSubtreeCourses = useMemo(() => {
     const courseMap = new Map<string, Course>();
     for (const catId of subtreeCategoryIds) {
-      for (const course of getVisualCategoryCourses(catId)) {
+      for (const course of getCategoryCourses(catId)) {
         courseMap.set(course.id, course);
       }
     }
     return Array.from(courseMap.values());
-  }, [subtreeCategoryIds, getVisualCategoryCourses]);
+  }, [subtreeCategoryIds, getCategoryCourses]);
 
   const totalSubtreeUnits = useMemo(() => {
     return totalSubtreeCourses.reduce((sum, c) => sum + (c.units || 3), 0);
@@ -97,7 +95,7 @@ export function VisualCategoryNode({
   const roundedClasses =
     {
       1: "rounded-2xl",
-      2: "rounded-2xl",
+      2: "rounded-xl",
       3: "rounded-lg",
     }[depth] || "rounded-lg";
 
@@ -106,28 +104,28 @@ export function VisualCategoryNode({
       draggable
       onDragStart={(e) => {
         e.stopPropagation();
-        setDraggedVcatId(category.id);
+        setDraggedCatId(category.id);
       }}
       onDragOver={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        if (dragOverVcatId !== category.id) setDragOverVcatId(category.id);
+        if (dragOverCatId !== category.id) setDragOverCatId(category.id);
       }}
       onDragLeave={() => {
-        if (dragOverVcatId === category.id) setDragOverVcatId(null);
+        if (dragOverCatId === category.id) setDragOverCatId(null);
       }}
       onDrop={(e) => {
         e.stopPropagation();
-        handleVcatDrop(category.id, category.parentId || null);
+        handleCatDrop(category.id, category.parentId || null);
       }}
       onDragEnd={() => {
-        setDraggedVcatId(null);
-        setDragOverVcatId(null);
+        setDraggedCatId(null);
+        setDragOverCatId(null);
       }}
       className={`${roundedClasses} border border-border/70 bg-card p-4 transition-all duration-150 space-y-3.5 shadow-2xs ${
-        draggedVcatId === category.id
+        draggedCatId === category.id
           ? "opacity-40 border-dashed border-primary bg-primary/5 scale-[0.99]"
-          : dragOverVcatId === category.id
+          : dragOverCatId === category.id
           ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary/40"
           : "hover:border-primary/40"
       }`}
@@ -149,10 +147,13 @@ export function VisualCategoryNode({
             <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", !isExpanded && "-rotate-90")} />
           </button>
 
-          <span
-            className="h-4 w-4 rounded-full border shadow-2xs shrink-0"
-            style={{ backgroundColor: category.color }}
+          {/* Color Indicator */}
+          <div
+            className="w-3.5 h-3.5 rounded-full shrink-0 border shadow-2xs"
+            style={{ backgroundColor: categoryColor }}
+            title={`رنگ: ${categoryColor}`}
           />
+
           <span
             onClick={() => onToggleCollapse?.(category.id)}
             className="font-bold text-sm text-foreground cursor-pointer hover:text-primary transition-colors"
@@ -160,10 +161,7 @@ export function VisualCategoryNode({
             {category.name}
           </span>
           {category.code && (
-            <Badge
-              variant="outline"
-              className="text-xs px-1.5 py-0.5 border-primary/40 text-primary bg-primary/5 font-semibold"
-            >
+            <Badge variant="outline" className="text-xs px-1.5 py-0.5 border-primary/40 text-primary bg-primary/5 font-semibold">
               {category.code}
             </Badge>
           )}
@@ -179,10 +177,9 @@ export function VisualCategoryNode({
             onClick={() =>
               setAssignModal({
                 open: true,
-                type: "visual",
                 categoryId: category.id,
                 categoryName: category.name,
-                categoryColor: category.color,
+                categoryColor,
               })
             }
             className="h-8 text-xs gap-1.5 shadow-2xs font-medium"
@@ -191,44 +188,35 @@ export function VisualCategoryNode({
             تخصیص دروس
           </Button>
 
-          {/* Render subcategory button only if depth is below maxDepth */}
-          {depth < maxDepth && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={(e) => {
-                e.stopPropagation();
-                setVcatForm({
-                  code: "",
-                  name: "",
-                  color: category.color || "#3b82f6",
-                  sortOrder: visualCats.length + 1,
-                  parentId: category.id,
-                });
-                setVcatModalOpen(true);
-              }}
-              className="h-8 text-xs px-2 gap-1 text-primary hover:bg-primary/10 font-medium"
-              title={`افزودن زیردسته (سطح ${depth + 1})`}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              زیردسته
-            </Button>
-          )}
+          {/* Arbitrary depth: Add subcategory always allowed */}
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={(e) => {
+              e.stopPropagation();
+              setCatForm({ code: "", name: "", color: categoryColor, parentId: category.id });
+              setCatModalOpen(true);
+            }}
+            className="h-8 text-xs px-2 gap-1 text-primary hover:bg-primary/10 font-medium"
+            title={`افزودن زیردسته (سطح ${depth + 1})`}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            زیردسته
+          </Button>
 
-          {/* Eraser Button: Clear all assigned courses inside this visual category */}
+          {/* Eraser Button: Clear all assigned courses */}
           <Button
             variant="ghost"
             size="sm"
             onClick={async (e) => {
               e.stopPropagation();
-              if (!confirm(`آیا از حذف تمام دروس داخل دسته بصری «${category.name}» مطمئن هستید؟`)) return;
+              if (!confirm(`آیا از حذف تمام دروس داخل دسته «${category.name}» مطمئن هستید؟`)) return;
               await fetch("/api/tracks/assignments", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   action: "clear_category_courses",
                   trackId: selectedTrackId,
-                  type: "visual",
                   categoryId: category.id,
                 }),
               });
@@ -238,7 +226,7 @@ export function VisualCategoryNode({
             }}
             disabled={assignedCourses.length === 0}
             className="h-8 w-8 p-0 text-muted-foreground hover:text-amber-600 hover:bg-amber-500/10 shrink-0"
-            title="پاک کردن تمام دروس این دسته بصری"
+            title="پاک کردن تمام دروس این دسته"
           >
             <Eraser className="h-4 w-4" />
           </Button>
@@ -248,10 +236,10 @@ export function VisualCategoryNode({
             size="sm"
             onClick={(e) => {
               e.stopPropagation();
-              handleOpenEditVcat(category);
+              handleOpenEditCat(category);
             }}
             className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
-            title="ویرایش دسته بصری"
+            title="ویرایش دسته"
           >
             <Pencil className="h-4 w-4" />
           </Button>
@@ -263,18 +251,21 @@ export function VisualCategoryNode({
               e.stopPropagation();
               const confirmMsg =
                 depth === 1
-                  ? "آیا از حذف دسته بصری «" + category.name + "» و زیردسته‌های آن مطمئن هستید؟"
+                  ? "آیا از حذف دسته «" + category.name + "» و تمام زیردسته‌های آن مطمئن هستید؟"
                   : "آیا از حذف زیردسته «" + category.name + "» مطمئن هستید؟";
               if (!confirm(confirmMsg)) return;
-              await deleteJson("/api/categories?id=" + category.id + "&type=visual");
+              await deleteJson("/api/categories?id=" + category.id);
               const res = await fetchJson("/api/categories?trackId=" + selectedTrackId);
-              if (res.success) setVisualCats(res.data.visual);
+              if (res.success) {
+                const cats = res.data.categories || res.data.items || res.data.rule || [];
+                setCategories(cats);
+              }
               if (onAssignmentsChanged) {
                 await onAssignmentsChanged();
               }
             }}
             className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-            title="حذف دسته بصری"
+            title="حذف دسته"
           >
             <Trash2 className="h-4 w-4" />
           </Button>
@@ -284,31 +275,30 @@ export function VisualCategoryNode({
       {isExpanded && (
         <>
           <div className="pt-2.5 border-t border-border/50">
-            {renderCourseChips(category.id, "visual", category.name, category.color)}
+            {renderCourseChips(category.id, category.name, categoryColor)}
           </div>
 
-          {/* Recursive rendering of nested children */}
-          {children.length > 0 && depth < maxDepth && (
+          {/* Recursive rendering of nested children without depth limit */}
+          {children.length > 0 && (
             <div className="mr-4 pr-4 border-r-2 border-primary/25 space-y-3.5 pt-2">
               {children.map((childCat) => (
-                <VisualCategoryNode
+                <CategoryNode
                   key={childCat.id}
                   category={childCat}
                   depth={depth + 1}
-                  maxDepth={maxDepth}
-                  visualCats={visualCats}
-                  draggedVcatId={draggedVcatId}
-                  dragOverVcatId={dragOverVcatId}
+                  categories={categories}
+                  draggedCatId={draggedCatId}
+                  dragOverCatId={dragOverCatId}
                   selectedTrackId={selectedTrackId}
-                  setDraggedVcatId={setDraggedVcatId}
-                  setDragOverVcatId={setDragOverVcatId}
-                  handleVcatDrop={handleVcatDrop}
-                  handleOpenEditVcat={handleOpenEditVcat}
-                  setVcatForm={setVcatForm}
-                  setVcatModalOpen={setVcatModalOpen}
+                  setDraggedCatId={setDraggedCatId}
+                  setDragOverCatId={setDragOverCatId}
+                  handleCatDrop={handleCatDrop}
+                  handleOpenEditCat={handleOpenEditCat}
+                  setCatForm={setCatForm}
+                  setCatModalOpen={setCatModalOpen}
                   setAssignModal={setAssignModal}
-                  setVisualCats={setVisualCats}
-                  getVisualCategoryCourses={getVisualCategoryCourses}
+                  setCategories={setCategories}
+                  getCategoryCourses={getCategoryCourses}
                   renderCourseChips={renderCourseChips}
                   onAssignmentsChanged={onAssignmentsChanged}
                   collapsedIds={collapsedIds}

@@ -48,7 +48,7 @@ interface CategoryCourseAssignDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   trackId: string;
-  type: "visual" | "rule";
+  type?: "visual" | "rule" | "category";
   categoryId: string;
   categoryName: string;
   categoryColor?: string;
@@ -216,7 +216,6 @@ export function CategoryCourseAssignDialog({
       const res = await postJson("/api/tracks/assignments", {
         action: "assign_category_courses",
         trackId,
-        type,
         categoryId,
         courseIds: Array.from(selectedIds),
       });
@@ -239,18 +238,14 @@ export function CategoryCourseAssignDialog({
       <DialogContent className="sm:max-w-2xl max-h-[88vh] flex flex-col p-0 gap-0 overflow-hidden" dir="rtl">
         <DialogHeader className="p-4 pb-3 border-b bg-muted/20">
           <div className="flex items-center gap-2">
-            {type === "visual" ? (
-              <div
-                className="h-5 w-5 rounded-full border shadow-2xs shrink-0"
-                style={{ backgroundColor: categoryColor || "#3b82f6" }}
-              />
-            ) : (
-              <Scale className="h-5 w-5 text-primary shrink-0" />
-            )}
+            <div
+              className="h-5 w-5 rounded-full border shadow-2xs shrink-0"
+              style={{ backgroundColor: categoryColor || "#3b82f6" }}
+            />
             <DialogTitle className="text-base font-bold flex items-center gap-2">
               <span>تخصیص دروس به «{categoryName}»</span>
               <Badge variant="outline" className="text-xs font-normal">
-                {type === "visual" ? "دسته بصری چارت" : "دسته قوانین آموزشی"}
+                دسته‌ها
               </Badge>
             </DialogTitle>
           </div>

@@ -57,8 +57,8 @@ CREATE TABLE IF NOT EXISTS tracks (
 );
 CREATE INDEX IF NOT EXISTS idx_tracks_major ON tracks(major_id);
 
--- 5. Visual Categories Table (Hierarchical visual category tree with color, per track)
-CREATE TABLE IF NOT EXISTS visual_categories (
+-- 5. Categories Table (Unified hierarchical category tree with color, per track)
+CREATE TABLE IF NOT EXISTS categories (
   id TEXT PRIMARY KEY,
   track_id TEXT NOT NULL,
   parent_id TEXT,
@@ -68,28 +68,13 @@ CREATE TABLE IF NOT EXISTS visual_categories (
   sort_order INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
   FOREIGN KEY (track_id) REFERENCES tracks(id),
-  FOREIGN KEY (parent_id) REFERENCES visual_categories(id)
+  FOREIGN KEY (parent_id) REFERENCES categories(id)
 );
-CREATE INDEX IF NOT EXISTS idx_visual_categories_track ON visual_categories(track_id);
-CREATE INDEX IF NOT EXISTS idx_visual_categories_parent ON visual_categories(parent_id);
-CREATE INDEX IF NOT EXISTS idx_visual_categories_code ON visual_categories(code);
+CREATE INDEX IF NOT EXISTS idx_categories_track ON categories(track_id);
+CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_id);
+CREATE INDEX IF NOT EXISTS idx_categories_code ON categories(code);
 
--- 6. Rule Categories Table (Hierarchical category tree for requirements rules, per track)
-CREATE TABLE IF NOT EXISTS rule_categories (
-  id TEXT PRIMARY KEY,
-  track_id TEXT NOT NULL,
-  parent_id TEXT,
-  code TEXT,
-  name TEXT NOT NULL,
-  sort_order INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL,
-  FOREIGN KEY (track_id) REFERENCES tracks(id),
-  FOREIGN KEY (parent_id) REFERENCES rule_categories(id)
-);
-CREATE INDEX IF NOT EXISTS idx_rule_categories_track ON rule_categories(track_id);
-CREATE INDEX IF NOT EXISTS idx_rule_categories_code ON rule_categories(code);
-
--- 7. Courses Table
+-- 6. Courses Table
 CREATE TABLE IF NOT EXISTS courses (
   id TEXT PRIMARY KEY,
   faculty_id TEXT NOT NULL,
@@ -107,7 +92,7 @@ CREATE INDEX IF NOT EXISTS idx_courses_faculty ON courses(faculty_id);
 CREATE INDEX IF NOT EXISTS idx_courses_code ON courses(code);
 CREATE INDEX IF NOT EXISTS idx_courses_abbreviation ON courses(abbreviation);
 
--- 8. Prerequisites Table
+-- 7. Prerequisites Table
 CREATE TABLE IF NOT EXISTS prerequisites (
   id TEXT PRIMARY KEY,
   course_id TEXT NOT NULL,
@@ -120,21 +105,20 @@ CREATE TABLE IF NOT EXISTS prerequisites (
 CREATE INDEX IF NOT EXISTS idx_prereq_course ON prerequisites(course_id);
 CREATE INDEX IF NOT EXISTS idx_prereq_required ON prerequisites(required_course_id);
 
--- 9. Track Course Assignments (Associating courses with track categories)
+-- 8. Track Course Assignments (Associating courses with track categories)
 CREATE TABLE IF NOT EXISTS track_course_assignments (
   id TEXT PRIMARY KEY,
   track_id TEXT NOT NULL,
   course_id TEXT NOT NULL,
-  visual_category_id TEXT,
-  rule_category_id TEXT,
+  category_id TEXT,
   FOREIGN KEY (track_id) REFERENCES tracks(id),
   FOREIGN KEY (course_id) REFERENCES courses(id),
-  FOREIGN KEY (visual_category_id) REFERENCES visual_categories(id),
-  FOREIGN KEY (rule_category_id) REFERENCES rule_categories(id),
+  FOREIGN KEY (category_id) REFERENCES categories(id),
   UNIQUE(track_id, course_id)
 );
 CREATE INDEX IF NOT EXISTS idx_track_courses_track ON track_course_assignments(track_id);
 CREATE INDEX IF NOT EXISTS idx_track_courses_course ON track_course_assignments(course_id);
+CREATE INDEX IF NOT EXISTS idx_track_courses_category ON track_course_assignments(category_id);
 
 -- 10. Professors Table
 CREATE TABLE IF NOT EXISTS professors (

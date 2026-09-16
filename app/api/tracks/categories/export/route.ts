@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
-import { getTrackById, getVisualCategories, getTrackAssignments } from "@/lib/db";
-import type { VisualCategory } from "@/lib/types";
+import { getTrackById, getCategories, getTrackAssignments } from "@/lib/db";
+import type { Category } from "@/lib/types";
 
-interface HierarchicalVisualCategoryNode {
+interface HierarchicalCategoryNode {
   code: string;
   name: string;
-  color?: string;
+  color: string;
   courses: string[];
-  children: HierarchicalVisualCategoryNode[];
+  children: HierarchicalCategoryNode[];
 }
 
 export async function GET(request: NextRequest) {
@@ -34,27 +34,28 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const categories = await getVisualCategories(trackId);
+    const categories = await getCategories(trackId);
     const assignments = await getTrackAssignments(trackId);
 
-    // Map course codes to visual categories
+    // Map course codes to categories
     const courseCodesByCatId = new Map<string, string[]>();
     for (const a of assignments) {
-      if (a.visualCategoryId && a.courseCode && a.courseCode !== "---") {
-        const list = courseCodesByCatId.get(a.visualCategoryId) || [];
+      const catId = a.categoryId || a.ruleCategoryId || a.visualCategoryId;
+      if (catId && a.courseCode && a.courseCode !== "---") {
+        const list = courseCodesByCatId.get(catId) || [];
         list.push(a.courseCode);
-        courseCodesByCatId.set(a.visualCategoryId, list);
+        courseCodesByCatId.set(catId, list);
       }
     }
 
-    // Build hierarchical tree
-    function buildNode(cat: VisualCategory): HierarchicalVisualCategoryNode {
+    // Build hierarchical tree with arbitrary depth
+    function buildNode(cat: Category): HierarchicalCategoryNode {
       const children = categories
         .filter((c) => c.parentId === cat.id)
         .map(buildNode);
 
       return {
-        code: cat.code || `VCAT-${cat.id}`,
+        code: cat.code || `CAT-${cat.id}`,
         name: cat.name,
         color: cat.color || "#3b82f6",
         courses: courseCodesByCatId.get(cat.id) || [],
@@ -62,7 +63,7 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    // Identify root categories (no parent or parent not found in list)
+    // Identify root categories
     const rootCategories = categories.filter(
       (c) => !c.parentId || !categories.some((p) => p.id === c.parentId)
     );
@@ -71,7 +72,7 @@ export async function GET(request: NextRequest) {
     const jsonContent = JSON.stringify(hierarchicalData, null, 2);
     const dateStr = new Date().toISOString().split("T")[0];
     const safeTrackName = (track.name || "track").replace(/[^a-zA-Z0-9\u0600-\u06FF_-]/g, "_");
-    const filename = `visual-categories-${safeTrackName}-${dateStr}.json`;
+    const filename = `categories-${safeTrackName}-${dateStr}.json`;
 
     return new NextResponse(jsonContent, {
       status: 200,
@@ -81,9 +82,9 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error("Visual categories export error:", error);
+    console.error("Categories export error:", error);
     return NextResponse.json(
-      { success: false, message: error?.message || "خطا در خروجی دسته‌های بصری" },
+      { success: false, message: error?.message || "خطا در خروجی دسته‌ها" },
       { status: 500 }
     );
   }

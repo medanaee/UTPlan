@@ -11,6 +11,7 @@ import type {
   StudentChart,
   Track,
   Course,
+  Category,
   VisualCategory,
   RuleCategory,
   UserSession,
@@ -26,6 +27,7 @@ export default function ChartEditorPage() {
   const [chart, setChart] = useState<StudentChart | null>(null);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [visualCategories, setVisualCategories] = useState<VisualCategory[]>([]);
   const [ruleCategories, setRuleCategories] = useState<RuleCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,8 +71,10 @@ export default function ChartEditorPage() {
         if (loadedChart.trackId) {
           const catsRes = await fetchJson(`/api/categories?trackId=${loadedChart.trackId}`);
           if (catsRes.success && catsRes.data) {
-            setVisualCategories(catsRes.data.visualCategories || catsRes.data.visual || []);
-            setRuleCategories(catsRes.data.ruleCategories || catsRes.data.rule || []);
+            const list = catsRes.data.categories || catsRes.data.items || catsRes.data.rule || [];
+            setCategories(list);
+            setVisualCategories(list);
+            setRuleCategories(list);
           }
         }
       } catch (err: any) {
@@ -123,8 +127,9 @@ export default function ChartEditorPage() {
         initialChart={chart}
         allTracks={tracks}
         allCourses={courses}
-        visualCategories={visualCategories}
-        ruleCategories={ruleCategories}
+        categories={categories}
+        visualCategories={categories}
+        ruleCategories={categories}
         user={user}
       />
     </div>

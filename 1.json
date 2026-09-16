@@ -7,7 +7,8 @@
 		"offeredIn": "both",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-6DPBHS",
@@ -17,7 +18,8 @@
 		"offeredIn": "both",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-AHXTHV",
@@ -27,7 +29,8 @@
 		"offeredIn": "both",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-3A3ZMF",
@@ -37,7 +40,8 @@
 		"offeredIn": "both",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-8MDD4V",
@@ -47,7 +51,8 @@
 		"offeredIn": "both",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-3W5UZB",
@@ -57,7 +62,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-IKCIDK",
@@ -67,7 +73,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-WNNHJ7",
@@ -77,7 +84,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-XVG0FN",
@@ -87,7 +95,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-9XUY41",
@@ -97,7 +106,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-IBLJH7",
@@ -107,7 +117,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-5LXO6Q",
@@ -117,7 +128,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-JIUJV6",
@@ -127,7 +139,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-OH9SDB",
@@ -137,7 +150,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-DW2PCN",
@@ -147,7 +161,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-9T84AZ",
@@ -157,7 +172,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-YTJXEP",
@@ -167,7 +183,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-Q85JSG",
@@ -177,7 +194,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-65KXVF",
@@ -187,7 +205,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-1T2TAL",
@@ -197,7 +216,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-A753LC",
@@ -207,7 +227,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-58DRC1",
@@ -217,7 +238,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-1ERTJ5",
@@ -227,7 +249,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-PHT0HL",
@@ -237,7 +260,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-9XPSEI",
@@ -247,7 +271,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-MVIHCW",
@@ -257,7 +282,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-I64CIY",
@@ -267,7 +293,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-HE7UR2",
@@ -277,7 +304,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-3GDPPQ",
@@ -287,7 +315,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-0Y9DOM",
@@ -297,7 +326,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-5IGQPK",
@@ -307,7 +337,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-I7P5TB",
@@ -317,7 +348,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-94874F",
@@ -327,7 +359,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-RHOCN9",
@@ -337,7 +370,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-J2QP89",
@@ -347,7 +381,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-UZFK8U",
@@ -357,7 +392,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-T0CVS4",
@@ -367,7 +403,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-F8CGVY",
@@ -377,7 +414,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-IE6IVW",
@@ -387,7 +425,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-PVS7HZ",
@@ -397,7 +436,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-IOYKL1",
@@ -407,7 +447,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-CQ99CH",
@@ -417,7 +458,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-J755NF",
@@ -427,7 +469,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-4ZW9XA",
@@ -437,7 +480,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-3KX7EE",
@@ -447,7 +491,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-DTJVZH",
@@ -457,7 +502,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-WJR64D",
@@ -467,7 +513,8 @@
 		"offeredIn": "spring",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-PJA1WJ",
@@ -477,7 +524,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-0TPAC5",
@@ -487,7 +535,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-6T4UFE",
@@ -497,7 +546,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-L6246H",
@@ -507,7 +557,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-ID25OW",
@@ -517,7 +568,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-F75935",
@@ -527,7 +579,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-A0L725",
@@ -537,7 +590,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-3J2D54",
@@ -547,7 +601,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-I3QK2I",
@@ -557,7 +612,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-AGL58K",
@@ -567,7 +623,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-XO9T7E",
@@ -577,7 +634,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-8G8JDP",
@@ -587,7 +645,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-0LVSNU",
@@ -597,7 +656,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-JZA7TZ",
@@ -607,7 +667,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-0YNCXL",
@@ -617,7 +678,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-L4ZKLO",
@@ -627,7 +689,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-OKEP7Y",
@@ -637,7 +700,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-6WKTAK",
@@ -647,7 +711,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-PUXQPH",
@@ -657,7 +722,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-R62GDS",
@@ -667,7 +733,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-WM31YI",
@@ -677,7 +744,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-HAIR4C",
@@ -687,7 +755,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-OWGZRI",
@@ -697,7 +766,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-XA11DP",
@@ -707,7 +777,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-G8SBI4",
@@ -717,7 +788,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-Q2Y9V8",
@@ -727,7 +799,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-6WZS3T",
@@ -737,7 +810,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-60RJIW",
@@ -747,7 +821,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-1SWJCK",
@@ -757,7 +832,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-JLTEIY",
@@ -767,7 +843,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-ZCOTOH",
@@ -777,7 +854,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-P6VZ41",
@@ -787,7 +865,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-NAM148",
@@ -797,7 +876,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-P0TVHH",
@@ -807,7 +887,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-PBMYOF",
@@ -817,7 +898,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-QEWAOU",
@@ -827,7 +909,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-AXEQBN",
@@ -837,7 +920,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-HL1N13",
@@ -847,7 +931,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-JCAT9M",
@@ -857,7 +942,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-X2X18H",
@@ -867,7 +953,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-AFEYUH",
@@ -877,7 +964,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-Z1GV0E",
@@ -887,7 +975,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-38DALY",
@@ -897,7 +986,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-8OZCYW",
@@ -907,7 +997,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-D14VE9",
@@ -917,7 +1008,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-2MPNSM",
@@ -927,7 +1019,8 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	},
 	{
 		"code": "CRS-43D8W3",
@@ -937,6 +1030,7 @@
 		"offeredIn": "fall",
 		"description": "",
 		"prerequisites": [],
-		"corequisites": []
+		"corequisites": [],
+        "degreeLevel": "master"
 	}
 ]

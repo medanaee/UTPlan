@@ -71,8 +71,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
     degreeLevel: "undergrad" as DegreeLevel,
     facultyId: "",
     offeredIn: "both" as "fall" | "spring" | "both" | "none",
-    visualCategoryId: "",
-    ruleCategoryId: "",
+    categoryId: "",
     description: "",
   });
 
@@ -126,8 +125,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
           degreeLevel: "undergrad",
           facultyId: selectedFacultyId,
           offeredIn: "both",
-          visualCategoryId: "",
-          ruleCategoryId: "",
+          categoryId: "",
           description: "",
         });
         setActionMessage("مشخصات درس با موفقیت ویرایش شد.");
@@ -157,8 +155,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
           degreeLevel: "undergrad",
           facultyId: selectedFacultyId,
           offeredIn: "both",
-          visualCategoryId: "",
-          ruleCategoryId: "",
+          categoryId: "",
           description: "",
         });
         setActionMessage("درس جدید با موفقیت ایجاد شد.");
@@ -352,8 +349,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                   degreeLevel: "undergrad",
                   facultyId: selectedFacultyId,
                   offeredIn: "both",
-                  visualCategoryId: "",
-                  ruleCategoryId: "",
+                  categoryId: "",
                   description: "",
                 });
                 setCourseModalOpen(true);
@@ -511,8 +507,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                                 degreeLevel: course.degreeLevel || "undergrad",
                                 facultyId: course.facultyId || selectedFacultyId,
                                 offeredIn: course.offeredIn || "both",
-                                visualCategoryId: "",
-                                ruleCategoryId: "",
+                                categoryId: "",
                                 description: course.description || "",
                               });
                               setCourseModalOpen(true);

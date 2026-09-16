@@ -52,8 +52,7 @@ export function TrackCloneDialog({
   onSuccess,
 }: TrackCloneDialogProps) {
   const [sourceTrackId, setSourceTrackId] = useState<string>("");
-  const [cloneVisualCategories, setCloneVisualCategories] = useState(true);
-  const [cloneRuleCategories, setCloneRuleCategories] = useState(true);
+  const [cloneCategories, setCloneCategories] = useState(true);
   const [cloneRulesTree, setCloneRulesTree] = useState(true);
   const [cloneAssignments, setCloneAssignments] = useState(true);
 
@@ -62,8 +61,9 @@ export function TrackCloneDialog({
     success: boolean;
     message: string;
     stats?: {
-      visualCategoriesCloned: number;
-      ruleCategoriesCloned: number;
+      categoriesCloned: number;
+      visualCategoriesCloned?: number;
+      ruleCategoriesCloned?: number;
       assignmentsCloned: number;
       rulesTreeCloned: boolean;
     };
@@ -88,8 +88,7 @@ export function TrackCloneDialog({
         sourceTrackId,
         targetTrackId: targetTrack.id,
         options: {
-          cloneVisualCategories,
-          cloneRuleCategories,
+          cloneCategories,
           cloneRulesTree,
           cloneAssignments,
         },
@@ -172,30 +171,17 @@ export function TrackCloneDialog({
               بخش‌های مورد نظر برای کپی:
             </span>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
               <label className="flex items-center gap-2 p-2 rounded-xl border border-border/60 hover:bg-muted/40 cursor-pointer transition-colors">
                 <input
                   type="checkbox"
-                  checked={cloneVisualCategories}
-                  onChange={(e) => setCloneVisualCategories(e.target.checked)}
+                  checked={cloneCategories}
+                  onChange={(e) => setCloneCategories(e.target.checked)}
                   className="rounded text-primary focus:ring-primary h-4 w-4"
                 />
                 <div className="flex items-center gap-1.5">
-                  <Palette className="h-3.5 w-3.5 text-blue-500" />
-                  <span>دسته‌های بصری رنگی</span>
-                </div>
-              </label>
-
-              <label className="flex items-center gap-2 p-2 rounded-xl border border-border/60 hover:bg-muted/40 cursor-pointer transition-colors">
-                <input
-                  type="checkbox"
-                  checked={cloneRuleCategories}
-                  onChange={(e) => setCloneRuleCategories(e.target.checked)}
-                  className="rounded text-primary focus:ring-primary h-4 w-4"
-                />
-                <div className="flex items-center gap-1.5">
-                  <FolderTree className="h-3.5 w-3.5 text-purple-500" />
-                  <span>دسته‌های درختی قوانین</span>
+                  <FolderTree className="h-3.5 w-3.5 text-primary" />
+                  <span>دسته‌ها (رنگ و ساختار)</span>
                 </div>
               </label>
 
@@ -246,14 +232,12 @@ export function TrackCloneDialog({
               </div>
 
               {feedback.stats && (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 text-center text-xs">
+                <div className="grid grid-cols-3 gap-2 pt-2 text-center text-xs">
                   <div className="bg-background/80 p-2 rounded-xl border">
-                    <span className="text-muted-foreground block text-[10px]">دسته‌های بصری</span>
-                    <span className="font-bold text-foreground">{feedback.stats.visualCategoriesCloned}</span>
-                  </div>
-                  <div className="bg-background/80 p-2 rounded-xl border">
-                    <span className="text-muted-foreground block text-[10px]">دسته‌های قوانین</span>
-                    <span className="font-bold text-foreground">{feedback.stats.ruleCategoriesCloned}</span>
+                    <span className="text-muted-foreground block text-[10px]">دسته‌ها</span>
+                    <span className="font-bold text-foreground">
+                      {feedback.stats.categoriesCloned ?? feedback.stats.ruleCategoriesCloned ?? 0}
+                    </span>
                   </div>
                   <div className="bg-background/80 p-2 rounded-xl border">
                     <span className="text-muted-foreground block text-[10px]">دروس متصل‌شده</span>

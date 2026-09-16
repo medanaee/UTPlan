@@ -1,6 +1,6 @@
 import type { Course, DegreeLevel, PrerequisiteRelation, PrerequisiteType } from "../types";
 import { getD1 } from "./client";
-import { assignCourseToCategories, getEffectiveFacultyIds } from "./structure";
+import { assignCourseToCategory, assignCourseToCategories, getEffectiveFacultyIds } from "./structure";
 
 // ----------------------------------------------------
 // COURSES CRUD
@@ -77,8 +77,9 @@ export async function getCourses(
           id: a.id,
           trackId: a.track_id,
           courseId: a.course_id,
-          visualCategoryId: a.visual_category_id || null,
-          ruleCategoryId: a.rule_category_id || null,
+          categoryId: a.category_id || a.rule_category_id || a.visual_category_id || null,
+          visualCategoryId: a.category_id || a.visual_category_id || null,
+          ruleCategoryId: a.category_id || a.rule_category_id || null,
         }));
 
       return {
@@ -237,8 +238,9 @@ export async function getCourseById(id: string): Promise<Course | null> {
         id: a.id,
         trackId: a.track_id,
         courseId: a.course_id,
-        visualCategoryId: a.visual_category_id || null,
-        ruleCategoryId: a.rule_category_id || null,
+        categoryId: a.category_id || a.rule_category_id || a.visual_category_id || null,
+        visualCategoryId: a.category_id || a.visual_category_id || null,
+        ruleCategoryId: a.category_id || a.rule_category_id || null,
       })),
     };
   } catch (err) {
@@ -257,6 +259,7 @@ export async function createCourse(data: {
   offeredIn?: "fall" | "spring" | "both" | "none";
   description?: string;
   trackId?: string;
+  categoryId?: string;
   visualCategoryId?: string;
   ruleCategoryId?: string;
 }): Promise<Course> {
@@ -283,7 +286,8 @@ export async function createCourse(data: {
       .run();
 
     if (data.trackId) {
-      await assignCourseToCategories(data.trackId, id, data.visualCategoryId, data.ruleCategoryId);
+      const catId = data.categoryId ?? data.ruleCategoryId ?? data.visualCategoryId ?? null;
+      await assignCourseToCategory(data.trackId, id, catId);
     }
   } catch (err) {
     console.error("D1 createCourse error:", err);
@@ -310,6 +314,7 @@ export async function updateCourse(
   data: Partial<Pick<Course, "name" | "code" | "degreeLevel" | "units" | "offeredIn" | "description" | "facultyId">> & {
     abbreviation?: string | null;
     trackId?: string;
+    categoryId?: string;
     visualCategoryId?: string;
     ruleCategoryId?: string;
     deletedAt?: string | null;
@@ -361,7 +366,8 @@ export async function updateCourse(
       .run();
 
     if (data.trackId) {
-      await assignCourseToCategories(data.trackId, id, data.visualCategoryId, data.ruleCategoryId);
+      const catId = data.categoryId ?? data.ruleCategoryId ?? data.visualCategoryId ?? null;
+      await assignCourseToCategory(data.trackId, id, catId);
     }
 
     return await getCourseById(id);

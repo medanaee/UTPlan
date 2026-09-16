@@ -46,6 +46,7 @@ import type {
   Course,
   CourseOffering,
   CourseEvent,
+  Category,
   VisualCategory,
   UserSession,
 } from "@/lib/types";
@@ -62,7 +63,8 @@ interface TermSchedulePlannerProps {
   chartId: string;
   termIndex: number;
   termCourses: Course[];
-  allVisualCategories: VisualCategory[];
+  allCategories?: Category[];
+  allVisualCategories?: VisualCategory[];
   selectedEventsMap: Record<string, string>; // courseId -> eventId
   onEventSelect: (courseId: string, eventId: string | null) => Promise<void>;
   onClose: () => void;
@@ -101,12 +103,14 @@ export function TermSchedulePlanner({
   chartId,
   termIndex,
   termCourses,
+  allCategories,
   allVisualCategories,
   selectedEventsMap,
   onEventSelect,
   onClose,
   user,
 }: TermSchedulePlannerProps) {
+  const allCats = allCategories || allVisualCategories || [];
   const calculatedSemester = useMemo(() => {
     return calculateSemesterForTerm(user?.entrySemester, termIndex);
   }, [user?.entrySemester, termIndex]);
@@ -459,14 +463,11 @@ export function TermSchedulePlanner({
                 const selectedEventId = selectedEventsMap[course.id];
                 const selectedEvent = events.find((e) => e.id === selectedEventId);
 
-                // Visual category color
-                const catColor =
-                  course.trackAssignments?.[0]?.visualCategoryId
-                    ? allVisualCategories.find(
-                        (vc) =>
-                          vc.id === course.trackAssignments?.[0]?.visualCategoryId
-                      )?.color || "#3b82f6"
-                    : "#3b82f6";
+                const assign = course.trackAssignments?.[0];
+                const catId = assign?.categoryId || (assign as any)?.visualCategoryId || (assign as any)?.ruleCategoryId;
+                const catColor = catId
+                  ? allCats.find((vc) => vc.id === catId)?.color || "#3b82f6"
+                  : "#3b82f6";
 
                 // Course available events
                 const courseEvents = events.filter(
@@ -803,15 +804,11 @@ export function TermSchedulePlanner({
 
                         {/* Render Active Selected Course Slots */}
                         {activeSelectedEvents.map(({ course, event }) => {
-                          const catColor =
-                            course.trackAssignments?.[0]?.visualCategoryId
-                              ? allVisualCategories.find(
-                                  (vc) =>
-                                    vc.id ===
-                                    course.trackAssignments?.[0]
-                                      ?.visualCategoryId
-                                )?.color || "#3b82f6"
-                              : "#3b82f6";
+                          const assign = course.trackAssignments?.[0];
+                          const catId = assign?.categoryId || (assign as any)?.visualCategoryId || (assign as any)?.ruleCategoryId;
+                          const catColor = catId
+                            ? allCats.find((vc) => vc.id === catId)?.color || "#3b82f6"
+                            : "#3b82f6";
 
                           const daySlots = (event.slots || []).filter(
                             (s) => s.dayOfWeek === day.value
@@ -982,7 +979,7 @@ export function TermSchedulePlanner({
         courses={termCourses}
         selectedEventsMap={selectedEventsMap}
         allEvents={events}
-        visualCategories={allVisualCategories}
+        categories={allCats}
       />
     </div>
   );

@@ -2,6 +2,7 @@ import type {
   RuleNode,
   RuleGroupNode,
   RuleLeafNode,
+  Category,
   RuleCategory,
   Course,
   PrerequisiteRelation,
@@ -19,7 +20,8 @@ export interface ChartCourseEntry {
 export interface ValidationEngineInput {
   chartCourses: ChartCourseEntry[];
   rulesTree?: RuleGroupNode | null;
-  ruleCategories: RuleCategory[];
+  categories?: Category[];
+  ruleCategories?: Category[];
   trackAssignments: TrackCourseAssignment[];
   allCourses: Course[];
   prerequisites: PrerequisiteRelation[];
@@ -36,7 +38,7 @@ export interface ValidationEngineInput {
 /**
  * Helper to collect a category ID and all its recursive subcategory IDs
  */
-export function getCategoryAndDescendantIds(targetCatId: string, allCategories: RuleCategory[]): Set<string> {
+export function getCategoryAndDescendantIds(targetCatId: string, allCategories: Category[]): Set<string> {
   const result = new Set<string>([targetCatId]);
   let added = true;
   while (added) {
@@ -58,7 +60,8 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
   const {
     chartCourses,
     rulesTree,
-    ruleCategories,
+    categories: inputCategories,
+    ruleCategories: inputRuleCategories,
     trackAssignments,
     allCourses,
     prerequisites,
@@ -67,6 +70,8 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
     startTerm = 1,
     totalTerms: inputTotalTerms,
   } = input;
+
+  const ruleCategories = inputCategories || inputRuleCategories || [];
 
   const waivedSet = new Set<string>(waivedCourseIds);
 
@@ -81,11 +86,12 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
     courseMap.set(c.id, c);
   }
 
-  // Map courseId -> assigned ruleCategoryId
+  // Map courseId -> assigned categoryId
   const courseToRuleCatMap = new Map<string, string>();
   for (const assign of trackAssignments) {
-    if (assign.ruleCategoryId) {
-      courseToRuleCatMap.set(assign.courseId, assign.ruleCategoryId);
+    const catId = assign.categoryId || assign.ruleCategoryId || assign.visualCategoryId;
+    if (catId) {
+      courseToRuleCatMap.set(assign.courseId, catId);
     }
   }
 
@@ -308,17 +314,18 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
     if (rulesTree) {
       const findReq = (node: any) => {
         if (!node) return;
-        if (node.type === "MIN_CREDITS_IN_CATEGORY" && node.ruleCategoryId === rcat.id) {
+        const nodeCatId = node.categoryId || node.ruleCategoryId;
+        if (node.type === "MIN_CREDITS_IN_CATEGORY" && nodeCatId === rcat.id) {
           required = node.minCredits || 0;
         }
-        if (node.type === "MAX_CREDITS_IN_CATEGORY" && node.ruleCategoryId === rcat.id) {
+        if (node.type === "MAX_CREDITS_IN_CATEGORY" && nodeCatId === rcat.id) {
           maxAllowed = node.maxCredits !== undefined ? node.maxCredits : node.minCredits;
         }
         if (
           (node.type === "FORBIDDEN_CATEGORY" || node.type === "FORBIDDEN_ALL_COURSES_IN_CATEGORY") &&
-          node.ruleCategoryId
+          nodeCatId
         ) {
-          const targetCatIds = getCategoryAndDescendantIds(node.ruleCategoryId, ruleCategories);
+          const targetCatIds = getCategoryAndDescendantIds(nodeCatId, ruleCategories);
           if (targetCatIds.has(rcat.id)) {
             maxAllowed = 0;
           }
@@ -385,7 +392,7 @@ function evaluateRuleNode(
   chartCourses: ChartCourseEntry[],
   courseMap: Map<string, Course>,
   courseToRuleCatMap: Map<string, string>,
-  ruleCategories: RuleCategory[],
+  ruleCategories: Category[],
   waivedCourseIds: string[] = []
 ): { satisfied: boolean; issues: ValidationIssue[] } {
   // 1. Group Node
@@ -427,13 +434,14 @@ function evaluateRuleNode(
   // 2. Leaf Nodes
   const leaf = node as RuleLeafNode;
   const issues: ValidationIssue[] = [];
+  const leafCatId = leaf.categoryId || leaf.ruleCategoryId || "";
 
   switch (leaf.type) {
     case "MIN_CREDITS_IN_CATEGORY": {
-      const cat = ruleCategories.find((c) => c.id === leaf.ruleCategoryId);
+      const cat = ruleCategories.find((c) => c.id === leafCatId);
       const catName = cat ? cat.name : "دسته نامشخص";
       const required = leaf.minCredits || 0;
-      const targetCatIds = getCategoryAndDescendantIds(leaf.ruleCategoryId || "", ruleCategories);
+      const targetCatIds = getCategoryAndDescendantIds(leafCatId, ruleCategories);
 
       const takenCourseIds = new Set<string>();
       for (const entry of chartCourses) {
@@ -468,10 +476,10 @@ function evaluateRuleNode(
     }
 
     case "MAX_CREDITS_IN_CATEGORY": {
-      const cat = ruleCategories.find((c) => c.id === leaf.ruleCategoryId);
+      const cat = ruleCategories.find((c) => c.id === leafCatId);
       const catName = cat ? cat.name : "دسته نامشخص";
       const maxAllowed = leaf.maxCredits !== undefined ? leaf.maxCredits : (leaf.minCredits || 0);
-      const targetCatIds = getCategoryAndDescendantIds(leaf.ruleCategoryId || "", ruleCategories);
+      const targetCatIds = getCategoryAndDescendantIds(leafCatId, ruleCategories);
 
       const takenCourseIds = new Set<string>();
       for (const entry of chartCourses) {
@@ -506,9 +514,9 @@ function evaluateRuleNode(
     }
 
     case "ALL_COURSES_IN_CATEGORY": {
-      const cat = ruleCategories.find((c) => c.id === leaf.ruleCategoryId);
+      const cat = ruleCategories.find((c) => c.id === leafCatId);
       const catName = cat ? cat.name : "دسته نامشخص";
-      const targetCatIds = getCategoryAndDescendantIds(leaf.ruleCategoryId || "", ruleCategories);
+      const targetCatIds = getCategoryAndDescendantIds(leafCatId, ruleCategories);
 
       // Find all courses assigned to this category or its subcategories
       const requiredCourseIds: string[] = [];
@@ -538,10 +546,10 @@ function evaluateRuleNode(
     }
 
     case "EXACT_N_COURSES_IN_CATEGORY": {
-      const cat = ruleCategories.find((c) => c.id === leaf.ruleCategoryId);
+      const cat = ruleCategories.find((c) => c.id === leafCatId);
       const catName = cat ? cat.name : "دسته نامشخص";
       const countNeeded = leaf.exactCount || 0;
-      const targetCatIds = getCategoryAndDescendantIds(leaf.ruleCategoryId || "", ruleCategories);
+      const targetCatIds = getCategoryAndDescendantIds(leafCatId, ruleCategories);
 
       const takenCourseIds = new Set<string>();
       for (const entry of chartCourses) {
@@ -639,12 +647,12 @@ function evaluateRuleNode(
 
     case "FORBIDDEN_CATEGORY":
     case "FORBIDDEN_ALL_COURSES_IN_CATEGORY": {
-      if (!leaf.ruleCategoryId) {
+      if (!leafCatId) {
         return { satisfied: true, issues: [] };
       }
-      const cat = ruleCategories.find((c) => c.id === leaf.ruleCategoryId);
+      const cat = ruleCategories.find((c) => c.id === leafCatId);
       const catName = cat ? cat.name : "دسته نامشخص";
-      const targetCatIds = getCategoryAndDescendantIds(leaf.ruleCategoryId, ruleCategories);
+      const targetCatIds = getCategoryAndDescendantIds(leafCatId, ruleCategories);
 
       const forbiddenTakenIds = new Set<string>();
       for (const entry of chartCourses) {
@@ -669,7 +677,7 @@ function evaluateRuleNode(
           issues.push({
             id: `issue_leaf_${leaf.id}_${violatedId}`,
             type: "error",
-            message: `درس «${cName}» متعلق به دسته قوانین ممنوعه «${catName}» است و اخذ آن برای این گرایش مجاز نمی‌باشد.`,
+            message: `درس «${cName}» متعلق به دسته ممنوعه «${catName}» است و اخذ آن برای این گرایش مجاز نمی‌باشد.`,
             termIndex: entry?.termIndex,
             courseId: violatedId,
             ruleNodeId: leaf.id,

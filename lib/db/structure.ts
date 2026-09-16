@@ -3,6 +3,7 @@ import type {
   FacultyLink,
   Major,
   Track,
+  Category,
   VisualCategory,
   RuleCategory,
   TrackCourseAssignment,
@@ -556,15 +557,15 @@ export async function deleteTrack(id: string): Promise<boolean> {
 }
 
 // ----------------------------------------------------
-// 4. VISUAL CATEGORIES (Flat color categories per track)
+// 4. CATEGORIES (Unified hierarchical categories with color per track)
 // ----------------------------------------------------
-export async function getVisualCategories(trackId: string): Promise<VisualCategory[]> {
+export async function getCategories(trackId: string): Promise<Category[]> {
   const d1 = getD1();
   if (!d1) return [];
 
   try {
     const { results } = await d1
-      .prepare("SELECT * FROM visual_categories WHERE track_id = ? ORDER BY sort_order ASC, created_at ASC")
+      .prepare("SELECT * FROM categories WHERE track_id = ? ORDER BY sort_order ASC, created_at ASC")
       .bind(trackId)
       .all();
     return (results || []).map((r: any) => ({
@@ -573,24 +574,24 @@ export async function getVisualCategories(trackId: string): Promise<VisualCatego
       code: r.code || undefined,
       parentId: r.parent_id || null,
       name: r.name,
-      color: r.color,
+      color: r.color || "#3b82f6",
       sortOrder: Number(r.sort_order) || 0,
       createdAt: r.created_at,
     }));
   } catch (err) {
-    console.error("D1 getVisualCategories error:", err);
+    console.error("D1 getCategories error:", err);
     return [];
   }
 }
 
-export async function createVisualCategory(
+export async function createCategory(
   trackIdOrData: string | { trackId: string; name: string; color?: string; parentId?: string | null; sortOrder?: number; code?: string },
   nameArg?: string,
   colorArg?: string,
   sortOrderArg = 0,
   codeArg?: string,
   parentIdArg?: string | null
-): Promise<VisualCategory> {
+): Promise<Category> {
   let trackId: string;
   let name: string;
   let color: string;
@@ -614,11 +615,11 @@ export async function createVisualCategory(
     code = codeArg?.trim() || undefined;
   }
 
-  const id = `vcat_${crypto.randomUUID().slice(0, 8)}`;
+  const id = `cat_${crypto.randomUUID().slice(0, 8)}`;
   const now = new Date().toISOString();
   const cleanCode = code?.trim()
     ? code.trim().toUpperCase()
-    : `VCAT-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
+    : `CAT-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
 
   const d1 = getD1();
   if (!d1) throw new Error("پایگاه‌داده در دسترس نیست.");
@@ -626,12 +627,12 @@ export async function createVisualCategory(
   try {
     await d1
       .prepare(
-        "INSERT INTO visual_categories (id, track_id, parent_id, code, name, color, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        "INSERT INTO categories (id, track_id, parent_id, code, name, color, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
       )
       .bind(id, trackId, parentId, cleanCode, name.trim(), color, sortOrder, now)
       .run();
   } catch (err) {
-    console.error("D1 createVisualCategory error:", err);
+    console.error("D1 createCategory error:", err);
     throw err;
   }
 
@@ -647,28 +648,28 @@ export async function createVisualCategory(
   };
 }
 
-export async function updateVisualCategory(
+export async function updateCategory(
   id: string,
   data: { name?: string; color?: string; parentId?: string | null; sortOrder?: number; code?: string | null }
-): Promise<VisualCategory | null> {
+): Promise<Category | null> {
   const d1 = getD1();
   if (!d1) return null;
 
   try {
-    const existing = await d1.prepare("SELECT * FROM visual_categories WHERE id = ?").bind(id).first();
+    const existing = await d1.prepare("SELECT * FROM categories WHERE id = ?").bind(id).first();
     if (!existing) return null;
 
     const name = data.name !== undefined ? data.name.trim() : (existing as any).name;
-    const color = data.color !== undefined ? data.color : (existing as any).color;
+    const color = data.color !== undefined ? data.color : ((existing as any).color || "#3b82f6");
     const parentId = data.parentId !== undefined ? (data.parentId || null) : (existing as any).parent_id;
     const sortOrder = data.sortOrder !== undefined ? data.sortOrder : (existing as any).sort_order;
     const code =
       data.code !== undefined
-        ? (data.code?.trim() ? data.code.trim().toUpperCase() : (existing as any).code || `VCAT-${crypto.randomUUID().slice(0, 6).toUpperCase()}`)
-        : ((existing as any).code || `VCAT-${crypto.randomUUID().slice(0, 6).toUpperCase()}`);
+        ? (data.code?.trim() ? data.code.trim().toUpperCase() : (existing as any).code || `CAT-${crypto.randomUUID().slice(0, 6).toUpperCase()}`)
+        : ((existing as any).code || `CAT-${crypto.randomUUID().slice(0, 6).toUpperCase()}`);
 
     await d1
-      .prepare("UPDATE visual_categories SET code = ?, name = ?, color = ?, parent_id = ?, sort_order = ? WHERE id = ?")
+      .prepare("UPDATE categories SET code = ?, name = ?, color = ?, parent_id = ?, sort_order = ? WHERE id = ?")
       .bind(code, name, color, parentId, sortOrder, id)
       .run();
 
@@ -683,187 +684,85 @@ export async function updateVisualCategory(
       createdAt: (existing as any).created_at,
     };
   } catch (err) {
-    console.error("D1 updateVisualCategory error:", err);
+    console.error("D1 updateCategory error:", err);
     return null;
   }
 }
 
-export async function updateRuleCategory(
-  id: string,
-  data: { name?: string; parentId?: string | null; sortOrder?: number; code?: string | null }
-): Promise<RuleCategory | null> {
-  const d1 = getD1();
-  if (!d1) return null;
-
-  try {
-    const existing = await d1.prepare("SELECT * FROM rule_categories WHERE id = ?").bind(id).first();
-    if (!existing) return null;
-
-    const name = data.name !== undefined ? data.name.trim() : (existing as any).name;
-    const parentId = data.parentId !== undefined ? (data.parentId || null) : (existing as any).parent_id;
-    const sortOrder = data.sortOrder !== undefined ? data.sortOrder : (existing as any).sort_order;
-    const code =
-      data.code !== undefined
-        ? (data.code?.trim() ? data.code.trim().toUpperCase() : (existing as any).code || `RCAT-${crypto.randomUUID().slice(0, 6).toUpperCase()}`)
-        : ((existing as any).code || `RCAT-${crypto.randomUUID().slice(0, 6).toUpperCase()}`);
-
-    await d1
-      .prepare("UPDATE rule_categories SET code = ?, name = ?, parent_id = ?, sort_order = ? WHERE id = ?")
-      .bind(code, name, parentId, sortOrder, id)
-      .run();
-
-    return {
-      id,
-      trackId: (existing as any).track_id,
-      code,
-      parentId,
-      name,
-      createdAt: (existing as any).created_at,
-    };
-  } catch (err) {
-    console.error("D1 updateRuleCategory error:", err);
-    return null;
-  }
-}
-
-export async function deleteVisualCategory(id: string): Promise<boolean> {
+export async function deleteCategory(id: string): Promise<boolean> {
   const d1 = getD1();
   if (!d1) return false;
 
   try {
     // Recursively delete children first
     const { results: childRows } = await d1
-      .prepare("SELECT id FROM visual_categories WHERE parent_id = ?")
+      .prepare("SELECT id FROM categories WHERE parent_id = ?")
       .bind(id)
       .all();
     for (const child of childRows || []) {
-      await deleteVisualCategory((child as any).id);
+      await deleteCategory((child as any).id);
     }
 
-    // Nullify visual_category_id for assigned courses so rule_category_id is NOT lost
-    await d1.prepare("UPDATE track_course_assignments SET visual_category_id = NULL WHERE visual_category_id = ?").bind(id).run();
-    // Clean up orphan rows that have neither visual nor rule category
-    await d1.prepare("DELETE FROM track_course_assignments WHERE visual_category_id IS NULL AND rule_category_id IS NULL").run();
-    await d1.prepare("DELETE FROM visual_categories WHERE id = ?").bind(id).run();
+    // Unassign courses assigned to this category
+    await d1.prepare("UPDATE track_course_assignments SET category_id = NULL WHERE category_id = ?").bind(id).run();
+    // Clean up orphan assignments
+    await d1.prepare("DELETE FROM track_course_assignments WHERE category_id IS NULL").run();
+    await d1.prepare("DELETE FROM categories WHERE id = ?").bind(id).run();
     return true;
   } catch (err) {
-    console.error("D1 deleteVisualCategory error:", err);
+    console.error("D1 deleteCategory error:", err);
     return false;
   }
 }
 
-// ----------------------------------------------------
-// 5. RULE CATEGORIES (Requirements category tree per track)
-// ----------------------------------------------------
-export async function getRuleCategories(trackId: string): Promise<RuleCategory[]> {
-  const d1 = getD1();
-  if (!d1) return [];
-
-  try {
-    const { results } = await d1
-      .prepare("SELECT * FROM rule_categories WHERE track_id = ? ORDER BY sort_order ASC, created_at ASC")
-      .bind(trackId)
-      .all();
-    return (results || []).map((r: any) => ({
-      id: r.id,
-      trackId: r.track_id,
-      code: r.code || undefined,
-      parentId: r.parent_id || null,
-      name: r.name,
-      createdAt: r.created_at,
-    }));
-  } catch (err) {
-    console.error("D1 getRuleCategories error:", err);
-    return [];
-  }
-}
-
-export async function createRuleCategory(
-  trackIdOrData: string | { trackId: string; name: string; parentId?: string | null; sortOrder?: number; code?: string },
-  nameArg?: string,
-  parentIdArg?: string | null,
-  sortOrderArg = 0,
-  codeArg?: string
-): Promise<RuleCategory> {
-  let trackId: string;
-  let name: string;
-  let parentId: string | null;
-  let sortOrder: number;
-  let code: string | undefined;
-
-  if (typeof trackIdOrData === "object" && trackIdOrData !== null) {
-    trackId = trackIdOrData.trackId;
-    name = trackIdOrData.name;
-    parentId = trackIdOrData.parentId || null;
-    sortOrder = trackIdOrData.sortOrder ?? 0;
-    code = trackIdOrData.code?.trim() || undefined;
-  } else {
-    trackId = trackIdOrData;
-    name = nameArg!;
-    parentId = parentIdArg || null;
-    sortOrder = sortOrderArg;
-    code = codeArg?.trim() || undefined;
-  }
-
-  const id = `rcat_${crypto.randomUUID().slice(0, 8)}`;
-  const now = new Date().toISOString();
-  const cleanCode = code?.trim()
-    ? code.trim().toUpperCase()
-    : `RCAT-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
-
-  const d1 = getD1();
-  if (!d1) throw new Error("پایگاه‌داده در دسترس نیست.");
-
-  try {
-    await d1
-      .prepare(
-        "INSERT INTO rule_categories (id, track_id, parent_id, code, name, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
-      )
-      .bind(id, trackId, parentId, cleanCode, name.trim(), sortOrder, now)
-      .run();
-  } catch (err) {
-    console.error("D1 createRuleCategory error:", err);
-    throw err;
-  }
-
-  return {
-    id,
-    trackId,
-    code: cleanCode,
-    parentId,
-    name: name.trim(),
-    createdAt: now,
-  };
-}
-
-export async function deleteRuleCategory(id: string): Promise<boolean> {
+export async function reorderCategories(
+  items: { id: string; sortOrder: number; parentId?: string | null }[]
+): Promise<boolean> {
   const d1 = getD1();
   if (!d1) return false;
 
   try {
-    // Recursively handle child categories first
-    const { results: childRows } = await d1
-      .prepare("SELECT id FROM rule_categories WHERE parent_id = ?")
-      .bind(id)
-      .all();
-    for (const child of childRows || []) {
-      await deleteRuleCategory((child as any).id);
-    }
-
-    // Nullify assignments for this rule category so visual_category_id is NOT lost
-    await d1.prepare("UPDATE track_course_assignments SET rule_category_id = NULL WHERE rule_category_id = ?").bind(id).run();
-    // Clean up orphan rows that have neither visual nor rule category
-    await d1.prepare("DELETE FROM track_course_assignments WHERE visual_category_id IS NULL AND rule_category_id IS NULL").run();
-    await d1.prepare("DELETE FROM rule_categories WHERE id = ?").bind(id).run();
+    const stmts = items.map((item) => {
+      if (item.parentId !== undefined) {
+        return d1
+          .prepare("UPDATE categories SET sort_order = ?, parent_id = ? WHERE id = ?")
+          .bind(item.sortOrder, item.parentId || null, item.id);
+      }
+      return d1.prepare("UPDATE categories SET sort_order = ? WHERE id = ?").bind(item.sortOrder, item.id);
+    });
+    await d1.batch(stmts);
     return true;
   } catch (err) {
-    console.error("D1 deleteRuleCategory error:", err);
+    console.error("D1 reorderCategories error:", err);
     return false;
   }
 }
 
+// Backwards compatibility aliases
+export const getVisualCategories = getCategories;
+export const getRuleCategories = getCategories;
+export const createVisualCategory = createCategory;
+export const createRuleCategory = (
+  trackIdOrData: any,
+  nameArg?: any,
+  parentIdArg?: any,
+  sortOrderArg = 0,
+  codeArg?: any
+) => {
+  if (typeof trackIdOrData === "object" && trackIdOrData !== null) {
+    return createCategory(trackIdOrData);
+  }
+  return createCategory(trackIdOrData, nameArg, "#3b82f6", sortOrderArg, codeArg, parentIdArg);
+};
+export const updateVisualCategory = updateCategory;
+export const updateRuleCategory = updateCategory;
+export const deleteVisualCategory = deleteCategory;
+export const deleteRuleCategory = deleteCategory;
+export const reorderVisualCategories = reorderCategories;
+export const reorderRuleCategories = reorderCategories;
+
 // ----------------------------------------------------
-// 6. TRACK COURSE ASSIGNMENTS
+// 5. TRACK COURSE ASSIGNMENTS
 // ----------------------------------------------------
 export async function getTrackAssignments(trackId: string): Promise<TrackCourseAssignment[]> {
   const d1 = getD1();
@@ -871,7 +770,7 @@ export async function getTrackAssignments(trackId: string): Promise<TrackCourseA
 
   try {
     const query = `
-      SELECT a.id, a.track_id, a.course_id, a.visual_category_id, a.rule_category_id,
+      SELECT a.id, a.track_id, a.course_id, a.category_id,
              c.name AS course_name, c.code AS course_code, c.units AS course_units
       FROM track_course_assignments a
       LEFT JOIN courses c ON a.course_id = c.id
@@ -882,8 +781,9 @@ export async function getTrackAssignments(trackId: string): Promise<TrackCourseA
       id: r.id,
       trackId: r.track_id,
       courseId: r.course_id,
-      visualCategoryId: r.visual_category_id || null,
-      ruleCategoryId: r.rule_category_id || null,
+      categoryId: r.category_id || null,
+      visualCategoryId: r.category_id || null,
+      ruleCategoryId: r.category_id || null,
       courseName: r.course_name || "نامشخص",
       courseCode: r.course_code || "---",
       units: Number(r.course_units) || 3,
@@ -894,29 +794,27 @@ export async function getTrackAssignments(trackId: string): Promise<TrackCourseA
   }
 }
 
-export async function assignCourseToCategories(
+export async function assignCourseToCategory(
   trackId: string,
   courseId: string,
-  visualCategoryId?: string | null,
-  ruleCategoryId?: string | null
+  categoryId?: string | null
 ): Promise<TrackCourseAssignment> {
   const id = `assign_${trackId}_${courseId}`;
   const d1 = getD1();
   if (d1) {
     try {
       const upsertSql = `
-        INSERT INTO track_course_assignments (id, track_id, course_id, visual_category_id, rule_category_id)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO track_course_assignments (id, track_id, course_id, category_id)
+        VALUES (?, ?, ?, ?)
         ON CONFLICT(track_id, course_id) DO UPDATE SET
-          visual_category_id = excluded.visual_category_id,
-          rule_category_id = excluded.rule_category_id
+          category_id = excluded.category_id
       `;
       await d1
         .prepare(upsertSql)
-        .bind(id, trackId, courseId, visualCategoryId || null, ruleCategoryId || null)
+        .bind(id, trackId, courseId, categoryId || null)
         .run();
     } catch (err) {
-      console.error("D1 assignCourseToCategories error:", err);
+      console.error("D1 assignCourseToCategory error:", err);
     }
   }
 
@@ -924,37 +822,47 @@ export async function assignCourseToCategories(
     id,
     trackId,
     courseId,
-    visualCategoryId: visualCategoryId || null,
-    ruleCategoryId: ruleCategoryId || null,
+    categoryId: categoryId || null,
+    visualCategoryId: categoryId || null,
+    ruleCategoryId: categoryId || null,
   };
+}
+
+export async function assignCourseToCategories(
+  trackId: string,
+  courseId: string,
+  visualCategoryId?: string | null,
+  ruleCategoryId?: string | null
+): Promise<TrackCourseAssignment> {
+  const catId = ruleCategoryId || visualCategoryId || null;
+  return assignCourseToCategory(trackId, courseId, catId);
 }
 
 export async function bulkAssignTrackCourses(
   trackId: string,
-  assignments: { courseId: string; visualCategoryId?: string | null; ruleCategoryId?: string | null }[]
+  assignments: { courseId: string; categoryId?: string | null; visualCategoryId?: string | null; ruleCategoryId?: string | null }[]
 ): Promise<boolean> {
   const d1 = getD1();
   if (!d1) return false;
   if (!assignments || assignments.length === 0) return true;
 
   const upsertSql = `
-    INSERT INTO track_course_assignments (id, track_id, course_id, visual_category_id, rule_category_id)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO track_course_assignments (id, track_id, course_id, category_id)
+    VALUES (?, ?, ?, ?)
     ON CONFLICT(track_id, course_id) DO UPDATE SET
-      visual_category_id = excluded.visual_category_id,
-      rule_category_id = excluded.rule_category_id
+      category_id = excluded.category_id
   `;
 
   const stmts: any[] = [];
   for (const item of assignments) {
     const id = `assign_${trackId}_${item.courseId}`;
+    const catId = item.categoryId ?? item.ruleCategoryId ?? item.visualCategoryId ?? null;
     stmts.push(
       d1.prepare(upsertSql).bind(
         id,
         trackId,
         item.courseId,
-        item.visualCategoryId || null,
-        item.ruleCategoryId || null
+        catId
       )
     );
   }
@@ -965,20 +873,95 @@ export async function bulkAssignTrackCourses(
   return true;
 }
 
+export async function assignCategoryCourses(
+  trackId: string,
+  arg2: any,
+  arg3: any,
+  arg4?: any
+): Promise<boolean> {
+  let categoryId: string;
+  let courseIds: string[];
+
+  if (typeof arg2 === "string" && Array.isArray(arg3)) {
+    categoryId = arg2;
+    courseIds = arg3;
+  } else {
+    // Legacy signature: (trackId, type, categoryId, courseIds)
+    categoryId = arg3;
+    courseIds = arg4 || [];
+  }
+
+  const d1 = getD1();
+  if (!d1) return false;
+
+  try {
+    // Clear previous assignments for this category
+    await d1
+      .prepare(
+        "UPDATE track_course_assignments SET category_id = NULL WHERE track_id = ? AND category_id = ?"
+      )
+      .bind(trackId, categoryId)
+      .run();
+
+    // Assign selected courses
+    for (const courseId of courseIds) {
+      const id = `assign_${trackId}_${courseId}`;
+      await d1
+        .prepare(
+          `INSERT INTO track_course_assignments (id, track_id, course_id, category_id)
+           VALUES (?, ?, ?, ?)
+           ON CONFLICT(track_id, course_id) DO UPDATE SET category_id = excluded.category_id`
+        )
+        .bind(id, trackId, courseId, categoryId)
+        .run();
+    }
+    return true;
+  } catch (err) {
+    console.error("D1 assignCategoryCourses error:", err);
+    return false;
+  }
+}
+
+export async function clearCategoryCourses(
+  trackId: string,
+  arg2: any,
+  arg3?: any
+): Promise<boolean> {
+  const categoryId: string = typeof arg2 === "string" && arg3 ? arg3 : arg2;
+  const d1 = getD1();
+  if (!d1) return false;
+
+  try {
+    await d1
+      .prepare("UPDATE track_course_assignments SET category_id = NULL WHERE track_id = ? AND category_id = ?")
+      .bind(trackId, categoryId)
+      .run();
+    // Clean up orphan rows
+    await d1
+      .prepare("DELETE FROM track_course_assignments WHERE track_id = ? AND category_id IS NULL")
+      .bind(trackId)
+      .run();
+    return true;
+  } catch (err) {
+    console.error("D1 clearCategoryCourses error:", err);
+    return false;
+  }
+}
+
 // ----------------------------------------------------
-// 7. TRACK STRUCTURE CLONING
+// 6. TRACK STRUCTURE CLONING
 // ----------------------------------------------------
 export async function cloneTrackStructure(
   sourceTrackId: string,
   targetTrackId: string,
   options: {
+    cloneCategories?: boolean;
     cloneVisualCategories?: boolean;
     cloneRuleCategories?: boolean;
     cloneRulesTree?: boolean;
     cloneAssignments?: boolean;
   } = {
-    cloneVisualCategories: true,
-    cloneRuleCategories: true,
+    cloneCategories: true,
     cloneRulesTree: true,
     cloneAssignments: true,
   }
@@ -986,6 +969,7 @@ export async function cloneTrackStructure(
   success: boolean;
   message: string;
   stats: {
+    categoriesCloned: number;
     visualCategoriesCloned: number;
     ruleCategoriesCloned: number;
     assignmentsCloned: number;
@@ -994,114 +978,55 @@ export async function cloneTrackStructure(
 }> {
   try {
     const stats = {
+      categoriesCloned: 0,
       visualCategoriesCloned: 0,
       ruleCategoriesCloned: 0,
       assignmentsCloned: 0,
       rulesTreeCloned: false,
     };
 
-    const visualCatMap = new Map<string, string>(); // oldVcatId -> newVcatId
-    const ruleCatMap = new Map<string, string>(); // oldRcatId -> newRcatId
+    const catMap = new Map<string, string>(); // oldCatId -> newCatId
 
-    // 1. Clone Visual Categories (preserves hierarchy)
-    if (options.cloneVisualCategories) {
-      const sourceVCats = await getVisualCategories(sourceTrackId);
+    // 1. Clone Categories (preserves arbitrary hierarchy depth)
+    const shouldCloneCats = options.cloneCategories ?? (options.cloneRuleCategories ?? options.cloneVisualCategories ?? true);
+    if (shouldCloneCats) {
+      const sourceCats = await getCategories(sourceTrackId);
 
-      const remainingVCats = [...sourceVCats];
+      const remaining = [...sourceCats];
       let iterations = 0;
-      while (remainingVCats.length > 0 && iterations < 20) {
-        iterations++;
-        const toRemove: number[] = [];
-
-        for (let i = 0; i < remainingVCats.length; i++) {
-          const vcat = remainingVCats[i];
-          if (!vcat.parentId) {
-            // Root category
-            const newVCat = await createVisualCategory(
-              targetTrackId,
-              vcat.name,
-              vcat.color,
-              vcat.sortOrder,
-              vcat.code,
-              null
-            );
-            visualCatMap.set(vcat.id, newVCat.id);
-            toRemove.push(i);
-            stats.visualCategoriesCloned++;
-          } else if (visualCatMap.has(vcat.parentId)) {
-            // Child category whose parent is already created
-            const newParentId = visualCatMap.get(vcat.parentId)!;
-            const newVCat = await createVisualCategory(
-              targetTrackId,
-              vcat.name,
-              vcat.color,
-              vcat.sortOrder,
-              vcat.code,
-              newParentId
-            );
-            visualCatMap.set(vcat.id, newVCat.id);
-            toRemove.push(i);
-            stats.visualCategoriesCloned++;
-          }
-        }
-
-        for (let j = toRemove.length - 1; j >= 0; j--) {
-          remainingVCats.splice(toRemove[j], 1);
-        }
-      }
-
-      // Any remaining orphaned categories
-      for (const vcat of remainingVCats) {
-        const newVCat = await createVisualCategory(
-          targetTrackId,
-          vcat.name,
-          vcat.color,
-          vcat.sortOrder,
-          vcat.code,
-          null
-        );
-        visualCatMap.set(vcat.id, newVCat.id);
-        stats.visualCategoriesCloned++;
-      }
-    }
-
-    // 2. Clone Rule Categories (preserves hierarchy)
-    if (options.cloneRuleCategories) {
-      const sourceRCats = await getRuleCategories(sourceTrackId);
-      
-      const remaining = [...sourceRCats];
-      let iterations = 0;
-      while (remaining.length > 0 && iterations < 20) {
+      while (remaining.length > 0 && iterations < 50) {
         iterations++;
         const toRemove: number[] = [];
 
         for (let i = 0; i < remaining.length; i++) {
-          const rcat = remaining[i];
-          if (!rcat.parentId) {
+          const cat = remaining[i];
+          if (!cat.parentId) {
             // Root category
-            const newRCat = await createRuleCategory(
+            const newCat = await createCategory(
               targetTrackId,
-              rcat.name,
-              null,
-              0,
-              rcat.code
+              cat.name,
+              cat.color || "#3b82f6",
+              cat.sortOrder ?? 0,
+              cat.code,
+              null
             );
-            ruleCatMap.set(rcat.id, newRCat.id);
+            catMap.set(cat.id, newCat.id);
             toRemove.push(i);
-            stats.ruleCategoriesCloned++;
-          } else if (ruleCatMap.has(rcat.parentId)) {
+            stats.categoriesCloned++;
+          } else if (catMap.has(cat.parentId)) {
             // Child category whose parent is already created
-            const newParentId = ruleCatMap.get(rcat.parentId)!;
-            const newRCat = await createRuleCategory(
+            const newParentId = catMap.get(cat.parentId)!;
+            const newCat = await createCategory(
               targetTrackId,
-              rcat.name,
-              newParentId,
-              0,
-              rcat.code
+              cat.name,
+              cat.color || "#3b82f6",
+              cat.sortOrder ?? 0,
+              cat.code,
+              newParentId
             );
-            ruleCatMap.set(rcat.id, newRCat.id);
+            catMap.set(cat.id, newCat.id);
             toRemove.push(i);
-            stats.ruleCategoriesCloned++;
+            stats.categoriesCloned++;
           }
         }
 
@@ -1111,20 +1036,24 @@ export async function cloneTrackStructure(
       }
 
       // Any remaining orphaned categories
-      for (const rcat of remaining) {
-        const newRCat = await createRuleCategory(
+      for (const cat of remaining) {
+        const newCat = await createCategory(
           targetTrackId,
-          rcat.name,
-          null,
-          0,
-          rcat.code
+          cat.name,
+          cat.color || "#3b82f6",
+          cat.sortOrder ?? 0,
+          cat.code,
+          null
         );
-        ruleCatMap.set(rcat.id, newRCat.id);
-        stats.ruleCategoriesCloned++;
+        catMap.set(cat.id, newCat.id);
+        stats.categoriesCloned++;
       }
+
+      stats.visualCategoriesCloned = stats.categoriesCloned;
+      stats.ruleCategoriesCloned = stats.categoriesCloned;
     }
 
-    // 3. Clone Rules Tree AST with Deep ID Re-mapping
+    // 2. Clone Rules Tree AST with Deep ID Re-mapping
     if (options.cloneRulesTree) {
       const sourceTrack = await getTrackById(sourceTrackId);
       if (sourceTrack?.rulesTree) {
@@ -1137,17 +1066,16 @@ export async function cloneTrackStructure(
 
           const cloned = { ...node };
 
-          // Replace Rule Category ID if present
-          if (cloned.categoryId && ruleCatMap.has(cloned.categoryId)) {
-            cloned.categoryId = ruleCatMap.get(cloned.categoryId);
+          // Replace Category ID if present
+          if (cloned.categoryId && catMap.has(cloned.categoryId)) {
+            cloned.categoryId = catMap.get(cloned.categoryId);
           }
-          if (cloned.ruleCategoryId && ruleCatMap.has(cloned.ruleCategoryId)) {
-            cloned.ruleCategoryId = ruleCatMap.get(cloned.ruleCategoryId);
+          if (cloned.ruleCategoryId && catMap.has(cloned.ruleCategoryId)) {
+            cloned.ruleCategoryId = catMap.get(cloned.ruleCategoryId);
+            cloned.categoryId = cloned.ruleCategoryId;
           }
-
-          // Replace Visual Category ID if present
-          if (cloned.visualCategoryId && visualCatMap.has(cloned.visualCategoryId)) {
-            cloned.visualCategoryId = visualCatMap.get(cloned.visualCategoryId);
+          if (cloned.visualCategoryId && catMap.has(cloned.visualCategoryId)) {
+            cloned.visualCategoryId = catMap.get(cloned.visualCategoryId);
           }
 
           // Recursive children / sub-rules
@@ -1170,14 +1098,16 @@ export async function cloneTrackStructure(
       }
     }
 
-    // 4. Clone Course Assignments
+    // 3. Clone Course Assignments
     if (options.cloneAssignments) {
       const sourceAssignments = await getTrackAssignments(sourceTrackId);
-      const assignmentsToClone = sourceAssignments.map((a) => ({
-        courseId: a.courseId,
-        visualCategoryId: a.visualCategoryId ? visualCatMap.get(a.visualCategoryId) || null : null,
-        ruleCategoryId: a.ruleCategoryId ? ruleCatMap.get(a.ruleCategoryId) || null : null,
-      }));
+      const assignmentsToClone = sourceAssignments.map((a) => {
+        const catId = a.categoryId || a.ruleCategoryId || a.visualCategoryId;
+        return {
+          courseId: a.courseId,
+          categoryId: catId ? catMap.get(catId) || null : null,
+        };
+      });
       await bulkAssignTrackCourses(targetTrackId, assignmentsToClone);
       stats.assignmentsCloned = assignmentsToClone.length;
     }
@@ -1193,6 +1123,7 @@ export async function cloneTrackStructure(
       success: false,
       message: error?.message || "خطا در کپی ساختار گرایش",
       stats: {
+        categoriesCloned: 0,
         visualCategoriesCloned: 0,
         ruleCategoriesCloned: 0,
         assignmentsCloned: 0,
@@ -1202,281 +1133,4 @@ export async function cloneTrackStructure(
   }
 }
 
-export async function reorderVisualCategories(
-  items: { id: string; sortOrder: number; parentId?: string | null }[]
-): Promise<boolean> {
-  const d1 = getD1();
-  if (!d1) return false;
-
-  try {
-    const stmts = items.map((item) => {
-      if (item.parentId !== undefined) {
-        return d1
-          .prepare("UPDATE visual_categories SET sort_order = ?, parent_id = ? WHERE id = ?")
-          .bind(item.sortOrder, item.parentId || null, item.id);
-      }
-      return d1.prepare("UPDATE visual_categories SET sort_order = ? WHERE id = ?").bind(item.sortOrder, item.id);
-    });
-    await d1.batch(stmts);
-    return true;
-  } catch (err) {
-    console.error("D1 reorderVisualCategories error:", err);
-    return false;
-  }
-}
-
-export async function reorderRuleCategories(
-  items: { id: string; sortOrder: number; parentId?: string | null }[]
-): Promise<boolean> {
-  const d1 = getD1();
-  if (!d1) return false;
-
-  try {
-    const stmts = items.map((item) => {
-      if (item.parentId !== undefined) {
-        return d1
-          .prepare("UPDATE rule_categories SET sort_order = ?, parent_id = ? WHERE id = ?")
-          .bind(item.sortOrder, item.parentId || null, item.id);
-      }
-      return d1.prepare("UPDATE rule_categories SET sort_order = ? WHERE id = ?").bind(item.sortOrder, item.id);
-    });
-    await d1.batch(stmts);
-    return true;
-  } catch (err) {
-    console.error("D1 reorderRuleCategories error:", err);
-    return false;
-  }
-}
-
-export async function assignCategoryCourses(
-  trackId: string,
-  type: "visual" | "rule",
-  categoryId: string,
-  courseIds: string[]
-): Promise<boolean> {
-  const d1 = getD1();
-  if (!d1) return false;
-
-  try {
-    if (type === "visual") {
-      // Clear previous assignments for this visual category
-      await d1
-        .prepare(
-          "UPDATE track_course_assignments SET visual_category_id = NULL WHERE track_id = ? AND visual_category_id = ?"
-        )
-        .bind(trackId, categoryId)
-        .run();
-
-      // Assign selected courses
-      for (const courseId of courseIds) {
-        const id = `assign_${trackId}_${courseId}`;
-        await d1
-          .prepare(
-            `INSERT INTO track_course_assignments (id, track_id, course_id, visual_category_id)
-             VALUES (?, ?, ?, ?)
-             ON CONFLICT(track_id, course_id) DO UPDATE SET visual_category_id = excluded.visual_category_id`
-          )
-          .bind(id, trackId, courseId, categoryId)
-          .run();
-      }
-    } else {
-      // Clear previous assignments for this rule category
-      await d1
-        .prepare(
-          "UPDATE track_course_assignments SET rule_category_id = NULL WHERE track_id = ? AND rule_category_id = ?"
-        )
-        .bind(trackId, categoryId)
-        .run();
-
-      // Assign selected courses
-      for (const courseId of courseIds) {
-        const id = `assign_${trackId}_${courseId}`;
-        await d1
-          .prepare(
-            `INSERT INTO track_course_assignments (id, track_id, course_id, rule_category_id)
-             VALUES (?, ?, ?, ?)
-             ON CONFLICT(track_id, course_id) DO UPDATE SET rule_category_id = excluded.rule_category_id`
-          )
-          .bind(id, trackId, courseId, categoryId)
-          .run();
-      }
-    }
-    return true;
-  } catch (err) {
-    console.error("D1 assignCategoryCourses error:", err);
-    return false;
-  }
-}
-
-export async function clearCategoryCourses(
-  trackId: string,
-  type: "visual" | "rule",
-  categoryId: string
-): Promise<boolean> {
-  const d1 = getD1();
-  if (!d1) return false;
-
-  try {
-    if (type === "visual") {
-      await d1
-        .prepare("UPDATE track_course_assignments SET visual_category_id = NULL WHERE track_id = ? AND visual_category_id = ?")
-        .bind(trackId, categoryId)
-        .run();
-    } else {
-      await d1
-        .prepare("UPDATE track_course_assignments SET rule_category_id = NULL WHERE track_id = ? AND rule_category_id = ?")
-        .bind(trackId, categoryId)
-        .run();
-    }
-    // Clean up orphan rows that have neither visual nor rule category
-    await d1
-      .prepare("DELETE FROM track_course_assignments WHERE track_id = ? AND visual_category_id IS NULL AND rule_category_id IS NULL")
-      .bind(trackId)
-      .run();
-    return true;
-  } catch (err) {
-    console.error("D1 clearCategoryCourses error:", err);
-    return false;
-  }
-}
-
-export async function syncVisualFromRuleCategories(trackId: string): Promise<boolean> {
-  const d1 = getD1();
-  if (!d1) return false;
-
-  try {
-    // 1. Fetch all rule categories for this track
-    const { results: ruleRows } = await d1
-      .prepare("SELECT * FROM rule_categories WHERE track_id = ? ORDER BY sort_order ASC, created_at ASC")
-      .bind(trackId)
-      .all();
-    const ruleCategories = (ruleRows || []) as any[];
-
-    // 2. Fetch all assignments for this track
-    const { results: assignRows } = await d1
-      .prepare("SELECT * FROM track_course_assignments WHERE track_id = ?")
-      .bind(trackId)
-      .all();
-    const assignments = (assignRows || []) as any[];
-
-    // 3. Clear all existing visual categories for this track safely:
-    // a) Nullify all visual category references in assignments for this track first so they don't block deletion
-    await d1
-      .prepare(
-        "UPDATE track_course_assignments SET visual_category_id = NULL WHERE track_id = ? OR visual_category_id IN (SELECT id FROM visual_categories WHERE track_id = ?)"
-      )
-      .bind(trackId, trackId)
-      .run();
-
-    // b) Nullify self-referencing parent_ids in visual_categories for this track to prevent intra-table foreign key errors
-    await d1
-      .prepare("UPDATE visual_categories SET parent_id = NULL WHERE track_id = ?")
-      .bind(trackId)
-      .run();
-
-    // c) Safely delete existing visual categories for this track
-    await d1
-      .prepare("DELETE FROM visual_categories WHERE track_id = ?")
-      .bind(trackId)
-      .run();
-
-    if (ruleCategories.length === 0) {
-      // Clean up orphan assignments that have neither category
-      await d1
-        .prepare(
-          "DELETE FROM track_course_assignments WHERE track_id = ? AND visual_category_id IS NULL AND rule_category_id IS NULL"
-        )
-        .bind(trackId)
-        .run();
-      return true;
-    }
-
-    const PRESET_COLORS = [
-      "#3b82f6", // blue
-      "#10b981", // green
-      "#f59e0b", // yellow/amber
-      "#ef4444", // red
-      "#8b5cf6", // purple
-      "#ec4899", // pink
-      "#f97316", // orange
-      "#6b7280", // gray
-      "#06b6d4", // cyan
-      "#14b8a6", // teal
-      "#84cc16", // lime
-      "#a855f7", // violet
-    ];
-
-    // 4. Map rule category IDs to visual category IDs
-    const ruleIdToVcatId = new Map<string, string>();
-    const statements: any[] = [];
-    const now = new Date().toISOString();
-
-    // Identify top-level (level 1) rule categories
-    const topLevelRules = ruleCategories.filter(
-      (r: any) => !r.parent_id || !ruleCategories.some((p: any) => p.id === r.parent_id)
-    );
-
-    // Recursively process categories depth-first so parents exist before children
-    const processCategoryTree = (ruleCat: any, parentVcatId: string | null, color: string, sortIdx: number) => {
-      const vcatId = `vcat_${crypto.randomUUID().slice(0, 8)}`;
-      ruleIdToVcatId.set(ruleCat.id, vcatId);
-      const vcatCode = ruleCat.code || `VCAT-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
-
-      statements.push(
-        d1
-          .prepare(
-            "INSERT INTO visual_categories (id, track_id, parent_id, code, name, color, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-          )
-          .bind(vcatId, trackId, parentVcatId, vcatCode, ruleCat.name, color, ruleCat.sort_order ?? sortIdx, now)
-      );
-
-      const children = ruleCategories.filter((r: any) => r.parent_id === ruleCat.id);
-      for (let cIdx = 0; cIdx < children.length; cIdx++) {
-        processCategoryTree(children[cIdx], vcatId, color, cIdx + 1);
-      }
-    };
-
-    for (let idx = 0; idx < topLevelRules.length; idx++) {
-      const topRule = topLevelRules[idx];
-      const color = PRESET_COLORS[idx % PRESET_COLORS.length];
-      processCategoryTree(topRule, null, color, idx + 1);
-    }
-
-    // Handle any orphaned categories
-    for (const r of ruleCategories) {
-      if (!ruleIdToVcatId.has(r.id)) {
-        const color = PRESET_COLORS[statements.length % PRESET_COLORS.length];
-        processCategoryTree(r, null, color, statements.length + 1);
-      }
-    }
-
-    // Assign courses 1:1 matching rule_category_id to visual_category_id
-    for (const a of assignments) {
-      if (a.rule_category_id && ruleIdToVcatId.has(a.rule_category_id)) {
-        const targetVcatId = ruleIdToVcatId.get(a.rule_category_id)!;
-        const assignId = a.id || `assign_${trackId}_${a.course_id}`;
-        statements.push(
-          d1
-            .prepare(
-              `INSERT INTO track_course_assignments (id, track_id, course_id, rule_category_id, visual_category_id)
-               VALUES (?, ?, ?, ?, ?)
-               ON CONFLICT(track_id, course_id) DO UPDATE SET visual_category_id = excluded.visual_category_id`
-            )
-            .bind(assignId, trackId, a.course_id, a.rule_category_id, targetVcatId)
-        );
-      }
-    }
-
-    // Execute batch statements in chunks of 50
-    const BATCH_SIZE = 50;
-    for (let i = 0; i < statements.length; i += BATCH_SIZE) {
-      await d1.batch(statements.slice(i, i + BATCH_SIZE));
-    }
-
-    return true;
-  } catch (err) {
-    console.error("D1 syncVisualFromRuleCategories error:", err);
-    return false;
-  }
-}
 

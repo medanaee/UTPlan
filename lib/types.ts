@@ -67,26 +67,21 @@ export interface Track {
   deletedAt?: string | null;
 }
 
-export interface VisualCategory {
+export interface Category {
   id: string;
   trackId: string;
   code?: string;
   parentId?: string | null; // For hierarchical tree
   name: string;
   color: string; // e.g. "#3b82f6", "#10b981", "#f59e0b"
-  sortOrder: number;
+  sortOrder?: number;
   createdAt: string;
-  children?: VisualCategory[];
+  children?: Category[];
 }
 
-export interface RuleCategory {
-  id: string;
-  trackId: string;
-  code?: string;
-  parentId?: string | null; // For hierarchical folder tree
-  name: string;
-  createdAt: string;
-}
+// Backwards compatibility aliases
+export type VisualCategory = Category;
+export type RuleCategory = Category;
 
 export type CourseTermOffering = "fall" | "spring" | "both" | "none";
 export type DegreeLevel = "undergrad" | "master";
@@ -132,6 +127,7 @@ export interface TrackCourseAssignment {
   id: string;
   trackId: string;
   courseId: string;
+  categoryId?: string | null;
   visualCategoryId?: string | null;
   ruleCategoryId?: string | null;
   // Joined fields
@@ -321,6 +317,7 @@ export interface RuleGroupNode {
 export interface RuleLeafNode {
   id: string;
   type: Exclude<RuleNodeType, "GROUP">;
+  categoryId?: string;
   ruleCategoryId?: string;
   minCredits?: number;
   maxCredits?: number;

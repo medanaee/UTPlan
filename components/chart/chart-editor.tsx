@@ -72,6 +72,7 @@ import type {
   StudentChart,
   ChartSemester,
   Course,
+  Category,
   VisualCategory,
   RuleCategory,
   Track,
@@ -85,8 +86,9 @@ interface ChartEditorProps {
   initialChart: StudentChart;
   allTracks: Track[];
   allCourses: Course[];
-  visualCategories: VisualCategory[];
-  ruleCategories: RuleCategory[];
+  categories?: Category[];
+  visualCategories?: VisualCategory[];
+  ruleCategories?: RuleCategory[];
   user?: UserSession | null;
 }
 
@@ -104,10 +106,14 @@ export function ChartEditor({
   initialChart,
   allTracks,
   allCourses,
+  categories: categoriesProp,
   visualCategories,
   ruleCategories,
   user,
 }: ChartEditorProps) {
+  const categories = useMemo(() => {
+    return categoriesProp || visualCategories || ruleCategories || [];
+  }, [categoriesProp, visualCategories, ruleCategories]);
   const router = useRouter();
   const [chart, setChart] = useState<StudentChart>(initialChart);
   const [title, setTitle] = useState(initialChart.title);
@@ -343,7 +349,7 @@ export function ChartEditor({
     const fullResult = validateFullChart({
       chartCourses,
       rulesTree: activeTrack?.rulesTree,
-      ruleCategories,
+      ruleCategories: categories,
       trackAssignments: allTrackAssignments,
       allCourses,
       prerequisites: allPrereqs,
@@ -398,7 +404,7 @@ export function ChartEditor({
       errorCount,
       warningCount,
     };
-  }, [chart.semesters, allCourses, placedCourseIdMap, activeTrack, ruleCategories, totalChartCredits, waivedCourseIds]);
+  }, [chart.semesters, allCourses, placedCourseIdMap, activeTrack, categories, totalChartCredits, waivedCourseIds]);
 
   // Recalculate SVG connection curves in absolute scroll content space
   const updateSvgCurves = useCallback(() => {
@@ -932,12 +938,13 @@ export function ChartEditor({
     // 1. Category filter (matches category and all its descendants)
     let list = allCourses;
     if (selectedCategoryFilter !== "all") {
-      const allowedCatIds = getCategoryAndDescendantIds(selectedCategoryFilter, visualCategories);
+      const allowedCatIds = getCategoryAndDescendantIds(selectedCategoryFilter, categories);
       list = list.filter((course) => {
         const assignment =
           course.trackAssignments?.find((a) => a.trackId === selectedTrackId) ||
           course.trackAssignments?.[0];
-        return Boolean(assignment?.visualCategoryId && allowedCatIds.has(assignment.visualCategoryId));
+        const catId = assignment?.categoryId || (assignment as any)?.visualCategoryId || (assignment as any)?.ruleCategoryId;
+        return Boolean(catId && allowedCatIds.has(catId));
       });
     }
 
@@ -953,7 +960,7 @@ export function ChartEditor({
       if (aDone === bDone) return 0;
       return aDone ? 1 : -1;
     });
-  }, [allCourses, drawerSearch, selectedCategoryFilter, selectedTrackId, placedCourseIdMap, visualCategories, getCategoryAndDescendantIds, waivedCourseIds]);
+  }, [allCourses, drawerSearch, selectedCategoryFilter, selectedTrackId, placedCourseIdMap, categories, getCategoryAndDescendantIds, waivedCourseIds]);
 
   // Dynamic grid column count based on zoom level:
   // Base (90%+): 3 -> 8 cols
@@ -972,14 +979,14 @@ export function ChartEditor({
   // Active ancestor path from root down to selectedCategoryFilter
   const activeCategoryPath = useMemo(() => {
     if (selectedCategoryFilter === "all") return [];
-    const path: VisualCategory[] = [];
-    let curr = visualCategories.find((c) => c.id === selectedCategoryFilter);
+    const path: Category[] = [];
+    let curr = categories.find((c) => c.id === selectedCategoryFilter);
     while (curr) {
       path.unshift(curr);
-      curr = curr.parentId ? visualCategories.find((c) => c.id === curr!.parentId) : undefined;
+      curr = curr.parentId ? categories.find((c) => c.id === curr!.parentId) : undefined;
     }
     return path;
-  }, [selectedCategoryFilter, visualCategories]);
+  }, [selectedCategoryFilter, categories]);
 
   // Hierarchical category filter levels (Row 1: roots, Row 2: children of path[0], Row 3: children of path[1]...)
   const categoryFilterLevels = useMemo(() => {
@@ -987,13 +994,13 @@ export function ChartEditor({
       levelIndex: number;
       parentCatId: string | null;
       activeId: string;
-      categories: VisualCategory[];
+      categories: Category[];
       onSelectAll: () => void;
     }[] = [];
 
     // Level 0: Root categories
-    const rootCats = visualCategories.filter(
-      (c) => !c.parentId || !visualCategories.some((p) => p.id === c.parentId)
+    const rootCats = categories.filter(
+      (c) => !c.parentId || !categories.some((p) => p.id === c.parentId)
     );
 
     if (rootCats.length === 0) return levels;
@@ -1007,10 +1014,10 @@ export function ChartEditor({
       onSelectAll: () => setSelectedCategoryFilter("all"),
     });
 
-    // Sub-levels: For each ancestor on path, if it has children in visualCategories
+    // Sub-levels: For each ancestor on path, if it has children in categories
     for (let i = 0; i < activeCategoryPath.length; i++) {
       const currentParent = activeCategoryPath[i];
-      const children = visualCategories.filter((c) => c.parentId === currentParent.id);
+      const children = categories.filter((c) => c.parentId === currentParent.id);
       if (children.length > 0) {
         const nextInPath = activeCategoryPath[i + 1];
         const nextActiveId = nextInPath ? nextInPath.id : "all";
@@ -1025,7 +1032,7 @@ export function ChartEditor({
     }
 
     return levels;
-  }, [visualCategories, activeCategoryPath, setSelectedCategoryFilter]);
+  }, [categories, activeCategoryPath, setSelectedCategoryFilter]);
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -1395,7 +1402,8 @@ export function ChartEditor({
                   const assignment =
                     course.trackAssignments?.find((a) => a.trackId === selectedTrackId) ||
                     course.trackAssignments?.[0];
-                  const vcat = visualCategories.find((vc) => vc.id === assignment?.visualCategoryId);
+                  const catId = assignment?.categoryId || (assignment as any)?.visualCategoryId || (assignment as any)?.ruleCategoryId;
+                  const vcat = categories.find((vc) => vc.id === catId);
                   const placedSem = placedCourseIdMap.get(course.id);
                   const isPlaced = placedSem !== undefined;
                   const isWaived = waivedCourseIds.includes(course.id);
@@ -1862,8 +1870,9 @@ export function ChartEditor({
                                 const assignment =
                                   course.trackAssignments?.find((a) => a.trackId === selectedTrackId) ||
                                   course.trackAssignments?.[0];
-                                const vcat = visualCategories.find(
-                                  (vc) => vc.id === assignment?.visualCategoryId
+                                const catId = assignment?.categoryId || (assignment as any)?.visualCategoryId || (assignment as any)?.ruleCategoryId;
+                                const vcat = categories.find(
+                                  (vc) => vc.id === catId
                                 );
                                 const isViolation = validation.courseViolations.has(cId);
                                 const isWarning = validation.courseWarnings.has(cId);
@@ -2440,7 +2449,8 @@ export function ChartEditor({
                 .map((cId) => allCourses.find((c) => c.id === cId))
                 .filter(Boolean) as Course[];
             })()}
-            allVisualCategories={visualCategories}
+            allCategories={categories}
+            allVisualCategories={categories}
             selectedEventsMap={
               chart.semesters.find((s) => s.semesterNumber === activePlannerSemester)?.courseEventsMap || {}
             }

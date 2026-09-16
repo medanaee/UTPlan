@@ -8,6 +8,7 @@ import type {
   Track,
   Course,
   Professor,
+  Category,
   VisualCategory,
   RuleCategory,
   TrackCourseAssignment,
@@ -33,8 +34,9 @@ interface AdminState {
   tracks: Track[];
   courses: Course[];
   professors: Professor[];
-  visualCats: VisualCategory[];
-  ruleCats: RuleCategory[];
+  categories: Category[];
+  visualCats: Category[];
+  ruleCats: Category[];
   trackAssignments: TrackCourseAssignment[];
   
   // Selection Context (Persisted)
@@ -64,8 +66,9 @@ interface AdminState {
   setTracks: (tracks: Track[]) => void;
   setCourses: (courses: Course[]) => void;
   setProfessors: (professors: Professor[]) => void;
-  setVisualCats: (visualCats: VisualCategory[]) => void;
-  setRuleCats: (ruleCats: RuleCategory[]) => void;
+  setCategories: (categories: Category[]) => void;
+  setVisualCats: (visualCats: Category[]) => void;
+  setRuleCats: (ruleCats: Category[]) => void;
   setTrackAssignments: (assignments: TrackCourseAssignment[]) => void;
 
   loadAllData: () => Promise<void>;
@@ -81,6 +84,7 @@ export const useAdminStore = create<AdminState>()(
       tracks: [],
       courses: [],
       professors: [],
+      categories: [],
       visualCats: [],
       ruleCats: [],
       trackAssignments: [],
@@ -160,8 +164,9 @@ export const useAdminStore = create<AdminState>()(
       setTracks: (tracks) => set({ tracks }),
       setCourses: (courses) => set({ courses }),
       setProfessors: (professors) => set({ professors }),
-      setVisualCats: (visualCats) => set({ visualCats }),
-      setRuleCats: (ruleCats) => set({ ruleCats }),
+      setCategories: (categories) => set({ categories, visualCats: categories, ruleCats: categories }),
+      setVisualCats: (visualCats) => set({ categories: visualCats, visualCats, ruleCats: visualCats }),
+      setRuleCats: (ruleCats) => set({ categories: ruleCats, visualCats: ruleCats, ruleCats }),
       setTrackAssignments: (trackAssignments) => set({ trackAssignments }),
 
       loadAllData: async () => {
@@ -252,9 +257,14 @@ export const useAdminStore = create<AdminState>()(
             fetchJson(`/api/tracks/assignments?trackId=${trackId}`),
           ]);
 
+          const categories = catRes.success
+            ? (catRes.data.categories || catRes.data.items || catRes.data.rule || [])
+            : [];
+
           set({
-            visualCats: catRes.success ? catRes.data.visual : [],
-            ruleCats: catRes.success ? catRes.data.rule : [],
+            categories,
+            visualCats: categories,
+            ruleCats: categories,
             trackAssignments: assignRes.success ? assignRes.data : [],
           });
         } catch (e) {

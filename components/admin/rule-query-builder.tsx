@@ -444,13 +444,13 @@ interface RuleLeafItemProps {
 }
 
 const RULE_TYPE_ITEMS = [
-  { value: "MIN_CREDITS_IN_CATEGORY", label: "حداقل N واحد از دسته قوانین" },
-  { value: "MAX_CREDITS_IN_CATEGORY", label: "حداکثر N واحد از دسته قوانین" },
-  { value: "ALL_COURSES_IN_CATEGORY", label: "گذراندن تمام دروس دسته قوانین" },
-  { value: "EXACT_N_COURSES_IN_CATEGORY", label: "دقیقاً N درس از دسته قوانین" },
+  { value: "MIN_CREDITS_IN_CATEGORY", label: "حداقل N واحد از دسته" },
+  { value: "MAX_CREDITS_IN_CATEGORY", label: "حداکثر N واحد از دسته" },
+  { value: "ALL_COURSES_IN_CATEGORY", label: "گذراندن تمام دروس دسته" },
+  { value: "EXACT_N_COURSES_IN_CATEGORY", label: "دقیقاً N درس از دسته" },
   { value: "MIN_TOTAL_CREDITS_BEFORE_COURSE", label: "حداقل N واحد قبل از اخذ درس خاص" },
   { value: "MANDATORY_COURSES", label: "دروس اجباری مشخص" },
-  { value: "FORBIDDEN_CATEGORY", label: "ممنوعیت تمام دروس دسته قوانین" },
+  { value: "FORBIDDEN_CATEGORY", label: "ممنوعیت تمام دروس دسته" },
   { value: "FORBIDDEN_COURSE", label: "ممنوعیت درس خاص" },
 ];
 
@@ -546,12 +546,12 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
 
         {leaf.type === "ALL_COURSES_IN_CATEGORY" && (
           <div className="flex items-center gap-1.5 whitespace-nowrap">
-            <span className="text-muted-foreground">از دسته قوانین:</span>
+            <span className="text-muted-foreground">از دسته:</span>
             <CategoryPicker
               categories={ruleCategories}
               value={leaf.ruleCategoryId || null}
               onChange={(val) => onUpdate({ ...leaf, ruleCategoryId: val || undefined })}
-              placeholder="انتخاب دسته قوانین..."
+              placeholder="انتخاب دسته..."
               triggerClassName="min-w-[180px] text-xs"
             />
           </div>
@@ -641,12 +641,12 @@ function RuleLeafItem({ leaf, ruleCategories, courses, onUpdate, onDelete }: Rul
 
         {(leaf.type === "FORBIDDEN_CATEGORY" || (leaf.type as any) === "FORBIDDEN_ALL_COURSES_IN_CATEGORY") && (
           <div className="flex items-center gap-1.5 whitespace-nowrap">
-            <span className="text-muted-foreground">از دسته قوانین:</span>
+            <span className="text-muted-foreground">از دسته:</span>
             <CategoryPicker
               categories={ruleCategories}
               value={leaf.ruleCategoryId || null}
               onChange={(val) => onUpdate({ ...leaf, ruleCategoryId: val || undefined })}
-              placeholder="انتخاب دسته قوانین ممنوعه..."
+              placeholder="انتخاب دسته ممنوعه..."
               triggerClassName="min-w-[180px] text-xs"
             />
           </div>

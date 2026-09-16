@@ -1,6 +1,7 @@
 import { requireAdminSession } from "@/lib/auth";
 import {
   getTrackAssignments,
+  assignCourseToCategory,
   assignCourseToCategories,
   bulkAssignTrackCourses,
   assignCategoryCourses,
@@ -35,18 +36,17 @@ export async function POST(request: Request) {
       return Response.json({ success: false, message: "شناسه گرایش الزامی است." }, { status: 400 });
     }
 
-    // Clear all courses from specific category (visual or rule)
-    if (body.action === "clear_category_courses" && body.categoryId && body.type) {
-      await clearCategoryCourses(trackId, body.type, body.categoryId);
+    // Clear all courses from specific category
+    if (body.action === "clear_category_courses" && body.categoryId) {
+      await clearCategoryCourses(trackId, body.categoryId);
       const updated = await getTrackAssignments(trackId);
       return Response.json({ success: true, data: updated, message: "دروس داخل این دسته با موفقیت پاک شدند." });
     }
 
-    // Assign courses to specific category (visual or rule)
-    if (body.action === "assign_category_courses" && body.categoryId && body.type) {
+    // Assign courses to specific category
+    if (body.action === "assign_category_courses" && body.categoryId) {
       await assignCategoryCourses(
         trackId,
-        body.type,
         body.categoryId,
         Array.isArray(body.courseIds) ? body.courseIds : []
       );
@@ -66,11 +66,11 @@ export async function POST(request: Request) {
       return Response.json({ success: false, message: "شناسه درس الزامی است." }, { status: 400 });
     }
 
-    const updatedAssignment = await assignCourseToCategories(
+    const catId = body.categoryId ?? body.ruleCategoryId ?? body.visualCategoryId ?? null;
+    const updatedAssignment = await assignCourseToCategory(
       trackId,
       courseId,
-      visualCategoryId,
-      ruleCategoryId
+      catId
     );
 
     return Response.json({ success: true, data: updatedAssignment });
