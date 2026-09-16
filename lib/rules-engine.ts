@@ -18,6 +18,7 @@ export interface ChartCourseEntry {
 }
 
 export interface ValidationEngineInput {
+  trackId?: string;
   chartCourses: ChartCourseEntry[];
   rulesTree?: RuleGroupNode | null;
   categories?: Category[];
@@ -104,6 +105,7 @@ export function resolveCategoryMatcher(
  */
 export function validateFullChart(input: ValidationEngineInput): ValidationResult {
   const {
+    trackId: inputTrackId,
     chartCourses,
     rulesTree,
     categories: inputCategories,
@@ -132,12 +134,21 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
     courseMap.set(c.id, c);
   }
 
-  // Map courseId -> assigned categoryId
+  // Set of valid category IDs for this track's rules
+  const validCatIds = new Set(ruleCategories.map((c) => c.id));
+
+  // Map courseId -> assigned categoryId (filtered for the active track)
   const courseToRuleCatMap = new Map<string, string>();
   for (const assign of trackAssignments) {
+    if (inputTrackId && assign.trackId && assign.trackId !== inputTrackId) {
+      continue;
+    }
     const catId = assign.categoryId || assign.ruleCategoryId || assign.visualCategoryId;
     if (catId) {
-      courseToRuleCatMap.set(assign.courseId, catId);
+      // Prioritize categories that belong to the current track's ruleCategories
+      if (validCatIds.size === 0 || validCatIds.has(catId) || !courseToRuleCatMap.has(assign.courseId)) {
+        courseToRuleCatMap.set(assign.courseId, catId);
+      }
     }
   }
 
@@ -484,7 +495,8 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
       courseToRuleCatMap,
       ruleCategories,
       waivedCourseIds,
-      trackAssignments
+      trackAssignments,
+      inputTrackId
     );
 
     if (!treeResult.satisfied) {
@@ -516,7 +528,8 @@ function evaluateRuleNode(
   courseToRuleCatMap: Map<string, string>,
   ruleCategories: Category[],
   waivedCourseIds: string[] = [],
-  trackAssignments: TrackCourseAssignment[] = []
+  trackAssignments: TrackCourseAssignment[] = [],
+  trackId?: string
 ): { satisfied: boolean; issues: ValidationIssue[] } {
   // 1. Group Node
   if (node.type === "GROUP") {
@@ -533,7 +546,8 @@ function evaluateRuleNode(
         courseToRuleCatMap,
         ruleCategories,
         waivedCourseIds,
-        trackAssignments
+        trackAssignments,
+        trackId
       )
     );
 
@@ -650,6 +664,9 @@ function evaluateRuleNode(
       const requiredCourseIds: string[] = [];
       if (trackAssignments && trackAssignments.length > 0) {
         for (const assign of trackAssignments) {
+          if (trackId && assign.trackId && assign.trackId !== trackId) {
+            continue;
+          }
           const assignedCatId = assign.categoryId || assign.ruleCategoryId || assign.visualCategoryId;
           if (matcher.isMatch(assignedCatId)) {
             requiredCourseIds.push(assign.courseId);

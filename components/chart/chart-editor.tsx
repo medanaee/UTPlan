@@ -338,7 +338,12 @@ export function ChartEditor({
 
     const allTrackAssignments: any[] = [];
     allCourses.forEach((c) => {
-      if (c.trackAssignments) allTrackAssignments.push(...c.trackAssignments);
+      if (c.trackAssignments) {
+        const assignmentsForTrack = activeTrack?.id
+          ? c.trackAssignments.filter((a) => a.trackId === activeTrack.id)
+          : c.trackAssignments;
+        allTrackAssignments.push(...assignmentsForTrack);
+      }
     });
 
     const allPrereqs: any[] = [];
@@ -347,6 +352,7 @@ export function ChartEditor({
     });
 
     const fullResult = validateFullChart({
+      trackId: activeTrack?.id,
       chartCourses,
       rulesTree: activeTrack?.rulesTree,
       ruleCategories: categories,
@@ -700,7 +706,7 @@ export function ChartEditor({
             draft.syncedWithServer = true;
             localStorage.setItem(`ut_ece_chart_draft_${chart.id}`, JSON.stringify(draft));
           }
-        } catch {}
+        } catch { }
       } else {
         console.warn("Auto-save server response:", res.message);
         setSaveStatus(typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "pending");
@@ -836,7 +842,7 @@ export function ChartEditor({
             body: payload,
             keepalive: true,
           });
-        } catch {}
+        } catch { }
       }
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
@@ -1105,12 +1111,12 @@ export function ChartEditor({
                 variant="ghost"
                 onClick={() => setIssuesModalOpen(true)}
                 className={`h-8 gap-1.5 text-xs font-semibold px-3 rounded-lg transition-all cursor-pointer shadow-2xs flex items-center ${validation.hasErrors
-                    ? "bg-destructive/15 text-destructive hover:bg-destructive/25 dark:hover:bg-destructive/25 border border-destructive/30"
-                    : validation.hasWarnings
-                      ? "bg-violet-500/15 text-violet-700 dark:text-violet-300 hover:bg-violet-500/25 border border-violet-500/30"
-                      : validation.isGraduationReady
-                        ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/25 border border-emerald-500/30"
-                        : "bg-muted/50 text-foreground hover:bg-muted/80 border border-border/80"
+                  ? "bg-destructive/15 text-destructive hover:bg-destructive/25 dark:hover:bg-destructive/25 border border-destructive/30"
+                  : validation.hasWarnings
+                    ? "bg-violet-500/15 text-violet-700 dark:text-violet-300 hover:bg-violet-500/25 border border-violet-500/30"
+                    : validation.isGraduationReady
+                      ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/25 border border-emerald-500/30"
+                      : "bg-muted/50 text-foreground hover:bg-muted/80 border border-border/80"
                   }`}
                 title="کلیک جهت مشاهده گزارش کامل خطاها و قوانین"
               >
@@ -1175,11 +1181,11 @@ export function ChartEditor({
               {/* Export High-Quality Image Button */}
               <Button
                 size="sm"
-                variant="outline"
+                variant="ghost"
                 onClick={handleExportImage}
                 disabled={isExportingImage}
                 title="دریافت خروجی تصویری باکیفیت از کل چارت (PNG)"
-                className="h-8 gap-1.5 text-xs px-3 rounded-lg border border-border bg-background/60 text-foreground hover:bg-muted/80 transition-all shadow-2xs flex items-center cursor-pointer"
+                className="h-8 gap-1.5 text-xs px-3 rounded-lg border border-border bg-background/50 text-foreground hover:bg-muted/70 transition-all shadow-2xs flex items-center cursor-pointer"
               >
                 {isExportingImage ? (
                   <RefreshCw className="h-3.5 w-3.5 animate-spin text-primary shrink-0" />
@@ -1213,21 +1219,21 @@ export function ChartEditor({
                     saveStatus === "saved"
                       ? "تمام تغییرات در مرورگر و سرور ذخیره شده است"
                       : saveStatus === "saving"
-                      ? "در حال ذخیره‌سازی در دیتابیس..."
-                      : saveStatus === "offline"
-                      ? "ارتباط با سرور برقرار نیست؛ تغییرات در حافظه مرورگر امن است (جهت تلاش مجدد کلیک کنید)"
-                      : "تغییرات در صف ذخیره‌سازی خودکار (جهت ذخیره آنی کلیک کنید)"
+                        ? "در حال ذخیره‌سازی در دیتابیس..."
+                        : saveStatus === "offline"
+                          ? "ارتباط با سرور برقرار نیست؛ تغییرات در حافظه مرورگر امن است (جهت تلاش مجدد کلیک کنید)"
+                          : "تغییرات در صف ذخیره‌سازی خودکار (جهت ذخیره آنی کلیک کنید)"
                   }
                   className={cn(
                     "h-8 text-xs px-3 rounded-lg border transition-all flex items-center gap-1.5 shadow-2xs select-none",
                     saveStatus === "saved" &&
-                      "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400 font-medium",
+                    "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400 font-medium",
                     saveStatus === "saving" &&
-                      "bg-primary/10 border-primary/30 text-primary font-medium",
+                    "bg-primary/10 border-primary/30 text-primary font-medium",
                     saveStatus === "pending" &&
-                      "bg-muted/80 border-border text-muted-foreground hover:text-foreground cursor-pointer hover:bg-muted",
+                    "bg-muted/80 border-border text-muted-foreground hover:text-foreground cursor-pointer hover:bg-muted",
                     saveStatus === "offline" &&
-                      "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400 font-medium cursor-pointer hover:bg-amber-500/20"
+                    "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400 font-medium cursor-pointer hover:bg-amber-500/20"
                   )}
                 >
                   {saveStatus === "saved" && (
@@ -1354,18 +1360,16 @@ export function ChartEditor({
                   {categoryFilterLevels.map((lvl) => (
                     <div
                       key={lvl.levelIndex}
-                      className={`flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full text-[11px] select-none scrollbar-thin ${
-                        lvl.levelIndex > 0 ? "pr-2 border-r-2 border-primary/40 mr-1" : ""
-                      }`}
+                      className={`flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full text-[11px] select-none scrollbar-thin ${lvl.levelIndex > 0 ? "pr-2 border-r-2 border-primary/40 mr-1" : ""
+                        }`}
                     >
                       <button
                         type="button"
                         onClick={lvl.onSelectAll}
-                        className={`px-2.5 py-1 rounded-md font-medium transition-colors shrink-0 whitespace-nowrap ${
-                          lvl.activeId === "all"
+                        className={`px-2.5 py-1 rounded-md font-medium transition-colors shrink-0 whitespace-nowrap ${lvl.activeId === "all"
                             ? "bg-primary text-primary-foreground font-bold shadow-2xs"
                             : "bg-muted text-muted-foreground hover:text-foreground"
-                        }`}
+                          }`}
                       >
                         همه
                       </button>
@@ -1381,11 +1385,10 @@ export function ChartEditor({
                               backgroundColor: isActive ? `${vcat.color}25` : undefined,
                               color: isActive ? vcat.color : undefined,
                             }}
-                            className={`px-2.5 py-1 rounded-md border text-[11px] shrink-0 whitespace-nowrap transition-colors ${
-                              !isActive
+                            className={`px-2.5 py-1 rounded-md border text-[11px] shrink-0 whitespace-nowrap transition-colors ${!isActive
                                 ? "bg-muted/60 text-muted-foreground hover:text-foreground"
                                 : "font-bold shadow-2xs"
-                            }`}
+                              }`}
                           >
                             {vcat.name}
                           </button>
@@ -1431,8 +1434,8 @@ export function ChartEditor({
                         borderColor: `${baseColor}38`,
                       }}
                       className={`p-2 rounded-xl border transition-all shadow-2xs ${isReadOnly
-                          ? "cursor-default"
-                          : "cursor-grab active:cursor-grabbing"
+                        ? "cursor-default"
+                        : "cursor-grab active:cursor-grabbing"
                         } ${isDone
                           ? "opacity-60 bg-muted/40 hover:opacity-100"
                           : "hover:border-primary/50 hover:shadow-xs"
@@ -1478,10 +1481,10 @@ export function ChartEditor({
                             <span
                               key={pr.id}
                               className={`text-[9px] px-1.5 py-0.5 rounded-md border ${pr.type === "prerequisite"
-                                  ? "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20"
-                                  : pr.type === "corequisite"
-                                    ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
-                                    : "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20"
+                                ? "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20"
+                                : pr.type === "corequisite"
+                                  ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+                                  : "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20"
                                 }`}
                             >
                               {pr.type === "prerequisite"
@@ -1560,11 +1563,10 @@ export function ChartEditor({
                   size="sm"
                   variant="ghost"
                   onClick={() => setShowArrows(!showArrows)}
-                  className={`h-full px-2.5 sm:px-3 text-xs gap-1.5 rounded-none border-r border-border/70 transition-colors flex items-center ${
-                    showArrows
+                  className={`h-full px-2.5 sm:px-3 text-xs gap-1.5 rounded-none border-r border-border/70 transition-colors flex items-center ${showArrows
                       ? "bg-accent/40 text-foreground"
                       : "text-foreground hover:bg-muted/60"
-                  }`}
+                    }`}
                   title="نمایش / پنهان کردن فلش‌های پیش‌نیاز"
                 >
                   {showArrows ? (
@@ -1813,8 +1815,8 @@ export function ChartEditor({
                           }
                         }}
                         className={`rounded-2xl border transition-all duration-150 flex flex-col bg-card shadow-2xs ${isOver
-                            ? "border-primary ring-2 ring-primary/20 bg-primary/5"
-                            : "border-border/80"
+                          ? "border-primary ring-2 ring-primary/20 bg-primary/5"
+                          : "border-border/80"
                           }`}
                       >
                         {/* Semester Row Header */}
@@ -1827,10 +1829,10 @@ export function ChartEditor({
                               <h3 className="text-xs font-bold">ترم {sem.semesterNumber}</h3>
                               <span
                                 className={`text-[11px] px-2 py-0.5 rounded-md font-semibold ${isOverMax
-                                    ? "bg-destructive/15 text-destructive border border-destructive/30"
-                                    : isUnderMin
-                                      ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
-                                      : "bg-muted text-foreground"
+                                  ? "bg-destructive/15 text-destructive border border-destructive/30"
+                                  : isUnderMin
+                                    ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                                    : "bg-muted text-foreground"
                                   }`}
                               >
                                 {semUnits} واحد
@@ -1940,8 +1942,8 @@ export function ChartEditor({
                                           : `${baseColor}38`,
                                     }}
                                     className={`group relative p-2.5 rounded-xl border transition-all shadow-2xs ${isReadOnly
-                                        ? "cursor-default"
-                                        : "cursor-grab active:cursor-grabbing"
+                                      ? "cursor-default"
+                                      : "cursor-grab active:cursor-grabbing"
                                       } ${isDragTarget
                                         ? "ring-2 ring-primary ring-offset-2 scale-[1.02] bg-primary/15"
                                         : isViolation
@@ -2037,16 +2039,18 @@ export function ChartEditor({
 
                                     {/* Units & Category Tag */}
                                     <div className="mt-1.5 pt-1.5 border-t border-border/40 flex items-center justify-between text-[10px]">
-                                      <span
-                                        style={{
-                                          backgroundColor: `${baseColor}20`,
-                                          color: baseColor,
-                                          borderColor: `${baseColor}40`,
-                                        }}
-                                        className="px-1.5 py-0.2 rounded-md font-semibold border"
-                                      >
-                                        {vcat?.name || "عمومی"}
-                                      </span>
+                                      {vcat?.name && (
+                                        <span
+                                          style={{
+                                            backgroundColor: `${baseColor}20`,
+                                            color: baseColor,
+                                            borderColor: `${baseColor}40`,
+                                          }}
+                                          className="px-1.5 py-0.2 rounded-md font-semibold border"
+                                        >
+                                          {vcat?.name}
+                                        </span>
+                                      )}
                                       <div className="flex items-center gap-1">
                                         {course.offeredIn === "fall" && (
                                           <span className="text-[9px] px-1 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-semibold" title="ارائه فقط در نیمسال‌های فرد (پاییز)">
@@ -2113,10 +2117,10 @@ export function ChartEditor({
                         <div
                           key={issue.id || idx}
                           className={`p-3 rounded-xl border flex items-start gap-2.5 ${issue.type === "error"
-                              ? "border-destructive/30 bg-destructive/10 text-destructive dark:text-red-300"
-                              : isRecPrereq
-                                ? "border-violet-500/30 bg-violet-500/10 text-violet-800 dark:text-violet-300"
-                                : "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300"
+                            ? "border-destructive/30 bg-destructive/10 text-destructive dark:text-red-300"
+                            : isRecPrereq
+                              ? "border-violet-500/30 bg-violet-500/10 text-violet-800 dark:text-violet-300"
+                              : "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300"
                             }`}
                         >
                           {issue.type === "error" ? (
