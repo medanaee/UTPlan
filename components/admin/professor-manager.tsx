@@ -21,6 +21,7 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -275,9 +276,12 @@ export function ProfessorManager({
 
   const rankOptions = [
     { value: "استاد تمام", label: "استاد تمام" },
+    { value: "استاد", label: "استاد" },
     { value: "دانشیار", label: "دانشیار" },
     { value: "استادیار", label: "استادیار" },
     { value: "مربی", label: "مربی" },
+    { value: "مدرس مدعو", label: "مدرس مدعو" },
+    { value: "بازنشسته", label: "بازنشسته" },
   ];
 
   return (
@@ -680,12 +684,28 @@ export function ProfessorManager({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    {rankOptions.map((r) => (
+                    {rankOptions.slice(0, 5).map((r) => (
                       <SelectItem key={r.value} value={r.value}>
                         {r.label}
                       </SelectItem>
                     ))}
                   </SelectGroup>
+                  <SelectSeparator />
+                  <SelectGroup>
+                    {rankOptions.slice(5).map((r) => (
+                      <SelectItem key={r.value} value={r.value}>
+                        {r.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                  {form.title && !rankOptions.some((r) => r.value === form.title) && (
+                    <>
+                      <SelectSeparator />
+                      <SelectGroup>
+                        <SelectItem value={form.title}>{form.title}</SelectItem>
+                      </SelectGroup>
+                    </>
+                  )}
                 </SelectContent>
               </Select>
             </div>
