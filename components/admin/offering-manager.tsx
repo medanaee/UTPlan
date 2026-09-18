@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import type { Course, Professor, CourseOffering, Faculty, OfferingResource, OfferingResourceType } from "@/lib/types";
 import { fetchJson, postJson, putJson, deleteJson } from "@/lib/api-client";
+import { searchCourses } from "@/lib/search/persian-search";
 import {
   Card,
   CardHeader,
@@ -37,6 +38,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  ChevronLeft,
+  ChevronRight,
+  AlertCircle,
   Plus,
   Pencil,
   Trash2,
@@ -96,6 +100,9 @@ export function OfferingManager({
 
   // Professor filter search inside modal
   const [modalProfSearch, setModalProfSearch] = useState("");
+  const [unassignedSearch, setUnassignedSearch] = useState("");
+  const [showAllUnassigned, setShowAllUnassigned] = useState(false);
+  const unassignedScrollRef = React.useRef<HTMLDivElement>(null);
 
   const currentFaculty = faculties.find((f) => f.id === selectedFacultyId);
   const linkedFacultyIds = currentFaculty?.linkedFacultyIds || [];
@@ -113,6 +120,44 @@ export function OfferingManager({
       (p) => p.facultyId === selectedFacultyId || linkedFacultyIds.includes(p.facultyId)
     );
   }, [professors, selectedFacultyId, linkedFacultyIds]);
+
+  // Set of course IDs that have at least one active offering
+  const offeringCourseIds = React.useMemo(() => {
+    const set = new Set<string>();
+    for (const off of offerings) {
+      if (off.courseId) {
+        set.add(off.courseId);
+      }
+    }
+    return set;
+  }, [offerings]);
+
+  // Courses that do not have any offering registered yet (only direct courses of selected faculty, excluding linked courses)
+  const coursesWithoutOfferings = React.useMemo(() => {
+    const directCourses = selectedFacultyId
+      ? courses.filter((c) => c.facultyId === selectedFacultyId)
+      : courses;
+    return directCourses.filter((c) => !offeringCourseIds.has(c.id));
+  }, [courses, selectedFacultyId, offeringCourseIds]);
+
+  const filteredUnassignedCourses = React.useMemo(() => {
+    if (!unassignedSearch.trim()) return coursesWithoutOfferings;
+    return searchCourses(coursesWithoutOfferings, unassignedSearch);
+  }, [coursesWithoutOfferings, unassignedSearch]);
+
+  const displayedUnassignedCourses = React.useMemo(() => {
+    if (unassignedSearch.trim()) return filteredUnassignedCourses;
+    return showAllUnassigned
+      ? filteredUnassignedCourses
+      : filteredUnassignedCourses.slice(0, 10);
+  }, [filteredUnassignedCourses, showAllUnassigned, unassignedSearch]);
+
+  const handleScrollUnassigned = (direction: "left" | "right") => {
+    if (unassignedScrollRef.current) {
+      const delta = direction === "left" ? -260 : 260;
+      unassignedScrollRef.current.scrollBy({ left: delta, behavior: "smooth" });
+    }
+  };
 
   // Form State: Course + Multiple Professors + Description + Finalized Semesters
   const [form, setForm] = useState<{
@@ -291,16 +336,16 @@ export function OfferingManager({
     loadOfferings();
   }, [selectedFacultyId]);
 
-  const handleOpenCreateModal = () => {
+  const handleOpenCreateModal = (initialCourseId?: string) => {
     setEditingOffering(null);
     setModalProfSearch("");
     setNewSemYear("1404");
     setNewSemType("2");
     setForm({
       code: "",
-      courseId: availableCourses[0]?.id || "",
+      courseId: initialCourseId || "",
       description: "",
-      professorIds: availableProfessors[0] ? [availableProfessors[0].id] : [],
+      professorIds: [],
       finalizedSemesters: [],
     });
     setIsModalOpen(true);
@@ -549,6 +594,157 @@ export function OfferingManager({
         </div>
       </div>
 
+      {/* Courses Without Offerings Suggestion Card */}
+      {!loading && coursesWithoutOfferings.length > 0 && (
+        <Card className="border-border/70 bg-card shadow-2xs overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="flex h-6 w-6 items-center justify-center rounded-md bg-muted text-muted-foreground shrink-0">
+                <BookOpen className="h-3.5 w-3.5" />
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                <span className="text-xs font-semibold text-foreground">
+                  دروس فاقد ارائه:
+                </span>
+                <Badge
+                  variant="secondary"
+                  className="text-[10px] px-1.5 py-0 font-bold bg-muted text-foreground border border-border/60"
+                >
+                  {unassignedSearch.trim()
+                    ? `${filteredUnassignedCourses.length} از ${coursesWithoutOfferings.length} درس`
+                    : `${coursesWithoutOfferings.length} درس`}
+                </Badge>
+                <span className="text-[10px] text-muted-foreground hidden lg:inline truncate">
+                  (جهت تعریف سریع ارائه، روی درس کلیک کنید)
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Search Bar with Persian search engine */}
+              <div className="relative">
+                <Input
+                  placeholder="جستجوی درس..."
+                  value={unassignedSearch}
+                  onChange={(e) => setUnassignedSearch(e.target.value)}
+                  className="h-7 w-32 sm:w-44 text-xs pr-7 pl-6 bg-background/80"
+                />
+                <Search className="pointer-events-none absolute right-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
+                {unassignedSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setUnassignedSearch("")}
+                    className="absolute left-1.5 top-1.5 p-0.5 text-muted-foreground hover:text-foreground rounded-full"
+                    title="پاک کردن جستجو"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+
+              {!unassignedSearch.trim() && coursesWithoutOfferings.length > 10 && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowAllUnassigned((prev) => !prev)}
+                  className="text-[11px] h-7 px-2 text-muted-foreground hover:text-foreground font-medium"
+                >
+                  {showAllUnassigned ? "محدود به ۱۰ درس" : `مشاهده همه (${coursesWithoutOfferings.length})`}
+                </Button>
+              )}
+              <div className="flex items-center gap-0.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleScrollUnassigned("right")}
+                  className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                  title="قبلی"
+                >
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleScrollUnassigned("left")}
+                  className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                  title="بعدی"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent>
+            <div
+              ref={unassignedScrollRef}
+              className="flex items-stretch gap-2 overflow-x-auto pb-1 pt-0.5 px-0.5 scrollbar-thin scroll-smooth"
+            >
+              {displayedUnassignedCourses.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => handleOpenCreateModal(c.id)}
+                  className="flex flex-col justify-between text-right p-2.5 rounded-lg border border-border/70 bg-card hover:bg-muted/50 hover:border-border transition-colors min-w-[185px] max-w-[215px] shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <div className="space-y-1.5 w-full">
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span className="font-mono text-[11px] text-muted-foreground bg-muted/70 px-1.5 py-0.5 rounded font-semibold">
+                        {c.code || "بدون کد"}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <Badge
+                          variant="secondary"
+                          className="text-[10px] px-1.5 py-0.5 h-auto font-medium text-foreground/80"
+                        >
+                          {c.degreeLevel === "master" ? "ارشد" : "کارشناسی"}
+                        </Badge>
+                        <span className="text-[11px] text-muted-foreground font-medium">
+                          {c.units} واحد
+                        </span>
+                      </div>
+                    </div>
+
+                    <div
+                      className="font-semibold text-xs text-foreground line-clamp-1 leading-snug"
+                      title={c.name}
+                    >
+                      {c.name}
+                    </div>
+                  </div>
+
+                  <div className="mt-2 pt-1.5 border-t border-border/40 flex items-center justify-between w-full text-[11px] text-muted-foreground">
+                    <span>تعریف ارائه</span>
+                    <Plus className="h-3.5 w-3.5" />
+                  </div>
+                </button>
+              ))}
+
+              {displayedUnassignedCourses.length === 0 && (
+                <div className="py-4 text-center text-xs text-muted-foreground w-full">
+                  درسی با عبارت «{unassignedSearch}» در لیست دروس فاقد ارائه یافت نشد.
+                </div>
+              )}
+
+              {!unassignedSearch.trim() && !showAllUnassigned && coursesWithoutOfferings.length > 10 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllUnassigned(true)}
+                  className="flex flex-col items-center justify-center p-2 rounded-lg border border-dashed border-border/80 hover:border-border hover:bg-muted/50 transition-colors min-w-[110px] shrink-0 text-muted-foreground hover:text-foreground text-[11px] gap-1 cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span className="font-semibold text-[10px]">+{coursesWithoutOfferings.length - 10} دیگر</span>
+                  <span className="text-[9px]">مشاهده همه</span>
+                </button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="border-border/70 shadow-xs">
         <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
           <div>
@@ -616,7 +812,7 @@ export function OfferingManager({
             <Button
               type="button"
               size="sm"
-              onClick={handleOpenCreateModal}
+              onClick={() => handleOpenCreateModal()}
               disabled={!selectedFacultyId}
               className="h-8 gap-1.5 text-xs shadow-xs font-semibold"
             >
@@ -993,7 +1189,7 @@ export function OfferingManager({
                 </div>
 
                 {/* Selected Professors Chips */}
-                {selectedProfessorsList.length > 0 && (
+                {selectedProfessorsList.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5 p-2 rounded-xl bg-muted/40 border border-border/60 max-h-28 overflow-y-auto">
                     {selectedProfessorsList.map((p, idx) => {
                       const isPrimary = idx === 0;
@@ -1032,6 +1228,10 @@ export function OfferingManager({
                         </div>
                       );
                     })}
+                  </div>
+                ) : (
+                  <div className="p-2.5 rounded-xl border border-dashed border-border/70 text-center text-xs text-muted-foreground bg-muted/20">
+                    استادی انتخاب نشده است. از لیست زیر انتخاب نمایید.
                   </div>
                 )}
 
