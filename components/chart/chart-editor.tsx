@@ -12,6 +12,7 @@ import {
   Save,
   CheckCircle2,
   AlertTriangle,
+  AlertCircle,
   XCircle,
   Clock,
   ArrowRight,
@@ -1113,7 +1114,7 @@ export function ChartEditor({
                 className={`h-8 gap-1.5 text-xs font-semibold px-3 rounded-lg transition-all cursor-pointer shadow-2xs flex items-center ${validation.hasErrors
                   ? "bg-destructive/15 text-destructive hover:bg-destructive/25 dark:hover:bg-destructive/25 border border-destructive/30"
                   : validation.hasWarnings
-                    ? "bg-violet-500/15 text-violet-700 dark:text-violet-300 hover:bg-violet-500/25 border border-violet-500/30"
+                    ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 hover:bg-amber-500/25 border border-amber-500/30"
                     : validation.isGraduationReady
                       ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/25 border border-emerald-500/30"
                       : "bg-muted/50 text-foreground hover:bg-muted/80 border border-border/80"
@@ -1127,7 +1128,7 @@ export function ChartEditor({
                   </>
                 ) : validation.hasWarnings ? (
                   <>
-                    <Sparkles className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
+                    <AlertCircle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
                     <span>{validation.warningCount} هشدار / توصیه ({totalChartCredits} واحد)</span>
                   </>
                 ) : validation.isGraduationReady ? (
@@ -1483,8 +1484,8 @@ export function ChartEditor({
                               className={`text-[9px] px-1.5 py-0.5 rounded-md border ${pr.type === "prerequisite"
                                 ? "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20"
                                 : pr.type === "corequisite"
-                                  ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
-                                  : "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20"
+                                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                                  : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
                                 }`}
                             >
                               {pr.type === "prerequisite"
@@ -1522,38 +1523,92 @@ export function ChartEditor({
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-muted/20">
             {/* Sub-toolbar row above the terms */}
             <div className="shrink-0 h-8 sm:h-8.5 border-b border-border/70 bg-card/90 backdrop-blur flex items-stretch justify-between z-20 select-none p-0 overflow-x-auto overflow-y-hidden">
-              {/* Right side (start in RTL): Zoom Controller */}
-              <div className="flex items-center px-1.5 sm:px-2 gap-1 h-full border-l border-border/70">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setZoom((z) => Math.max(70, z - 10))}
-                  disabled={zoom <= 70}
-                  className="h-6 w-6 p-0 rounded-md text-foreground hover:bg-muted/80 disabled:opacity-40 transition-colors flex items-center justify-center"
-                  title="کوچک‌نمایی (Zoom Out)"
-                >
-                  <ZoomOut className="h-3.5 w-3.5 text-foreground shrink-0" />
-                </Button>
-                <button
-                  type="button"
-                  onClick={() => setZoom(100)}
-                  className="h-6 px-1.5 text-xs font-bold text-foreground hover:bg-muted/70 transition-colors cursor-pointer rounded-md flex items-center justify-center"
-                  title="کلیک جهت بازنشانی بزرگ‌نمایی به ۱۰۰٪"
-                >
-                  {zoom}%
-                </button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setZoom((z) => Math.min(130, z + 10))}
-                  disabled={zoom >= 130}
-                  className="h-6 w-6 p-0 rounded-md text-foreground hover:bg-muted/80 disabled:opacity-40 transition-colors flex items-center justify-center"
-                  title="بزرگ‌نمایی (Zoom In)"
-                >
-                  <ZoomIn className="h-3.5 w-3.5 text-foreground shrink-0" />
-                </Button>
+              {/* Right side (start in RTL): Zoom Controller & Arrow Hints */}
+              <div className="flex items-stretch h-full">
+                {/* Zoom Controller */}
+                <div className="flex items-center px-1.5 sm:px-2 gap-1 h-full border-l border-border/70">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setZoom((z) => Math.max(70, z - 10))}
+                    disabled={zoom <= 70}
+                    className="h-6 w-6 p-0 rounded-md text-foreground hover:bg-muted/80 disabled:opacity-40 transition-colors flex items-center justify-center"
+                    title="کوچک‌نمایی (Zoom Out)"
+                  >
+                    <ZoomOut className="h-3.5 w-3.5 text-foreground shrink-0" />
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => setZoom(100)}
+                    className="h-6 px-1.5 text-xs font-bold text-foreground hover:bg-muted/70 transition-colors cursor-pointer rounded-md flex items-center justify-center"
+                    title="کلیک جهت بازنشانی بزرگ‌نمایی به ۱۰۰٪"
+                  >
+                    {zoom}%
+                  </button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setZoom((z) => Math.min(130, z + 10))}
+                    disabled={zoom >= 130}
+                    className="h-6 w-6 p-0 rounded-md text-foreground hover:bg-muted/80 disabled:opacity-40 transition-colors flex items-center justify-center"
+                    title="بزرگ‌نمایی (Zoom In)"
+                  >
+                    <ZoomIn className="h-3.5 w-3.5 text-foreground shrink-0" />
+                  </Button>
+                </div>
+
+                {/* 3 Arrow Hints (Legend) */}
+                <div className="flex items-center px-1.5 sm:px-2.5 gap-1 sm:gap-2 h-full border-l border-border/70 text-[11px] select-none">
+                  {/* 1. Prerequisite */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="group flex items-center gap-1.5 px-1.5 py-0.5 rounded-md hover:bg-muted/60 transition-colors cursor-help">
+                        <svg width="18" height="10" viewBox="0 0 18 10" className="shrink-0 text-sky-500 dark:text-sky-400 rtl:-scale-x-100">
+                          <line x1="1" y1="5" x2="12" y2="5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                          <path d="M 10 2.2 L 16 5 L 10 7.8 Z" fill="currentColor" />
+                        </svg>
+                        <span className="text-[11px] font-medium text-foreground/80 group-hover:text-foreground">پیش‌نیاز</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" sideOffset={6} className="text-xs">
+                      پیش‌نیاز رسمی (خط ممتد آبی - الزام گذراندن در ترم‌های قبل)
+                    </TooltipContent>
+                  </Tooltip>
+
+                  {/* 2. Corequisite */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="group flex items-center gap-1.5 px-1.5 py-0.5 rounded-md hover:bg-muted/60 transition-colors cursor-help">
+                        <svg width="18" height="10" viewBox="0 0 18 10" className="shrink-0 text-emerald-500 dark:text-emerald-400 rtl:-scale-x-100">
+                          <line x1="1" y1="5" x2="12" y2="5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                          <path d="M 10 2.2 L 16 5 L 10 7.8 Z" fill="currentColor" />
+                        </svg>
+                        <span className="text-[11px] font-medium text-foreground/80 group-hover:text-foreground">هم‌نیاز</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" sideOffset={6} className="text-xs">
+                      هم‌نیاز رسمی (خط ممتد سبز - اخذ همزمان یا در ترم‌های قبل)
+                    </TooltipContent>
+                  </Tooltip>
+
+                  {/* 3. Recommended */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="group flex items-center gap-1.5 px-1.5 py-0.5 rounded-md hover:bg-muted/60 transition-colors cursor-help">
+                        <svg width="18" height="10" viewBox="0 0 18 10" className="shrink-0 text-violet-500 dark:text-violet-400 rtl:-scale-x-100">
+                          <line x1="1" y1="5" x2="12" y2="5" stroke="currentColor" strokeWidth="2" strokeDasharray="3 2" strokeLinecap="round" />
+                          <path d="M 10 2.2 L 16 5 L 10 7.8 Z" fill="currentColor" />
+                        </svg>
+                        <span className="text-[11px] font-medium text-foreground/80 group-hover:text-foreground">پیشنهادی</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" sideOffset={6} className="text-xs">
+                      پیش‌نیاز پیشنهادی (خط‌چین بنفش - توصیه آموزشی، غیرالزامی)
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
               </div>
 
               {/* Left side (end in RTL): Prerequisite Arrows Toggle & Semester Range */}
@@ -1690,7 +1745,7 @@ export function ChartEditor({
                         <path d="M 0 1 L 10 5 L 0 9 z" fill="#ef4444" />
                       </marker>
 
-                      {/* 2. Official Corequisite (Dashed Royal Blue) */}
+                      {/* 2. Official Corequisite (Solid Emerald Green) */}
                       <marker
                         id="arrow-coreq"
                         viewBox="0 0 10 10"
@@ -1700,7 +1755,7 @@ export function ChartEditor({
                         markerHeight="5"
                         orient="auto-start-reverse"
                       >
-                        <path d="M 0 1 L 10 5 L 0 9 z" fill="#2563eb" />
+                        <path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981" />
                       </marker>
 
                       {/* 3. Recommended Prerequisite (Distinct Violet / Amber on Advisory Warning) */}
@@ -1738,7 +1793,7 @@ export function ChartEditor({
                             ? "#ef4444"
                             : curve.type === "prerequisite"
                               ? "#0ea5e9"
-                              : "#2563eb";
+                              : "#10b981";
 
                       const markerEnd =
                         curve.type === "recommended"
@@ -1754,9 +1809,7 @@ export function ChartEditor({
                       const dashArray =
                         curve.type === "recommended"
                           ? "3 3"
-                          : curve.type === "corequisite"
-                            ? "5 4"
-                            : undefined;
+                          : undefined;
 
                       return (
                         <path
@@ -1884,7 +1937,7 @@ export function ChartEditor({
                                 const baseColor = isViolation
                                   ? "#ef4444"
                                   : isWarning
-                                    ? "#8b5cf6"
+                                    ? "#f59e0b"
                                     : vcat?.color || "#64748b";
 
                                 return (
@@ -1934,23 +1987,36 @@ export function ChartEditor({
                                     onMouseEnter={() => setHoveredCourseId(cId)}
                                     onMouseLeave={() => setHoveredCourseId(null)}
                                     style={{
-                                      backgroundColor: isViolation ? "rgba(239, 68, 68, 0.09)" : `${baseColor}14`,
+                                      backgroundColor: isViolation
+                                        ? "rgba(239, 68, 68, 0.09)"
+                                        : isWarning
+                                          ? "rgba(245, 158, 11, 0.09)"
+                                          : `${baseColor}14`,
                                       borderColor: isViolation
-                                        ? "rgba(239, 68, 68, 0.5)"
-                                        : isHovered || isDragTarget
-                                          ? baseColor
-                                          : `${baseColor}38`,
+                                        ? "rgba(239, 68, 68, 0.55)"
+                                        : isWarning
+                                          ? "rgba(245, 158, 11, 0.55)"
+                                          : isHovered || isDragTarget
+                                            ? baseColor
+                                            : `${baseColor}38`,
+                                      boxShadow: isViolation
+                                        ? "0 0 14px 2px rgba(239, 68, 68, 0.35), 0 0 3px rgba(239, 68, 68, 0.45)"
+                                        : isWarning
+                                          ? "0 0 14px 2px rgba(245, 158, 11, 0.35), 0 0 3px rgba(245, 158, 11, 0.45)"
+                                          : undefined,
                                     }}
-                                    className={`group relative p-2.5 rounded-xl border transition-all shadow-2xs ${isReadOnly
+                                    className={`group relative p-2.5 rounded-xl border transition-all duration-150 ${isReadOnly
                                       ? "cursor-default"
                                       : "cursor-grab active:cursor-grabbing"
                                       } ${isDragTarget
                                         ? "ring-2 ring-primary ring-offset-2 scale-[1.02] bg-primary/15"
                                         : isViolation
-                                          ? "ring-1 ring-destructive/40 shadow-xs"
-                                          : isHovered
-                                            ? "ring-2 ring-primary/40 shadow-md scale-[1.01]"
-                                            : "hover:shadow-xs"
+                                          ? "ring-1 ring-destructive/60"
+                                          : isWarning
+                                            ? "ring-1 ring-amber-500/60"
+                                            : isHovered
+                                              ? "ring-2 ring-primary/40 shadow-md scale-[1.01]"
+                                              : "shadow-2xs hover:shadow-xs"
                                       }`}
                                   >
                                     {/* Course Header */}
@@ -1969,14 +2035,14 @@ export function ChartEditor({
                                                 className="inline-flex items-center text-destructive hover:scale-110 transition-transform cursor-pointer shrink-0"
                                               >
                                                 <AlertTriangle
-                                                  className="h-3.5 w-3.5 text-destructive shrink-0 animate-pulse"
+                                                  className="h-3.5 w-3.5 text-destructive shrink-0 animate-pulse drop-shadow-[0_0_6px_rgba(239,68,68,0.6)]"
                                                 />
                                               </button>
                                             </TooltipTrigger>
                                             <TooltipContent
                                               side="top"
                                               sideOffset={5}
-                                              className="max-w-70 bg-red-500 text-destructive-foreground p-2.5 text-xs text-right leading-relaxed shadow-lg rounded-lg border border-destructive/20 z-50"
+                                              className="max-w-70 bg-red-600 text-white p-2.5 text-xs text-right leading-relaxed shadow-lg rounded-lg border border-destructive/20 z-50 font-medium"
                                               dir="rtl"
                                             >
                                               <div className="flex items-start gap-1.5">
@@ -1996,21 +2062,21 @@ export function ChartEditor({
                                                   e.stopPropagation();
                                                   setIssuesModalOpen(true);
                                                 }}
-                                                className="inline-flex items-center text-violet-600 dark:text-violet-400 hover:scale-110 transition-transform cursor-pointer shrink-0"
+                                                className="inline-flex items-center text-amber-500 dark:text-amber-400 hover:scale-110 transition-transform cursor-pointer shrink-0"
                                               >
-                                                <Sparkles
-                                                  className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0"
+                                                <AlertCircle
+                                                  className="h-3.5 w-3.5 text-amber-500 dark:text-amber-400 shrink-0 animate-pulse drop-shadow-[0_0_6px_rgba(245,158,11,0.6)]"
                                                 />
                                               </button>
                                             </TooltipTrigger>
                                             <TooltipContent
                                               side="top"
                                               sideOffset={5}
-                                              className="max-w-70 bg-violet-600 text-white p-2.5 text-xs text-right leading-relaxed shadow-lg rounded-lg border border-violet-500/20 z-50"
+                                              className="max-w-70 bg-amber-500 text-slate-950 p-2.5 text-xs text-right leading-relaxed shadow-lg rounded-lg border border-amber-600/30 z-50 font-medium"
                                               dir="rtl"
                                             >
                                               <div className="flex items-start gap-1.5">
-                                                <Sparkles className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                                                <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5 text-slate-950" />
                                                 <span>
                                                   {courseIssue?.message || "توصیه پیش‌نیاز پیشنهادی (کلیک جهت مشاهده جزئیات)"}
                                                 </span>
@@ -2117,24 +2183,22 @@ export function ChartEditor({
                         <div
                           key={issue.id || idx}
                           className={`p-3 rounded-xl border flex items-start gap-2.5 ${issue.type === "error"
-                            ? "border-destructive/30 bg-destructive/10 text-destructive dark:text-red-300"
-                            : isRecPrereq
-                              ? "border-violet-500/30 bg-violet-500/10 text-violet-800 dark:text-violet-300"
-                              : "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300"
+                            ? "border-destructive/30 bg-destructive/10 text-destructive dark:text-red-300 shadow-[0_0_12px_rgba(239,68,68,0.15)]"
+                            : "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.15)]"
                             }`}
                         >
                           {issue.type === "error" ? (
-                            <XCircle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
+                            <XCircle className="h-4 w-4 shrink-0 text-destructive mt-0.5 drop-shadow-[0_0_4px_rgba(239,68,68,0.5)]" />
                           ) : isRecPrereq ? (
-                            <Sparkles className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400 mt-0.5" />
+                            <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5 drop-shadow-[0_0_4px_rgba(245,158,11,0.5)]" />
                           ) : (
-                            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500 mt-0.5" />
+                            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500 mt-0.5 drop-shadow-[0_0_4px_rgba(245,158,11,0.5)]" />
                           )}
                           <div className="space-y-0.5 flex-1">
                             <div className="flex items-center gap-1.5">
                               <span className="font-bold text-xs leading-relaxed">{issue.message}</span>
                               {isRecPrereq && (
-                                <Badge variant="outline" className="text-[10px] border-violet-500/30 text-violet-600 dark:text-violet-400">
+                                <Badge variant="outline" className="text-[10px] border-amber-500/30 text-amber-700 dark:text-amber-400 bg-amber-500/10">
                                   پیش‌نیاز پیشنهادی (غیرالزامی)
                                 </Badge>
                               )}

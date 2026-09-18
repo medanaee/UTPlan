@@ -75,49 +75,6 @@ export default function Home() {
             بصری تنظیم کنید و نظرات دانشجویان درباره اساتید و دروس را پیش از انتخاب واحد بخوانید.
           </p>
 
-          {/* Call to Actions */}
-          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-            {user ? (
-              user.role === "admin" || user.role === "super_admin" ? (
-                <Link href="/admin">
-                  <Button size="lg" className="h-10 gap-2 text-xs font-bold shadow-sm">
-                    <LayoutDashboard className="h-4 w-4" />
-                    ورود به پنل مدیریت دانشگاه
-                  </Button>
-                </Link>
-              ) : (
-                <Button size="lg" className="h-10 gap-2 text-xs font-bold shadow-sm" disabled>
-                  <Calendar className="h-4 w-4" />
-                  خوش آمدید، {user.name}
-                </Button>
-              )
-            ) : (
-              <Link href="/login">
-                <Button size="lg" className="h-10 gap-2 text-xs font-bold shadow-sm">
-                  <LogIn className="h-4 w-4" />
-                  ورود به سیستم و شروع برنامه‌ریزی
-                </Button>
-              </Link>
-            )}
-
-            {user?.role === "admin" || user?.role === "super_admin" ? (
-              <Link href="/admin">
-                <Button variant="outline" size="lg" className="h-10 gap-2 text-xs">
-                  <BookOpen className="h-4 w-4" />
-                  مدیریت دروس و پیش‌نیازها
-                  <ArrowLeft className="h-3.5 w-3.5" />
-                </Button>
-              </Link>
-            ) : (
-              <Link href="/login">
-                <Button variant="outline" size="lg" className="h-10 gap-2 text-xs">
-                  <Search className="h-4 w-4" />
-                  مشاهده بانک دروس و اساتید
-                  <ArrowLeft className="h-3.5 w-3.5" />
-                </Button>
-              </Link>
-            )}
-          </div>
         </div>
       </section>
 

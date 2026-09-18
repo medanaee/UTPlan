@@ -56,7 +56,7 @@ interface CategoryCourseAssignDialogProps {
   currentAssignedCourseIds: string[];
   currentFacultyId?: string;
   otherCategoryAssignments?: Record<string, OtherCategoryAssignmentInfo>;
-  onSuccess: () => void;
+  onSuccess: (updatedAssignments?: any[]) => void;
 }
 
 export function CategoryCourseAssignDialog({
@@ -221,7 +221,7 @@ export function CategoryCourseAssignDialog({
       });
 
       if (res.success) {
-        onSuccess();
+        onSuccess(res.data);
         onOpenChange(false);
       } else {
         alert(res.message || "خطا در ذخیره دروس این دسته");

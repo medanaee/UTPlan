@@ -50,15 +50,17 @@ export function CourseDirectory({
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [selectedOfferedIn, setSelectedOfferedIn] = usePersistedState<string>("ut_ece_courses_offered_in", "all");
   const [selectedUnits, setSelectedUnits] = usePersistedState<string>("ut_ece_courses_units", "all");
+  const [selectedDegreeLevel, setSelectedDegreeLevel] = usePersistedState<string>("ut_ece_courses_degree_level", "all");
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (selectedFaculty !== "all") count++;
+    if (selectedDegreeLevel !== "all") count++;
     if (selectedOfferedIn !== "all") count++;
     if (selectedUnits !== "all") count++;
     return count;
-  }, [selectedFaculty, selectedOfferedIn, selectedUnits]);
+  }, [selectedFaculty, selectedDegreeLevel, selectedOfferedIn, selectedUnits]);
 
   useEffect(() => {
     async function loadData() {
@@ -96,6 +98,10 @@ export function CourseDirectory({
       const matchesFaculty =
         selectedFaculty === "all" || c.facultyId === selectedFaculty;
 
+      const matchesDegree =
+        selectedDegreeLevel === "all" ||
+        (c.degreeLevel || "undergrad") === selectedDegreeLevel;
+
       const matchesOffered =
         selectedOfferedIn === "all" ||
         c.offeredIn === selectedOfferedIn ||
@@ -104,12 +110,12 @@ export function CourseDirectory({
       const matchesUnits =
         selectedUnits === "all" || String(c.units) === selectedUnits;
 
-      return matchesFaculty && matchesOffered && matchesUnits;
+      return matchesFaculty && matchesDegree && matchesOffered && matchesUnits;
     });
 
     // 2. Intelligently search and rank by search query
     return searchCourses(baseFiltered, search);
-  }, [courses, search, selectedFaculty, selectedOfferedIn, selectedUnits]);
+  }, [courses, search, selectedFaculty, selectedDegreeLevel, selectedOfferedIn, selectedUnits]);
 
   const formatTermOffered = (term?: string) => {
     switch (term) {
@@ -208,6 +214,7 @@ export function CourseDirectory({
                     size="sm"
                     onClick={() => {
                       setSelectedFaculty("all");
+                      setSelectedDegreeLevel("all");
                       setSelectedOfferedIn("all");
                       setSelectedUnits("all");
                     }}
@@ -218,7 +225,7 @@ export function CourseDirectory({
                 )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
                 {/* Faculty Filter */}
                 <div className="space-y-1">
                   <label className="text-[11px] font-medium text-muted-foreground block text-right">
@@ -241,6 +248,31 @@ export function CourseDirectory({
                             </SelectItem>
                           );
                         })}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Degree Level Filter */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-medium text-muted-foreground block text-right">
+                    مقطع تحصیلی
+                  </label>
+                  <Select value={selectedDegreeLevel} onValueChange={setSelectedDegreeLevel}>
+                    <SelectTrigger className="w-full text-xs h-8.5 rounded-lg bg-background/60">
+                      <SelectValue placeholder="مقطع تحصیلی" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectItem value="all" className="text-xs">
+                          همه مقاطع ({courses.length})
+                        </SelectItem>
+                        <SelectItem value="undergrad" className="text-xs">
+                          کارشناسی ({courses.filter((c) => (c.degreeLevel || "undergrad") === "undergrad").length})
+                        </SelectItem>
+                        <SelectItem value="master" className="text-xs">
+                          کارشناسی ارشد ({courses.filter((c) => c.degreeLevel === "master").length})
+                        </SelectItem>
                       </SelectGroup>
                     </SelectContent>
                   </Select>
@@ -315,6 +347,7 @@ export function CourseDirectory({
         <span>
           نمایش <strong className="text-foreground">{filteredCourses.length}</strong> درس از مجموع {courses.length} درس ثبت‌شده
         </span>
+
         {(search || activeFilterCount > 0) && (
           <Button
             variant="ghost"
@@ -322,6 +355,7 @@ export function CourseDirectory({
             onClick={() => {
               setSearch("");
               setSelectedFaculty("all");
+              setSelectedDegreeLevel("all");
               setSelectedOfferedIn("all");
               setSelectedUnits("all");
             }}
@@ -361,10 +395,20 @@ export function CourseDirectory({
                 <div className="space-y-3">
                   {/* Card Header: Code & Badges */}
                   <div className="flex items-center justify-between gap-2">
-                    <Badge variant="outline" className=" text-xs font-bold px-2 py-0.5 bg-muted/60">
+                    <Badge variant="outline" className="text-xs font-bold px-2 py-0.5 bg-muted/60">
                       {course.code}
                     </Badge>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] font-semibold px-1.5 py-0.5 border ${
+                          course.degreeLevel === "master"
+                            ? "bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/30"
+                            : "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30"
+                        }`}
+                      >
+                        {course.degreeLevel === "master" ? "کارشناسی ارشد" : "کارشناسی"}
+                      </Badge>
                       <Badge variant="secondary" className="text-[10px] font-bold">
                         {course.units} واحد
                       </Badge>

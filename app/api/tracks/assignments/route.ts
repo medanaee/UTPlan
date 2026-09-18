@@ -36,6 +36,12 @@ export async function POST(request: Request) {
       return Response.json({ success: false, message: "شناسه گرایش الزامی است." }, { status: 400 });
     }
 
+    // Unassign single course
+    if (body.action === "unassign_course" && body.courseId) {
+      const updatedAssignment = await assignCourseToCategory(trackId, body.courseId, null);
+      return Response.json({ success: true, data: updatedAssignment, message: "درس با موفقیت از دسته خارج شد." });
+    }
+
     // Clear all courses from specific category
     if (body.action === "clear_category_courses" && body.categoryId) {
       await clearCategoryCourses(trackId, body.categoryId);

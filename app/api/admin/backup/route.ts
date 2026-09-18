@@ -9,8 +9,7 @@ const TABLE_ORDER = [
   "faculty_links",
   "majors",
   "tracks",
-  "visual_categories",
-  "rule_categories",
+  "categories",
   "courses",
   "prerequisites",
   "track_course_assignments",
@@ -135,6 +134,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Backward compatibility for legacy category structure
+    if (!tablesData["categories"] || tablesData["categories"].length === 0) {
+      const legacyCats = [
+        ...(Array.isArray(tablesData["visual_categories"]) ? tablesData["visual_categories"] : []),
+        ...(Array.isArray(tablesData["rule_categories"]) ? tablesData["rule_categories"] : []),
+      ];
+      if (legacyCats.length > 0) {
+        const catMap = new Map<string, any>();
+        for (const lc of legacyCats) {
+          if (lc && lc.id && !catMap.has(lc.id)) {
+            catMap.set(lc.id, {
+              id: lc.id,
+              track_id: lc.track_id,
+              parent_id: lc.parent_id || null,
+              code: lc.code || null,
+              name: lc.name,
+              color: lc.color || "#3b82f6",
+              sort_order: lc.sort_order || 0,
+              created_at: lc.created_at || new Date().toISOString(),
+            });
+          }
+        }
+        tablesData["categories"] = Array.from(catMap.values());
+      }
+    }
+
     // Disable foreign keys for safe batch restore
     await d1.prepare("PRAGMA foreign_keys = OFF;").run();
 
@@ -148,20 +173,61 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Also wipe legacy tables if they happen to exist
+    for (const legacyTable of ["rule_categories", "visual_categories"]) {
+      try {
+        await d1.prepare(`DELETE FROM ${legacyTable}`).run();
+      } catch {}
+    }
+
     // 2. Insert all rows per table
     let totalInserted = 0;
     const errors: string[] = [];
     const restoredStats: Record<string, number> = {};
 
     for (const table of TABLE_ORDER) {
-      const rows = Array.isArray(tablesData[table]) ? tablesData[table] : [];
+      let rows = Array.isArray(tablesData[table]) ? tablesData[table] : [];
       restoredStats[table] = 0;
 
       if (rows.length === 0) continue;
 
+      // Ensure parent categories are inserted before subcategories
+      if (table === "categories") {
+        rows = [...rows].sort((a, b) => {
+          if (!a?.parent_id && b?.parent_id) return -1;
+          if (a?.parent_id && !b?.parent_id) return 1;
+          return 0;
+        });
+      }
+
       const stmts: any[] = [];
-      for (const row of rows) {
+      for (let row of rows) {
         if (!row || typeof row !== "object") continue;
+
+        // Clone row to avoid mutating original
+        row = { ...row };
+
+        // Normalize courses (degree level support)
+        if (table === "courses") {
+          if ("degreeLevel" in row && !("degree_level" in row)) {
+            row.degree_level = row.degreeLevel;
+            delete row.degreeLevel;
+          }
+          if (!row.degree_level) {
+            row.degree_level = "undergrad";
+          } else if (row.degree_level === "undergraduate") {
+            row.degree_level = "undergrad";
+          }
+        }
+
+        // Normalize track_course_assignments (categories support)
+        if (table === "track_course_assignments") {
+          if (!row.category_id && (row.visual_category_id || row.rule_category_id)) {
+            row.category_id = row.visual_category_id || row.rule_category_id;
+          }
+          delete row.visual_category_id;
+          delete row.rule_category_id;
+        }
 
         const keys = Object.keys(row);
         if (keys.length === 0) continue;
@@ -198,7 +264,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `بازیابی کامل از فایل JSON با موفقیت انجام شد: در مجموع ${totalInserted} رکورد در ۲۰ جدول بازنویسی و بازیابی گردید.`,
+      message: `بازیابی کامل از فایل JSON با موفقیت انجام شد: در مجموع ${totalInserted} رکورد در ${TABLE_ORDER.length} جدول بازنویسی و بازیابی گردید.`,
       stats: {
         totalInserted,
         restoredRecords: totalInserted,
@@ -243,8 +309,7 @@ export async function DELETE(request: NextRequest) {
       "track_course_assignments",
       "prerequisites",
       "courses",
-      "rule_categories",
-      "visual_categories",
+      "categories",
       "faculty_links",
     ];
 

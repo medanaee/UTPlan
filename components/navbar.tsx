@@ -92,8 +92,8 @@ export function Navbar({ user: initialUser }: NavbarProps) {
               <GraduationCap className="h-5 w-5" />
             </div>
             <div>
-              <span className="text-sm font-bold tracking-tight">سامانه انتخاب واحد</span>
-              <p className="text-[10px] text-muted-foreground">دانشکده مهندسی برق و کامپیوتر</p>
+              <span className="hidden lg:block text-sm font-bold tracking-tight">سامانه انتخاب واحد</span>
+              <p className="hidden lg:block text-[10px] text-muted-foreground">دانشکده مهندسی برق و کامپیوتر</p>
             </div>
           </Link>
         </div>

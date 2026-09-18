@@ -149,6 +149,42 @@ export function createClearAuthCookieHeader(): string {
 }
 
 /**
+ * Require valid authenticated user session (any role: user, admin, super_admin)
+ */
+export async function requireUserSession(request: Request): Promise<{
+  authorized: boolean;
+  user?: UserSession;
+  response?: Response;
+}> {
+  const token = getAuthTokenFromRequest(request);
+  if (!token) {
+    return {
+      authorized: false,
+      response: Response.json(
+        { success: false, message: "احراز هویت نشده‌اید. لطفاً وارد حساب کاربری شوید." },
+        { status: 401 }
+      ),
+    };
+  }
+
+  const session = await verifySessionToken(token);
+  if (!session) {
+    return {
+      authorized: false,
+      response: Response.json(
+        { success: false, message: "نشست کاربری نامعتبر یا منقضی شده است." },
+        { status: 401 }
+      ),
+    };
+  }
+
+  return {
+    authorized: true,
+    user: session,
+  };
+}
+
+/**
  * Require valid Admin or Super Admin session with Live Database Check
  */
 export async function requireAdminSession(request: Request): Promise<{

@@ -202,16 +202,32 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
   // Quick Unassign Course from Category
   const handleQuickUnassign = async (catId: string, courseId: string) => {
     if (!selectedTrackId) return;
-    const currentList = getCategoryCourses(catId).map((c) => c.id);
-    const updated = currentList.filter((id) => id !== courseId);
-    await postJson("/api/tracks/assignments", {
-      action: "assign_category_courses",
-      trackId: selectedTrackId,
-      categoryId: catId,
-      courseIds: updated,
-    });
-    const assignRes = await fetchJson("/api/tracks/assignments?trackId=" + selectedTrackId);
-    if (assignRes.success) setTrackAssignments(assignRes.data);
+
+    // 1. Optimistic UI update: instantly remove from state for instant response
+    const prevAssignments = trackAssignments;
+    setTrackAssignments(
+      trackAssignments.filter(
+        (a) => !(a.trackId === selectedTrackId && a.courseId === courseId)
+      )
+    );
+
+    try {
+      // 2. Fast single-query unassign on server
+      const res = await postJson("/api/tracks/assignments", {
+        action: "unassign_course",
+        trackId: selectedTrackId,
+        courseId,
+      });
+
+      if (!res.success) {
+        // Rollback on failure
+        setTrackAssignments(prevAssignments);
+        alert(res.message || "خطا در حذف درس از دسته");
+      }
+    } catch (err: any) {
+      setTrackAssignments(prevAssignments);
+      alert("خطا در برقراری ارتباط با سرور: " + (err?.message || "نامشخص"));
+    }
   };
 
   // Create Category (Arbitrary depth supported)
@@ -602,8 +618,10 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
           currentFacultyId={effectiveFacultyId}
           otherCategoryAssignments={otherCategoryAssignments}
           currentAssignedCourseIds={getCategoryCourses(assignModal.categoryId).map((c) => c.id)}
-          onSuccess={async () => {
-            if (selectedTrackId) {
+          onSuccess={async (updatedData) => {
+            if (updatedData && Array.isArray(updatedData)) {
+              setTrackAssignments(updatedData);
+            } else if (selectedTrackId) {
               const assignRes = await fetchJson("/api/tracks/assignments?trackId=" + selectedTrackId);
               if (assignRes.success) setTrackAssignments(assignRes.data);
             }

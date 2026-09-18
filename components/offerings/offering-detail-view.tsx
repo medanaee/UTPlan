@@ -45,6 +45,7 @@ import {
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -81,6 +82,18 @@ const DAYS_NAMES: Record<number, string> = {
   6: "جمعه",
 };
 
+function getScoreBarColor(score: number): string {
+  if (score >= 7) return "bg-emerald-500";
+  if (score >= 5) return "bg-amber-500";
+  return "bg-rose-500";
+}
+
+function getScoreTextColor(score: number): string {
+  if (score >= 7) return "text-emerald-600 dark:text-emerald-400";
+  if (score >= 5) return "text-amber-600 dark:text-amber-400";
+  return "text-rose-600 dark:text-rose-400";
+}
+
 interface OfferingDetailViewProps {
   offering: CourseOffering;
 }
@@ -92,6 +105,9 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
   // Reviews state
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
   const [loadingReviews, setLoadingReviews] = useState(true);
+
+  // Create Review Dialog state
+  const [createReviewOpen, setCreateReviewOpen] = useState(false);
 
   // Resources state
   const [resources, setResources] = useState<OfferingResource[]>(offering.resources || []);
@@ -257,6 +273,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
         setIsAnonymous(false);
         setStudentGrade("");
         setScores({});
+        setCreateReviewOpen(false);
         await loadReviews();
       } else {
         setSubmitError(res.message || "خطا در ثبت نظر");
@@ -762,216 +779,52 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
             </CardHeader>
 
             <CardContent className="space-y-6">
-              {/* Form to submit review */}
-              <form
-                onSubmit={handleSubmitReview}
-                className="p-4 rounded-2xl border border-primary/20 bg-primary/5 space-y-4"
-              >
-                <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                  <Sparkles className="h-4 w-4 text-primary" />
-                  ثبت نظر و امتیاز شما برای این ارائه درس:
-                </span>
-
-                {submitError && (
-                  <div className="p-2.5 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-xs flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 shrink-0" />
-                    <span>{submitError}</span>
-                  </div>
-                )}
-
-                {submitSuccess && (
-                  <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 text-xs flex items-center gap-2">
+              {submitSuccess && (
+                <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 text-xs flex items-center justify-between gap-2 shadow-2xs">
+                  <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 shrink-0" />
                     <span>{submitSuccess}</span>
                   </div>
-                )}
-
-                {/* 4 Optional Criteria Sliders/Rating 1 to 10 */}
-                <div className="space-y-2 pt-1 border-t border-border/40">
-                  <span className="text-[11px] text-muted-foreground font-medium block">
-                    امتیاز به معیارهای ارائه (از ۱۰ - اختیاری):
-                  </span>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                    {/* Teaching */}
-                    <div className="space-y-1 bg-card p-2 rounded-xl border border-border/70">
-                      <div className="flex justify-between items-center text-[11px]">
-                        <span className="font-semibold">کیفیت تدریس در ارائه:</span>
-                        <span className=" font-bold text-primary">
-                          {scores.teaching ? `${scores.teaching} / 10` : "ثبت‌نشده"}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 pt-1 overflow-x-auto">
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-                          <button
-                            key={num}
-                            type="button"
-                            onClick={() => handleScoreChange("teaching", num)}
-                            className={`flex-1 h-6 rounded text-[10px] font-bold transition-all ${
-                              scores.teaching === num
-                                ? "bg-primary text-primary-foreground shadow-xs"
-                                : "bg-muted hover:bg-muted/80 text-foreground"
-                            }`}
-                          >
-                            {num}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Grading */}
-                    <div className="space-y-1 bg-card p-2 rounded-xl border border-border/70">
-                      <div className="flex justify-between items-center text-[11px]">
-                        <span className="font-semibold">نحوه نمره‌دهی و تصحیح:</span>
-                        <span className=" font-bold text-primary">
-                          {scores.grading ? `${scores.grading} / 10` : "ثبت‌نشده"}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 pt-1 overflow-x-auto">
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-                          <button
-                            key={num}
-                            type="button"
-                            onClick={() => handleScoreChange("grading", num)}
-                            className={`flex-1 h-6 rounded text-[10px] font-bold transition-all ${
-                              scores.grading === num
-                                ? "bg-primary text-primary-foreground shadow-xs"
-                                : "bg-muted hover:bg-muted/80 text-foreground"
-                            }`}
-                          >
-                            {num}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Content */}
-                    <div className="space-y-1 bg-card p-2 rounded-xl border border-border/70">
-                      <div className="flex justify-between items-center text-[11px]">
-                        <span className="font-semibold">کیفیت اسلایدها و محتوا:</span>
-                        <span className=" font-bold text-primary">
-                          {scores.content ? `${scores.content} / 10` : "ثبت‌نشده"}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 pt-1 overflow-x-auto">
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-                          <button
-                            key={num}
-                            type="button"
-                            onClick={() => handleScoreChange("content", num)}
-                            className={`flex-1 h-6 rounded text-[10px] font-bold transition-all ${
-                              scores.content === num
-                                ? "bg-primary text-primary-foreground shadow-xs"
-                                : "bg-muted hover:bg-muted/80 text-foreground"
-                            }`}
-                          >
-                            {num}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Difficulty */}
-                    <div className="space-y-1 bg-card p-2 rounded-xl border border-border/70">
-                      <div className="flex justify-between items-center text-[11px]">
-                        <span className="font-semibold">سطح دشواری و فشار تکالیف:</span>
-                        <span className=" font-bold text-primary">
-                          {scores.difficulty ? `${scores.difficulty} / 10` : "ثبت‌نشده"}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 pt-1 overflow-x-auto">
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-                          <button
-                            key={num}
-                            type="button"
-                            onClick={() => handleScoreChange("difficulty", num)}
-                            className={`flex-1 h-6 rounded text-[10px] font-bold transition-all ${
-                              scores.difficulty === num
-                                ? "bg-primary text-primary-foreground shadow-xs"
-                                : "bg-muted hover:bg-muted/80 text-foreground"
-                            }`}
-                          >
-                            {num}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Optional Student Grade Input */}
-                <div className="space-y-1.5 pt-1 border-t border-border/40">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                      <Label className="text-xs font-semibold flex items-center gap-1.5">
-                        <GraduationCap className="h-4 w-4 text-primary" />
-                        نمره کسب‌شده شما از این درس با این استاد (اختیاری):
-                      </Label>
-                      <span className="text-[11px] text-muted-foreground block">
-                        اگر قبلاً این درس را پاس کرده‌اید، نمره خود را از ۲۰ وارد کنید.
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 self-start sm:self-center">
-                      <Input
-                        type="number"
-                        min="0"
-                        max="20"
-                        step="0.25"
-                        placeholder="مثال: ۱۸.۵"
-                        value={studentGrade}
-                        onChange={(e) => setStudentGrade(e.target.value)}
-                        className="h-8 text-xs w-28 bg-background"
-                      />
-                      <span className="text-xs text-muted-foreground">از ۲۰</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Comment Textarea */}
-                <div className="space-y-1.5 pt-1">
-                  <Label className="text-xs font-semibold">متن نظر یا تجربه شما *</Label>
-                  <Textarea
-                    value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                    placeholder="تجربه خود از حضور در کلاس، نوع آزمون‌ها، پروژه‌ها و رفتار کلاسی استاد را به اشتراک بگذارید..."
-                    rows={3}
-                    className="text-xs bg-background resize-none"
-                    required
-                  />
-                </div>
-
-                {/* Anonymous checkbox & Submit */}
-                <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <Checkbox
-                      checked={isAnonymous}
-                      onCheckedChange={(c) => setIsAnonymous(Boolean(c))}
-                    />
-                    <span className="text-xs font-medium text-foreground">
-                      ارسال به صورت ناشناس (نام شما نمایش داده نمی‌شود)
-                    </span>
-                  </label>
-
                   <Button
-                    type="submit"
+                    variant="ghost"
                     size="sm"
-                    disabled={submitting || !commentText.trim()}
-                    className="h-8 text-xs font-bold gap-1.5 px-4"
+                    onClick={() => setSubmitSuccess(null)}
+                    className="h-6 px-2 text-[11px] hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
                   >
-                    {submitting ? (
-                      <>
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        در حال ارسال...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="h-3.5 w-3.5" />
-                        ثبت نظر
-                      </>
-                    )}
+                    بستن
                   </Button>
                 </div>
-              </form>
+              )}
+
+              {/* Compact Card to prompt for review */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl border border-primary/20 bg-primary/5 shadow-2xs">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0 border border-primary/20 shadow-2xs">
+                    <Sparkles className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-foreground">
+                      نظرتان را درباره این ارائه ثبت کنید
+                    </h4>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      دیدگاه‌ها و ارزیابی تجربیات شما به سایر دانشجویان در شناخت بهتر این ارائه و انتخاب درس کمک می‌کند.
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => {
+                    setSubmitError(null);
+                    setCreateReviewOpen(true);
+                  }}
+                  className="h-8 text-xs font-bold gap-1.5 px-4 shrink-0 shadow-2xs self-start sm:self-auto"
+                >
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  <span>ثبت نظر</span>
+                </Button>
+              </div>
 
               {/* Reviews Feed */}
               {loadingReviews ? (
@@ -1005,13 +858,13 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                           <div className="space-y-1 bg-card/80 p-2.5 rounded-xl border">
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-muted-foreground font-medium">کیفیت تدریس</span>
-                              <span className=" font-bold text-foreground">
+                              <span className={`font-bold ${getScoreTextColor(Number(criteriaAverages.teaching))}`}>
                                 {criteriaAverages.teaching} <span className="text-[10px] text-muted-foreground font-normal">/ ۱۰</span>
                               </span>
                             </div>
                             <div className="h-2.5 w-full rounded-full bg-muted/80 overflow-hidden">
                               <div
-                                className="h-full rounded-full bg-linear-to-r from-emerald-500 to-teal-400 transition-all duration-700"
+                                className={`h-full rounded-full transition-all duration-700 ${getScoreBarColor(Number(criteriaAverages.teaching))}`}
                                 style={{ width: `${(Number(criteriaAverages.teaching) / 10) * 100}%` }}
                               />
                             </div>
@@ -1022,13 +875,13 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                           <div className="space-y-1 bg-card/80 p-2.5 rounded-xl border">
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-muted-foreground font-medium">نحوه نمره‌دهی</span>
-                              <span className=" font-bold text-foreground">
+                              <span className={`font-bold ${getScoreTextColor(Number(criteriaAverages.grading))}`}>
                                 {criteriaAverages.grading} <span className="text-[10px] text-muted-foreground font-normal">/ ۱۰</span>
                               </span>
                             </div>
                             <div className="h-2.5 w-full rounded-full bg-muted/80 overflow-hidden">
                               <div
-                                className="h-full rounded-full bg-linear-to-r from-blue-500 to-cyan-400 transition-all duration-700"
+                                className={`h-full rounded-full transition-all duration-700 ${getScoreBarColor(Number(criteriaAverages.grading))}`}
                                 style={{ width: `${(Number(criteriaAverages.grading) / 10) * 100}%` }}
                               />
                             </div>
@@ -1039,13 +892,13 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                           <div className="space-y-1 bg-card/80 p-2.5 rounded-xl border">
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-muted-foreground font-medium">کیفیت محتوا و اسلایدها</span>
-                              <span className=" font-bold text-foreground">
+                              <span className={`font-bold ${getScoreTextColor(Number(criteriaAverages.content))}`}>
                                 {criteriaAverages.content} <span className="text-[10px] text-muted-foreground font-normal">/ ۱۰</span>
                               </span>
                             </div>
                             <div className="h-2.5 w-full rounded-full bg-muted/80 overflow-hidden">
                               <div
-                                className="h-full rounded-full bg-linear-to-r from-purple-500 to-pink-400 transition-all duration-700"
+                                className={`h-full rounded-full transition-all duration-700 ${getScoreBarColor(Number(criteriaAverages.content))}`}
                                 style={{ width: `${(Number(criteriaAverages.content) / 10) * 100}%` }}
                               />
                             </div>
@@ -1056,13 +909,13 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                           <div className="space-y-1 bg-card/80 p-2.5 rounded-xl border">
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-muted-foreground font-medium">سطح دشواری و تکالیف</span>
-                              <span className=" font-bold text-foreground">
+                              <span className={`font-bold ${getScoreTextColor(Number(criteriaAverages.difficulty))}`}>
                                 {criteriaAverages.difficulty} <span className="text-[10px] text-muted-foreground font-normal">/ ۱۰</span>
                               </span>
                             </div>
                             <div className="h-2.5 w-full rounded-full bg-muted/80 overflow-hidden">
                               <div
-                                className="h-full rounded-full bg-linear-to-r from-amber-500 to-yellow-400 transition-all duration-700"
+                                className={`h-full rounded-full transition-all duration-700 ${getScoreBarColor(Number(criteriaAverages.difficulty))}`}
                                 style={{ width: `${(Number(criteriaAverages.difficulty) / 10) * 100}%` }}
                               />
                             </div>
@@ -1156,99 +1009,44 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                           </div>
                         </div>
 
-                        {/* Criteria Score Progress Bars */}
+                        {/* Compact Individual Review Criteria Scores */}
                         {(cRatings.teaching || cRatings.grading || cRatings.content || cRatings.difficulty) && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-3 rounded-2xl bg-muted/20 border border-border/60">
+                          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                             {cRatings.teaching && (
-                              <div className="space-y-1">
-                                <div className="flex items-center justify-between text-[11px]">
-                                  <span className="text-muted-foreground font-medium">کیفیت تدریس در ارائه</span>
-                                  <span className=" font-bold text-foreground">
-                                    {cRatings.teaching} <span className="text-[9px] text-muted-foreground font-normal">/ ۱۰</span>
-                                  </span>
-                                </div>
-                                <div className="h-2 w-full rounded-full bg-muted/70 overflow-hidden">
-                                  <div
-                                    className={`h-full rounded-full transition-all duration-500 ${
-                                      cRatings.teaching >= 8
-                                        ? "bg-linear-to-r from-emerald-500 to-teal-400"
-                                        : cRatings.teaching >= 5
-                                        ? "bg-linear-to-r from-amber-500 to-yellow-400"
-                                        : "bg-linear-to-r from-rose-500 to-red-400"
-                                    }`}
-                                    style={{ width: `${(cRatings.teaching / 10) * 100}%` }}
-                                  />
-                                </div>
-                              </div>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-muted/50 border border-border/60 text-[11px]">
+                                <span className="text-muted-foreground">تدریس:</span>
+                                <span className={`font-bold ${getScoreTextColor(cRatings.teaching)}`}>
+                                  {cRatings.teaching}
+                                </span>
+                                <span className="text-[9px] text-muted-foreground/60">/۱۰</span>
+                              </span>
                             )}
-
                             {cRatings.grading && (
-                              <div className="space-y-1">
-                                <div className="flex items-center justify-between text-[11px]">
-                                  <span className="text-muted-foreground font-medium">نحوه نمره‌دهی و تصحیح</span>
-                                  <span className=" font-bold text-foreground">
-                                    {cRatings.grading} <span className="text-[9px] text-muted-foreground font-normal">/ ۱۰</span>
-                                  </span>
-                                </div>
-                                <div className="h-2 w-full rounded-full bg-muted/70 overflow-hidden">
-                                  <div
-                                    className={`h-full rounded-full transition-all duration-500 ${
-                                      cRatings.grading >= 8
-                                        ? "bg-linear-to-r from-emerald-500 to-teal-400"
-                                        : cRatings.grading >= 5
-                                        ? "bg-linear-to-r from-amber-500 to-yellow-400"
-                                        : "bg-linear-to-r from-rose-500 to-red-400"
-                                    }`}
-                                    style={{ width: `${(cRatings.grading / 10) * 100}%` }}
-                                  />
-                                </div>
-                              </div>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-muted/50 border border-border/60 text-[11px]">
+                                <span className="text-muted-foreground">نمره‌دهی:</span>
+                                <span className={`font-bold ${getScoreTextColor(cRatings.grading)}`}>
+                                  {cRatings.grading}
+                                </span>
+                                <span className="text-[9px] text-muted-foreground/60">/۱۰</span>
+                              </span>
                             )}
-
                             {cRatings.content && (
-                              <div className="space-y-1">
-                                <div className="flex items-center justify-between text-[11px]">
-                                  <span className="text-muted-foreground font-medium">کیفیت اسلایدها و محتوا</span>
-                                  <span className=" font-bold text-foreground">
-                                    {cRatings.content} <span className="text-[9px] text-muted-foreground font-normal">/ ۱۰</span>
-                                  </span>
-                                </div>
-                                <div className="h-2 w-full rounded-full bg-muted/70 overflow-hidden">
-                                  <div
-                                    className={`h-full rounded-full transition-all duration-500 ${
-                                      cRatings.content >= 8
-                                        ? "bg-linear-to-r from-emerald-500 to-teal-400"
-                                        : cRatings.content >= 5
-                                        ? "bg-linear-to-r from-amber-500 to-yellow-400"
-                                        : "bg-linear-to-r from-rose-500 to-red-400"
-                                    }`}
-                                    style={{ width: `${(cRatings.content / 10) * 100}%` }}
-                                  />
-                                </div>
-                              </div>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-muted/50 border border-border/60 text-[11px]">
+                                <span className="text-muted-foreground">محتوا:</span>
+                                <span className={`font-bold ${getScoreTextColor(cRatings.content)}`}>
+                                  {cRatings.content}
+                                </span>
+                                <span className="text-[9px] text-muted-foreground/60">/۱۰</span>
+                              </span>
                             )}
-
                             {cRatings.difficulty && (
-                              <div className="space-y-1">
-                                <div className="flex items-center justify-between text-[11px]">
-                                  <span className="text-muted-foreground font-medium">سطح دشواری و تکالیف</span>
-                                  <span className=" font-bold text-foreground">
-                                    {cRatings.difficulty} <span className="text-[9px] text-muted-foreground font-normal">/ ۱۰</span>
-                                  </span>
-                                </div>
-                                <div className="h-2 w-full rounded-full bg-muted/70 overflow-hidden">
-                                  <div
-                                    className={`h-full rounded-full transition-all duration-500 ${
-                                      cRatings.difficulty >= 8
-                                        ? "bg-linear-to-r from-emerald-500 to-teal-400"
-                                        : cRatings.difficulty >= 5
-                                        ? "bg-linear-to-r from-amber-500 to-yellow-400"
-                                        : "bg-linear-to-r from-rose-500 to-red-400"
-                                    }`}
-                                    style={{ width: `${(cRatings.difficulty / 10) * 100}%` }}
-                                  />
-                                </div>
-                              </div>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-muted/50 border border-border/60 text-[11px]">
+                                <span className="text-muted-foreground">دشواری:</span>
+                                <span className={`font-bold ${getScoreTextColor(cRatings.difficulty)}`}>
+                                  {cRatings.difficulty}
+                                </span>
+                                <span className="text-[9px] text-muted-foreground/60">/۱۰</span>
+                              </span>
                             )}
                           </div>
                         )}
@@ -1412,23 +1210,234 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
         </div>
       </div>
 
-      {/* Edit Review Dialog */}
-      <Dialog open={Boolean(editingReview)} onOpenChange={(open) => !open && setEditingReview(null)}>
-        <DialogContent className="sm:max-w-xl">
+      {/* Create Review Dialog */}
+      <Dialog open={createReviewOpen} onOpenChange={setCreateReviewOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto" dir="rtl">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2">
-              <Pencil className="h-4 w-4 text-primary" />
-              ویرایش نظر شما
+              <Sparkles className="h-5 w-5 text-primary" />
+              <span>ثبت نظر و بازخورد درباره این ارائه</span>
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              تغییرات مورد نظر را اعمال کرده و دکمه ذخیره را بزنید.
+              دیدگاه و ارزیابی تجربیات خود را با سایر دانشجویان به اشتراک بگذارید.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmitReview} className="space-y-4 pt-2">
+            {submitError && (
+              <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-xs flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span>{submitError}</span>
+              </div>
+            )}
+
+            {/* Criteria Scores */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-foreground block">
+                امتیاز به معیارهای درس (از ۱۰ - اختیاری):
+              </Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                {/* Teaching */}
+                <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-semibold text-foreground">کیفیت و شیوه تدریس:</span>
+                    <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${scores.teaching ? getScoreTextColor(scores.teaching) : "text-muted-foreground"}`}>
+                      {scores.teaching ? `${scores.teaching} از ۱۰` : "بدون امتیاز"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-1 pt-1 overflow-x-auto">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => handleScoreChange("teaching", num)}
+                        className={`flex-1 h-8 rounded-lg text-xs font-bold transition-all ${
+                          scores.teaching === num
+                            ? "bg-primary text-primary-foreground shadow-xs"
+                            : "bg-muted hover:bg-muted/80 text-foreground"
+                        }`}
+                      >
+                        {num}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Grading */}
+                <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-semibold text-foreground">نحوه نمره‌دهی و تصحیح:</span>
+                    <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${scores.grading ? getScoreTextColor(scores.grading) : "text-muted-foreground"}`}>
+                      {scores.grading ? `${scores.grading} از ۱۰` : "بدون امتیاز"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-1 pt-1 overflow-x-auto">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => handleScoreChange("grading", num)}
+                        className={`flex-1 h-8 rounded-lg text-xs font-bold transition-all ${
+                          scores.grading === num
+                            ? "bg-primary text-primary-foreground shadow-xs"
+                            : "bg-muted hover:bg-muted/80 text-foreground"
+                        }`}
+                      >
+                        {num}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-semibold text-foreground">کیفیت محتوا و منابع:</span>
+                    <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${scores.content ? getScoreTextColor(scores.content) : "text-muted-foreground"}`}>
+                      {scores.content ? `${scores.content} از ۱۰` : "بدون امتیاز"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-1 pt-1 overflow-x-auto">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => handleScoreChange("content", num)}
+                        className={`flex-1 h-8 rounded-lg text-xs font-bold transition-all ${
+                          scores.content === num
+                            ? "bg-primary text-primary-foreground shadow-xs"
+                            : "bg-muted hover:bg-muted/80 text-foreground"
+                        }`}
+                      >
+                        {num}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Difficulty */}
+                <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-semibold text-foreground">سطح دشواری و تکالیف:</span>
+                    <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${scores.difficulty ? getScoreTextColor(scores.difficulty) : "text-muted-foreground"}`}>
+                      {scores.difficulty ? `${scores.difficulty} از ۱۰` : "بدون امتیاز"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-1 pt-1 overflow-x-auto">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => handleScoreChange("difficulty", num)}
+                        className={`flex-1 h-8 rounded-lg text-xs font-bold transition-all ${
+                          scores.difficulty === num
+                            ? "bg-primary text-primary-foreground shadow-xs"
+                            : "bg-muted hover:bg-muted/80 text-foreground"
+                        }`}
+                      >
+                        {num}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Student Grade */}
+            <div className="space-y-1.5 border-border/50">
+              <Label className="text-xs font-semibold flex items-center gap-1.5 text-foreground">
+                <GraduationCap className="h-4 w-4 text-primary" />
+                <span>نمره کسب‌شده از این درس (اختیاری - از ۲۰):</span>
+              </Label>
+              <div className="flex items-center gap-2">
+                <NumberInput
+                  min={0}
+                  max={20}
+                  step={0.25}
+                  sizeVariant="lg"
+                  placeholder="مثال: ۱۸.۵"
+                  value={studentGrade}
+                  onChange={(val) => setStudentGrade(String(val))}
+                  className="w-32 bg-background"
+                />
+                <span className="text-xs text-muted-foreground">از ۲۰</span>
+              </div>
+            </div>
+
+            {/* Textarea */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-foreground">متن نظر یا تجربه شما *</Label>
+              <Textarea
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                placeholder="دیدگاه خود درباره شیوه تدریس استاد، نحوه برگزاری، امتحانات، تکالیف و پروژه‌ها را بنویسید..."
+                rows={4}
+                className="text-xs bg-background resize-none leading-relaxed"
+                required
+              />
+            </div>
+
+            {/* Anonymous Checkbox */}
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <Checkbox
+                checked={isAnonymous}
+                onCheckedChange={(c) => setIsAnonymous(Boolean(c))}
+              />
+              <span className="text-xs font-medium text-foreground">
+                ارسال به صورت ناشناس (نام شما مخفی خواهد ماند)
+              </span>
+            </label>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setCreateReviewOpen(false)}
+                className="h-8 text-xs"
+              >
+                انصراف
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={submitting || !commentText.trim()}
+                className="h-8 text-xs font-bold gap-1.5 px-4"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>در حال ارسال...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-3.5 w-3.5" />
+                    <span>ثبت و ارسال نظر</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Review Dialog */}
+      <Dialog open={Boolean(editingReview)} onOpenChange={(open) => !open && setEditingReview(null)}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-primary" />
+              <span>ویرایش نظر شما درباره این ارائه</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              تغییرات مورد نظر در متن، نمره یا امتیازات را اعمال کرده و ذخیره نمایید.
             </DialogDescription>
           </DialogHeader>
 
           {editingReview && (
             <form onSubmit={handleSaveEdit} className="space-y-4 pt-2">
               {editError && (
-                <div className="p-2.5 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-xs flex items-center gap-2">
+                <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-xs flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 shrink-0" />
                   <span>{editError}</span>
                 </div>
@@ -1436,15 +1445,17 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
 
               {/* Criteria Scores */}
               <div className="space-y-2">
-                <span className="text-[11px] text-muted-foreground font-medium block">
-                  ویرایش امتیازات معیارها (از ۱۰ - اختیاری):
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                <Label className="text-xs font-semibold text-foreground block">
+                  ویرایش امتیاز به معیارهای درس (از ۱۰ - اختیاری):
+                </Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   {/* Teaching */}
-                  <div className="space-y-1 bg-muted/30 p-2 rounded-xl border">
-                    <div className="flex justify-between items-center text-[11px]">
-                      <span>کیفیت تدریس:</span>
-                      <span className=" font-bold text-primary">{editScores.teaching || "---"}</span>
+                  <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-semibold text-foreground">کیفیت و شیوه تدریس:</span>
+                      <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${editScores.teaching ? getScoreTextColor(editScores.teaching) : "text-muted-foreground"}`}>
+                        {editScores.teaching ? `${editScores.teaching} از ۱۰` : "بدون امتیاز"}
+                      </Badge>
                     </div>
                     <div className="flex items-center gap-1 pt-1 overflow-x-auto">
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
@@ -1452,8 +1463,10 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                           key={num}
                           type="button"
                           onClick={() => handleEditScoreChange("teaching", num)}
-                          className={`flex-1 h-6 rounded text-[10px] font-bold ${
-                            editScores.teaching === num ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+                          className={`flex-1 h-8 rounded-lg text-xs font-bold transition-all ${
+                            editScores.teaching === num
+                              ? "bg-primary text-primary-foreground shadow-xs"
+                              : "bg-muted hover:bg-muted/80 text-foreground"
                           }`}
                         >
                           {num}
@@ -1463,10 +1476,12 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                   </div>
 
                   {/* Grading */}
-                  <div className="space-y-1 bg-muted/30 p-2 rounded-xl border">
-                    <div className="flex justify-between items-center text-[11px]">
-                      <span>نمره‌دهی:</span>
-                      <span className=" font-bold text-primary">{editScores.grading || "---"}</span>
+                  <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-semibold text-foreground">نحوه نمره‌دهی و تصحیح:</span>
+                      <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${editScores.grading ? getScoreTextColor(editScores.grading) : "text-muted-foreground"}`}>
+                        {editScores.grading ? `${editScores.grading} از ۱۰` : "بدون امتیاز"}
+                      </Badge>
                     </div>
                     <div className="flex items-center gap-1 pt-1 overflow-x-auto">
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
@@ -1474,8 +1489,10 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                           key={num}
                           type="button"
                           onClick={() => handleEditScoreChange("grading", num)}
-                          className={`flex-1 h-6 rounded text-[10px] font-bold ${
-                            editScores.grading === num ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+                          className={`flex-1 h-8 rounded-lg text-xs font-bold transition-all ${
+                            editScores.grading === num
+                              ? "bg-primary text-primary-foreground shadow-xs"
+                              : "bg-muted hover:bg-muted/80 text-foreground"
                           }`}
                         >
                           {num}
@@ -1485,10 +1502,12 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                   </div>
 
                   {/* Content */}
-                  <div className="space-y-1 bg-muted/30 p-2 rounded-xl border">
-                    <div className="flex justify-between items-center text-[11px]">
-                      <span>کیفیت محتوا:</span>
-                      <span className=" font-bold text-primary">{editScores.content || "---"}</span>
+                  <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-semibold text-foreground">کیفیت محتوا و منابع:</span>
+                      <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${editScores.content ? getScoreTextColor(editScores.content) : "text-muted-foreground"}`}>
+                        {editScores.content ? `${editScores.content} از ۱۰` : "بدون امتیاز"}
+                      </Badge>
                     </div>
                     <div className="flex items-center gap-1 pt-1 overflow-x-auto">
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
@@ -1496,8 +1515,10 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                           key={num}
                           type="button"
                           onClick={() => handleEditScoreChange("content", num)}
-                          className={`flex-1 h-6 rounded text-[10px] font-bold ${
-                            editScores.content === num ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+                          className={`flex-1 h-8 rounded-lg text-xs font-bold transition-all ${
+                            editScores.content === num
+                              ? "bg-primary text-primary-foreground shadow-xs"
+                              : "bg-muted hover:bg-muted/80 text-foreground"
                           }`}
                         >
                           {num}
@@ -1507,10 +1528,12 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                   </div>
 
                   {/* Difficulty */}
-                  <div className="space-y-1 bg-muted/30 p-2 rounded-xl border">
-                    <div className="flex justify-between items-center text-[11px]">
-                      <span>سطح دشواری:</span>
-                      <span className=" font-bold text-primary">{editScores.difficulty || "---"}</span>
+                  <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-semibold text-foreground">سطح دشواری و تکالیف:</span>
+                      <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${editScores.difficulty ? getScoreTextColor(editScores.difficulty) : "text-muted-foreground"}`}>
+                        {editScores.difficulty ? `${editScores.difficulty} از ۱۰` : "بدون امتیاز"}
+                      </Badge>
                     </div>
                     <div className="flex items-center gap-1 pt-1 overflow-x-auto">
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
@@ -1518,8 +1541,10 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                           key={num}
                           type="button"
                           onClick={() => handleEditScoreChange("difficulty", num)}
-                          className={`flex-1 h-6 rounded text-[10px] font-bold ${
-                            editScores.difficulty === num ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+                          className={`flex-1 h-8 rounded-lg text-xs font-bold transition-all ${
+                            editScores.difficulty === num
+                              ? "bg-primary text-primary-foreground shadow-xs"
+                              : "bg-muted hover:bg-muted/80 text-foreground"
                           }`}
                         >
                           {num}
@@ -1531,21 +1556,21 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
               </div>
 
               {/* Edit Student Grade */}
-              <div className="space-y-1.5 pt-1 border-t">
-                <Label className="text-xs font-semibold flex items-center gap-1.5">
+              <div className="space-y-1.5 border-border/50">
+                <Label className="text-xs font-semibold flex items-center gap-1.5 text-foreground">
                   <GraduationCap className="h-4 w-4 text-primary" />
-                  نمره کسب‌شده از این درس (اختیاری - از ۲۰):
+                  <span>نمره کسب‌شده از این درس (اختیاری - از ۲۰):</span>
                 </Label>
                 <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    min="0"
-                    max="20"
-                    step="0.25"
+                  <NumberInput
+                    min={0}
+                    max={20}
+                    step={0.25}
+                    sizeVariant="lg"
                     placeholder="مثال: ۱۸.۵"
                     value={editStudentGrade}
-                    onChange={(e) => setEditStudentGrade(e.target.value)}
-                    className="h-8 text-xs w-32 bg-background"
+                    onChange={(val) => setEditStudentGrade(String(val))}
+                    className="w-32 bg-background"
                   />
                   <span className="text-xs text-muted-foreground">از ۲۰</span>
                 </div>
@@ -1553,12 +1578,12 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
 
               {/* Textarea */}
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">متن نظر</Label>
+                <Label className="text-xs font-semibold text-foreground">متن نظر یا تجربه شما *</Label>
                 <Textarea
                   value={editComment}
                   onChange={(e) => setEditComment(e.target.value)}
-                  rows={3}
-                  className="text-xs bg-background resize-none"
+                  rows={4}
+                  className="text-xs bg-background resize-none leading-relaxed"
                   required
                 />
               </div>
@@ -1570,7 +1595,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                   onCheckedChange={(c) => setEditIsAnonymous(Boolean(c))}
                 />
                 <span className="text-xs font-medium text-foreground">
-                  نمایش به صورت ناشناس
+                  نمایش به صورت ناشناس (نام شما مخفی خواهد ماند)
                 </span>
               </label>
 
@@ -1588,9 +1613,16 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                   type="submit"
                   size="sm"
                   disabled={savingEdit || !editComment.trim()}
-                  className="h-8 text-xs font-bold gap-1 px-4"
+                  className="h-8 text-xs font-bold gap-1.5 px-4"
                 >
-                  {savingEdit ? "در حال ذخیره..." : "ذخیره تغییرات"}
+                  {savingEdit ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>در حال ذخیره...</span>
+                    </>
+                  ) : (
+                    "ذخیره تغییرات"
+                  )}
                 </Button>
               </div>
             </form>

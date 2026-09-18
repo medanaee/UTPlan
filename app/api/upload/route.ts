@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminSession } from "@/lib/auth";
+import { requireUserSession } from "@/lib/auth";
 import crypto from "node:crypto";
 
 /**
@@ -9,7 +9,7 @@ import crypto from "node:crypto";
  */
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireAdminSession(request);
+    const auth = await requireUserSession(request);
     if (!auth.authorized) return auth.response! as NextResponse;
 
     const formData = await request.formData();

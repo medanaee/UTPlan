@@ -13,13 +13,15 @@ export interface NumberInputProps
   step?: number;
   onChange?: (value: number | string, e?: React.ChangeEvent<HTMLInputElement>) => void;
   onStep?: (value: number) => void;
-  sizeVariant?: "default" | "sm";
+  sizeVariant?: "default" | "sm" | "lg";
+  inputClassName?: string;
 }
 
 const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
   (
     {
       className,
+      inputClassName,
       value: controlledValue,
       defaultValue = "",
       min,
@@ -59,7 +61,11 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
       if (disabled) return;
       const num = typeof currentValue === "number" ? currentValue : parseFloat(String(currentValue));
       const base = isNaN(num) ? (min !== undefined ? min : 0) : num;
-      const next = clamp(base + delta * step);
+      const stepStr = String(step);
+      const decimalPlaces = stepStr.includes(".") ? stepStr.split(".")[1].length : 0;
+      const rawNext = base + delta * step;
+      const rounded = decimalPlaces > 0 ? Number(rawNext.toFixed(decimalPlaces)) : Math.round(rawNext);
+      const next = clamp(rounded);
 
       if (!isControlled) {
         setInternalValue(next);
@@ -100,7 +106,12 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
             "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
             // Padding for the stepper buttons at the end
             "pe-8",
-            sizeVariant === "sm" ? "h-6 text-xs px-2.5 pe-7" : "h-7"
+            sizeVariant === "sm"
+              ? "h-6 text-xs px-2.5 pe-7"
+              : sizeVariant === "lg"
+              ? "h-8 text-xs px-3 pe-8"
+              : "h-7",
+            inputClassName
           )}
           {...props}
         />

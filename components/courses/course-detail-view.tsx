@@ -114,6 +114,16 @@ export function CourseDetailView({ course }: CourseDetailViewProps) {
               <Badge variant="outline" className="text-xs font-bold px-3 py-1 bg-background/80">
                 کد درس: {course.code}
               </Badge>
+              <Badge
+                variant="outline"
+                className={`text-xs font-semibold px-3 py-1 rounded-full border ${
+                  course.degreeLevel === "master"
+                    ? "bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/30"
+                    : "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30"
+                }`}
+              >
+                مقطع {course.degreeLevel === "master" ? "کارشناسی ارشد" : "کارشناسی"}
+              </Badge>
               <Badge variant="secondary" className="text-xs font-bold px-3 py-1">
                 {course.units} واحد تحصیلی
               </Badge>

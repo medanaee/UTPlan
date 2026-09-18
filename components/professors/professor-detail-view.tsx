@@ -41,6 +41,18 @@ import {
 } from "@/components/ui/dialog";
 import type { Professor, ReviewItem, UserSession } from "@/lib/types";
 
+function getScoreBarColor(score: number): string {
+  if (score >= 7) return "bg-emerald-500";
+  if (score >= 5) return "bg-amber-500";
+  return "bg-rose-500";
+}
+
+function getScoreTextColor(score: number): string {
+  if (score >= 7) return "text-emerald-600 dark:text-emerald-400";
+  if (score >= 5) return "text-amber-600 dark:text-amber-400";
+  return "text-rose-600 dark:text-rose-400";
+}
+
 interface ProfessorDetailViewProps {
   professor: Professor;
 }
@@ -52,6 +64,9 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
   // Reviews state
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
   const [loadingReviews, setLoadingReviews] = useState(true);
+
+  // Create Review Dialog state
+  const [createReviewOpen, setCreateReviewOpen] = useState(false);
 
   // New Form state
   const [commentText, setCommentText] = useState("");
@@ -150,6 +165,7 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
         setCommentText("");
         setIsAnonymous(false);
         setScores({});
+        setCreateReviewOpen(false);
         await loadReviews();
       } else {
         setSubmitError(res.message || "خطا در ثبت نظر");
@@ -442,188 +458,52 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
             </CardHeader>
 
             <CardContent className="space-y-6">
-              {/* Form to submit review */}
-              <form
-                onSubmit={handleSubmitReview}
-                className="p-4 rounded-2xl border border-primary/20 bg-primary/5 space-y-4"
-              >
-                <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                  <Sparkles className="h-4 w-4 text-primary" />
-                  ثبت ارزیابی و نظر شما برای این استاد:
-                </span>
-
-                {submitError && (
-                  <div className="p-2.5 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-xs flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 shrink-0" />
-                    <span>{submitError}</span>
-                  </div>
-                )}
-
-                {submitSuccess && (
-                  <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 text-xs flex items-center gap-2">
+              {submitSuccess && (
+                <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 text-xs flex items-center justify-between gap-2 shadow-2xs">
+                  <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 shrink-0" />
                     <span>{submitSuccess}</span>
                   </div>
-                )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSubmitSuccess(null)}
+                    className="h-6 px-2 text-[11px] hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+                  >
+                    بستن
+                  </Button>
+                </div>
+              )}
 
-                {/* 4 Optional Criteria Sliders/Rating 1 to 10 */}
-                <div className="space-y-2 pt-1 border-t border-border/40">
-                  <span className="text-[11px] text-muted-foreground font-medium block">
-                    امتیاز به معیارهای استاد (از ۱۰ - اختیاری):
-                  </span>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                    {/* Teaching */}
-                    <div className="space-y-1 bg-card p-2 rounded-xl border border-border/70">
-                      <div className="flex justify-between items-center text-[11px]">
-                        <span className="font-semibold">کیفیت و شیوه تدریس:</span>
-                        <span className=" font-bold text-primary">
-                          {scores.teaching ? `${scores.teaching} / 10` : "ثبت‌نشده"}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 pt-1 overflow-x-auto">
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-                          <button
-                            key={num}
-                            type="button"
-                            onClick={() => handleScoreChange("teaching", num)}
-                            className={`flex-1 h-6 rounded text-[10px] font-bold transition-all ${
-                              scores.teaching === num
-                                ? "bg-primary text-primary-foreground shadow-xs"
-                                : "bg-muted hover:bg-muted/80 text-foreground"
-                            }`}
-                          >
-                            {num}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Grading */}
-                    <div className="space-y-1 bg-card p-2 rounded-xl border border-border/70">
-                      <div className="flex justify-between items-center text-[11px]">
-                        <span className="font-semibold">نحوه نمره‌دهی و تصحیح:</span>
-                        <span className=" font-bold text-primary">
-                          {scores.grading ? `${scores.grading} / 10` : "ثبت‌نشده"}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 pt-1 overflow-x-auto">
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-                          <button
-                            key={num}
-                            type="button"
-                            onClick={() => handleScoreChange("grading", num)}
-                            className={`flex-1 h-6 rounded text-[10px] font-bold transition-all ${
-                              scores.grading === num
-                                ? "bg-primary text-primary-foreground shadow-xs"
-                                : "bg-muted hover:bg-muted/80 text-foreground"
-                            }`}
-                          >
-                            {num}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Behavior */}
-                    <div className="space-y-1 bg-card p-2 rounded-xl border border-border/70">
-                      <div className="flex justify-between items-center text-[11px]">
-                        <span className="font-semibold">اخلاق و تعامل با دانشجو:</span>
-                        <span className=" font-bold text-primary">
-                          {scores.behavior ? `${scores.behavior} / 10` : "ثبت‌نشده"}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 pt-1 overflow-x-auto">
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-                          <button
-                            key={num}
-                            type="button"
-                            onClick={() => handleScoreChange("behavior", num)}
-                            className={`flex-1 h-6 rounded text-[10px] font-bold transition-all ${
-                              scores.behavior === num
-                                ? "bg-primary text-primary-foreground shadow-xs"
-                                : "bg-muted hover:bg-muted/80 text-foreground"
-                            }`}
-                          >
-                            {num}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Mastery */}
-                    <div className="space-y-1 bg-card p-2 rounded-xl border border-border/70">
-                      <div className="flex justify-between items-center text-[11px]">
-                        <span className="font-semibold">تسلط علمی و پاسخگویی:</span>
-                        <span className=" font-bold text-primary">
-                          {scores.mastery ? `${scores.mastery} / 10` : "ثبت‌نشده"}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 pt-1 overflow-x-auto">
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-                          <button
-                            key={num}
-                            type="button"
-                            onClick={() => handleScoreChange("mastery", num)}
-                            className={`flex-1 h-6 rounded text-[10px] font-bold transition-all ${
-                              scores.mastery === num
-                                ? "bg-primary text-primary-foreground shadow-xs"
-                                : "bg-muted hover:bg-muted/80 text-foreground"
-                            }`}
-                          >
-                            {num}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+              {/* Compact Card to prompt for review */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl border border-primary/20 bg-primary/5 shadow-2xs">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0 border border-primary/20 shadow-2xs">
+                    <Sparkles className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-foreground">
+                      نظرتان را درباره این استاد ثبت کنید
+                    </h4>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      دیدگاه‌ها و ارزیابی شما به سایر دانشجویان در شناخت بهتر شیوه تدریس و انتخاب درس کمک می‌کند.
+                    </p>
                   </div>
                 </div>
 
-                {/* Comment Textarea */}
-                <div className="space-y-1.5 pt-1">
-                  <Label className="text-xs font-semibold">متن نظر یا تجربه شما *</Label>
-                  <Textarea
-                    value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                    placeholder="دیدگاه خود درباره شیوه تدریس استاد، نحوه برخورد، امتحانات و تکالیف را بنویسید..."
-                    rows={3}
-                    className="text-xs bg-background resize-none"
-                    required
-                  />
-                </div>
-
-                {/* Anonymous checkbox & Submit */}
-                <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <Checkbox
-                      checked={isAnonymous}
-                      onCheckedChange={(c) => setIsAnonymous(Boolean(c))}
-                    />
-                    <span className="text-xs font-medium text-foreground">
-                      ارسال به صورت ناشناس (نام شما مخفی خواهد ماند)
-                    </span>
-                  </label>
-
-                  <Button
-                    type="submit"
-                    size="sm"
-                    disabled={submitting || !commentText.trim()}
-                    className="h-8 text-xs font-bold gap-1.5 px-4"
-                  >
-                    {submitting ? (
-                      <>
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        در حال ارسال...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="h-3.5 w-3.5" />
-                        ثبت نظر
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </form>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => {
+                    setSubmitError(null);
+                    setCreateReviewOpen(true);
+                  }}
+                  className="h-8 text-xs font-bold gap-1.5 px-4 shrink-0 shadow-2xs self-start sm:self-auto"
+                >
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  <span>ثبت نظر</span>
+                </Button>
+              </div>
 
               {/* Reviews Feed */}
               {loadingReviews ? (
@@ -657,13 +537,13 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
                           <div className="space-y-1 bg-card/80 p-2.5 rounded-xl border">
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-muted-foreground font-medium">کیفیت تدریس</span>
-                              <span className=" font-bold text-foreground">
+                              <span className={`font-bold ${getScoreTextColor(Number(criteriaAverages.teaching))}`}>
                                 {criteriaAverages.teaching} <span className="text-[10px] text-muted-foreground font-normal">/ ۱۰</span>
                               </span>
                             </div>
                             <div className="h-2.5 w-full rounded-full bg-muted/80 overflow-hidden">
                               <div
-                                className="h-full rounded-full bg-linear-to-r from-emerald-500 to-teal-400 transition-all duration-700"
+                                className={`h-full rounded-full transition-all duration-700 ${getScoreBarColor(Number(criteriaAverages.teaching))}`}
                                 style={{ width: `${(Number(criteriaAverages.teaching) / 10) * 100}%` }}
                               />
                             </div>
@@ -674,13 +554,13 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
                           <div className="space-y-1 bg-card/80 p-2.5 rounded-xl border">
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-muted-foreground font-medium">نحوه نمره‌دهی</span>
-                              <span className=" font-bold text-foreground">
+                              <span className={`font-bold ${getScoreTextColor(Number(criteriaAverages.grading))}`}>
                                 {criteriaAverages.grading} <span className="text-[10px] text-muted-foreground font-normal">/ ۱۰</span>
                               </span>
                             </div>
                             <div className="h-2.5 w-full rounded-full bg-muted/80 overflow-hidden">
                               <div
-                                className="h-full rounded-full bg-linear-to-r from-blue-500 to-cyan-400 transition-all duration-700"
+                                className={`h-full rounded-full transition-all duration-700 ${getScoreBarColor(Number(criteriaAverages.grading))}`}
                                 style={{ width: `${(Number(criteriaAverages.grading) / 10) * 100}%` }}
                               />
                             </div>
@@ -691,13 +571,13 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
                           <div className="space-y-1 bg-card/80 p-2.5 rounded-xl border">
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-muted-foreground font-medium">اخلاق و پاسخگویی</span>
-                              <span className=" font-bold text-foreground">
+                              <span className={`font-bold ${getScoreTextColor(Number(criteriaAverages.behavior))}`}>
                                 {criteriaAverages.behavior} <span className="text-[10px] text-muted-foreground font-normal">/ ۱۰</span>
                               </span>
                             </div>
                             <div className="h-2.5 w-full rounded-full bg-muted/80 overflow-hidden">
                               <div
-                                className="h-full rounded-full bg-linear-to-r from-purple-500 to-pink-400 transition-all duration-700"
+                                className={`h-full rounded-full transition-all duration-700 ${getScoreBarColor(Number(criteriaAverages.behavior))}`}
                                 style={{ width: `${(Number(criteriaAverages.behavior) / 10) * 100}%` }}
                               />
                             </div>
@@ -708,13 +588,13 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
                           <div className="space-y-1 bg-card/80 p-2.5 rounded-xl border">
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-muted-foreground font-medium">تسلط علمی</span>
-                              <span className=" font-bold text-foreground">
+                              <span className={`font-bold ${getScoreTextColor(Number(criteriaAverages.mastery))}`}>
                                 {criteriaAverages.mastery} <span className="text-[10px] text-muted-foreground font-normal">/ ۱۰</span>
                               </span>
                             </div>
                             <div className="h-2.5 w-full rounded-full bg-muted/80 overflow-hidden">
                               <div
-                                className="h-full rounded-full bg-linear-to-r from-amber-500 to-yellow-400 transition-all duration-700"
+                                className={`h-full rounded-full transition-all duration-700 ${getScoreBarColor(Number(criteriaAverages.mastery))}`}
                                 style={{ width: `${(Number(criteriaAverages.mastery) / 10) * 100}%` }}
                               />
                             </div>
@@ -797,99 +677,44 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
                           </div>
                         </div>
 
-                        {/* Criteria Score Progress Bars */}
+                        {/* Compact Individual Review Criteria Scores */}
                         {(cRatings.teaching || cRatings.grading || cRatings.behavior || cRatings.mastery) && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-3 rounded-2xl bg-muted/20 border border-border/60">
+                          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                             {cRatings.teaching && (
-                              <div className="space-y-1">
-                                <div className="flex items-center justify-between text-[11px]">
-                                  <span className="text-muted-foreground font-medium">شیوه و کیفیت تدریس</span>
-                                  <span className=" font-bold text-foreground">
-                                    {cRatings.teaching} <span className="text-[9px] text-muted-foreground font-normal">/ ۱۰</span>
-                                  </span>
-                                </div>
-                                <div className="h-2 w-full rounded-full bg-muted/70 overflow-hidden">
-                                  <div
-                                    className={`h-full rounded-full transition-all duration-500 ${
-                                      cRatings.teaching >= 8
-                                        ? "bg-linear-to-r from-emerald-500 to-teal-400"
-                                        : cRatings.teaching >= 5
-                                        ? "bg-linear-to-r from-amber-500 to-yellow-400"
-                                        : "bg-linear-to-r from-rose-500 to-red-400"
-                                    }`}
-                                    style={{ width: `${(cRatings.teaching / 10) * 100}%` }}
-                                  />
-                                </div>
-                              </div>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-muted/50 border border-border/60 text-[11px]">
+                                <span className="text-muted-foreground">تدریس:</span>
+                                <span className={`font-bold ${getScoreTextColor(cRatings.teaching)}`}>
+                                  {cRatings.teaching}
+                                </span>
+                                <span className="text-[9px] text-muted-foreground/60">/۱۰</span>
+                              </span>
                             )}
-
                             {cRatings.grading && (
-                              <div className="space-y-1">
-                                <div className="flex items-center justify-between text-[11px]">
-                                  <span className="text-muted-foreground font-medium">نحوه نمره‌دهی و تصحیح</span>
-                                  <span className=" font-bold text-foreground">
-                                    {cRatings.grading} <span className="text-[9px] text-muted-foreground font-normal">/ ۱۰</span>
-                                  </span>
-                                </div>
-                                <div className="h-2 w-full rounded-full bg-muted/70 overflow-hidden">
-                                  <div
-                                    className={`h-full rounded-full transition-all duration-500 ${
-                                      cRatings.grading >= 8
-                                        ? "bg-linear-to-r from-emerald-500 to-teal-400"
-                                        : cRatings.grading >= 5
-                                        ? "bg-linear-to-r from-amber-500 to-yellow-400"
-                                        : "bg-linear-to-r from-rose-500 to-red-400"
-                                    }`}
-                                    style={{ width: `${(cRatings.grading / 10) * 100}%` }}
-                                  />
-                                </div>
-                              </div>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-muted/50 border border-border/60 text-[11px]">
+                                <span className="text-muted-foreground">نمره‌دهی:</span>
+                                <span className={`font-bold ${getScoreTextColor(cRatings.grading)}`}>
+                                  {cRatings.grading}
+                                </span>
+                                <span className="text-[9px] text-muted-foreground/60">/۱۰</span>
+                              </span>
                             )}
-
                             {cRatings.behavior && (
-                              <div className="space-y-1">
-                                <div className="flex items-center justify-between text-[11px]">
-                                  <span className="text-muted-foreground font-medium">اخلاق و تعامل با دانشجو</span>
-                                  <span className=" font-bold text-foreground">
-                                    {cRatings.behavior} <span className="text-[9px] text-muted-foreground font-normal">/ ۱۰</span>
-                                  </span>
-                                </div>
-                                <div className="h-2 w-full rounded-full bg-muted/70 overflow-hidden">
-                                  <div
-                                    className={`h-full rounded-full transition-all duration-500 ${
-                                      cRatings.behavior >= 8
-                                        ? "bg-linear-to-r from-emerald-500 to-teal-400"
-                                        : cRatings.behavior >= 5
-                                        ? "bg-linear-to-r from-amber-500 to-yellow-400"
-                                        : "bg-linear-to-r from-rose-500 to-red-400"
-                                    }`}
-                                    style={{ width: `${(cRatings.behavior / 10) * 100}%` }}
-                                  />
-                                </div>
-                              </div>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-muted/50 border border-border/60 text-[11px]">
+                                <span className="text-muted-foreground">اخلاق:</span>
+                                <span className={`font-bold ${getScoreTextColor(cRatings.behavior)}`}>
+                                  {cRatings.behavior}
+                                </span>
+                                <span className="text-[9px] text-muted-foreground/60">/۱۰</span>
+                              </span>
                             )}
-
                             {cRatings.mastery && (
-                              <div className="space-y-1">
-                                <div className="flex items-center justify-between text-[11px]">
-                                  <span className="text-muted-foreground font-medium">تسلط علمی و پاسخگویی</span>
-                                  <span className=" font-bold text-foreground">
-                                    {cRatings.mastery} <span className="text-[9px] text-muted-foreground font-normal">/ ۱۰</span>
-                                  </span>
-                                </div>
-                                <div className="h-2 w-full rounded-full bg-muted/70 overflow-hidden">
-                                  <div
-                                    className={`h-full rounded-full transition-all duration-500 ${
-                                      cRatings.mastery >= 8
-                                        ? "bg-linear-to-r from-emerald-500 to-teal-400"
-                                        : cRatings.mastery >= 5
-                                        ? "bg-linear-to-r from-amber-500 to-yellow-400"
-                                        : "bg-linear-to-r from-rose-500 to-red-400"
-                                    }`}
-                                    style={{ width: `${(cRatings.mastery / 10) * 100}%` }}
-                                  />
-                                </div>
-                              </div>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-muted/50 border border-border/60 text-[11px]">
+                                <span className="text-muted-foreground">تسلط علمی:</span>
+                                <span className={`font-bold ${getScoreTextColor(cRatings.mastery)}`}>
+                                  {cRatings.mastery}
+                                </span>
+                                <span className="text-[9px] text-muted-foreground/60">/۱۰</span>
+                              </span>
                             )}
                           </div>
                         )}
@@ -977,13 +802,203 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
         </div>
       </div>
 
-      {/* Edit Review Dialog */}
-      <Dialog open={Boolean(editingReview)} onOpenChange={(open) => !open && setEditingReview(null)}>
-        <DialogContent className="sm:max-w-xl">
+      {/* Submit Review Dialog */}
+      <Dialog open={createReviewOpen} onOpenChange={setCreateReviewOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto" dir="rtl">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2">
-              <Pencil className="h-4 w-4 text-primary" />
-              ویرایش نظر شما درباره استاد
+              <MessageSquare className="h-5 w-5 text-primary" />
+              <span>ثبت ارزیابی و نظر شما درباره «{professor.name}»</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              تجربه خود را درباره شیوه تدریس، اخلاق و امتحانات استاد به اشتراک بگذارید. امتیازدهی به معیارها اختیاری است.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmitReview} className="space-y-4 pt-2">
+            {submitError && (
+              <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-xs flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span>{submitError}</span>
+              </div>
+            )}
+
+            {/* Criteria Scores */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-foreground block">
+                امتیاز به معیارهای استاد (از ۱۰ - اختیاری):
+              </Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                {/* Teaching */}
+                <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-semibold text-foreground">کیفیت و شیوه تدریس:</span>
+                    <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${scores.teaching ? getScoreTextColor(scores.teaching) : "text-muted-foreground"}`}>
+                      {scores.teaching ? `${scores.teaching} از ۱۰` : "بدون امتیاز"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-1 pt-1 overflow-x-auto">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => handleScoreChange("teaching", num)}
+                        className={`flex-1 h-8 rounded-lg text-xs font-bold transition-all ${
+                          scores.teaching === num
+                            ? "bg-primary text-primary-foreground shadow-xs"
+                            : "bg-muted hover:bg-muted/80 text-foreground"
+                        }`}
+                      >
+                        {num}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Grading */}
+                <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-semibold text-foreground">نحوه نمره‌دهی و تصحیح:</span>
+                    <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${scores.grading ? getScoreTextColor(scores.grading) : "text-muted-foreground"}`}>
+                      {scores.grading ? `${scores.grading} از ۱۰` : "بدون امتیاز"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-1 pt-1 overflow-x-auto">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => handleScoreChange("grading", num)}
+                        className={`flex-1 h-8 rounded-lg text-xs font-bold transition-all ${
+                          scores.grading === num
+                            ? "bg-primary text-primary-foreground shadow-xs"
+                            : "bg-muted hover:bg-muted/80 text-foreground"
+                        }`}
+                      >
+                        {num}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Behavior */}
+                <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-semibold text-foreground">اخلاق و تعامل با دانشجو:</span>
+                    <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${scores.behavior ? getScoreTextColor(scores.behavior) : "text-muted-foreground"}`}>
+                      {scores.behavior ? `${scores.behavior} از ۱۰` : "بدون امتیاز"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-1 pt-1 overflow-x-auto">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => handleScoreChange("behavior", num)}
+                        className={`flex-1 h-8 rounded-lg text-xs font-bold transition-all ${
+                          scores.behavior === num
+                            ? "bg-primary text-primary-foreground shadow-xs"
+                            : "bg-muted hover:bg-muted/80 text-foreground"
+                        }`}
+                      >
+                        {num}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Mastery */}
+                <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-semibold text-foreground">تسلط علمی و پاسخگویی:</span>
+                    <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${scores.mastery ? getScoreTextColor(scores.mastery) : "text-muted-foreground"}`}>
+                      {scores.mastery ? `${scores.mastery} از ۱۰` : "بدون امتیاز"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-1 pt-1 overflow-x-auto">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => handleScoreChange("mastery", num)}
+                        className={`flex-1 h-8 rounded-lg text-xs font-bold transition-all ${
+                          scores.mastery === num
+                            ? "bg-primary text-primary-foreground shadow-xs"
+                            : "bg-muted hover:bg-muted/80 text-foreground"
+                        }`}
+                      >
+                        {num}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Textarea */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-foreground">متن نظر یا تجربه شما *</Label>
+              <Textarea
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                placeholder="دیدگاه خود درباره شیوه تدریس استاد، نحوه برخورد، امتحانات و تکالیف را بنویسید..."
+                rows={4}
+                className="text-xs bg-background resize-none leading-relaxed"
+                required
+              />
+            </div>
+
+            {/* Anonymous Checkbox */}
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <Checkbox
+                checked={isAnonymous}
+                onCheckedChange={(c) => setIsAnonymous(Boolean(c))}
+              />
+              <span className="text-xs font-medium text-foreground">
+                ارسال به صورت ناشناس (نام شما مخفی خواهد ماند)
+              </span>
+            </label>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setCreateReviewOpen(false)}
+                className="h-8 text-xs"
+              >
+                انصراف
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={submitting || !commentText.trim()}
+                className="h-8 text-xs font-bold gap-1.5 px-4"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>در حال ارسال...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-3.5 w-3.5" />
+                    <span>ثبت و ارسال نظر</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Review Dialog */}
+      <Dialog open={Boolean(editingReview)} onOpenChange={(open) => !open && setEditingReview(null)}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-primary" />
+              <span>ویرایش نظر شما درباره استاد</span>
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
               تغییرات مورد نظر در متن یا امتیازات را اعمال کرده و ذخیره نمایید.
@@ -993,23 +1008,25 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
           {editingReview && (
             <form onSubmit={handleSaveEdit} className="space-y-4 pt-2">
               {editError && (
-                <div className="p-2.5 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-xs flex items-center gap-2">
+                <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-xs flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 shrink-0" />
                   <span>{editError}</span>
                 </div>
               )}
 
-              {/* Criteria Scores */}
+              {/* Criteria Scores (Enlarged and styled identically) */}
               <div className="space-y-2">
-                <span className="text-[11px] text-muted-foreground font-medium block">
+                <Label className="text-xs font-semibold text-foreground block">
                   ویرایش امتیاز به معیارها (از ۱۰ - اختیاری):
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                </Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   {/* Teaching */}
-                  <div className="space-y-1 bg-muted/30 p-2 rounded-xl border">
-                    <div className="flex justify-between items-center text-[11px]">
-                      <span>کیفیت تدریس:</span>
-                      <span className=" font-bold text-primary">{editScores.teaching || "---"}</span>
+                  <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-semibold text-foreground">کیفیت و شیوه تدریس:</span>
+                      <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${editScores.teaching ? getScoreTextColor(editScores.teaching) : "text-muted-foreground"}`}>
+                        {editScores.teaching ? `${editScores.teaching} از ۱۰` : "بدون امتیاز"}
+                      </Badge>
                     </div>
                     <div className="flex items-center gap-1 pt-1 overflow-x-auto">
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
@@ -1017,8 +1034,10 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
                           key={num}
                           type="button"
                           onClick={() => handleEditScoreChange("teaching", num)}
-                          className={`flex-1 h-6 rounded text-[10px] font-bold ${
-                            editScores.teaching === num ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+                          className={`flex-1 h-8 rounded-lg text-xs font-bold transition-all ${
+                            editScores.teaching === num
+                              ? "bg-primary text-primary-foreground shadow-xs"
+                              : "bg-muted hover:bg-muted/80 text-foreground"
                           }`}
                         >
                           {num}
@@ -1028,10 +1047,12 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
                   </div>
 
                   {/* Grading */}
-                  <div className="space-y-1 bg-muted/30 p-2 rounded-xl border">
-                    <div className="flex justify-between items-center text-[11px]">
-                      <span>نمره‌دهی:</span>
-                      <span className=" font-bold text-primary">{editScores.grading || "---"}</span>
+                  <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-semibold text-foreground">نحوه نمره‌دهی و تصحیح:</span>
+                      <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${editScores.grading ? getScoreTextColor(editScores.grading) : "text-muted-foreground"}`}>
+                        {editScores.grading ? `${editScores.grading} از ۱۰` : "بدون امتیاز"}
+                      </Badge>
                     </div>
                     <div className="flex items-center gap-1 pt-1 overflow-x-auto">
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
@@ -1039,8 +1060,10 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
                           key={num}
                           type="button"
                           onClick={() => handleEditScoreChange("grading", num)}
-                          className={`flex-1 h-6 rounded text-[10px] font-bold ${
-                            editScores.grading === num ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+                          className={`flex-1 h-8 rounded-lg text-xs font-bold transition-all ${
+                            editScores.grading === num
+                              ? "bg-primary text-primary-foreground shadow-xs"
+                              : "bg-muted hover:bg-muted/80 text-foreground"
                           }`}
                         >
                           {num}
@@ -1050,10 +1073,12 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
                   </div>
 
                   {/* Behavior */}
-                  <div className="space-y-1 bg-muted/30 p-2 rounded-xl border">
-                    <div className="flex justify-between items-center text-[11px]">
-                      <span>اخلاق و تعامل:</span>
-                      <span className=" font-bold text-primary">{editScores.behavior || "---"}</span>
+                  <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-semibold text-foreground">اخلاق و تعامل با دانشجو:</span>
+                      <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${editScores.behavior ? getScoreTextColor(editScores.behavior) : "text-muted-foreground"}`}>
+                        {editScores.behavior ? `${editScores.behavior} از ۱۰` : "بدون امتیاز"}
+                      </Badge>
                     </div>
                     <div className="flex items-center gap-1 pt-1 overflow-x-auto">
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
@@ -1061,8 +1086,10 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
                           key={num}
                           type="button"
                           onClick={() => handleEditScoreChange("behavior", num)}
-                          className={`flex-1 h-6 rounded text-[10px] font-bold ${
-                            editScores.behavior === num ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+                          className={`flex-1 h-8 rounded-lg text-xs font-bold transition-all ${
+                            editScores.behavior === num
+                              ? "bg-primary text-primary-foreground shadow-xs"
+                              : "bg-muted hover:bg-muted/80 text-foreground"
                           }`}
                         >
                           {num}
@@ -1072,10 +1099,12 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
                   </div>
 
                   {/* Mastery */}
-                  <div className="space-y-1 bg-muted/30 p-2 rounded-xl border">
-                    <div className="flex justify-between items-center text-[11px]">
-                      <span>تسلط علمی:</span>
-                      <span className=" font-bold text-primary">{editScores.mastery || "---"}</span>
+                  <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-semibold text-foreground">تسلط علمی و پاسخگویی:</span>
+                      <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${editScores.mastery ? getScoreTextColor(editScores.mastery) : "text-muted-foreground"}`}>
+                        {editScores.mastery ? `${editScores.mastery} از ۱۰` : "بدون امتیاز"}
+                      </Badge>
                     </div>
                     <div className="flex items-center gap-1 pt-1 overflow-x-auto">
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
@@ -1083,8 +1112,10 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
                           key={num}
                           type="button"
                           onClick={() => handleEditScoreChange("mastery", num)}
-                          className={`flex-1 h-6 rounded text-[10px] font-bold ${
-                            editScores.mastery === num ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+                          className={`flex-1 h-8 rounded-lg text-xs font-bold transition-all ${
+                            editScores.mastery === num
+                              ? "bg-primary text-primary-foreground shadow-xs"
+                              : "bg-muted hover:bg-muted/80 text-foreground"
                           }`}
                         >
                           {num}
@@ -1097,12 +1128,12 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
 
               {/* Textarea */}
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">متن نظر</Label>
+                <Label className="text-xs font-semibold text-foreground">متن نظر یا تجربه شما *</Label>
                 <Textarea
                   value={editComment}
                   onChange={(e) => setEditComment(e.target.value)}
-                  rows={3}
-                  className="text-xs bg-background resize-none"
+                  rows={4}
+                  className="text-xs bg-background resize-none leading-relaxed"
                   required
                 />
               </div>
@@ -1114,7 +1145,7 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
                   onCheckedChange={(c) => setEditIsAnonymous(Boolean(c))}
                 />
                 <span className="text-xs font-medium text-foreground">
-                  نمایش به صورت ناشناس
+                  نمایش به صورت ناشناس (نام شما مخفی خواهد ماند)
                 </span>
               </label>
 
@@ -1132,9 +1163,16 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
                   type="submit"
                   size="sm"
                   disabled={savingEdit || !editComment.trim()}
-                  className="h-8 text-xs font-bold gap-1 px-4"
+                  className="h-8 text-xs font-bold gap-1.5 px-4"
                 >
-                  {savingEdit ? "در حال ذخیره..." : "ذخیره تغییرات"}
+                  {savingEdit ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>در حال ذخیره...</span>
+                    </>
+                  ) : (
+                    "ذخیره تغییرات"
+                  )}
                 </Button>
               </div>
             </form>

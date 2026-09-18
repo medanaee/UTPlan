@@ -803,16 +803,23 @@ export async function assignCourseToCategory(
   const d1 = getD1();
   if (d1) {
     try {
-      const upsertSql = `
-        INSERT INTO track_course_assignments (id, track_id, course_id, category_id)
-        VALUES (?, ?, ?, ?)
-        ON CONFLICT(track_id, course_id) DO UPDATE SET
-          category_id = excluded.category_id
-      `;
-      await d1
-        .prepare(upsertSql)
-        .bind(id, trackId, courseId, categoryId || null)
-        .run();
+      if (!categoryId) {
+        await d1
+          .prepare("DELETE FROM track_course_assignments WHERE track_id = ? AND course_id = ?")
+          .bind(trackId, courseId)
+          .run();
+      } else {
+        const upsertSql = `
+          INSERT INTO track_course_assignments (id, track_id, course_id, category_id)
+          VALUES (?, ?, ?, ?)
+          ON CONFLICT(track_id, course_id) DO UPDATE SET
+            category_id = excluded.category_id
+        `;
+        await d1
+          .prepare(upsertSql)
+          .bind(id, trackId, courseId, categoryId)
+          .run();
+      }
     } catch (err) {
       console.error("D1 assignCourseToCategory error:", err);
     }
@@ -896,25 +903,36 @@ export async function assignCategoryCourses(
 
   try {
     // Clear previous assignments for this category
-    await d1
+    const clearStmt = d1
       .prepare(
         "UPDATE track_course_assignments SET category_id = NULL WHERE track_id = ? AND category_id = ?"
       )
-      .bind(trackId, categoryId)
-      .run();
+      .bind(trackId, categoryId);
 
-    // Assign selected courses
+    const upsertSql = `
+      INSERT INTO track_course_assignments (id, track_id, course_id, category_id)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(track_id, course_id) DO UPDATE SET category_id = excluded.category_id
+    `;
+
+    const insertStmts: any[] = [];
     for (const courseId of courseIds) {
       const id = `assign_${trackId}_${courseId}`;
-      await d1
-        .prepare(
-          `INSERT INTO track_course_assignments (id, track_id, course_id, category_id)
-           VALUES (?, ?, ?, ?)
-           ON CONFLICT(track_id, course_id) DO UPDATE SET category_id = excluded.category_id`
-        )
-        .bind(id, trackId, courseId, categoryId)
-        .run();
+      insertStmts.push(d1.prepare(upsertSql).bind(id, trackId, courseId, categoryId));
     }
+
+    // Batch clear and upsert statements in chunks of 100
+    const allStmts = [clearStmt, ...insertStmts];
+    for (let i = 0; i < allStmts.length; i += 100) {
+      await d1.batch(allStmts.slice(i, i + 100));
+    }
+
+    // Clean up orphan rows where category_id is NULL
+    await d1
+      .prepare("DELETE FROM track_course_assignments WHERE track_id = ? AND category_id IS NULL")
+      .bind(trackId)
+      .run();
+
     return true;
   } catch (err) {
     console.error("D1 assignCategoryCourses error:", err);

@@ -15,6 +15,7 @@ export interface SearchableCourse {
   name: string;
   code?: string | null;
   abbreviation?: string | null;
+  degreeLevel?: string | null;
   [key: string]: any;
 }
 
@@ -193,6 +194,13 @@ export function scoreCourse(course: SearchableCourse, query: string): number {
 
   const normCode = normalizePersian(course.code || "");
   const normAbbr = normalizePersian(course.abbreviation || "");
+  const normDegree = normalizePersian(
+    course.degreeLevel === "master"
+      ? "کارشناسی ارشد ارشد master"
+      : course.degreeLevel === "undergrad"
+      ? "کارشناسی لیسانس undergrad bachelor"
+      : ""
+  );
 
   // 1. Direct exact or prefix match in course code or abbreviation
   if (normCode === normQuery || normAbbr === normQuery) return 1000;
@@ -227,8 +235,8 @@ export function scoreCourse(course: SearchableCourse, query: string): number {
   for (const qToken of queryTokens) {
     const tokenScore = tokenMatchScore(qToken, nameTokens, nameNoSpace);
     if (tokenScore === 0) {
-      // Check if token matches code or abbreviation
-      if (normCode.includes(qToken) || normAbbr.includes(qToken)) {
+      // Check if token matches code, abbreviation, or degree level
+      if (normCode.includes(qToken) || normAbbr.includes(qToken) || (normDegree && normDegree.includes(qToken))) {
         totalTokenScore += 50;
       } else {
         return 0; // Token not found anywhere -> disqualified
