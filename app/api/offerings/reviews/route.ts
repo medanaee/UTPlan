@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const offeringId = searchParams.get("offeringId");
+    const clientId = searchParams.get("clientId") || request.headers.get("x-client-id");
 
     if (!offeringId) {
       return NextResponse.json(
@@ -28,7 +29,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const reviews = await getReviews("offering", offeringId);
+    const token = getAuthTokenFromRequest(request);
+    const session = token ? await verifySessionToken(token) : null;
+    const userId = session?.id || null;
+
+    const reviews = await getReviews("offering", offeringId, userId, clientId);
     return NextResponse.json({ success: true, data: reviews });
   } catch (error) {
     console.error("GET offering reviews error:", error);

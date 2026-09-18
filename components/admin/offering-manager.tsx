@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import type { Course, Professor, CourseOffering, Faculty, OfferingResource, OfferingResourceType } from "@/lib/types";
 import { fetchJson, postJson, putJson, deleteJson } from "@/lib/api-client";
-import { searchCourses } from "@/lib/search/persian-search";
+import { persianSearch } from "@/lib/search/persian-search";
 import {
   Card,
   CardHeader,
@@ -142,7 +142,7 @@ export function OfferingManager({
 
   const filteredUnassignedCourses = React.useMemo(() => {
     if (!unassignedSearch.trim()) return coursesWithoutOfferings;
-    return searchCourses(coursesWithoutOfferings, unassignedSearch);
+    return persianSearch(coursesWithoutOfferings, unassignedSearch);
   }, [coursesWithoutOfferings, unassignedSearch]);
 
   const displayedUnassignedCourses = React.useMemo(() => {

@@ -57,6 +57,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { ReviewReactionsBar } from "@/components/reviews/review-reactions-bar";
+import { getClientId } from "@/lib/client-id";
 import type { CourseOffering, ReviewItem, UserSession, OfferingResource } from "@/lib/types";
 
 function formatSemesterLabel(termStr: string): string {
@@ -217,7 +219,10 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
   const loadReviews = async () => {
     try {
       setLoadingReviews(true);
-      const res = await fetchJson(`/api/offerings/reviews?offeringId=${offering.id}`);
+      const clientId = getClientId();
+      const res = await fetchJson(
+        `/api/offerings/reviews?offeringId=${offering.id}&clientId=${encodeURIComponent(clientId)}`
+      );
       if (res.success && Array.isArray(res.data)) {
         setReviews(res.data);
       }
@@ -1055,6 +1060,12 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                         <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
                           {rev.comment}
                         </p>
+
+                        {/* Emoji Reactions */}
+                        <ReviewReactionsBar
+                          reviewId={rev.id}
+                          initialReactions={rev.reactions}
+                        />
                       </div>
                     );
                   })}

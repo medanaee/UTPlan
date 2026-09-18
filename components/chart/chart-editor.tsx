@@ -42,7 +42,7 @@ import {
   CloudOff,
 } from "lucide-react";
 import { toPng } from "html-to-image";
-import { searchCourses } from "@/lib/search/persian-search";
+import { persianSearch } from "@/lib/search/persian-search";
 import { cn } from "@/lib/utils";
 import { fetchJson, postJson, putJson } from "@/lib/api-client";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -957,7 +957,7 @@ export function ChartEditor({
 
     // 2. Intelligent Persian search with typo tolerance & space invariance
     if (drawerSearch.trim()) {
-      list = searchCourses(list, drawerSearch);
+      list = persianSearch(list, drawerSearch);
     }
 
     // 3. Sort: unplaced/unpassed courses first, placed or passed courses pushed to the bottom (stable sort)

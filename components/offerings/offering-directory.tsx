@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/select";
 import type { CourseOffering, Faculty } from "@/lib/types";
 import { usePersistedState } from "@/lib/hooks/use-persisted-state";
-import { searchCourses } from "@/lib/search/persian-search";
+import { persianSearch } from "@/lib/search/persian-search";
 import { fetchJson } from "@/lib/api-client";
 
 interface OfferingDirectoryProps {
@@ -102,7 +102,7 @@ export function OfferingDirectory({
     });
 
     // 3. Intelligently search and rank by search query
-    return searchCourses(searchable, search);
+    return persianSearch(searchable, search);
   }, [offerings, search, selectedFaculty, selectedUnits]);
 
   return (

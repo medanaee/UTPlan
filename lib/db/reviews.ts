@@ -1,7 +1,154 @@
-import type { Review } from "../types";
+import type { Review, ReviewReactionSummary } from "../types";
 import { getD1 } from "./client";
 
-export async function getReviews(targetType: "professor" | "offering", targetId: string): Promise<Review[]> {
+export const ALLOWED_REACTION_EMOJIS = ["👍", "👎", "❤️", "💡", "😂", "👏", "🔥"] as const;
+
+export async function getReactionsForReviews(
+  reviewIds: string[],
+  userId?: string | null,
+  clientId?: string | null
+): Promise<Record<string, ReviewReactionSummary[]>> {
+  const d1 = getD1();
+  const map: Record<string, ReviewReactionSummary[]> = {};
+  if (!d1 || reviewIds.length === 0) return map;
+
+  try {
+    const placeholders = reviewIds.map(() => "?").join(",");
+
+    // 1. Get counts grouped by review_id and emoji
+    const { results: countResults } = await d1
+      .prepare(
+        `SELECT review_id, emoji, COUNT(*) as count 
+         FROM review_reactions 
+         WHERE review_id IN (${placeholders}) 
+         GROUP BY review_id, emoji 
+         ORDER BY count DESC`
+      )
+      .bind(...reviewIds)
+      .all();
+
+    // 2. If user or client ID provided, find which ones the user reacted to
+    const userReactedSet = new Set<string>();
+    if (userId || clientId) {
+      let userQuery = "";
+      const userBinds: any[] = [...reviewIds];
+      if (userId) {
+        userQuery = `SELECT review_id, emoji FROM review_reactions WHERE review_id IN (${placeholders}) AND user_id = ?`;
+        userBinds.push(userId);
+      } else if (clientId) {
+        userQuery = `SELECT review_id, emoji FROM review_reactions WHERE review_id IN (${placeholders}) AND user_id IS NULL AND client_id = ?`;
+        userBinds.push(clientId);
+      }
+
+      const { results: userResults } = await d1
+        .prepare(userQuery)
+        .bind(...userBinds)
+        .all();
+
+      for (const ur of userResults || []) {
+        userReactedSet.add(`${(ur as any).review_id}:${(ur as any).emoji}`);
+      }
+    }
+
+    for (const r of countResults || []) {
+      const revId = (r as any).review_id as string;
+      const emoji = (r as any).emoji as string;
+      const count = Number((r as any).count) || 0;
+      if (!map[revId]) {
+        map[revId] = [];
+      }
+      map[revId].push({
+        emoji,
+        count,
+        userReacted: userReactedSet.has(`${revId}:${emoji}`),
+      });
+    }
+  } catch (err) {
+    console.error("D1 getReactionsForReviews error:", err);
+  }
+
+  return map;
+}
+
+export async function toggleReviewReaction(params: {
+  reviewId: string;
+  emoji: string;
+  userId?: string | null;
+  clientId?: string | null;
+}): Promise<{
+  success: boolean;
+  action?: "added" | "removed";
+  reactions?: ReviewReactionSummary[];
+  message?: string;
+}> {
+  const { reviewId, emoji, userId, clientId } = params;
+  if (!ALLOWED_REACTION_EMOJIS.includes(emoji as any)) {
+    return { success: false, message: "ایموجی نامعتبر است." };
+  }
+  if (!userId && !clientId) {
+    return { success: false, message: "شناسه کاربر یا کلاینت نامشخص است." };
+  }
+
+  const d1 = getD1();
+  if (!d1) {
+    return { success: false, message: "دیتابیس در دسترس نیست." };
+  }
+
+  try {
+    const review = await d1.prepare("SELECT id FROM reviews WHERE id = ?").bind(reviewId).first();
+    if (!review) {
+      return { success: false, message: "نظر مورد نظر یافت نشد." };
+    }
+
+    let existingReaction: any = null;
+    if (userId) {
+      existingReaction = await d1
+        .prepare("SELECT id FROM review_reactions WHERE review_id = ? AND user_id = ? AND emoji = ?")
+        .bind(reviewId, userId, emoji)
+        .first();
+    } else {
+      existingReaction = await d1
+        .prepare(
+          "SELECT id FROM review_reactions WHERE review_id = ? AND user_id IS NULL AND client_id = ? AND emoji = ?"
+        )
+        .bind(reviewId, clientId, emoji)
+        .first();
+    }
+
+    let action: "added" | "removed" = "added";
+    if (existingReaction) {
+      await d1.prepare("DELETE FROM review_reactions WHERE id = ?").bind(existingReaction.id).run();
+      action = "removed";
+    } else {
+      const id = `react_${crypto.randomUUID().slice(0, 10)}`;
+      const now = new Date().toISOString();
+      await d1
+        .prepare(
+          "INSERT INTO review_reactions (id, review_id, user_id, client_id, emoji, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+        )
+        .bind(id, reviewId, userId || null, userId ? null : clientId || null, emoji, now)
+        .run();
+      action = "added";
+    }
+
+    const summaryMap = await getReactionsForReviews([reviewId], userId, clientId);
+    return {
+      success: true,
+      action,
+      reactions: summaryMap[reviewId] || [],
+    };
+  } catch (err: any) {
+    console.error("D1 toggleReviewReaction error:", err);
+    return { success: false, message: err?.message || "خطا در ثبت واکنش." };
+  }
+}
+
+export async function getReviews(
+  targetType: "professor" | "offering",
+  targetId: string,
+  currentUserId?: string | null,
+  currentClientId?: string | null
+): Promise<Review[]> {
   const d1 = getD1();
   if (!d1) return [];
 
@@ -17,7 +164,7 @@ export async function getReviews(targetType: "professor" | "offering", targetId:
       .bind(targetType, targetId)
       .all();
 
-    return (results || []).map((r: any) => {
+    const rawReviews = (results || []).map((r: any) => {
       let criteriaRatings: any = undefined;
       if (r.criteria_ratings) {
         try {
@@ -38,13 +185,27 @@ export async function getReviews(targetType: "professor" | "offering", targetId:
         createdAt: r.created_at,
       };
     });
+
+    if (rawReviews.length === 0) return [];
+
+    const reviewIds = rawReviews.map((r: any) => r.id);
+    const reactionsMap = await getReactionsForReviews(reviewIds, currentUserId, currentClientId);
+
+    return rawReviews.map((r: any) => ({
+      ...r,
+      reactions: reactionsMap[r.id] || [],
+    }));
   } catch (err) {
     console.error("D1 getReviews error:", err);
     return [];
   }
 }
 
-export async function getReviewById(id: string): Promise<Review | null> {
+export async function getReviewById(
+  id: string,
+  currentUserId?: string | null,
+  currentClientId?: string | null
+): Promise<Review | null> {
   const d1 = getD1();
   if (!d1) return null;
 
@@ -70,6 +231,8 @@ export async function getReviewById(id: string): Promise<Review | null> {
       } catch {}
     }
 
+    const reactionsMap = await getReactionsForReviews([id], currentUserId, currentClientId);
+
     return {
       id: (r as any).id,
       userId: (r as any).user_id || null,
@@ -82,6 +245,7 @@ export async function getReviewById(id: string): Promise<Review | null> {
       criteriaRatings,
       studentGrade: (r as any).student_grade !== null && (r as any).student_grade !== undefined ? Number((r as any).student_grade) : null,
       createdAt: (r as any).created_at,
+      reactions: reactionsMap[id] || [],
     };
   } catch (err) {
     console.error("D1 getReviewById error:", err);

@@ -39,6 +39,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { ReviewReactionsBar } from "@/components/reviews/review-reactions-bar";
+import { getClientId } from "@/lib/client-id";
 import type { Professor, ReviewItem, UserSession } from "@/lib/types";
 
 function getScoreBarColor(score: number): string {
@@ -111,7 +113,10 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
   const loadReviews = async () => {
     try {
       setLoadingReviews(true);
-      const res = await fetchJson(`/api/professors/reviews?professorId=${professor.id}`);
+      const clientId = getClientId();
+      const res = await fetchJson(
+        `/api/professors/reviews?professorId=${professor.id}&clientId=${encodeURIComponent(clientId)}`
+      );
       if (res.success && Array.isArray(res.data)) {
         setReviews(res.data);
       }
@@ -723,6 +728,12 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
                         <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
                           {rev.comment}
                         </p>
+
+                        {/* Emoji Reactions */}
+                        <ReviewReactionsBar
+                          reviewId={rev.id}
+                          initialReactions={rev.reactions}
+                        />
                       </div>
                     );
                   })}

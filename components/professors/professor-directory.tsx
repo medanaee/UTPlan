@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/select";
 import type { Professor, Faculty } from "@/lib/types";
 import { usePersistedState } from "@/lib/hooks/use-persisted-state";
-import { searchCourses } from "@/lib/search/persian-search";
+import { persianSearch } from "@/lib/search/persian-search";
 import { fetchJson } from "@/lib/api-client";
 
 interface ProfessorDirectoryProps {
@@ -107,7 +107,7 @@ export function ProfessorDirectory({
       abbreviation: p.title || "",
     }));
 
-    return searchCourses(searchable, search);
+    return persianSearch(searchable, search);
   }, [professors, search, selectedFaculty, selectedTitle]);
 
   return (

@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const professorId = searchParams.get("professorId");
+    const clientId = searchParams.get("clientId") || request.headers.get("x-client-id");
 
     if (!professorId) {
       return NextResponse.json(
@@ -28,7 +29,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const reviews = await getReviews("professor", professorId);
+    const token = getAuthTokenFromRequest(request);
+    const session = token ? await verifySessionToken(token) : null;
+    const userId = session?.id || null;
+
+    const reviews = await getReviews("professor", professorId, userId, clientId);
     return NextResponse.json({ success: true, data: reviews });
   } catch (error) {
     console.error("GET professor reviews error:", error);

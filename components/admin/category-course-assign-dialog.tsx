@@ -34,7 +34,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import type { Course } from "@/lib/types";
-import { searchCourses } from "@/lib/search/persian-search";
+import { persianSearch } from "@/lib/search/persian-search";
 import { cn } from "@/lib/utils";
 import { postJson } from "@/lib/api-client";
 
@@ -97,7 +97,7 @@ export function CategoryCourseAssignDialog({
   }, [open, currentAssignedCourseIds]);
 
   const { filteredCourses, otherCategoryCount } = useMemo(() => {
-    let matched = searchCourses(allCourses, search);
+    let matched = persianSearch(allCourses, search);
 
     if (filterDegree !== "all") {
       matched = matched.filter((c) => (c.degreeLevel || "undergrad") === filterDegree);

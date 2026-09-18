@@ -11,13 +11,16 @@
  * 8. Multi-field search (name, code, abbreviation) with relevance ranking
  */
 
-export interface SearchableCourse {
+export interface SearchableItem {
   name: string;
   code?: string | null;
   abbreviation?: string | null;
   degreeLevel?: string | null;
   [key: string]: any;
 }
+
+// Backwards compatibility alias
+export type SearchableCourse = SearchableItem;
 
 /**
  * Normalizes Persian and Arabic text for search matching:
@@ -178,47 +181,47 @@ function tokenMatchScore(
 }
 
 /**
- * Computes relevance score between a course and a user query
+ * Computes relevance score between a searchable item and a user query
  * Returns 0 if not matched, or a positive integer (higher = more relevant)
  */
-export function scoreCourse(course: SearchableCourse, query: string): number {
+export function scoreItem(item: SearchableItem, query: string): number {
   const normQuery = normalizePersian(query);
   if (!normQuery) return 100;
 
   const queryNoSpace = stripAllSpaces(query);
   const queryTokens = normQuery.split(" ").filter(Boolean);
 
-  const normName = normalizePersian(course.name);
-  const nameNoSpace = stripAllSpaces(course.name);
+  const normName = normalizePersian(item.name);
+  const nameNoSpace = stripAllSpaces(item.name);
   const nameTokens = normName.split(" ").filter(Boolean);
 
-  const normCode = normalizePersian(course.code || "");
-  const normAbbr = normalizePersian(course.abbreviation || "");
+  const normCode = normalizePersian(item.code || "");
+  const normAbbr = normalizePersian(item.abbreviation || "");
   const normDegree = normalizePersian(
-    course.degreeLevel === "master"
+    item.degreeLevel === "master"
       ? "کارشناسی ارشد ارشد master"
-      : course.degreeLevel === "undergrad"
+      : item.degreeLevel === "undergrad"
       ? "کارشناسی لیسانس undergrad bachelor"
       : ""
   );
 
-  // 1. Direct exact or prefix match in course code or abbreviation
+  // 1. Direct exact or prefix match in item code or abbreviation
   if (normCode === normQuery || normAbbr === normQuery) return 1000;
   if (normCode.startsWith(normQuery) || (normAbbr && normAbbr.startsWith(normQuery))) return 950;
   if (normCode.includes(normQuery) || (normAbbr && normAbbr.includes(normQuery))) return 900;
 
-  // 2. Exact match on course name
+  // 2. Exact match on item name
   if (normName === normQuery) return 800;
 
   // 3. Exact match with spaces removed (e.g. "مدار منطقی" vs "مدارمنطقی")
   if (nameNoSpace === queryNoSpace) return 750;
 
   // 4. Exact match with affixes and spaces stripped (e.g. "سیستم‌های عامل" vs "سیستم عامل" vs "سیستمعامل")
-  const nameAffixStripped = stripAllSpaces(stripPersianAffixes(course.name));
+  const nameAffixStripped = stripAllSpaces(stripPersianAffixes(item.name));
   const queryAffixStripped = stripAllSpaces(stripPersianAffixes(query));
   if (nameAffixStripped === queryAffixStripped) return 740;
 
-  // 5. Course name starts with query
+  // 5. Item name starts with query
   if (normName.startsWith(normQuery)) return 700;
 
   // 6. Contiguous substring match
@@ -249,11 +252,14 @@ export function scoreCourse(course: SearchableCourse, query: string): number {
   return Math.round(totalTokenScore / queryTokens.length);
 }
 
+// Backwards compatibility alias
+export const scoreCourse = scoreItem;
+
 /**
- * Searches and ranks courses based on intelligent Persian matching
- * Returns courses sorted by relevance (highest match first)
+ * Searches and ranks items based on intelligent Persian matching
+ * Returns items sorted by relevance (highest match first)
  */
-export function searchCourses<T extends SearchableCourse>(
+export function persianSearch<T extends SearchableItem>(
   items: T[],
   query: string
 ): T[] {
@@ -263,7 +269,7 @@ export function searchCourses<T extends SearchableCourse>(
   const scoredItems: { item: T; score: number }[] = [];
 
   for (const item of items) {
-    const score = scoreCourse(item, trimmedQuery);
+    const score = scoreItem(item, trimmedQuery);
     if (score > 0) {
       scoredItems.push({ item, score });
     }
@@ -274,3 +280,7 @@ export function searchCourses<T extends SearchableCourse>(
 
   return scoredItems.map((s) => s.item);
 }
+
+// Aliases for convenience & backwards compatibility
+export const searchItems = persianSearch;
+export const searchCourses = persianSearch;

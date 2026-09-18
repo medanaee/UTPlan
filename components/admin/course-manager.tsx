@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { searchCourses } from "@/lib/search/persian-search";
+import { persianSearch } from "@/lib/search/persian-search";
 import { fetchJson, postJson, putJson, deleteJson } from "@/lib/api-client";
 import {
   BookOpen,
@@ -90,7 +90,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
   });
 
   const filteredCourses = useMemo(() => {
-    return searchCourses(facultyCourses, courseSearch);
+    return persianSearch(facultyCourses, courseSearch);
   }, [facultyCourses, courseSearch]);
 
   // Create or Update Course

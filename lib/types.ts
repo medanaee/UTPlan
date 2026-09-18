@@ -222,6 +222,12 @@ export interface ReviewCriteria {
   mastery?: number; // تسلط علمی (1-10)
 }
 
+export interface ReviewReactionSummary {
+  emoji: string;
+  count: number;
+  userReacted?: boolean;
+}
+
 export interface ReviewItem {
   id: string;
   userId?: string | null;
@@ -234,6 +240,7 @@ export interface ReviewItem {
   criteriaRatings?: ReviewCriteria;
   studentGrade?: number | null; // e.g. 18.5 out of 20
   createdAt: string;
+  reactions?: ReviewReactionSummary[];
 }
 
 export interface CourseEvent {
@@ -288,6 +295,7 @@ export interface Review {
   studentGrade?: number | null; // e.g. 18.5 out of 20
   createdAt: string;
   deletedAt?: string | null;
+  reactions?: ReviewReactionSummary[];
 }
 
 // ----------------------------------------------------

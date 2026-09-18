@@ -28,7 +28,7 @@ import {
 import type { Course, Faculty, UserSession } from "@/lib/types";
 import { Download, Upload } from "lucide-react";
 import { usePersistedState } from "@/lib/hooks/use-persisted-state";
-import { searchCourses } from "@/lib/search/persian-search";
+import { persianSearch } from "@/lib/search/persian-search";
 import { fetchJson } from "@/lib/api-client";
 
 interface CourseDirectoryProps {
@@ -114,7 +114,7 @@ export function CourseDirectory({
     });
 
     // 2. Intelligently search and rank by search query
-    return searchCourses(baseFiltered, search);
+    return persianSearch(baseFiltered, search);
   }, [courses, search, selectedFaculty, selectedDegreeLevel, selectedOfferedIn, selectedUnits]);
 
   const formatTermOffered = (term?: string) => {

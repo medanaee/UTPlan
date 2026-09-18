@@ -21,6 +21,7 @@ const TABLE_ORDER = [
   "course_event_slots",
   "users",
   "reviews",
+  "review_reactions",
   "charts",
   "chart_terms",
   "chart_courses",
