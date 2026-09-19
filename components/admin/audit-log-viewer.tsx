@@ -233,194 +233,157 @@ export function AuditLogViewer() {
   };
 
   return (
-    <div className="space-y-5" dir="rtl">
-      {/* Header Card */}
-      <Card className="border border-border/70 shadow-2xs bg-card">
-        <CardHeader className="pb-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
-                <ShieldAlert className="h-6 w-6" />
+    <div className="space-y-4 font-sans" dir="rtl">
+      {/* Main Table Card */}
+      <Card className="border-border/70 shadow-xs">
+        <CardHeader className="border-b pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                <CardTitle className="text-sm font-bold">گزارش اقدامات و رویدادهای مدیران (Audit Log)</CardTitle>
+                <Badge variant="secondary" className="text-[10px] h-4.5 px-2 font-mono">
+                  {total.toLocaleString("fa-IR")} مورد
+                </Badge>
               </div>
-              <div>
-                <CardTitle className="text-base font-bold flex items-center gap-2">
-                  <span>گزارش اقدامات و رویدادهای مدیران (Audit Log)</span>
-                  <Badge variant="outline" className="text-[10px] h-4.5 px-2 font-normal border-purple-500/30 text-purple-600 dark:text-purple-400">
-                    مختص مدیر ارشد
-                  </Badge>
-                </CardTitle>
-                <CardDescription className="text-xs mt-0.5">
-                  رهگیری شفاف و بلادرنگ کلیه عملیات‌های سیستمی، ایجاد، ویرایش، حذف، انتسابات و تغییرات دسترسی
-                </CardDescription>
-              </div>
+              <CardDescription className="text-xs mt-0.5">
+                رهگیری شفاف و بلادرنگ کلیه عملیات‌های سیستمی، ایجاد، ویرایش، حذف، انتسابات، ورود اطلاعات و بازیابی‌ها
+              </CardDescription>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => loadLogs()}
-                disabled={loading || isPending}
-                className="gap-1.5 text-xs h-8"
-              >
-                <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-                <span>بروزرسانی</span>
-              </Button>
-            </div>
-          </div>
-
-          {/* Quick Stats Summary */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-3 border-t border-border/50">
-            <div className="flex flex-col p-2.5 rounded-lg bg-muted/40 border border-border/50">
-              <span className="text-[11px] text-muted-foreground">کل وقایع ثبت‌شده</span>
-              <span className="text-lg font-bold text-foreground mt-0.5">{total.toLocaleString("fa-IR")}</span>
-            </div>
-            <div className="flex flex-col p-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/15">
-              <span className="text-[11px] text-emerald-600 dark:text-emerald-400">حالت ثبت</span>
-              <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 mt-1 flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                غیرمسدودکننده و خودکار
-              </span>
-            </div>
-            <div className="flex flex-col p-2.5 rounded-lg bg-muted/40 border border-border/50">
-              <span className="text-[11px] text-muted-foreground">صفحه جاری</span>
-              <span className="text-xs font-semibold text-foreground mt-1">
-                صفحه {page.toLocaleString("fa-IR")} از {totalPages.toLocaleString("fa-IR")}
-              </span>
-            </div>
-            <div className="flex flex-col p-2.5 rounded-lg bg-muted/40 border border-border/50">
-              <span className="text-[11px] text-muted-foreground">سطح امنیت</span>
-              <span className="text-xs font-semibold text-foreground mt-1 flex items-center gap-1">
-                <span>تایید هویت بلادرنگ DB</span>
-              </span>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => loadLogs()}
+              disabled={loading || isPending}
+              className="h-8 gap-1.5 text-xs shadow-2xs"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+              <span>بروزرسانی</span>
+            </Button>
           </div>
         </CardHeader>
-      </Card>
 
-      {/* Filters & Search Toolbar */}
-      <Card className="border border-border/70 shadow-2xs bg-card">
-        <CardContent className="p-3.5">
-          <div className="flex flex-col md:flex-row items-center gap-3">
+        <CardContent className="space-y-4">
+          {/* Filters & Search Toolbar */}
+          <div className="flex flex-col md:flex-row items-center justify-between gap-3 pt-2">
             {/* Search Input */}
             <div className="relative flex-1 w-full">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Search className="absolute right-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="جستجو بر اساس نام مدیر، ایمیل، شناسه یا نام موجودیت..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pr-9 h-8 text-xs bg-background"
+                className="pr-8"
               />
             </div>
 
-            {/* Action Type Filter */}
-            <div className="w-full md:w-52">
-              <Select
-                value={selectedAction}
-                onValueChange={(val) => {
-                  setSelectedAction(val);
-                  setPage(1);
-                }}
-              >
-                <SelectTrigger className="h-8 text-xs bg-background">
-                  <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <Filter className="h-3 w-3" />
-                    <span>نوع عملیات:</span>
-                  </div>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value="all" className="text-xs">همه عملیات‌ها</SelectItem>
-                    <SelectItem value="CREATE" className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">ایجاد (CREATE)</SelectItem>
-                    <SelectItem value="UPDATE" className="text-xs text-blue-600 dark:text-blue-400 font-medium">ویرایش (UPDATE)</SelectItem>
-                    <SelectItem value="DELETE" className="text-xs text-rose-600 dark:text-rose-400 font-medium">حذف (DELETE)</SelectItem>
-                    <SelectItem value="RESTORE" className="text-xs text-purple-600 dark:text-purple-400 font-medium">بازیابی (RESTORE)</SelectItem>
-                    <SelectItem value="ROLE_CHANGE" className="text-xs text-amber-600 dark:text-amber-400 font-medium">تغییر دسترسی (ROLE_CHANGE)</SelectItem>
-                    <SelectItem value="IMPORT" className="text-xs text-cyan-600 dark:text-cyan-400 font-medium">ورود داده (IMPORT)</SelectItem>
-                    <SelectItem value="BACKUP_RESTORE" className="text-xs text-violet-600 dark:text-violet-400 font-medium">بازیابی بکاپ</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
+            <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
+              {/* Action Type Filter */}
+              <div>
+                <Select
+                  value={selectedAction}
+                  onValueChange={(val) => {
+                    setSelectedAction(val);
+                    setPage(1);
+                  }}
+                >
+                  <SelectTrigger>
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Filter className="h-3 w-3" />
+                      <span>عملیات:</span>
+                    </div>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="all" className="text-xs">همه عملیات‌ها</SelectItem>
+                      <SelectItem value="CREATE" className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">ایجاد (CREATE)</SelectItem>
+                      <SelectItem value="UPDATE" className="text-xs text-blue-600 dark:text-blue-400 font-medium">ویرایش (UPDATE)</SelectItem>
+                      <SelectItem value="DELETE" className="text-xs text-rose-600 dark:text-rose-400 font-medium">حذف (DELETE)</SelectItem>
+                      <SelectItem value="RESTORE" className="text-xs text-purple-600 dark:text-purple-400 font-medium">بازیابی (RESTORE)</SelectItem>
+                      <SelectItem value="ROLE_CHANGE" className="text-xs text-amber-600 dark:text-amber-400 font-medium">تغییر دسترسی (ROLE_CHANGE)</SelectItem>
+                      <SelectItem value="IMPORT" className="text-xs text-cyan-600 dark:text-cyan-400 font-medium">ورود داده (IMPORT)</SelectItem>
+                      <SelectItem value="BACKUP_RESTORE" className="text-xs text-violet-600 dark:text-violet-400 font-medium">بازیابی بکاپ</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            {/* Entity Type Filter */}
-            <div className="w-full md:w-48">
-              <Select
-                value={selectedEntity}
-                onValueChange={(val) => {
-                  setSelectedEntity(val);
-                  setPage(1);
-                }}
-              >
-                <SelectTrigger className="h-8 text-xs bg-background">
-                  <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <Layers className="h-3 w-3" />
-                    <span>بخش:</span>
-                  </div>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value="all" className="text-xs">همه بخش‌ها</SelectItem>
-                    <SelectItem value="course" className="text-xs">دروس</SelectItem>
-                    <SelectItem value="professor" className="text-xs">اساتید</SelectItem>
-                    <SelectItem value="offering" className="text-xs">ارائه‌های درسی</SelectItem>
-                    <SelectItem value="event" className="text-xs">رویدادها و برنامه هفتگی</SelectItem>
-                    <SelectItem value="track" className="text-xs">گرایش‌ها و ساختار</SelectItem>
-                    <SelectItem value="category" className="text-xs">دسته‌بندی‌ها</SelectItem>
-                    <SelectItem value="rule" className="text-xs">قوانین و درخت قوانین</SelectItem>
-                    <SelectItem value="user" className="text-xs">کاربران و سطوح دسترسی</SelectItem>
-                    <SelectItem value="trash" className="text-xs">سطل بازیافت</SelectItem>
-                    <SelectItem value="backup" className="text-xs">بکاپ</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
+              {/* Entity Type Filter */}
+              <div>
+                <Select
+                  value={selectedEntity}
+                  onValueChange={(val) => {
+                    setSelectedEntity(val);
+                    setPage(1);
+                  }}
+                >
+                  <SelectTrigger>
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Layers className="h-3 w-3" />
+                      <span>بخش:</span>
+                    </div>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="all" className="text-xs">همه بخش‌ها</SelectItem>
+                      <SelectItem value="course" className="text-xs">دروس</SelectItem>
+                      <SelectItem value="professor" className="text-xs">اساتید</SelectItem>
+                      <SelectItem value="offering" className="text-xs">ارائه‌های درسی</SelectItem>
+                      <SelectItem value="event" className="text-xs">رویدادها و برنامه هفتگی</SelectItem>
+                      <SelectItem value="track" className="text-xs">گرایش‌ها و ساختار</SelectItem>
+                      <SelectItem value="category" className="text-xs">دسته‌بندی‌ها</SelectItem>
+                      <SelectItem value="rule" className="text-xs">قوانین و درخت قوانین</SelectItem>
+                      <SelectItem value="user" className="text-xs">کاربران و سطوح دسترسی</SelectItem>
+                      <SelectItem value="trash" className="text-xs">سطل بازیافت</SelectItem>
+                      <SelectItem value="backup" className="text-xs">بکاپ</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            {/* Limit Selector */}
-            <div className="w-full md:w-32">
-              <Select
-                value={limit.toString()}
-                onValueChange={(val) => {
-                  setLimit(Number(val));
-                  setPage(1);
-                }}
-              >
-                <SelectTrigger className="h-8 text-xs bg-background">
-                  <span className="text-muted-foreground text-[11px]">نمایش:</span>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value="15" className="text-xs">۱۵ مورد</SelectItem>
-                    <SelectItem value="25" className="text-xs">۲۵ مورد</SelectItem>
-                    <SelectItem value="50" className="text-xs">۵۰ مورد</SelectItem>
-                    <SelectItem value="100" className="text-xs">۱۰۰ مورد</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+              {/* Limit Selector */}
+              <div>
+                <Select
+                  value={limit.toString()}
+                  onValueChange={(val) => {
+                    setLimit(Number(val));
+                    setPage(1);
+                  }}
+                >
+                  <SelectTrigger>
+                    <span className="text-muted-foreground text-[11px]">تعداد:</span>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="15" className="text-xs">۱۵ مورد</SelectItem>
+                      <SelectItem value="25" className="text-xs">۲۵ مورد</SelectItem>
+                      <SelectItem value="50" className="text-xs">۵۰ مورد</SelectItem>
+                      <SelectItem value="100" className="text-xs">۱۰۰ مورد</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Audit Logs Table */}
-      <Card className="border border-border/70 shadow-2xs overflow-hidden bg-card">
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          {/* Audit Logs Table */}
+          <div className="overflow-x-auto rounded-xl border border-border/70">
             <table className="w-full text-right text-xs">
-              <thead className="bg-muted/60 text-muted-foreground border-b border-border text-[11px] font-semibold">
-                <tr>
-                  <th className="py-3 px-3.5 w-40">زمان و تاریخ</th>
-                  <th className="py-3 px-3.5 w-52">مجری اقدام (مدیر)</th>
-                  <th className="py-3 px-3.5 w-32">نوع عملیات</th>
-                  <th className="py-3 px-3.5 w-36">بخش / موجودیت</th>
-                  <th className="py-3 px-3.5">عنوان / شناسه هدف</th>
-                  <th className="py-3 px-3.5 w-24 text-center">جزئیات</th>
+              <thead>
+                <tr className="border-b bg-muted/40 text-muted-foreground font-semibold">
+                  <th className="py-2.5 px-3 w-36">زمان</th>
+                  <th className="py-2.5 px-3 w-48">مجری اقدام (مدیر)</th>
+                  <th className="py-2.5 px-3 w-32">نوع عملیات</th>
+                  <th className="py-2.5 px-3 w-36">بخش / موجودیت</th>
+                  <th className="py-2.5 px-3">عنوان / شناسه هدف</th>
+                  <th className="py-2.5 px-3 w-20 text-center">جزئیات</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/60">
+              <tbody className="divide-y divide-border/40">
                 {loading ? (
                   <tr>
                     <td colSpan={6} className="text-center py-16">
@@ -436,7 +399,7 @@ export function AuditLogViewer() {
                       <div className="flex flex-col items-center justify-center gap-2">
                         <FileText className="h-8 w-8 text-muted-foreground/40" />
                         <span className="text-sm font-medium">هیچ گزارشی با این فیلترها یافت نشد.</span>
-                        <span className="text-[11px]">با تغییر عبارت جستجو یا فیلترها دوباره امتحان کنید.</span>
+                        <span className="text-[11px]">با تغییر فیلترها یا کلیدواژه جستجو دوباره بررسی کنید.</span>
                       </div>
                     </td>
                   </tr>
@@ -456,10 +419,10 @@ export function AuditLogViewer() {
                     return (
                       <tr
                         key={log.id}
-                        className="hover:bg-muted/30 transition-colors group"
+                        className="hover:bg-muted/20 transition-colors"
                       >
                         {/* Timestamp */}
-                        <td className="py-3 px-3.5 whitespace-nowrap">
+                        <td className="py-2.5 px-3 whitespace-nowrap">
                           <div className="flex flex-col gap-0.5">
                             <span className="font-medium text-foreground text-xs">
                               {formatRelativeTime(log.createdAt)}
@@ -475,7 +438,7 @@ export function AuditLogViewer() {
                         </td>
 
                         {/* Admin User */}
-                        <td className="py-3 px-3.5">
+                        <td className="py-2.5 px-3">
                           <div className="flex items-center gap-2">
                             <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs shrink-0">
                               {log.userName?.[0] || "U"}
@@ -492,7 +455,7 @@ export function AuditLogViewer() {
                         </td>
 
                         {/* Action Badge */}
-                        <td className="py-3 px-3.5 whitespace-nowrap">
+                        <td className="py-2.5 px-3 whitespace-nowrap">
                           <span
                             className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold border ${actionInfo.badgeClass}`}
                           >
@@ -502,7 +465,7 @@ export function AuditLogViewer() {
                         </td>
 
                         {/* Entity Type */}
-                        <td className="py-3 px-3.5 whitespace-nowrap">
+                        <td className="py-2.5 px-3 whitespace-nowrap">
                           <div className="flex items-center gap-1.5 text-foreground/80 font-medium">
                             <EntityIcon className="h-3.5 w-3.5 text-muted-foreground" />
                             <span>{entityInfo.label}</span>
@@ -510,7 +473,7 @@ export function AuditLogViewer() {
                         </td>
 
                         {/* Entity Name & ID */}
-                        <td className="py-3 px-3.5">
+                        <td className="py-2.5 px-3">
                           <div className="flex flex-col gap-0.5">
                             <span className="font-medium text-foreground truncate max-w-md">
                               {log.entityName || "بدون عنوان"}
@@ -524,7 +487,7 @@ export function AuditLogViewer() {
                         </td>
 
                         {/* Details Modal Trigger */}
-                        <td className="py-3 px-3.5 text-center">
+                        <td className="py-2.5 px-3 text-center">
                           <Button
                             variant="ghost"
                             size="sm"
@@ -541,66 +504,66 @@ export function AuditLogViewer() {
                 )}
               </tbody>
             </table>
-          </div>
 
-          {/* Pagination Footer */}
-          {!loading && logs.length > 0 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-border/60 bg-muted/20 text-xs">
-              <span className="text-muted-foreground text-[11px]">
-                نمایش ردیف‌های {((page - 1) * limit + 1).toLocaleString("fa-IR")} تا{" "}
-                {Math.min(page * limit, total).toLocaleString("fa-IR")} از مجموع{" "}
-                {total.toLocaleString("fa-IR")} گزارش
-              </span>
+            {/* Pagination Footer */}
+            {!loading && logs.length > 0 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-2.5 border-t border-border/60 bg-muted/20 text-xs">
+                <span className="text-muted-foreground text-[11px]">
+                  نمایش ردیف‌های {((page - 1) * limit + 1).toLocaleString("fa-IR")} تا{" "}
+                  {Math.min(page * limit, total).toLocaleString("fa-IR")} از مجموع{" "}
+                  {total.toLocaleString("fa-IR")} گزارش
+                </span>
 
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage(1)}
-                  disabled={page <= 1}
-                  className="h-7 w-7 p-0"
-                  title="صفحه اول"
-                >
-                  <ChevronsRight className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1}
-                  className="h-7 w-7 p-0"
-                  title="صفحه قبل"
-                >
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(1)}
+                    disabled={page <= 1}
+                    className="h-7 w-7 p-0"
+                    title="صفحه اول"
+                  >
+                    <ChevronsRight className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                    className="h-7 w-7 p-0"
+                    title="صفحه قبل"
+                  >
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Button>
 
-                <div className="px-2 text-xs font-semibold">
-                  صفحه {page.toLocaleString("fa-IR")} از {totalPages.toLocaleString("fa-IR")}
+                  <div className="px-2 text-xs font-semibold">
+                    صفحه {page.toLocaleString("fa-IR")} از {totalPages.toLocaleString("fa-IR")}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                    className="h-7 w-7 p-0"
+                    title="صفحه بعد"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(totalPages)}
+                    disabled={page >= totalPages}
+                    className="h-7 w-7 p-0"
+                    title="صفحه آخر"
+                  >
+                    <ChevronsLeft className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page >= totalPages}
-                  className="h-7 w-7 p-0"
-                  title="صفحه بعد"
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage(totalPages)}
-                  disabled={page >= totalPages}
-                  className="h-7 w-7 p-0"
-                  title="صفحه آخر"
-                >
-                  <ChevronsLeft className="h-3.5 w-3.5" />
-                </Button>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </CardContent>
       </Card>
 
