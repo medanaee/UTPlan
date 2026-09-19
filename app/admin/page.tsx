@@ -69,6 +69,8 @@ export default function AdminDashboardPage() {
     setActionMessage,
   } = useAdminStore();
 
+  const [initialLoading, setInitialLoading] = useState(true);
+
   // Authentication check and initial data load
   useEffect(() => {
     async function checkAuthAndLoad() {
@@ -82,6 +84,8 @@ export default function AdminDashboardPage() {
         await loadAllData();
       } catch {
         router.push("/login");
+      } finally {
+        setInitialLoading(false);
       }
     }
     checkAuthAndLoad();
@@ -92,12 +96,17 @@ export default function AdminDashboardPage() {
     router.push("/login");
   };
 
-  if (loading && !user) {
+  if (initialLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/30">
-        <div className="flex flex-col items-center gap-2">
-          <RefreshCw className="h-6 w-6 animate-spin text-primary" />
-          <p className="text-xs text-muted-foreground">در حال بارگذاری پنل مدیریت...</p>
+      <div className="flex min-h-screen items-center justify-center bg-background" dir="rtl">
+        <div className="flex flex-col items-center gap-3 p-8 rounded-2xl border border-border/80 bg-card shadow-sm text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-foreground">در حال بارگذاری پنل مدیریت دانشکده...</p>
+            <p className="text-xs text-muted-foreground">دریافت ساختار دانشگاه، دروس، اساتید و قوانین</p>
+          </div>
         </div>
       </div>
     );
@@ -431,6 +440,10 @@ export default function AdminDashboardPage() {
                                 {currentTrack.name}
                               </Badge>
                             </div>
+                          ) : loading ? (
+                            <Badge variant="outline" className="text-xs px-2.5 py-0.5 text-muted-foreground border-border/60 animate-pulse">
+                              در حال دریافت اطلاعات گرایش...
+                            </Badge>
                           ) : (
                             <Badge variant="outline" className="text-xs px-2.5 py-0.5 text-destructive border-destructive/40">
                               گرایشی در بخش ساختار دانشگاه انتخاب نشده است
@@ -457,7 +470,12 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
 
-                {selectedTrackId ? (
+                {loading && tracks.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center p-12 border border-dashed rounded-2xl bg-muted/20 gap-3">
+                    <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+                    <span className="text-xs text-muted-foreground font-medium">در حال دریافت قوانین گرایش...</span>
+                  </div>
+                ) : selectedTrackId ? (
                   <>
                     <RuleQueryBuilder
                       key={selectedTrackId}

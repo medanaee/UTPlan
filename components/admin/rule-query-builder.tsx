@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   GitBranch,
   Plus,
@@ -62,16 +62,22 @@ export function RuleQueryBuilder({
       id: "root_group",
       type: "GROUP",
       operator: "AND",
-      children: [
-        {
-          id: `leaf_${crypto.randomUUID().slice(0, 8)}`,
-          type: "MIN_CREDITS_IN_CATEGORY",
-          ruleCategoryId: ruleCategories[0]?.id || "",
-          minCredits: 20,
-        },
-      ],
+      children: [],
     };
   });
+
+  useEffect(() => {
+    if (initialTree && initialTree.type === "GROUP") {
+      setTree(initialTree);
+    } else if (!initialTree) {
+      setTree({
+        id: "root_group",
+        type: "GROUP",
+        operator: "AND",
+        children: [],
+      });
+    }
+  }, [initialTree, trackId]);
 
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
