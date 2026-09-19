@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import type { Professor, Faculty } from "@/lib/types";
+import { persianSearch } from "@/lib/search/persian-search";
 import { fetchJson, postJson, putJson, deleteJson } from "@/lib/api-client";
 import {
   Card,
@@ -260,23 +261,38 @@ export function ProfessorManager({
   const currentFaculty = faculties.find((f) => f.id === selectedFacultyId);
   const linkedFacultyIds = currentFaculty?.linkedFacultyIds || [];
 
-  const facultyProfessors = professors.filter((p) => {
-    if (!selectedFacultyId) return true;
-    return p.facultyId === selectedFacultyId || linkedFacultyIds.includes(p.facultyId);
-  });
+  const facultyProfessors = useMemo(() => {
+    return professors.filter((p) => {
+      if (!selectedFacultyId) return true;
+      return p.facultyId === selectedFacultyId || linkedFacultyIds.includes(p.facultyId);
+    });
+  }, [professors, selectedFacultyId, linkedFacultyIds]);
 
-  const filteredProfessors = facultyProfessors.filter((p) => {
-    const q = search.toLowerCase().trim();
-    if (!q) return true;
-    const matchesSearch =
-      (p.name || "").toLowerCase().includes(q) ||
-      (p.firstName || "").toLowerCase().includes(q) ||
-      (p.lastName || "").toLowerCase().includes(q) ||
-      (p.email || "").toLowerCase().includes(q) ||
-      (p.title || "").toLowerCase().includes(q);
-
-    return matchesSearch;
-  });
+  const filteredProfessors = useMemo(() => {
+    if (!search.trim()) return facultyProfessors;
+    const searchable = facultyProfessors.map((p) => {
+      const displayName =
+        p.firstName && p.lastName ? `${p.firstName} ${p.lastName}` : p.name;
+      const faculty = faculties.find((f) => f.id === p.facultyId);
+      return {
+        ...p,
+        name: displayName || p.name || "",
+        code: p.code || "",
+        abbreviation: p.title || "",
+        keywords: [
+          p.email || "",
+          p.title || "",
+          p.code || "",
+          p.name || "",
+          p.firstName || "",
+          p.lastName || "",
+          faculty?.name || "",
+          faculty?.code || "",
+        ].filter(Boolean),
+      };
+    });
+    return persianSearch(searchable, search);
+  }, [facultyProfessors, search, faculties]);
 
   const modalFacultyOptions = faculties.map((f) => ({
     value: f.id,
@@ -407,7 +423,7 @@ export function ProfessorManager({
             <div className="flex flex-wrap items-center gap-2">
               <div>
                 <Input
-                  placeholder="جستجوی نام، مرتبه علمی یا ایمیل استاد..."
+                  placeholder="جستجوی نام، کد، مرتبه علمی یا ایمیل استاد..."
                   icon={<Search />}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}

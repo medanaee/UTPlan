@@ -17,6 +17,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { scoreItem } from "@/lib/search/persian-search";
 
 export interface ComboboxItem {
   value: string;
@@ -37,6 +38,7 @@ export interface ComboboxProps {
   className?: string;
   popoverWidth?: string;
   allowClear?: boolean;
+  filter?: (itemValue: string, search: string) => number;
 }
 
 export function Combobox({
@@ -50,6 +52,7 @@ export function Combobox({
   className,
   popoverWidth,
   allowClear = false,
+  filter,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false);
   const listRef = React.useRef<HTMLDivElement>(null);
@@ -102,20 +105,25 @@ export function Combobox({
         className={cn("p-0 w-[var(--radix-popover-trigger-width)] min-w-[240px]", popoverWidth)}
       >
         <Command
-          filter={(itemValue, search) => {
-            const item = items.find((i) => i.value === itemValue);
-            if (!item) return 0;
-            const searchLower = search.toLowerCase().trim();
-            const textToSearch = [
-              item.label,
-              item.sublabel || "",
-              item.badge || "",
-              ...(item.keywords || []),
-            ]
-              .join(" ")
-              .toLowerCase();
-            return textToSearch.includes(searchLower) ? 1 : 0;
-          }}
+          filter={
+            filter ??
+            ((itemValue, search) => {
+              if (itemValue === "__CLEAR__") return search ? 0 : 1;
+              const item = items.find(
+                (i) => i.value === itemValue || i.value?.toLowerCase() === itemValue?.toLowerCase()
+              );
+              if (!item) return 0;
+              return scoreItem(
+                {
+                  name: item.label,
+                  code: item.badge || "",
+                  abbreviation: item.sublabel || "",
+                  keywords: item.keywords || [],
+                },
+                search
+              );
+            })
+          }
         >
           <CommandInput placeholder={searchPlaceholder} className="text-xs h-8" />
           <div

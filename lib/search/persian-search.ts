@@ -16,6 +16,7 @@ export interface SearchableItem {
   code?: string | null;
   abbreviation?: string | null;
   degreeLevel?: string | null;
+  keywords?: string[] | null;
   [key: string]: any;
 }
 
@@ -197,6 +198,9 @@ export function scoreItem(item: SearchableItem, query: string): number {
 
   const normCode = normalizePersian(item.code || "");
   const normAbbr = normalizePersian(item.abbreviation || "");
+  const normKeywords = Array.isArray(item.keywords)
+    ? item.keywords.map((k: string) => normalizePersian(k)).filter(Boolean)
+    : [];
   const normDegree = normalizePersian(
     item.degreeLevel === "master"
       ? "کارشناسی ارشد ارشد master"
@@ -205,10 +209,10 @@ export function scoreItem(item: SearchableItem, query: string): number {
       : ""
   );
 
-  // 1. Direct exact or prefix match in item code or abbreviation
-  if (normCode === normQuery || normAbbr === normQuery) return 1000;
-  if (normCode.startsWith(normQuery) || (normAbbr && normAbbr.startsWith(normQuery))) return 950;
-  if (normCode.includes(normQuery) || (normAbbr && normAbbr.includes(normQuery))) return 900;
+  // 1. Direct exact or prefix match in item code, abbreviation, or keywords
+  if (normCode === normQuery || normAbbr === normQuery || normKeywords.includes(normQuery)) return 1000;
+  if (normCode.startsWith(normQuery) || (normAbbr && normAbbr.startsWith(normQuery)) || normKeywords.some((k) => k.startsWith(normQuery))) return 950;
+  if (normCode.includes(normQuery) || (normAbbr && normAbbr.includes(normQuery)) || normKeywords.some((k) => k.includes(normQuery))) return 900;
 
   // 2. Exact match on item name
   if (normName === normQuery) return 800;
@@ -238,8 +242,13 @@ export function scoreItem(item: SearchableItem, query: string): number {
   for (const qToken of queryTokens) {
     const tokenScore = tokenMatchScore(qToken, nameTokens, nameNoSpace);
     if (tokenScore === 0) {
-      // Check if token matches code, abbreviation, or degree level
-      if (normCode.includes(qToken) || normAbbr.includes(qToken) || (normDegree && normDegree.includes(qToken))) {
+      // Check if token matches code, abbreviation, degree level, or keywords
+      if (
+        normCode.includes(qToken) ||
+        normAbbr.includes(qToken) ||
+        (normDegree && normDegree.includes(qToken)) ||
+        normKeywords.some((k) => k.includes(qToken))
+      ) {
         totalTokenScore += 50;
       } else {
         return 0; // Token not found anywhere -> disqualified

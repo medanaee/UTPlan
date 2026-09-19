@@ -532,37 +532,40 @@ export function OfferingManager({
   };
 
   const filteredOfferings = useMemo(() => {
-    return offerings.filter((o) => {
-      const q = search.trim().toLowerCase();
-      if (!q) return true;
-      const cName = (o.courseName || "").toLowerCase();
-      const cCode = (o.courseCode || "").toLowerCase();
-      const pName = (o.professorName || "").toLowerCase();
-      const offCode = (o.code || "").toLowerCase();
-      return (
-        cName.includes(q) ||
-        cCode.includes(q) ||
-        pName.includes(q) ||
-        offCode.includes(q)
-      );
+    if (!search.trim()) return offerings;
+    const searchable = offerings.map((o) => {
+      const profNames =
+        o.professors && o.professors.length > 0
+          ? o.professors.map((p) => p.name).join(" ")
+          : o.professorName || "";
+      return {
+        ...o,
+        name: `${o.courseName || ""} ${profNames}`.trim(),
+        code: o.courseCode || o.code || "",
+        abbreviation: o.courseAbbreviation || "",
+        keywords: [
+          o.code || "",
+          o.courseCode || "",
+          profNames,
+          o.courseName || "",
+          o.facultyName || "",
+          o.description || "",
+        ].filter(Boolean),
+      };
     });
+    return persianSearch(searchable, search);
   }, [offerings, search]);
 
   const filteredModalProfessors = useMemo(() => {
-    const q = modalProfSearch.trim().toLowerCase();
-    if (!q) return availableProfessors;
-    return availableProfessors.filter((p) => {
-      const name = (p.name || "").toLowerCase();
-      const code = (p.code || "").toLowerCase();
-      const title = (p.title || "").toLowerCase();
-      const facName = (p.facultyName || "").toLowerCase();
-      return (
-        name.includes(q) ||
-        code.includes(q) ||
-        title.includes(q) ||
-        facName.includes(q)
-      );
-    });
+    if (!modalProfSearch.trim()) return availableProfessors;
+    const searchable = availableProfessors.map((p) => ({
+      ...p,
+      name: p.name,
+      code: p.code || "",
+      abbreviation: p.title || "",
+      keywords: [p.facultyName || "", p.title || "", p.code || ""].filter(Boolean),
+    }));
+    return persianSearch(searchable, modalProfSearch);
   }, [availableProfessors, modalProfSearch]);
 
   const selectedProfessorsList = useMemo(() => {
@@ -834,7 +837,7 @@ export function OfferingManager({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="relative">
               <Input
-                placeholder="جستجوی درس یا استاد..."
+                placeholder="جستجوی درس، استاد، کد یا دانشکده..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="h-8 w-64 text-xs pr-8"
