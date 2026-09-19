@@ -58,6 +58,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
 
   const [courseSearch, setCourseSearch] = useState("");
   const [courseModalOpen, setCourseModalOpen] = useState(false);
+  const [courseFormError, setCourseFormError] = useState<string | null>(null);
   const [prereqModalOpen, setPrereqModalOpen] = useState(false);
   const [selectedCourseForPrereq, setSelectedCourseForPrereq] = useState<Course | null>(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
@@ -96,8 +97,9 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
   // Create or Update Course
   const handleSaveCourse = async (e: React.FormEvent) => {
     e.preventDefault();
+    setCourseFormError(null);
     if (!selectedFacultyId) {
-      alert("لطفاً ابتدا یک دانشکده را انتخاب یا ایجاد کنید.");
+      setCourseFormError("لطفاً ابتدا یک دانشکده را انتخاب یا ایجاد کنید.");
       return;
     }
 
@@ -117,6 +119,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
       if (res.success) {
         setCourseModalOpen(false);
         setEditingCourse(null);
+        setCourseFormError(null);
         setCourseForm({
           name: "",
           code: "",
@@ -131,7 +134,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
         setActionMessage("مشخصات درس با موفقیت ویرایش شد.");
         await loadAllData();
       } else {
-        alert(res.message || "خطا در ویرایش درس");
+        setCourseFormError(res.message || "خطا در ویرایش درس");
       }
     } else {
       const res = await postJson("/api/courses", {
@@ -147,6 +150,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
 
       if (res.success) {
         setCourseModalOpen(false);
+        setCourseFormError(null);
         setCourseForm({
           name: "",
           code: "",
@@ -161,7 +165,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
         setActionMessage("درس جدید با موفقیت ایجاد شد.");
         await loadAllData();
       } else {
-        alert(res.message || "خطا در ایجاد درس");
+        setCourseFormError(res.message || "خطا در ایجاد درس");
       }
     }
   };
@@ -352,6 +356,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                   categoryId: "",
                   description: "",
                 });
+                setCourseFormError(null);
                 setCourseModalOpen(true);
               }}
               disabled={!selectedFacultyId}
@@ -510,6 +515,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                                 categoryId: "",
                                 description: course.description || "",
                               });
+                              setCourseFormError(null);
                               setCourseModalOpen(true);
                             }}
                             className="h-7 w-7 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
@@ -674,6 +680,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
         open={courseModalOpen}
         onOpenChange={(open) => {
           setCourseModalOpen(open);
+          setCourseFormError(null);
           if (!open) setEditingCourse(null);
         }}
       >
@@ -698,6 +705,14 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                 : "مشخصات درس و تعداد واحد را وارد کنید. انتساب دسته و چارت در بخش دسته‌بندی انجام می‌شود."}
             </DialogDescription>
           </DialogHeader>
+
+          {/* Form Error Banner */}
+          {courseFormError && (
+            <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive animate-in fade-in slide-in-from-top-1 duration-200">
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+              <span className="leading-relaxed font-medium">{courseFormError}</span>
+            </div>
+          )}
 
           {/* Target Faculty Indicator */}
           <div className="rounded-xl border border-primary/20 bg-primary/5 p-2.5 flex items-center justify-between">

@@ -1,6 +1,7 @@
 import type { CourseEvent, CourseEventSlot } from "../types";
 import { getD1 } from "./client";
 import { getEffectiveFacultyIds } from "./structure";
+import { generateUniqueCode, isCodeDuplicate } from "./code-generator";
 
 export async function getEvents(
   filterOrTerm?: string | {
@@ -157,19 +158,27 @@ export async function createEvent(data: {
   userId?: string | null;
   slots: { dayOfWeek: number; startTime: string; endTime: string }[];
 }): Promise<CourseEvent> {
-  const cleanCode = data.code?.trim()
-    ? data.code.trim().toUpperCase()
-    : `EVT-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
-
   const d1 = getD1();
+  if (!d1) throw new Error("پایگاه‌داده در دسترس نیست.");
+
+  let cleanCode: string;
+  if (data.code?.trim()) {
+    cleanCode = data.code.trim().toUpperCase();
+    if (await isCodeDuplicate("course_events", cleanCode)) {
+      throw new Error(`کد رویداد «${cleanCode}» تکراری است و قبلاً در سامانه ثبت شده است.`);
+    }
+  } else {
+    cleanCode = await generateUniqueCode("course_events", "EVT");
+  }
+
   let eventId = "";
   const now = new Date().toISOString();
 
   try {
-    // Check if an event with this code already exists in this term (including soft-deleted)
+    // Check if an event with this code already exists (e.g. soft-deleted)
     const existing = await d1
-      .prepare("SELECT id FROM course_events WHERE code = ? AND term = ?")
-      .bind(cleanCode, data.term)
+      .prepare("SELECT id FROM course_events WHERE code = ? LIMIT 1")
+      .bind(cleanCode)
       .first();
 
     if (existing && (existing as any).id) {
@@ -177,12 +186,13 @@ export async function createEvent(data: {
       await d1
         .prepare(
           `UPDATE course_events
-           SET offering_id = ?, location = ?, exam_date = ?, exam_start_time = ?, exam_end_time = ?,
+           SET offering_id = ?, term = ?, location = ?, exam_date = ?, exam_start_time = ?, exam_end_time = ?,
                is_user_custom = ?, user_id = ?, deleted_at = NULL
            WHERE id = ?`
         )
         .bind(
           data.offeringId,
+          data.term,
           data.location || "",
           data.examDate || "",
           data.examStartTime || "",
@@ -234,6 +244,7 @@ export async function createEvent(data: {
 
   return {
     id: eventId,
+    code: cleanCode,
     offeringId: data.offeringId,
     term: data.term,
     location: data.location || "",
@@ -306,18 +317,26 @@ export async function updateEvent(
   if (!d1) return null;
 
   try {
+    let cleanCode: string | null | undefined = undefined;
+    if (data.code !== undefined) {
+      if (data.code && data.code.trim()) {
+        cleanCode = data.code.trim().toUpperCase();
+        if (await isCodeDuplicate("course_events", cleanCode, id)) {
+          throw new Error(`کد رویداد «${cleanCode}» تکراری است و به رویداد دیگری اختصاص دارد.`);
+        }
+      } else {
+        cleanCode = null;
+      }
+    }
+
     if (
-      data.code !== undefined ||
+      cleanCode !== undefined ||
       data.offeringId !== undefined ||
       data.location !== undefined ||
       data.examDate !== undefined ||
       data.examStartTime !== undefined ||
       data.examEndTime !== undefined
     ) {
-      const cleanCode = data.code !== undefined
-        ? (data.code?.trim() ? data.code.trim().toUpperCase() : null)
-        : undefined;
-
       await d1
         .prepare(
           `UPDATE course_events
@@ -355,10 +374,11 @@ export async function updateEvent(
 
     const evts = await getEvents({ eventId: id });
     if (evts.length > 0) return evts[0];
+    return null;
   } catch (err) {
     console.error("D1 updateEvent error:", err);
+    throw err;
   }
-  return null;
 }
 
 export async function deleteEvent(id: string): Promise<boolean> {

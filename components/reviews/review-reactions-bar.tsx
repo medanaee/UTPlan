@@ -8,18 +8,55 @@ import { getClientId } from "@/lib/client-id";
 import type { ReviewReactionSummary } from "@/lib/types";
 
 export const REACTION_EMOJIS = [
-  { emoji: "👍", label: "موافق" },
-  { emoji: "👎", label: "مخالف" },
-  { emoji: "❤️", label: "عالی" },
-  { emoji: "💡", label: "مفید" },
-  { emoji: "😂", label: "بامزه" },
-  { emoji: "👏", label: "تشویق" },
-  { emoji: "🔥", label: "فوق‌العاده" },
+  { emoji: "👍", label: "موافق", src: "/emojis/thumbs-up.png" },
+  { emoji: "👎", label: "مخالف", src: "/emojis/thumbs-down.png" },
+  { emoji: "❤️", label: "عالی", src: "/emojis/red-heart.png" },
+  { emoji: "💡", label: "مفید", src: "/emojis/light-bulb.png" },
+  { emoji: "😂", label: "بامزه", src: "/emojis/tears-of-joy.png" },
+  { emoji: "👏", label: "تشویق", src: "/emojis/clapping-hands.png" },
+  { emoji: "🔥", label: "فوق‌العاده", src: "/emojis/fire.png" },
 ] as const;
 
 function toPersianDigits(num: number | string): string {
   const farsiDigits = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
   return String(num).replace(/\d/g, (x) => farsiDigits[parseInt(x, 10)]);
+}
+
+function EmojiImage({
+  emoji,
+  src,
+  alt,
+  size = 20,
+  className,
+}: {
+  emoji: string;
+  src?: string;
+  alt: string;
+  size?: number;
+  className?: string;
+}) {
+  const [error, setError] = useState(false);
+
+  if (!src || error) {
+    return (
+      <span className="inline-flex items-center justify-center leading-none select-none text-[15px]">
+        {emoji}
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      width={size}
+      height={size}
+      loading="eager"
+      onError={() => setError(true)}
+      className={cn("pointer-events-none select-none object-contain inline-block shrink-0", className)}
+      style={{ width: `${size}px`, height: `${size}px` }}
+    />
+  );
 }
 
 interface ReviewReactionsBarProps {
@@ -121,15 +158,18 @@ export function ReviewReactionsBar({
             disabled={isPending}
             title={label ? `${label} (${toPersianDigits(item.count)})` : undefined}
             className={cn(
-              "h-7.5 px-2.5 rounded-full border inline-flex items-center justify-center gap-1.5 text-xs transition-colors cursor-pointer select-none",
+              "h-8 px-2.5 rounded-full border inline-flex items-center justify-center gap-1.5 text-xs transition-colors cursor-pointer select-none",
               item.userReacted
                 ? "bg-primary/15 border-primary/45 text-primary font-medium dark:bg-primary/25 dark:border-primary/50"
                 : "bg-muted/50 hover:bg-muted/80 border-border/80 text-muted-foreground hover:text-foreground dark:bg-zinc-800/80 dark:border-zinc-700 dark:hover:bg-zinc-700/80"
             )}
           >
-            <span className="text-[16px] leading-none inline-flex items-center justify-center translate-y-[1px]">
-              {item.emoji}
-            </span>
+            <EmojiImage
+              emoji={item.emoji}
+              src={meta?.src}
+              alt={label || item.emoji}
+              size={20}
+            />
             <span className="text-xs font-semibold tabular-nums leading-none">
               {toPersianDigits(item.count)}
             </span>
@@ -142,7 +182,7 @@ export function ReviewReactionsBar({
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="h-7.5 w-7.5 rounded-full inline-flex items-center justify-center border border-dashed border-border/80 text-muted-foreground/70 hover:text-foreground hover:border-border hover:bg-muted/50 dark:border-zinc-700 dark:hover:border-zinc-500 dark:hover:bg-zinc-800 transition-colors"
+            className="h-8 w-8 rounded-full inline-flex items-center justify-center border border-dashed border-border/80 text-muted-foreground/70 hover:text-foreground hover:border-border hover:bg-muted/50 dark:border-zinc-700 dark:hover:border-zinc-500 dark:hover:bg-zinc-800 transition-colors"
             title="افزودن واکنش"
             aria-label="افزودن واکنش"
           >
@@ -155,7 +195,7 @@ export function ReviewReactionsBar({
           sideOffset={6}
           className="w-auto p-1 rounded-full border border-border/70 bg-card/95 dark:bg-zinc-800/95 dark:border-zinc-700/80 shadow-lg backdrop-blur-md"
         >
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-1">
             {REACTION_EMOJIS.map((item) => {
               const hasReacted = reactions.some((r) => r.emoji === item.emoji && r.userReacted);
               return (
@@ -165,13 +205,16 @@ export function ReviewReactionsBar({
                   onClick={() => handleToggle(item.emoji)}
                   title={item.label}
                   className={cn(
-                    "h-8.5 w-8.5 rounded-full flex items-center justify-center text-[19px] transition-colors hover:bg-muted/70 dark:hover:bg-zinc-700",
-                    hasReacted && "bg-primary/20 ring-1 ring-primary/50 text-primary"
+                    "h-9.5 w-9.5 rounded-full flex items-center justify-center transition-colors hover:bg-muted/70 dark:hover:bg-zinc-700/80",
+                    hasReacted && "bg-primary/20 ring-1 ring-primary/50"
                   )}
                 >
-                  <span className="inline-flex items-center justify-center leading-none translate-y-[2.5px] select-none">
-                    {item.emoji}
-                  </span>
+                  <EmojiImage
+                    emoji={item.emoji}
+                    src={item.src}
+                    alt={item.label}
+                    size={28}
+                  />
                 </button>
               );
             })}

@@ -114,6 +114,7 @@ export function EventManager({
 
   // Modals
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [eventFormError, setEventFormError] = useState<string | null>(null);
   const [editingEvent, setEditingEvent] = useState<CourseEvent | null>(null);
   const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
   const [isNewTermModalOpen, setIsNewTermModalOpen] = useState(false);
@@ -176,6 +177,7 @@ export function EventManager({
 
   const handleOpenCreateModal = () => {
     setEditingEvent(null);
+    setEventFormError(null);
     const initialOffId = offerings[0]?.id || "";
     setSelectedOfferingId(initialOffId);
     const off = offerings.find((o) => o.id === initialOffId);
@@ -194,6 +196,7 @@ export function EventManager({
 
   const handleOpenEditModal = (evt: CourseEvent) => {
     setEditingEvent(evt);
+    setEventFormError(null);
     const offId = evt.offeringId || "";
     setSelectedOfferingId(offId);
     const off = offerings.find((o) => o.id === offId);
@@ -231,8 +234,9 @@ export function EventManager({
 
   const handleSaveEvent = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    setEventFormError(null);
     if (!selectedOfferingId) {
-      alert("لطفاً یک ارائه درس را انتخاب کنید.");
+      setEventFormError("لطفاً یک ارائه درس را انتخاب کنید.");
       return;
     }
 
@@ -244,7 +248,7 @@ export function EventManager({
       const dayName = DAYS_OF_WEEK.find((d) => d.value === slot.dayOfWeek)?.label || "کلاس";
 
       if (startMin >= endMin) {
-        alert(
+        setEventFormError(
           `خطای زمان‌بندی: ساعت پایان کلاس در روز «${dayName}» (${slot.endTime}) باید بعد از ساعت شروع (${slot.startTime}) باشد.`
         );
         return;
@@ -253,7 +257,7 @@ export function EventManager({
 
     // Validate exam time
     if (examDate && parseTimeToMinutes(examStartTime) >= parseTimeToMinutes(examEndTime)) {
-      alert(
+      setEventFormError(
         `خطای زمان آزمون: ساعت پایان امتحان (${examEndTime}) باید بعد از ساعت شروع (${examStartTime}) باشد.`
       );
       return;
@@ -309,9 +313,10 @@ export function EventManager({
 
         if (res.success) {
           setIsModalOpen(false);
+          setEventFormError(null);
           await loadData();
         } else {
-          alert(res.message || "خطا در ویرایش رویداد");
+          setEventFormError(res.message || "خطا در ویرایش رویداد");
         }
       } else {
         // Create new
@@ -328,13 +333,15 @@ export function EventManager({
 
         if (res.success) {
           setIsModalOpen(false);
+          setEventFormError(null);
           await loadData();
         } else {
-          alert(res.message || "خطا در ثبت رویداد");
+          setEventFormError(res.message || "خطا در ثبت رویداد");
         }
       }
     } catch (err) {
       console.error("Save event error:", err);
+      setEventFormError("خطا در برقراری ارتباط با سرور");
     } finally {
       setIsSubmitting(false);
     }
@@ -933,7 +940,13 @@ export function EventManager({
       </Card>
 
       {/* 1. Modal: Create / Edit Event (Pre-locked to activeTerm) */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+      <Dialog
+        open={isModalOpen}
+        onOpenChange={(open) => {
+          setIsModalOpen(open);
+          setEventFormError(null);
+        }}
+      >
         <DialogContent className="sm:max-w-lg" dir="rtl">
           <DialogHeader>
             <div className="flex items-center gap-2.5">
@@ -957,6 +970,14 @@ export function EventManager({
               </div>
             </div>
           </DialogHeader>
+
+          {/* Form Error Banner */}
+          {eventFormError && (
+            <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive animate-in fade-in slide-in-from-top-1 duration-200">
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+              <span className="leading-relaxed font-medium">{eventFormError}</span>
+            </div>
+          )}
 
           <form id="admin-event-form" onSubmit={handleSaveEvent} className="flex-1 overflow-y-auto space-y-4">
             {/* Active Semester Banner */}

@@ -74,9 +74,13 @@ export async function POST(request: Request) {
     });
 
     return Response.json({ success: true, data: newCourse }, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Create course error:", error);
-    return Response.json({ success: false, message: "خطا در ایجاد درس" }, { status: 500 });
+    const isConflict = error?.message?.includes("تکراری");
+    return Response.json(
+      { success: false, message: error?.message || "خطا در ایجاد درس" },
+      { status: isConflict ? 409 : 500 }
+    );
   }
 }
 
@@ -135,10 +139,17 @@ export async function PUT(request: Request) {
     }
 
     const updated = await updateCourse(id, updateData);
+    if (!updated) {
+      return Response.json({ success: false, message: "درس مورد نظر یافت نشد." }, { status: 404 });
+    }
     return Response.json({ success: true, data: updated });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Update course error:", error);
-    return Response.json({ success: false, message: "خطا در به‌روزرسانی درس" }, { status: 500 });
+    const isConflict = error?.message?.includes("تکراری");
+    return Response.json(
+      { success: false, message: error?.message || "خطا در به‌روزرسانی درس" },
+      { status: isConflict ? 409 : 500 }
+    );
   }
 }
 

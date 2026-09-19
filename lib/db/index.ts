@@ -8,4 +8,5 @@ export * from "./events";
 export * from "./charts";
 export * from "./reviews";
 export * from "./resources";
+export * from "./code-generator";
 export * from "./seed";

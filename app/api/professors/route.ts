@@ -44,9 +44,13 @@ export async function POST(request: Request) {
     });
 
     return Response.json({ success: true, data: newProf }, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Create professor error:", error);
-    return Response.json({ success: false, message: "خطا در ایجاد استاد" }, { status: 500 });
+    const isConflict = error?.message?.includes("تکراری");
+    return Response.json(
+      { success: false, message: error?.message || "خطا در ایجاد استاد" },
+      { status: isConflict ? 409 : 500 }
+    );
   }
 }
 
@@ -78,9 +82,13 @@ export async function PUT(request: Request) {
     }
 
     return Response.json({ success: true, data: updated });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Update professor error:", error);
-    return Response.json({ success: false, message: "خطا در به‌روزرسانی استاد" }, { status: 500 });
+    const isConflict = error?.message?.includes("تکراری");
+    return Response.json(
+      { success: false, message: error?.message || "خطا در به‌روزرسانی استاد" },
+      { status: isConflict ? 409 : 500 }
+    );
   }
 }
 

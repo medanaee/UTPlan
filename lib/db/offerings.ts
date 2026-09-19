@@ -3,6 +3,7 @@ import { getD1 } from "./client";
 import { getEvents } from "./events";
 import { getOfferingResources } from "./resources";
 import { getEffectiveFacultyIds } from "./structure";
+import { generateUniqueCode, isCodeDuplicate } from "./code-generator";
 
 export async function getOfferings(
   filter?: {
@@ -273,10 +274,21 @@ export async function createOffering(
       : [];
 
   const primaryProfId = profIds[0] || "";
-  const code =
+  const rawCode =
     typeof courseIdOrData === "object"
-      ? courseIdOrData.code?.trim().toUpperCase() || `OFF-${crypto.randomUUID().slice(0, 6).toUpperCase()}`
-      : codeArg?.trim().toUpperCase() || `OFF-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
+      ? courseIdOrData.code?.trim()
+      : codeArg?.trim();
+
+  let code: string;
+  if (rawCode) {
+    code = rawCode.toUpperCase();
+    if (await isCodeDuplicate("course_offerings", code)) {
+      throw new Error(`کد ارائه «${code}» تکراری است و قبلاً در سامانه ثبت شده است.`);
+    }
+  } else {
+    code = await generateUniqueCode("course_offerings", "OFF");
+  }
+
   const description =
     typeof courseIdOrData === "object" && courseIdOrData.description
       ? courseIdOrData.description.trim()
@@ -361,7 +373,13 @@ export async function updateOffering(
         ? [data.professorId]
         : undefined;
 
-    const code = data.code ? data.code.trim().toUpperCase() : undefined;
+    let code: string | undefined = undefined;
+    if (data.code !== undefined && data.code.trim()) {
+      code = data.code.trim().toUpperCase();
+      if (await isCodeDuplicate("course_offerings", code, id)) {
+        throw new Error(`کد ارائه «${code}» تکراری است و به ارائه دیگری اختصاص دارد.`);
+      }
+    }
 
     const sets: string[] = [];
     const params: any[] = [];
@@ -418,7 +436,7 @@ export async function updateOffering(
     return updated || null;
   } catch (err) {
     console.error("D1 updateOffering error:", err);
-    return null;
+    throw err;
   }
 }
 

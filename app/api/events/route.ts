@@ -145,11 +145,12 @@ export async function POST(request: NextRequest) {
       message: "زمان‌بندی رویداد با موفقیت ذخیره شد.",
       data: newEvent,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("POST event error:", error);
+    const isConflict = error?.message?.includes("تکراری");
     return NextResponse.json(
-      { success: false, message: "خطا در ثبت زمان‌بندی رویداد" },
-      { status: 500 }
+      { success: false, message: error?.message || "خطا در ثبت زمان‌بندی رویداد" },
+      { status: isConflict ? 409 : 500 }
     );
   }
 }
@@ -229,11 +230,12 @@ export async function PUT(request: NextRequest) {
       message: "زمان‌بندی رویداد با موفقیت به‌روزرسانی شد.",
       data: updated,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("PUT event error:", error);
+    const isConflict = error?.message?.includes("تکراری");
     return NextResponse.json(
-      { success: false, message: "خطا در ویرایش زمان‌بندی رویداد" },
-      { status: 500 }
+      { success: false, message: error?.message || "خطا در ویرایش زمان‌بندی رویداد" },
+      { status: isConflict ? 409 : 500 }
     );
   }
 }

@@ -137,7 +137,7 @@ CREATE TABLE IF NOT EXISTS professors (
   FOREIGN KEY (faculty_id) REFERENCES faculties(id)
 );
 CREATE INDEX IF NOT EXISTS idx_professors_faculty ON professors(faculty_id);
-CREATE INDEX IF NOT EXISTS idx_professors_code ON professors(code);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_professors_code ON professors(code);
 CREATE INDEX IF NOT EXISTS idx_professors_name ON professors(last_name, first_name);
 
 -- 11. Course Offerings Table (Course offering entity)
@@ -152,7 +152,7 @@ CREATE TABLE IF NOT EXISTS course_offerings (
   FOREIGN KEY (course_id) REFERENCES courses(id)
 );
 CREATE INDEX IF NOT EXISTS idx_offerings_course ON course_offerings(course_id);
-CREATE INDEX IF NOT EXISTS idx_offerings_code ON course_offerings(code);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_offerings_code ON course_offerings(code);
 
 -- 12. Offering Professors Junction Table (Co-teaching / Multi-professors)
 CREATE TABLE IF NOT EXISTS offering_professors (
@@ -185,7 +185,7 @@ CREATE TABLE IF NOT EXISTS course_events (
   deleted_at TEXT,
   FOREIGN KEY (offering_id) REFERENCES course_offerings(id)
 );
-CREATE INDEX IF NOT EXISTS idx_events_code ON course_events(code);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_events_code ON course_events(code);
 CREATE INDEX IF NOT EXISTS idx_events_offering ON course_events(offering_id);
 CREATE INDEX IF NOT EXISTS idx_events_term ON course_events(term);
 CREATE INDEX IF NOT EXISTS idx_events_deleted ON course_events(deleted_at);

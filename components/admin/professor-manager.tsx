@@ -50,6 +50,8 @@ import {
   UsersRound,
   Link2,
   Lock,
+  AlertTriangle,
+  X,
 } from "lucide-react";
 
 interface ProfessorManagerProps {
@@ -68,6 +70,7 @@ export function ProfessorManager({
   const [search, setSearch] = useState("");
   const [facultyFilter, setFacultyFilter] = useState<string>("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [editingProfessor, setEditingProfessor] = useState<Professor | null>(null);
@@ -89,6 +92,7 @@ export function ProfessorManager({
 
   const handleOpenCreateModal = () => {
     setEditingProfessor(null);
+    setFormError(null);
     setForm({
       code: "",
       firstName: "",
@@ -105,6 +109,7 @@ export function ProfessorManager({
 
   const handleOpenEditModal = (prof: Professor) => {
     setEditingProfessor(prof);
+    setFormError(null);
     const splitted = prof.name ? prof.name.split(" ") : [];
     setForm({
       code: prof.code || "",
@@ -133,12 +138,13 @@ export function ProfessorManager({
 
       if (res.success && res.url) {
         setForm((prev) => ({ ...prev, avatarUrl: res.url }));
+        setFormError(null);
       } else {
-        alert(res.message || "خطا در آپلود تصویر");
+        setFormError(res.message || "خطا در آپلود تصویر");
       }
     } catch (err) {
       console.error("Upload error:", err);
-      alert("خطا در برقراری ارتباط با سرور آپلود");
+      setFormError("خطا در برقراری ارتباط با سرور آپلود");
     } finally {
       setUploadingImage(false);
     }
@@ -170,6 +176,7 @@ export function ProfessorManager({
         links: linksPayload,
       };
 
+      setFormError(null);
       if (editingProfessor) {
         // Edit existing
         const res = await putJson("/api/professors", {
@@ -179,9 +186,10 @@ export function ProfessorManager({
 
         if (res.success) {
           setIsModalOpen(false);
+          setFormError(null);
           await onDataChanged();
         } else {
-          alert(res.message || "خطا در ویرایش اطلاعات استاد");
+          setFormError(res.message || "خطا در ویرایش اطلاعات استاد");
         }
       } else {
         // Create new
@@ -189,14 +197,15 @@ export function ProfessorManager({
 
         if (res.success) {
           setIsModalOpen(false);
+          setFormError(null);
           await onDataChanged();
         } else {
-          alert(res.message || "خطا در ثبت استاد جدید");
+          setFormError(res.message || "خطا در ثبت استاد جدید");
         }
       }
     } catch (err) {
       console.error("Save professor error:", err);
-      alert("خطا در برقراری ارتباط با سرور");
+      setFormError("خطا در برقراری ارتباط با سرور");
     } finally {
       setIsSubmitting(false);
     }
@@ -551,7 +560,13 @@ export function ProfessorManager({
       </Card>
 
       {/* Create / Edit Professor Modal */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+      <Dialog
+        open={isModalOpen}
+        onOpenChange={(open) => {
+          setIsModalOpen(open);
+          setFormError(null);
+        }}
+      >
         <DialogContent className="sm:max-w-md" dir="rtl">
           <DialogHeader>
             <DialogTitle className="text-sm font-bold flex items-center gap-2">
@@ -572,6 +587,14 @@ export function ProfessorManager({
             </DialogDescription>
           </DialogHeader>
 
+          {/* Form Error Banner */}
+          {formError && (
+            <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive animate-in fade-in slide-in-from-top-1 duration-200">
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+              <span className="leading-relaxed font-medium">{formError}</span>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-3.5 pt-2">
             {/* Target Faculty Indicator */}
             <div className="rounded-xl border border-primary/20 bg-primary/5 p-2.5 flex items-center justify-between">
@@ -584,29 +607,52 @@ export function ProfessorManager({
               </div>
             </div>
 
-            {/* Photo Upload Area */}
-            <div className="flex items-center gap-3.5 p-3 rounded-xl border border-border/70 bg-muted/15">
-              <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-border/80 bg-background overflow-hidden shadow-2xs">
-                {form.avatarUrl ? (
-                  <img
-                    src={form.avatarUrl}
-                    alt="پیش‌نمایش تصویر"
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <Camera className="h-6 w-6 text-muted-foreground/60" />
-                )}
-                {uploadingImage && (
-                  <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
-                    <RefreshCw className="h-4 w-4 animate-spin text-primary" />
-                  </div>
+            {/* Photo Area (Upload or Direct URL) */}
+            <div className="space-y-2.5 p-3 rounded-xl border border-border/70 bg-muted/15">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold flex items-center gap-1.5">
+                  <Camera className="h-3.5 w-3.5 text-primary" />
+                  <span>تصویر پرسنلی استاد:</span>
+                </Label>
+                {form.avatarUrl && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setForm({ ...form, avatarUrl: "" })}
+                    className="h-6 text-[11px] text-muted-foreground hover:text-destructive px-2 gap-1"
+                  >
+                    <X className="h-3 w-3" />
+                    <span>حذف عکس</span>
+                  </Button>
                 )}
               </div>
 
-              <div className="space-y-1.5 flex-1">
-                <Label className="text-xs font-semibold">تصویر پرسنلی استاد:</Label>
-                <div className="flex items-center gap-2">
-                  <label className="cursor-pointer">
+              <div className="flex items-center gap-3.5">
+                {/* Circular Preview */}
+                <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-border/80 bg-background overflow-hidden shadow-2xs">
+                  {form.avatarUrl ? (
+                    <img
+                      src={form.avatarUrl}
+                      alt="پیش‌نمایش تصویر"
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                  ) : (
+                    <Camera className="h-6 w-6 text-muted-foreground/60" />
+                  )}
+                  {uploadingImage && (
+                    <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
+                      <RefreshCw className="h-4 w-4 animate-spin text-primary" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Upload Button */}
+                <div className="flex-1 space-y-1">
+                  <label className="cursor-pointer inline-block">
                     <input
                       type="file"
                       accept="image/*"
@@ -614,22 +660,35 @@ export function ProfessorManager({
                       className="hidden"
                       disabled={uploadingImage}
                     />
-                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/20 transition-colors shadow-2xs">
-                      <Upload className="h-3 w-3" />
-                      {uploadingImage ? "در حال آپلود..." : "انتخاب و آپلود عکس"}
+                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors shadow-2xs">
+                      <Upload className="h-3.5 w-3.5" />
+                      {uploadingImage ? "در حال آپلود..." : "آپلود فایل عکس از سیستم"}
                     </span>
                   </label>
-                  {form.avatarUrl && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setForm({ ...form, avatarUrl: "" })}
-                      className="h-7 text-xs text-muted-foreground hover:text-destructive px-2"
-                    >
-                      حذف عکس
-                    </Button>
-                  )}
+                  <p className="text-[10px] text-muted-foreground">
+                    فرمت‌های JPG، PNG و WebP مجاز هستند.
+                  </p>
+                </div>
+              </div>
+
+              {/* Direct URL Input Alternative */}
+              <div className="pt-2 border-t border-border/50 space-y-1">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
+                    <Link2 className="h-3 w-3 text-muted-foreground" />
+                    <span>یا درج لینک مستقیم عکس (جایگزین آپلود):</span>
+                  </Label>
+                  <span className="text-[10px] text-muted-foreground">URL مستقیم</span>
+                </div>
+                <div className="relative flex items-center">
+                  <Input
+                    placeholder="https://example.com/photo.jpg"
+                    value={form.avatarUrl}
+                    onChange={(e) => setForm({ ...form, avatarUrl: e.target.value.trim() })}
+                    className="font-mono"
+                    dir="ltr"
+                  />
+                  
                 </div>
               </div>
             </div>

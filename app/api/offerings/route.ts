@@ -59,11 +59,12 @@ export async function POST(request: NextRequest) {
       message: "اتصال ارائه درس با موفقیت تعریف شد.",
       data: newOffering,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("POST offering error:", error);
+    const isConflict = error?.message?.includes("تکراری");
     return NextResponse.json(
-      { success: false, message: "خطا در تعریف ارائه درس" },
-      { status: 500 }
+      { success: false, message: error?.message || "خطا در تعریف ارائه درس" },
+      { status: isConflict ? 409 : 500 }
     );
   }
 }
@@ -108,11 +109,12 @@ export async function PUT(request: NextRequest) {
       message: "ارائه درس با موفقیت ویرایش شد.",
       data: updated,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("PUT offering error:", error);
+    const isConflict = error?.message?.includes("تکراری");
     return NextResponse.json(
-      { success: false, message: "خطا در ویرایش ارائه درس" },
-      { status: 500 }
+      { success: false, message: error?.message || "خطا در ویرایش ارائه درس" },
+      { status: isConflict ? 409 : 500 }
     );
   }
 }

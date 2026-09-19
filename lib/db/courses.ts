@@ -1,6 +1,7 @@
 import type { Course, DegreeLevel, PrerequisiteRelation, PrerequisiteType } from "../types";
 import { getD1 } from "./client";
 import { assignCourseToCategory, assignCourseToCategories, getEffectiveFacultyIds } from "./structure";
+import { generateUniqueCode, isCodeDuplicate } from "./code-generator";
 
 // ----------------------------------------------------
 // COURSES CRUD
@@ -265,9 +266,17 @@ export async function createCourse(data: {
 }): Promise<Course> {
   const id = `crs_${crypto.randomUUID().slice(0, 8)}`;
   const now = new Date().toISOString();
-  const cleanCode = data.code?.trim()
-    ? data.code.trim().toUpperCase()
-    : `CRS-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
+
+  let cleanCode: string;
+  if (data.code?.trim()) {
+    cleanCode = data.code.trim().toUpperCase();
+    if (await isCodeDuplicate("courses", cleanCode)) {
+      throw new Error(`کد درس «${cleanCode}» تکراری است و قبلاً در سامانه ثبت شده است.`);
+    }
+  } else {
+    cleanCode = await generateUniqueCode("courses", "CRS");
+  }
+
   const cleanAbbr = data.abbreviation ? data.abbreviation.trim() || null : null;
   const units = Number(data.units) || 3;
   const offeredIn = data.offeredIn || "both";
@@ -328,9 +337,16 @@ export async function updateCourse(
     if (!existing) return null;
 
     const name = data.name !== undefined ? data.name.trim() : existing.name;
-    const code = data.code !== undefined
-      ? (data.code.trim() ? data.code.trim().toUpperCase() : existing.code)
-      : existing.code;
+    let code = existing.code;
+    if (data.code !== undefined && data.code.trim()) {
+      const candidateCode = data.code.trim().toUpperCase();
+      if (candidateCode !== existing.code) {
+        if (await isCodeDuplicate("courses", candidateCode, id)) {
+          throw new Error(`کد درس «${candidateCode}» تکراری است و به درس دیگری اختصاص دارد.`);
+        }
+        code = candidateCode;
+      }
+    }
     const degreeLevel: DegreeLevel = data.degreeLevel !== undefined
       ? (data.degreeLevel === "master" ? "master" : "undergrad")
       : (existing.degreeLevel || "undergrad");
@@ -373,7 +389,7 @@ export async function updateCourse(
     return await getCourseById(id);
   } catch (err) {
     console.error("D1 updateCourse error:", err);
-    return null;
+    throw err;
   }
 }
 

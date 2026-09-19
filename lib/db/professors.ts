@@ -1,6 +1,7 @@
 import type { Professor } from "../types";
 import { getD1 } from "./client";
 import { getEffectiveFacultyIds } from "./structure";
+import { generateUniqueCode, isCodeDuplicate } from "./code-generator";
 
 export async function getProfessors(
   facultyId?: string,
@@ -173,7 +174,17 @@ export async function createProfessor(data: {
   if (!lastName) lastName = "نامشخص";
 
   const fullName = [firstName, lastName].filter(Boolean).join(" ");
-  const code = data.code?.trim().toUpperCase() || `PRF-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
+
+  let code: string;
+  if (data.code?.trim()) {
+    code = data.code.trim().toUpperCase();
+    if (await isCodeDuplicate("professors", code)) {
+      throw new Error(`کد شناسایی استاد «${code}» تکراری است و قبلاً در سامانه ثبت شده است.`);
+    }
+  } else {
+    code = await generateUniqueCode("professors", "PRF");
+  }
+
   const cleanTitle = data.title?.trim() || null;
   const cleanEmail = data.email?.trim() || null;
   const cleanAvatarUrl = data.avatarUrl?.trim() || null;
@@ -243,9 +254,13 @@ export async function updateProfessor(
       sets.push("last_name = ?");
       params.push(lName);
     }
-    if (data.code) {
+    if (data.code && data.code.trim()) {
+      const cleanCode = data.code.trim().toUpperCase();
+      if (await isCodeDuplicate("professors", cleanCode, id)) {
+        throw new Error(`کد شناسایی استاد «${cleanCode}» تکراری است و به استاد دیگری اختصاص دارد.`);
+      }
       sets.push("code = ?");
-      params.push(data.code.trim().toUpperCase());
+      params.push(cleanCode);
     }
     if (data.title !== undefined) {
       sets.push("title = ?");
@@ -279,7 +294,7 @@ export async function updateProfessor(
     return await getProfessorById(id);
   } catch (err) {
     console.error("D1 updateProfessor error:", err);
-    return null;
+    throw err;
   }
 }
 

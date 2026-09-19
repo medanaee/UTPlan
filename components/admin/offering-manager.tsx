@@ -93,6 +93,7 @@ export function OfferingManager({
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [offeringFormError, setOfferingFormError] = useState<string | null>(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [editingOffering, setEditingOffering] = useState<CourseOffering | null>(null);
@@ -338,6 +339,7 @@ export function OfferingManager({
 
   const handleOpenCreateModal = (initialCourseId?: string) => {
     setEditingOffering(null);
+    setOfferingFormError(null);
     setModalProfSearch("");
     setNewSemYear("1404");
     setNewSemType("2");
@@ -353,6 +355,7 @@ export function OfferingManager({
 
   const handleOpenEditModal = (off: CourseOffering) => {
     setEditingOffering(off);
+    setOfferingFormError(null);
     setModalProfSearch("");
     setNewSemYear("1404");
     setNewSemType("2");
@@ -443,8 +446,9 @@ export function OfferingManager({
 
   const handleSaveOffering = async (e: React.FormEvent) => {
     e.preventDefault();
+    setOfferingFormError(null);
     if (!form.courseId || form.professorIds.length === 0) {
-      alert("لطفاً درس و حداقل یک استاد مدرس را انتخاب کنید.");
+      setOfferingFormError("لطفاً درس و حداقل یک استاد مدرس را انتخاب کنید.");
       return;
     }
 
@@ -458,22 +462,25 @@ export function OfferingManager({
 
         if (res.success) {
           setIsModalOpen(false);
+          setOfferingFormError(null);
           await loadOfferings();
         } else {
-          alert(res.message || "خطا در ویرایش ارائه");
+          setOfferingFormError(res.message || "خطا در ویرایش ارائه");
         }
       } else {
         const res = await postJson("/api/offerings", form);
 
         if (res.success) {
           setIsModalOpen(false);
+          setOfferingFormError(null);
           await loadOfferings();
         } else {
-          alert(res.message || "خطا در ایجاد ارائه");
+          setOfferingFormError(res.message || "خطا در ایجاد ارائه");
         }
       }
     } catch (err) {
       console.error("Save offering error:", err);
+      setOfferingFormError("خطا در برقراری ارتباط با سرور");
     } finally {
       setIsSubmitting(false);
     }
@@ -1002,7 +1009,13 @@ export function OfferingManager({
       </Card>
 
       {/* Create / Edit Modal (2-Column Responsive Layout) */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+      <Dialog
+        open={isModalOpen}
+        onOpenChange={(open) => {
+          setIsModalOpen(open);
+          setOfferingFormError(null);
+        }}
+      >
         <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto" dir="rtl">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2">
@@ -1022,6 +1035,14 @@ export function OfferingManager({
               درس و یک یا چند استاد ارائه‌دهنده را مشخص کنید (امکان تعریف چند استاد هم‌تدریس).
             </DialogDescription>
           </DialogHeader>
+
+          {/* Form Error Banner */}
+          {offeringFormError && (
+            <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive animate-in fade-in slide-in-from-top-1 duration-200">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <span className="leading-relaxed font-medium">{offeringFormError}</span>
+            </div>
+          )}
 
           {/* Target Faculty Indicator */}
           <div className="rounded-xl border border-primary/20 bg-primary/5 p-2.5 flex items-center justify-between">

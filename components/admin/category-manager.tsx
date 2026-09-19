@@ -20,6 +20,7 @@ import {
   Link2,
   ChevronDown,
   ChevronUp,
+  AlertTriangle,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -77,11 +78,13 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
 
   // Create & Clone Modals
   const [catModalOpen, setCatModalOpen] = useState(false);
+  const [catModalError, setCatModalError] = useState<string | null>(null);
   const [cloneModalOpen, setCloneModalOpen] = useState(false);
   const [catImportModalOpen, setCatImportModalOpen] = useState(false);
 
   // Edit Modal State
   const [catEditModalOpen, setCatEditModalOpen] = useState(false);
+  const [catEditModalError, setCatEditModalError] = useState<string | null>(null);
   const [editingCat, setEditingCat] = useState<Category | null>(null);
   const [catEditForm, setCatEditForm] = useState<{
     code: string;
@@ -233,6 +236,7 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
   // Create Category (Arbitrary depth supported)
   const handleCreateCat = async (e: React.FormEvent) => {
     e.preventDefault();
+    setCatModalError(null);
     if (!selectedTrackId) return;
 
     const res = await postJson("/api/categories", {
@@ -245,17 +249,19 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
 
     if (res.success) {
       setCatModalOpen(false);
+      setCatModalError(null);
       setCatForm({ code: "", name: "", color: "#3b82f6", parentId: null });
       setActionMessage("دسته جدید با موفقیت اضافه شد.");
       await loadTrackDetails(selectedTrackId);
     } else {
-      alert(res.message || "خطا در افزودن دسته");
+      setCatModalError(res.message || "خطا در افزودن دسته");
     }
   };
 
   // Open Edit Category Modal
   const handleOpenEditCat = (cat: Category) => {
     setEditingCat(cat);
+    setCatEditModalError(null);
     setCatEditForm({
       code: cat.code || "",
       name: cat.name || "",
@@ -268,15 +274,16 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
   // Update Category
   const handleUpdateCat = async (e: React.FormEvent) => {
     e.preventDefault();
+    setCatEditModalError(null);
     if (!editingCat || !selectedTrackId) return;
 
     if (catEditForm.parentId) {
       if (catEditForm.parentId === editingCat.id) {
-        alert("خطا: یک دسته نمی‌تواند والد خودش باشد!");
+        setCatEditModalError("خطا: یک دسته نمی‌تواند والد خودش باشد!");
         return;
       }
       if (isDescendant(catEditForm.parentId, editingCat.id)) {
-        alert("خطا: نمی‌توانید یکی از زیردسته‌ها را به عنوان والد این دسته انتخاب کنید (ایجاد چرخه)!");
+        setCatEditModalError("خطا: نمی‌توانید یکی از زیردسته‌ها را به عنوان والد این دسته انتخاب کنید (ایجاد چرخه)!");
         return;
       }
     }
@@ -292,11 +299,12 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
 
     if (res.success) {
       setCatEditModalOpen(false);
+      setCatEditModalError(null);
       setEditingCat(null);
       setActionMessage("دسته با موفقیت ویرایش شد.");
       await loadTrackDetails(selectedTrackId);
     } else {
-      alert(res.message || "خطا در ویرایش دسته");
+      setCatEditModalError(res.message || "خطا در ویرایش دسته");
     }
   };
 
@@ -630,7 +638,13 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
       )}
 
       {/* Add Category Modal */}
-      <Dialog open={catModalOpen} onOpenChange={setCatModalOpen}>
+      <Dialog
+        open={catModalOpen}
+        onOpenChange={(open) => {
+          setCatModalOpen(open);
+          setCatModalError(null);
+        }}
+      >
         <DialogContent className="sm:max-w-sm" dir="rtl">
           <DialogHeader>
             <DialogTitle className="text-sm font-bold">افزودن دسته جدید</DialogTitle>
@@ -638,6 +652,15 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
               دسته‌ها به صورت درختی سازمان‌دهی می‌شوند و در نمایش چارت و قوانین استفاده می‌گردند.
             </DialogDescription>
           </DialogHeader>
+
+          {/* Form Error Banner */}
+          {catModalError && (
+            <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive animate-in fade-in slide-in-from-top-1 duration-200">
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+              <span className="leading-relaxed font-medium">{catModalError}</span>
+            </div>
+          )}
+
           <form onSubmit={handleCreateCat} className="space-y-3.5 pt-2">
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">دسته والد (اختیاری):</Label>
@@ -710,7 +733,13 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
       </Dialog>
 
       {/* Edit Category Modal */}
-      <Dialog open={catEditModalOpen} onOpenChange={setCatEditModalOpen}>
+      <Dialog
+        open={catEditModalOpen}
+        onOpenChange={(open) => {
+          setCatEditModalOpen(open);
+          setCatEditModalError(null);
+        }}
+      >
         <DialogContent className="sm:max-w-sm" dir="rtl">
           <DialogHeader>
             <DialogTitle className="text-sm font-bold flex items-center gap-1.5">
@@ -721,6 +750,15 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
               نام، کد، رنگ و دسته والد را تغییر دهید.
             </DialogDescription>
           </DialogHeader>
+
+          {/* Form Error Banner */}
+          {catEditModalError && (
+            <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive animate-in fade-in slide-in-from-top-1 duration-200">
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+              <span className="leading-relaxed font-medium">{catEditModalError}</span>
+            </div>
+          )}
+
           <form onSubmit={handleUpdateCat} className="space-y-3.5 pt-2">
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">دسته والد:</Label>
