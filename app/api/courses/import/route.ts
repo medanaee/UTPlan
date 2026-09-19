@@ -9,6 +9,7 @@ import {
   getAllPrerequisites,
   findUserById,
   getD1,
+  logAdminAction,
 } from "@/lib/db";
 import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
 import { wouldCreatePrerequisiteCycle } from "@/lib/graph-utils";
@@ -351,6 +352,28 @@ export async function POST(request: NextRequest) {
         await d1.batch(bChunk);
       }
     }
+
+    await logAdminAction({
+      userId: liveUser.id,
+      userName: liveUser.name,
+      userEmail: liveUser.email,
+      action: "IMPORT",
+      entityType: "course",
+      entityId: targetFacultyId,
+      entityName: `ورود دسته‌ای دروس (${createdCount} جدید، ${updatedCount} ویرایش، ${prereqsAdded} پیش‌نیاز)`,
+      details: {
+        targetFacultyId,
+        mode,
+        totalReceived: rawList.length,
+        createdCount,
+        updatedCount,
+        prerequisitesAdded: prereqsAdded,
+        errorsCount: errors.length,
+        errors: errors.slice(0, 10),
+      },
+      ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip"),
+      userAgent: request.headers.get("user-agent"),
+    });
 
     return NextResponse.json({
       success: true,

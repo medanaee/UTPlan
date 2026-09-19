@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getD1, getFaculties, getCourses, getProfessors, getOfferings, getEvents, getCharts, getAllPrerequisites } from "@/lib/db";
+import { getD1, getFaculties, getCourses, getProfessors, getOfferings, getEvents, getCharts, getAllPrerequisites, logAdminAction } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -263,6 +263,24 @@ export async function POST(request: NextRequest) {
     // Re-enable foreign keys
     await d1.prepare("PRAGMA foreign_keys = ON;").run();
 
+    await logAdminAction({
+      userId: auth.user!.id,
+      userName: auth.user!.name,
+      userEmail: auth.user!.email,
+      action: "BACKUP_RESTORE",
+      entityType: "backup",
+      entityName: `بازیابی پایگاه داده از فایل پشتیبان JSON (${totalInserted} رکورد)`,
+      details: {
+        totalInserted,
+        restoredRecords: totalInserted,
+        tableCounts: restoredStats,
+        errorsCount: errors.length,
+        errors: errors.slice(0, 10),
+      },
+      ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip"),
+      userAgent: request.headers.get("user-agent"),
+    });
+
     return NextResponse.json({
       success: true,
       message: `بازیابی کامل از فایل JSON با موفقیت انجام شد: در مجموع ${totalInserted} رکورد در ${TABLE_ORDER.length} جدول بازنویسی و بازیابی گردید.`,
@@ -335,6 +353,21 @@ export async function DELETE(request: NextRequest) {
 
     // Re-enable foreign keys
     await d1.prepare("PRAGMA foreign_keys = ON;").run();
+
+    await logAdminAction({
+      userId: auth.user!.id,
+      userName: auth.user!.name,
+      userEmail: auth.user!.email,
+      action: "DELETE",
+      entityType: "backup",
+      entityName: `پاکسازی کامل جداول پایگاه داده (${totalPurged} رکورد)`,
+      details: {
+        totalPurged,
+        purgedCounts,
+      },
+      ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip"),
+      userAgent: request.headers.get("user-agent"),
+    });
 
     return NextResponse.json({
       success: true,

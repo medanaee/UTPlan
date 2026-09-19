@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getEvents, createEvent } from "@/lib/db";
+import { getEvents, createEvent, logAdminAction } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
@@ -49,6 +49,24 @@ export async function POST(request: NextRequest) {
       });
       clonedCount++;
     }
+
+    await logAdminAction({
+      userId: auth.user!.id,
+      userName: auth.user!.name,
+      userEmail: auth.user!.email,
+      action: "CREATE",
+      entityType: "event",
+      entityId: targetTerm,
+      entityName: `کپی رویدادهای کلاسی از ترم ${sourceTerm} به ${targetTerm} (${clonedCount} رویداد)`,
+      details: {
+        sourceTerm,
+        targetTerm,
+        resetExamDates,
+        clonedCount,
+      },
+      ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip"),
+      userAgent: request.headers.get("user-agent"),
+    });
 
     return NextResponse.json({
       success: true,

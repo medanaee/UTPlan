@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOfferings, getD1 } from "@/lib/db";
+import { getOfferings, getD1, logAdminAction } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
 
 interface IncomingSlot {
@@ -229,6 +229,28 @@ export async function POST(request: NextRequest) {
         await d1.batch(bChunk);
       }
     }
+
+    await logAdminAction({
+      userId: auth.user!.id,
+      userName: auth.user!.name,
+      userEmail: auth.user!.email,
+      action: "IMPORT",
+      entityType: "event",
+      entityId: term,
+      entityName: `ورود دسته‌ای رویدادهای کلاسی ترم ${term} (${createdCount} جدید، ${updatedCount} ویرایش)`,
+      details: {
+        term,
+        facultyId,
+        totalEventsReceived: events.length,
+        createdCount,
+        updatedCount,
+        totalSlots,
+        warningsCount: warnings.length,
+        warnings: warnings.slice(0, 10),
+      },
+      ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip"),
+      userAgent: request.headers.get("user-agent"),
+    });
 
     return NextResponse.json({
       success: true,

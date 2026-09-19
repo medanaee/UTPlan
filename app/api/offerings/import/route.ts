@@ -4,6 +4,7 @@ import {
   getProfessors,
   getFaculties,
   getD1,
+  logAdminAction,
 } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
 
@@ -276,6 +277,27 @@ export async function POST(request: NextRequest) {
         await d1.batch(bChunk);
       }
     }
+
+    await logAdminAction({
+      userId: auth.user!.id,
+      userName: auth.user!.name,
+      userEmail: auth.user!.email,
+      action: "IMPORT",
+      entityType: "offering",
+      entityId: targetFacultyId,
+      entityName: `ورود دسته‌ای ارائه‌های درسی (${createdCount} جدید، ${updatedCount} ویرایش)`,
+      details: {
+        targetFacultyId,
+        mode,
+        totalReceived: rawList.length,
+        createdCount,
+        updatedCount,
+        errorsCount: errors.length,
+        errors: errors.slice(0, 10),
+      },
+      ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip"),
+      userAgent: request.headers.get("user-agent"),
+    });
 
     return NextResponse.json({
       success: true,

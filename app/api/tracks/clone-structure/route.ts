@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cloneTrackStructure, findUserById, getTrackById } from "@/lib/db";
+import { cloneTrackStructure, findUserById, getTrackById, logAdminAction } from "@/lib/db";
 import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
@@ -57,6 +57,26 @@ export async function POST(request: NextRequest) {
     if (!result.success) {
       return NextResponse.json({ success: false, message: result.message }, { status: 500 });
     }
+
+    await logAdminAction({
+      userId: liveUser.id,
+      userName: liveUser.name,
+      userEmail: liveUser.email,
+      action: "CREATE",
+      entityType: "track",
+      entityId: targetTrackId,
+      entityName: `کپی ساختار گرایش «${sourceTrack.name}» به «${targetTrack.name}»`,
+      details: {
+        sourceTrackId,
+        sourceTrackName: sourceTrack.name,
+        targetTrackId,
+        targetTrackName: targetTrack.name,
+        options,
+        stats: result.stats,
+      },
+      ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip"),
+      userAgent: request.headers.get("user-agent"),
+    });
 
     return NextResponse.json({
       success: true,

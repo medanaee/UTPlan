@@ -7,6 +7,7 @@ import {
   updateCategory,
   assignCategoryCourses,
   getCourses,
+  logAdminAction,
 } from "@/lib/db";
 import type { Category } from "@/lib/types";
 
@@ -201,6 +202,23 @@ export async function POST(request: NextRequest) {
     for (let i = 0; i < categories.length; i++) {
       await processCategory(categories[i], null, i + 1);
     }
+
+    await logAdminAction({
+      userId: auth.user!.id,
+      userName: auth.user!.name,
+      userEmail: auth.user!.email,
+      action: "IMPORT",
+      entityType: "category",
+      entityId: trackId,
+      entityName: `ورود دسته‌بندی‌های گرایش ${track.name} (${stats.categoriesCreated} ایجاد، ${stats.categoriesUpdated} ویرایش)`,
+      details: {
+        trackId,
+        trackName: track.name,
+        stats,
+      },
+      ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip"),
+      userAgent: request.headers.get("user-agent"),
+    });
 
     return NextResponse.json({
       success: true,

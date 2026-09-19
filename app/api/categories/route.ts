@@ -5,6 +5,7 @@ import {
   deleteCategory,
   reorderCategories,
   updateCategory,
+  logAdminAction,
 } from "@/lib/db";
 
 export async function GET(request: Request) {
@@ -64,6 +65,19 @@ export async function POST(request: Request) {
       code,
     });
 
+    await logAdminAction({
+      userId: auth.user!.id,
+      userName: auth.user!.name,
+      userEmail: auth.user!.email,
+      action: "CREATE",
+      entityType: "category",
+      entityId: newCat.id,
+      entityName: newCat.name,
+      details: { trackId, name, code, parentId },
+      ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip"),
+      userAgent: request.headers.get("user-agent"),
+    });
+
     return Response.json({ success: true, data: newCat }, { status: 201 });
   } catch (error) {
     console.error("Create category error:", error);
@@ -83,6 +97,19 @@ export async function DELETE(request: Request) {
     }
 
     const success = await deleteCategory(id);
+
+    await logAdminAction({
+      userId: auth.user!.id,
+      userName: auth.user!.name,
+      userEmail: auth.user!.email,
+      action: "DELETE",
+      entityType: "category",
+      entityId: id,
+      entityName: `حذف دسته‌بندی ${id}`,
+      ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip"),
+      userAgent: request.headers.get("user-agent"),
+    });
+
     return Response.json({ success });
   } catch (error) {
     console.error("Delete category error:", error);
@@ -109,6 +136,19 @@ export async function PUT(request: Request) {
     // Sub-action: Reorder
     if (action === "reorder" && Array.isArray(items)) {
       await reorderCategories(items);
+
+      await logAdminAction({
+        userId: auth.user!.id,
+        userName: auth.user!.name,
+        userEmail: auth.user!.email,
+        action: "UPDATE",
+        entityType: "category",
+        entityName: `تغییر چیدمان دسته‌بندی‌ها (${items.length} دسته)`,
+        details: { count: items.length },
+        ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip"),
+        userAgent: request.headers.get("user-agent"),
+      });
+
       return Response.json({ success: true, message: "ترتیب دسته‌ها با موفقیت ذخیره شد." });
     }
 
@@ -118,6 +158,20 @@ export async function PUT(request: Request) {
       if (!updated) {
         return Response.json({ success: false, message: "دسته یافت نشد." }, { status: 404 });
       }
+
+      await logAdminAction({
+        userId: auth.user!.id,
+        userName: auth.user!.name,
+        userEmail: auth.user!.email,
+        action: "UPDATE",
+        entityType: "category",
+        entityId: id,
+        entityName: updated.name,
+        details: { name, color, parentId, sortOrder, code },
+        ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip"),
+        userAgent: request.headers.get("user-agent"),
+      });
+
       return Response.json({ success: true, data: updated, message: "دسته با موفقیت ویرایش شد." });
     }
 

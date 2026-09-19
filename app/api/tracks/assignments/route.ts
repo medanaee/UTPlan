@@ -6,6 +6,7 @@ import {
   bulkAssignTrackCourses,
   assignCategoryCourses,
   clearCategoryCourses,
+  logAdminAction,
 } from "@/lib/db";
 
 export async function GET(request: Request) {
@@ -39,6 +40,18 @@ export async function POST(request: Request) {
     // Unassign single course
     if (body.action === "unassign_course" && body.courseId) {
       const updatedAssignment = await assignCourseToCategory(trackId, body.courseId, null);
+      await logAdminAction({
+        userId: auth.user!.id,
+        userName: auth.user!.name,
+        userEmail: auth.user!.email,
+        action: "UPDATE",
+        entityType: "category",
+        entityId: trackId,
+        entityName: `حذف انتساب درس ${body.courseId} از دسته`,
+        details: { trackId, courseId: body.courseId },
+        ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip"),
+        userAgent: request.headers.get("user-agent"),
+      });
       return Response.json({ success: true, data: updatedAssignment, message: "درس با موفقیت از دسته خارج شد." });
     }
 
@@ -46,17 +59,42 @@ export async function POST(request: Request) {
     if (body.action === "clear_category_courses" && body.categoryId) {
       await clearCategoryCourses(trackId, body.categoryId);
       const updated = await getTrackAssignments(trackId);
+      await logAdminAction({
+        userId: auth.user!.id,
+        userName: auth.user!.name,
+        userEmail: auth.user!.email,
+        action: "DELETE",
+        entityType: "category",
+        entityId: body.categoryId,
+        entityName: `پاکسازی انتساب دروس در دسته ${body.categoryId}`,
+        details: { trackId, categoryId: body.categoryId },
+        ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip"),
+        userAgent: request.headers.get("user-agent"),
+      });
       return Response.json({ success: true, data: updated, message: "دروس داخل این دسته با موفقیت پاک شدند." });
     }
 
     // Assign courses to specific category
     if (body.action === "assign_category_courses" && body.categoryId) {
+      const cIds = Array.isArray(body.courseIds) ? body.courseIds : [];
       await assignCategoryCourses(
         trackId,
         body.categoryId,
-        Array.isArray(body.courseIds) ? body.courseIds : []
+        cIds
       );
       const updated = await getTrackAssignments(trackId);
+      await logAdminAction({
+        userId: auth.user!.id,
+        userName: auth.user!.name,
+        userEmail: auth.user!.email,
+        action: "UPDATE",
+        entityType: "category",
+        entityId: body.categoryId,
+        entityName: `انتساب دسته‌ای دروس به دسته (${cIds.length} درس)`,
+        details: { trackId, categoryId: body.categoryId, count: cIds.length },
+        ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip"),
+        userAgent: request.headers.get("user-agent"),
+      });
       return Response.json({ success: true, data: updated });
     }
 
@@ -64,6 +102,18 @@ export async function POST(request: Request) {
     if (Array.isArray(assignments)) {
       await bulkAssignTrackCourses(trackId, assignments);
       const updated = await getTrackAssignments(trackId);
+      await logAdminAction({
+        userId: auth.user!.id,
+        userName: auth.user!.name,
+        userEmail: auth.user!.email,
+        action: "UPDATE",
+        entityType: "category",
+        entityId: trackId,
+        entityName: `انتساب دسته‌ای دروس گرایش (${assignments.length} انتساب)`,
+        details: { trackId, count: assignments.length },
+        ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip"),
+        userAgent: request.headers.get("user-agent"),
+      });
       return Response.json({ success: true, data: updated });
     }
 
@@ -78,6 +128,19 @@ export async function POST(request: Request) {
       courseId,
       catId
     );
+
+    await logAdminAction({
+      userId: auth.user!.id,
+      userName: auth.user!.name,
+      userEmail: auth.user!.email,
+      action: "UPDATE",
+      entityType: "category",
+      entityId: trackId,
+      entityName: `انتساب درس به دسته`,
+      details: { trackId, courseId, categoryId: catId },
+      ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip"),
+      userAgent: request.headers.get("user-agent"),
+    });
 
     return Response.json({ success: true, data: updatedAssignment });
   } catch (error) {
