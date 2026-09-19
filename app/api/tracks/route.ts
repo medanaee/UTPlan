@@ -1,5 +1,5 @@
 import { requireAdminSession } from "@/lib/auth";
-import { getTracks, createTrack, updateTrack, deleteTrack, updateTrackRules } from "@/lib/db";
+import { getTracks, createTrack, updateTrack, deleteTrack, updateTrackRules, logAdminAction } from "@/lib/db";
 
 export async function GET(request: Request) {
   try {
@@ -30,6 +30,15 @@ export async function POST(request: Request) {
     }
 
     const newTrack = await createTrack(majorId, name, code, rulesTree);
+    await logAdminAction({
+      userId: auth.user!.id,
+      userName: auth.user!.name,
+      userEmail: auth.user!.email,
+      action: "CREATE",
+      entityType: "track",
+      entityId: newTrack.id,
+      entityName: name,
+    });
     return Response.json({ success: true, data: newTrack }, { status: 201 });
   } catch (error) {
     console.error("Create track error:", error);
@@ -60,11 +69,31 @@ export async function PUT(request: Request) {
       if (!updated) {
         return Response.json({ success: false, message: "گرایش یافت نشد." }, { status: 404 });
       }
+      await logAdminAction({
+        userId: auth.user!.id,
+        userName: auth.user!.name,
+        userEmail: auth.user!.email,
+        action: "UPDATE",
+        entityType: "track",
+        entityId: targetId,
+        entityName: name,
+      });
       return Response.json({ success: true, data: updated });
     }
 
     if (rulesTree) {
       const success = await updateTrackRules(targetId, rulesTree);
+      if (success) {
+        await logAdminAction({
+          userId: auth.user!.id,
+          userName: auth.user!.name,
+          userEmail: auth.user!.email,
+          action: "UPDATE",
+          entityType: "rule",
+          entityId: targetId,
+          entityName: "درخت قوانین گرایش",
+        });
+      }
       return Response.json({ success });
     }
 
@@ -86,6 +115,16 @@ export async function DELETE(request: Request) {
     }
 
     const success = await deleteTrack(id);
+    if (success) {
+      await logAdminAction({
+        userId: auth.user!.id,
+        userName: auth.user!.name,
+        userEmail: auth.user!.email,
+        action: "DELETE",
+        entityType: "track",
+        entityId: id,
+      });
+    }
     return Response.json({ success });
   } catch (error) {
     console.error("Delete track error:", error);

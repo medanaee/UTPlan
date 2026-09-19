@@ -5,6 +5,7 @@ import {
   updateProfessor,
   deleteProfessor,
   deleteProfessorsByFaculty,
+  logAdminAction,
 } from "@/lib/db";
 
 export async function GET(request: Request) {
@@ -41,6 +42,17 @@ export async function POST(request: Request) {
       email,
       avatarUrl,
       links,
+    });
+
+    await logAdminAction({
+      userId: auth.user!.id,
+      userName: auth.user!.name,
+      userEmail: auth.user!.email,
+      action: "CREATE",
+      entityType: "professor",
+      entityId: newProf.id,
+      entityName: newProf.name,
+      details: { code: newProf.code, title: newProf.title },
     });
 
     return Response.json({ success: true, data: newProf }, { status: 201 });
@@ -81,6 +93,17 @@ export async function PUT(request: Request) {
       return Response.json({ success: false, message: "استاد مورد نظر یافت نشد." }, { status: 404 });
     }
 
+    await logAdminAction({
+      userId: auth.user!.id,
+      userName: auth.user!.name,
+      userEmail: auth.user!.email,
+      action: "UPDATE",
+      entityType: "professor",
+      entityId: updated.id,
+      entityName: updated.name,
+      details: { code: updated.code, title: updated.title },
+    });
+
     return Response.json({ success: true, data: updated });
   } catch (error: any) {
     console.error("Update professor error:", error);
@@ -103,6 +126,14 @@ export async function DELETE(request: Request) {
 
     if (all && facultyId) {
       const success = await deleteProfessorsByFaculty(facultyId);
+      await logAdminAction({
+        userId: auth.user!.id,
+        userName: auth.user!.name,
+        userEmail: auth.user!.email,
+        action: "DELETE",
+        entityType: "professor",
+        details: { facultyId, all: true },
+      });
       return Response.json({ success, message: "کلیه اساتید دانشکده حذف شدند." });
     }
 
@@ -110,7 +141,21 @@ export async function DELETE(request: Request) {
       return Response.json({ success: false, message: "شناسه استاد الزامی است." }, { status: 400 });
     }
 
+    const profs = await getProfessors();
+    const profBefore = profs.find((p) => p.id === id);
     const success = await deleteProfessor(id);
+    if (success) {
+      await logAdminAction({
+        userId: auth.user!.id,
+        userName: auth.user!.name,
+        userEmail: auth.user!.email,
+        action: "DELETE",
+        entityType: "professor",
+        entityId: id,
+        entityName: profBefore?.name || id,
+      });
+    }
+
     return Response.json({ success });
   } catch (error) {
     console.error("Delete professor error:", error);

@@ -392,3 +392,41 @@ export interface AuthResponse {
   user?: UserSession;
 }
 
+export type AuditActionType =
+  | "CREATE"
+  | "UPDATE"
+  | "DELETE"
+  | "RESTORE"
+  | "ROLE_CHANGE"
+  | "IMPORT"
+  | "BACKUP_RESTORE";
+
+export type AuditEntityType =
+  | "course"
+  | "professor"
+  | "offering"
+  | "event"
+  | "faculty"
+  | "major"
+  | "track"
+  | "category"
+  | "rule"
+  | "user"
+  | "trash"
+  | "backup";
+
+export interface AuditLog {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  action: AuditActionType;
+  entityType: AuditEntityType;
+  entityId?: string | null;
+  entityName?: string | null;
+  details?: string | null;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  createdAt: string;
+}
+

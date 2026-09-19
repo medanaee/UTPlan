@@ -8,6 +8,7 @@ import {
   deleteEventsByFacultyAndTerm,
   findUserById,
   getD1,
+  logAdminAction,
 } from "@/lib/db";
 import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
 
@@ -140,6 +141,17 @@ export async function POST(request: NextRequest) {
       slots: slots || [],
     });
 
+    await logAdminAction({
+      userId: session.id,
+      userName: session.name || "مدیر سامانه",
+      userEmail: session.email || "",
+      action: "CREATE",
+      entityType: "event",
+      entityId: newEvent.id,
+      entityName: newEvent.code || "رویداد کلاسی",
+      details: { term: newEvent.term, location: newEvent.location },
+    });
+
     return NextResponse.json({
       success: true,
       message: "زمان‌بندی رویداد با موفقیت ذخیره شد.",
@@ -225,6 +237,19 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    if (isAdmin) {
+      await logAdminAction({
+        userId: session.id,
+        userName: session.name || "مدیر سامانه",
+        userEmail: session.email || "",
+        action: "UPDATE",
+        entityType: "event",
+        entityId: updated.id,
+        entityName: updated.code || id,
+        details: { term: updated.term, location: updated.location },
+      });
+    }
+
     return NextResponse.json({
       success: true,
       message: "زمان‌بندی رویداد با موفقیت به‌روزرسانی شد.",
@@ -269,6 +294,14 @@ export async function DELETE(request: NextRequest) {
       }
 
       const success = await deleteEventsByFacultyAndTerm(facultyId, term);
+      await logAdminAction({
+        userId: session.id,
+        userName: session.name || "مدیر سامانه",
+        userEmail: session.email || "",
+        action: "DELETE",
+        entityType: "event",
+        details: { facultyId, term, all: true },
+      });
       return NextResponse.json({
         success,
         message: term
@@ -307,6 +340,17 @@ export async function DELETE(request: NextRequest) {
         { success: false, message: "رویداد مورد نظر یافت نشد." },
         { status: 404 }
       );
+    }
+
+    if (isAdmin) {
+      await logAdminAction({
+        userId: session.id,
+        userName: session.name || "مدیر سامانه",
+        userEmail: session.email || "",
+        action: "DELETE",
+        entityType: "event",
+        entityId: id,
+      });
     }
 
     return NextResponse.json({

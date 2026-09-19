@@ -5,6 +5,7 @@ import {
   updateOffering,
   deleteOffering,
   deleteOfferingsByFaculty,
+  logAdminAction,
 } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
 
@@ -52,6 +53,17 @@ export async function POST(request: NextRequest) {
       code,
       description,
       finalizedSemesters: Array.isArray(finalizedSemesters) ? finalizedSemesters : [],
+    });
+
+    await logAdminAction({
+      userId: auth.user!.id,
+      userName: auth.user!.name,
+      userEmail: auth.user!.email,
+      action: "CREATE",
+      entityType: "offering",
+      entityId: newOffering.id,
+      entityName: newOffering.code || "ارائه جدید",
+      details: { code: newOffering.code, courseId: newOffering.courseId },
     });
 
     return NextResponse.json({
@@ -104,6 +116,17 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    await logAdminAction({
+      userId: auth.user!.id,
+      userName: auth.user!.name,
+      userEmail: auth.user!.email,
+      action: "UPDATE",
+      entityType: "offering",
+      entityId: updated.id,
+      entityName: updated.code || id,
+      details: { code: updated.code, courseId: updated.courseId },
+    });
+
     return NextResponse.json({
       success: true,
       message: "ارائه درس با موفقیت ویرایش شد.",
@@ -131,6 +154,14 @@ export async function DELETE(request: NextRequest) {
 
     if (all && facultyId) {
       const success = await deleteOfferingsByFaculty(facultyId);
+      await logAdminAction({
+        userId: auth.user!.id,
+        userName: auth.user!.name,
+        userEmail: auth.user!.email,
+        action: "DELETE",
+        entityType: "offering",
+        details: { facultyId, all: true },
+      });
       return NextResponse.json({
         success,
         message: "کلیه ارائه‌های درسی دانشکده حذف شدند.",
@@ -151,6 +182,15 @@ export async function DELETE(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    await logAdminAction({
+      userId: auth.user!.id,
+      userName: auth.user!.name,
+      userEmail: auth.user!.email,
+      action: "DELETE",
+      entityType: "offering",
+      entityId: id,
+    });
 
     return NextResponse.json({
       success: true,

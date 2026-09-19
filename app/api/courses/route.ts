@@ -9,6 +9,7 @@ import {
   addPrerequisite,
   removePrerequisite,
   getAllPrerequisites,
+  logAdminAction,
 } from "@/lib/db";
 import { wouldCreatePrerequisiteCycle } from "@/lib/graph-utils";
 
@@ -71,6 +72,17 @@ export async function POST(request: Request) {
       trackId,
       visualCategoryId,
       ruleCategoryId,
+    });
+
+    await logAdminAction({
+      userId: auth.user!.id,
+      userName: auth.user!.name,
+      userEmail: auth.user!.email,
+      action: "CREATE",
+      entityType: "course",
+      entityId: newCourse.id,
+      entityName: newCourse.name,
+      details: { code: newCourse.code, units: newCourse.units },
     });
 
     return Response.json({ success: true, data: newCourse }, { status: 201 });
@@ -142,6 +154,18 @@ export async function PUT(request: Request) {
     if (!updated) {
       return Response.json({ success: false, message: "درس مورد نظر یافت نشد." }, { status: 404 });
     }
+
+    await logAdminAction({
+      userId: auth.user!.id,
+      userName: auth.user!.name,
+      userEmail: auth.user!.email,
+      action: "UPDATE",
+      entityType: "course",
+      entityId: updated.id,
+      entityName: updated.name,
+      details: updateData,
+    });
+
     return Response.json({ success: true, data: updated });
   } catch (error: any) {
     console.error("Update course error:", error);
@@ -164,6 +188,14 @@ export async function DELETE(request: Request) {
 
     if (all && facultyId) {
       const success = await deleteCoursesByFaculty(facultyId);
+      await logAdminAction({
+        userId: auth.user!.id,
+        userName: auth.user!.name,
+        userEmail: auth.user!.email,
+        action: "DELETE",
+        entityType: "course",
+        details: { facultyId, all: true },
+      });
       return Response.json({ success, message: "کلیه دروس دانشکده حذف شدند." });
     }
 
@@ -171,7 +203,20 @@ export async function DELETE(request: Request) {
       return Response.json({ success: false, message: "شناسه درس الزامی است." }, { status: 400 });
     }
 
+    const courseBefore = await getCourseById(id);
     const success = await deleteCourse(id);
+    if (success) {
+      await logAdminAction({
+        userId: auth.user!.id,
+        userName: auth.user!.name,
+        userEmail: auth.user!.email,
+        action: "DELETE",
+        entityType: "course",
+        entityId: id,
+        entityName: courseBefore?.name || id,
+      });
+    }
+
     return Response.json({ success });
   } catch (error) {
     console.error("Delete course error:", error);

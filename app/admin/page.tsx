@@ -23,6 +23,7 @@ import {
   BookUser,
   DatabaseBackup,
   Trash2,
+  ShieldAlert,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +44,7 @@ import { RuleSandboxTester } from "@/components/admin/rule-sandbox-tester";
 import { UserManager } from "@/components/admin/user-manager";
 import { BackupManager } from "@/components/admin/backup-manager";
 import { RecycleBinManager } from "@/components/admin/recycle-bin-manager";
+import { AuditLogViewer } from "@/components/admin/audit-log-viewer";
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -172,6 +174,15 @@ export default function AdminDashboardPage() {
       label: "سطل بازیافت (حذف نهایی)",
       icon: Trash2,
     },
+    ...(user?.role === "super_admin"
+      ? [
+          {
+            id: "audit" as const,
+            label: "گزارش اقدامات (Audit Log)",
+            icon: ShieldAlert,
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -519,6 +530,11 @@ export default function AdminDashboardPage() {
               <RecycleBinManager
                 onDataChanged={loadAllData}
               />
+            )}
+
+            {/* TAB 12: AUDIT LOGS (SUPER ADMIN ONLY) */}
+            {activeTab === "audit" && user?.role === "super_admin" && (
+              <AuditLogViewer />
             )}
           </div>
         </main>

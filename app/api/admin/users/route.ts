@@ -1,5 +1,5 @@
 import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
-import { getAllUsers, updateUserRole, findUserById } from "@/lib/db";
+import { getAllUsers, updateUserRole, findUserById, logAdminAction } from "@/lib/db";
 
 export async function GET(request: Request) {
   try {
@@ -104,6 +104,17 @@ export async function PATCH(request: Request) {
     if (!ok) {
       return Response.json({ success: false, message: "خطا در به‌روزرسانی نقش کاربر." }, { status: 400 });
     }
+
+    await logAdminAction({
+      userId: currentUser.id,
+      userName: currentUser.name,
+      userEmail: currentUser.email,
+      action: "ROLE_CHANGE",
+      entityType: "user",
+      entityId: targetUser.id,
+      entityName: targetUser.name,
+      details: { previousRole: targetUser.role, newRole: role, targetEmail: targetUser.email },
+    });
 
     return Response.json({
       success: true,

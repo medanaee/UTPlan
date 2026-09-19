@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getD1 } from "@/lib/db";
+import { getD1, logAdminAction } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -425,6 +425,16 @@ export async function POST(request: NextRequest) {
         }
       }
     }
+
+    await logAdminAction({
+      userId: auth.user!.id,
+      userName: auth.user!.name,
+      userEmail: auth.user!.email,
+      action: "DELETE",
+      entityType: "trash",
+      entityName: `${rawItems.length} مورد حذف فیزیکی`,
+      details: { items: rawItems, resolutionsCount: resolutions.length },
+    });
 
     return NextResponse.json({
       success: true,

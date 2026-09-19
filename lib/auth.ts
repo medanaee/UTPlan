@@ -237,3 +237,28 @@ export async function requireAdminSession(request: Request): Promise<{
     },
   };
 }
+
+/**
+ * Require valid Super Admin session with Live Database Check
+ */
+export async function requireSuperAdminSession(request: Request): Promise<{
+  authorized: boolean;
+  user?: UserSession;
+  response?: Response;
+}> {
+  const adminAuth = await requireAdminSession(request);
+  if (!adminAuth.authorized) return adminAuth;
+
+  if (adminAuth.user?.role !== "super_admin") {
+    return {
+      authorized: false,
+      response: Response.json(
+        { success: false, message: "دسترسی غیرمجاز. این بخش منحصراً در اختیار مدیر ارشد است." },
+        { status: 403 }
+      ),
+    };
+  }
+
+  return adminAuth;
+}
+

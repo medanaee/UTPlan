@@ -25,7 +25,8 @@ export type AdminTab =
   | "rules"
   | "users"
   | "backup"
-  | "trash";
+  | "trash"
+  | "audit";
 
 interface AdminState {
   user: User | null;
