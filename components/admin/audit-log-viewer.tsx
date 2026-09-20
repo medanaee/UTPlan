@@ -102,19 +102,31 @@ const ENTITY_CONFIG: Record<AuditEntityType, { label: string; icon: any }> = {
   backup: { label: "پایگاه داده / بکاپ", icon: Activity },
 };
 
+function parseUtcDate(dateString: string): Date {
+  if (!dateString) return new Date();
+  const trimmed = String(dateString).trim();
+  if (trimmed.includes(" ") && !trimmed.includes("T")) {
+    return new Date(`${trimmed.replace(" ", "T")}Z`);
+  }
+  if (!trimmed.endsWith("Z") && !trimmed.includes("+")) {
+    return new Date(`${trimmed}Z`);
+  }
+  return new Date(trimmed);
+}
+
 function formatRelativeTime(dateString: string): string {
   try {
     const now = new Date();
-    const date = new Date(dateString);
-    const diffSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    const date = parseUtcDate(dateString);
+    const diffSeconds = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 1000));
 
     if (diffSeconds < 60) return "چند لحظه پیش";
     const diffMinutes = Math.floor(diffSeconds / 60);
-    if (diffMinutes < 60) return `${diffMinutes} دقیقه پیش`;
+    if (diffMinutes < 60) return `${diffMinutes.toLocaleString("fa-IR")} دقیقه پیش`;
     const diffHours = Math.floor(diffMinutes / 60);
-    if (diffHours < 24) return `${diffHours} ساعت پیش`;
+    if (diffHours < 24) return `${diffHours.toLocaleString("fa-IR")} ساعت پیش`;
     const diffDays = Math.floor(diffHours / 24);
-    if (diffDays < 7) return `${diffDays} روز پیش`;
+    if (diffDays < 7) return `${diffDays.toLocaleString("fa-IR")} روز پیش`;
 
     return date.toLocaleDateString("fa-IR", {
       year: "numeric",
@@ -128,7 +140,7 @@ function formatRelativeTime(dateString: string): string {
 
 function formatFullDateTime(dateString: string): string {
   try {
-    const date = new Date(dateString);
+    const date = parseUtcDate(dateString);
     return date.toLocaleDateString("fa-IR", {
       year: "numeric",
       month: "long",
@@ -140,6 +152,59 @@ function formatFullDateTime(dateString: string): string {
   } catch {
     return dateString;
   }
+}
+
+const FIELD_LABELS: Record<string, string> = {
+  name: "نام",
+  firstName: "نام کوچک",
+  lastName: "نام خانوادگی",
+  title: "عنوان / مرتبه علمی",
+  email: "ایمیل",
+  code: "کد شناسایی / کد درس",
+  avatarUrl: "تصویر پروفایل",
+  links: "لینک‌ها / رزومه",
+  facultyId: "دانشکده",
+  abbreviation: "مخفف",
+  units: "تعداد واحد",
+  degreeLevel: "مقطع تحصیلی",
+  offeredIn: "ارائه در ترم",
+  description: "توضیحات",
+  trackId: "گرایش",
+  visualCategoryId: "دسته‌بندی بصری",
+  ruleCategoryId: "دسته‌بندی قانونی",
+  courseId: "شناسه درس",
+  professorIds: "اساتید ارائه دهنده",
+  finalizedSemesters: "ترم‌های نهایی شده",
+  term: "ترم تحصیلی",
+  capacity: "ظرفیت",
+  location: "مکان / کلاس",
+  examDate: "تاریخ امتحان",
+  examStartTime: "ساعت شروع امتحان",
+  examEndTime: "ساعت پایان امتحان",
+  slots: "سانس‌های هفتگی کلاس",
+  color: "رنگ",
+  parentId: "دسته‌بندی والد",
+  sortOrder: "ترتیب نمایش",
+  rulesTree: "درخت قوانین گرایش",
+};
+
+function formatDiffValue(val: any): { text: string; isComplex: boolean } {
+  if (val === null || val === undefined || val === "") {
+    return { text: "خالی (تنظیم نشده)", isComplex: false };
+  }
+  if (typeof val === "boolean") {
+    return { text: val ? "بله" : "خیر", isComplex: false };
+  }
+  if (typeof val === "object") {
+    if (Array.isArray(val)) {
+      if (val.length === 0) return { text: "[] (لیست خالی)", isComplex: false };
+      if (val.every((v) => typeof v === "string" || typeof v === "number")) {
+        return { text: val.join("، "), isComplex: false };
+      }
+    }
+    return { text: JSON.stringify(val, null, 2), isComplex: true };
+  }
+  return { text: String(val), isComplex: false };
 }
 
 export function AuditLogViewer() {
@@ -211,13 +276,88 @@ export function AuditLogViewer() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Prettify details string
+  // Prettify details string or render visual diff
   const renderDetailsFormatted = (detailsStr?: string | null) => {
     if (!detailsStr) {
       return <div className="text-xs text-muted-foreground">اطلاعات تکمیلی ثبت نشده است.</div>;
     }
     try {
       const parsed = JSON.parse(detailsStr);
+
+      const hasDiff =
+        parsed &&
+        parsed.changes &&
+        typeof parsed.changes === "object" &&
+        Object.keys(parsed.changes).length > 0;
+
+      if (hasDiff) {
+        const changeEntries = Object.entries(parsed.changes);
+        return (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-foreground">تغییرات فیلدها (مقایسه قبل و بعد):</span>
+              <Badge variant="outline" className="text-[11px] bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 font-mono">
+                {changeEntries.length.toLocaleString("fa-IR")} فیلد ویرایش شد
+              </Badge>
+            </div>
+
+            <div className="border border-border rounded-lg overflow-hidden bg-background text-xs">
+              <div className="grid grid-cols-12 bg-muted/70 px-3 py-2 text-[11px] font-semibold text-muted-foreground border-b border-border/60">
+                <div className="col-span-4">فیلد ویرایش‌شده</div>
+                <div className="col-span-4 text-rose-600 dark:text-rose-400 font-medium">مقدار قبلی</div>
+                <div className="col-span-4 text-emerald-600 dark:text-emerald-400 font-medium">مقدار جدید</div>
+              </div>
+              <div className="divide-y divide-border/60">
+                {changeEntries.map(([field, diff]: [string, any]) => {
+                  const fieldLabel = FIELD_LABELS[field] || field;
+                  const b = formatDiffValue(diff?.before);
+                  const a = formatDiffValue(diff?.after);
+
+                  return (
+                    <div
+                      key={field}
+                      className="grid grid-cols-12 px-3 py-2.5 items-start hover:bg-muted/30 transition-colors gap-2"
+                    >
+                      <div className="col-span-4">
+                        <span className="font-medium text-foreground block">{fieldLabel}</span>
+                        <span className="text-[10px] font-mono text-muted-foreground">{field}</span>
+                      </div>
+                      <div className="col-span-4 bg-rose-50/70 dark:bg-rose-950/20 p-2 rounded border border-rose-200/50 dark:border-rose-900/30 text-rose-800 dark:text-rose-300">
+                        {b.isComplex ? (
+                          <pre className="text-[10px] font-mono whitespace-pre-wrap dir-ltr text-left overflow-x-auto">
+                            {b.text}
+                          </pre>
+                        ) : (
+                          <span className="text-xs line-through break-all">{b.text}</span>
+                        )}
+                      </div>
+                      <div className="col-span-4 bg-emerald-50/70 dark:bg-emerald-950/20 p-2 rounded border border-emerald-200/50 dark:border-emerald-900/30 text-emerald-800 dark:text-emerald-300">
+                        {a.isComplex ? (
+                          <pre className="text-[10px] font-mono whitespace-pre-wrap dir-ltr text-left overflow-x-auto">
+                            {a.text}
+                          </pre>
+                        ) : (
+                          <span className="text-xs font-semibold break-all">{a.text}</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <details className="text-xs group mt-2">
+              <summary className="cursor-pointer text-muted-foreground hover:text-foreground text-[11px] font-medium select-none flex items-center gap-1">
+                <span>مشاهده کد کامل داده‌ها (JSON)</span>
+              </summary>
+              <pre className="mt-2 text-[11px] font-mono bg-muted/60 p-3 rounded-lg border border-border overflow-x-auto whitespace-pre-wrap leading-relaxed dir-ltr text-left">
+                {JSON.stringify(parsed, null, 2)}
+              </pre>
+            </details>
+          </div>
+        );
+      }
+
       return (
         <pre className="text-[11px] font-mono bg-muted/60 p-3.5 rounded-lg border border-border overflow-x-auto whitespace-pre-wrap leading-relaxed dir-ltr text-left">
           {JSON.stringify(parsed, null, 2)}
@@ -428,7 +568,7 @@ export function AuditLogViewer() {
                               {formatRelativeTime(log.createdAt)}
                             </span>
                             <span className="text-[10px] text-muted-foreground font-mono">
-                              {new Date(log.createdAt).toLocaleTimeString("fa-IR", {
+                              {parseUtcDate(log.createdAt).toLocaleTimeString("fa-IR", {
                                 hour: "2-digit",
                                 minute: "2-digit",
                                 second: "2-digit",
@@ -483,6 +623,24 @@ export function AuditLogViewer() {
                                 شناسه: {log.entityId}
                               </span>
                             )}
+                            {log.details && (() => {
+                              try {
+                                const d = JSON.parse(log.details);
+                                if (d.changedFields && Array.isArray(d.changedFields) && d.changedFields.length > 0) {
+                                  const labels = d.changedFields.map((f: string) => FIELD_LABELS[f] || f);
+                                  const text =
+                                    labels.length <= 2
+                                      ? labels.join("، ")
+                                      : `${labels.slice(0, 2).join("، ")} و ${labels.length - 2} مورد دیگر`;
+                                  return (
+                                    <span className="text-[10px] text-blue-600 dark:text-blue-400 font-medium truncate max-w-xs">
+                                      تغییر: {text}
+                                    </span>
+                                  );
+                                }
+                              } catch {}
+                              return null;
+                            })()}
                           </div>
                         </td>
 
@@ -569,7 +727,7 @@ export function AuditLogViewer() {
 
       {/* Details Dialog */}
       <Dialog open={!!activeLogModal} onOpenChange={(open) => !open && setActiveLogModal(null)}>
-        <DialogContent className="sm:max-w-xl" dir="rtl">
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto" dir="rtl">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between text-base">
               <span className="flex items-center gap-2">

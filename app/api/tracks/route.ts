@@ -1,5 +1,14 @@
 import { requireAdminSession } from "@/lib/auth";
-import { getTracks, createTrack, updateTrack, deleteTrack, updateTrackRules, logAdminAction } from "@/lib/db";
+import {
+  getTracks,
+  getTrackById,
+  createTrack,
+  updateTrack,
+  updateTrackRules,
+  deleteTrack,
+  logAdminAction,
+  buildDiff,
+} from "@/lib/db";
 
 export async function GET(request: Request) {
   try {
@@ -65,10 +74,16 @@ export async function PUT(request: Request) {
     }
 
     if (name && code) {
+      const existing = await getTrackById(targetId);
       const updated = await updateTrack(targetId, name, code, rulesTree);
       if (!updated) {
         return Response.json({ success: false, message: "گرایش یافت نشد." }, { status: 404 });
       }
+
+      const diff = existing
+        ? buildDiff(existing, updated, ["name", "code", "rulesTree"])
+        : { changedFields: [], changes: {} };
+
       await logAdminAction({
         userId: auth.user!.id,
         userName: auth.user!.name,
@@ -77,6 +92,10 @@ export async function PUT(request: Request) {
         entityType: "track",
         entityId: targetId,
         entityName: name,
+        details: {
+          code: updated.code,
+          ...diff,
+        },
       });
       return Response.json({ success: true, data: updated });
     }

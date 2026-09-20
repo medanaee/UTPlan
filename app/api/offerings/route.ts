@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   getOfferings,
+  getOfferingById,
   createOffering,
   updateOffering,
   deleteOffering,
   deleteOfferingsByFaculty,
   logAdminAction,
+  buildDiff,
 } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
 
@@ -102,6 +104,8 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    const existing = await getOfferingById(id);
+
     const updated = await updateOffering(id, {
       courseId,
       professorIds: resolvedProfIds,
@@ -116,6 +120,16 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    const diff = existing
+      ? buildDiff(existing, updated, [
+          "code",
+          "courseId",
+          "description",
+          "professorIds",
+          "finalizedSemesters",
+        ])
+      : { changedFields: [], changes: {} };
+
     await logAdminAction({
       userId: auth.user!.id,
       userName: auth.user!.name,
@@ -124,7 +138,11 @@ export async function PUT(request: NextRequest) {
       entityType: "offering",
       entityId: updated.id,
       entityName: updated.code || id,
-      details: { code: updated.code, courseId: updated.courseId },
+      details: {
+        code: updated.code,
+        courseId: updated.courseId,
+        ...diff,
+      },
     });
 
     return NextResponse.json({

@@ -1,11 +1,13 @@
 import { requireAdminSession } from "@/lib/auth";
 import {
   getCategories,
+  getCategoryById,
   createCategory,
   deleteCategory,
   reorderCategories,
   updateCategory,
   logAdminAction,
+  buildDiff,
 } from "@/lib/db";
 
 export async function GET(request: Request) {
@@ -154,10 +156,15 @@ export async function PUT(request: Request) {
 
     // Sub-action: Update category
     if (id) {
+      const existing = await getCategoryById(id);
       const updated = await updateCategory(id, { name, color, parentId, sortOrder, code });
       if (!updated) {
         return Response.json({ success: false, message: "دسته یافت نشد." }, { status: 404 });
       }
+
+      const diff = existing
+        ? buildDiff(existing, updated, ["name", "color", "parentId", "sortOrder", "code"])
+        : { changedFields: [], changes: {} };
 
       await logAdminAction({
         userId: auth.user!.id,
@@ -167,7 +174,10 @@ export async function PUT(request: Request) {
         entityType: "category",
         entityId: id,
         entityName: updated.name,
-        details: { name, color, parentId, sortOrder, code },
+        details: {
+          code: updated.code,
+          ...diff,
+        },
         ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip"),
         userAgent: request.headers.get("user-agent"),
       });

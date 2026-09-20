@@ -648,6 +648,29 @@ export async function createCategory(
   };
 }
 
+export async function getCategoryById(id: string): Promise<Category | null> {
+  const d1 = getD1();
+  if (!d1) return null;
+
+  try {
+    const r: any = await d1.prepare("SELECT * FROM categories WHERE id = ?").bind(id).first();
+    if (!r) return null;
+    return {
+      id: r.id,
+      trackId: r.track_id,
+      code: r.code || undefined,
+      parentId: r.parent_id || null,
+      name: r.name,
+      color: r.color || "#3b82f6",
+      sortOrder: Number(r.sort_order) || 0,
+      createdAt: r.created_at,
+    };
+  } catch (err) {
+    console.error("D1 getCategoryById error:", err);
+    return null;
+  }
+}
+
 export async function updateCategory(
   id: string,
   data: { name?: string; color?: string; parentId?: string | null; sortOrder?: number; code?: string | null }

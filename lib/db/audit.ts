@@ -32,6 +32,58 @@ export interface GetAuditLogsResult {
 }
 
 /**
+ * Normalizes DB timestamp to standard ISO-8601 UTC string.
+ * Handles SQLite default CURRENT_TIMESTAMP format "YYYY-MM-DD HH:MM:SS".
+ */
+export function normalizeCreatedAt(raw: string | null | undefined): string {
+  if (!raw) return new Date().toISOString();
+  const trimmed = String(raw).trim();
+  if (trimmed.includes(" ") && !trimmed.includes("T")) {
+    return `${trimmed.replace(" ", "T")}Z`;
+  }
+  if (!trimmed.endsWith("Z") && !trimmed.includes("+")) {
+    return `${trimmed}Z`;
+  }
+  return trimmed;
+}
+
+/**
+ * Builds a diff object comparing two states of an entity.
+ */
+export function buildDiff<T extends Record<string, any>>(
+  before: T,
+  after: T,
+  fieldsToCompare?: (keyof T)[]
+): {
+  changedFields: string[];
+  changes: Record<string, { before: any; after: any }>;
+} {
+  const keys = fieldsToCompare || (Array.from(new Set([...Object.keys(before || {}), ...Object.keys(after || {})])) as (keyof T)[]);
+  const changes: Record<string, { before: any; after: any }> = {};
+
+  for (const key of keys) {
+    const bVal = before?.[key] !== undefined ? before[key] : null;
+    const aVal = after?.[key] !== undefined ? after[key] : null;
+
+    if (!fieldsToCompare && (key === "updatedAt" || key === "createdAt" || key === "deletedAt")) {
+      continue;
+    }
+
+    if (JSON.stringify(bVal) !== JSON.stringify(aVal)) {
+      changes[String(key)] = {
+        before: bVal,
+        after: aVal,
+      };
+    }
+  }
+
+  return {
+    changedFields: Object.keys(changes),
+    changes,
+  };
+}
+
+/**
  * Safely logs an administrative action in the database.
  * Fail-safe: Any failure in logging will not break or throw in the caller's execution flow.
  */
@@ -41,6 +93,7 @@ export async function logAdminAction(params: LogAdminActionParams): Promise<void
 
   try {
     const id = `log_${crypto.randomUUID()}`;
+    const now = new Date().toISOString();
     const detailsStr =
       params.details === undefined || params.details === null
         ? null
@@ -53,7 +106,7 @@ export async function logAdminAction(params: LogAdminActionParams): Promise<void
         `INSERT INTO audit_logs (
           id, user_id, user_name, user_email, action, entity_type,
           entity_id, entity_name, details, ip_address, user_agent, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .bind(
         id,
@@ -66,7 +119,8 @@ export async function logAdminAction(params: LogAdminActionParams): Promise<void
         params.entityName || null,
         detailsStr,
         params.ipAddress || null,
-        params.userAgent || null
+        params.userAgent || null,
+        now
       )
       .run();
   } catch (err) {
@@ -139,7 +193,7 @@ export async function getAuditLogs(params: GetAuditLogsParams = {}): Promise<Get
       details: row.details || null,
       ipAddress: row.ip_address || null,
       userAgent: row.user_agent || null,
-      createdAt: row.created_at,
+      createdAt: normalizeCreatedAt(row.created_at),
     }));
 
     return { logs, total, page, limit, totalPages };

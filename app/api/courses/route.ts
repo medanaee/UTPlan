@@ -10,6 +10,7 @@ import {
   removePrerequisite,
   getAllPrerequisites,
   logAdminAction,
+  buildDiff,
 } from "@/lib/db";
 import { wouldCreatePrerequisiteCycle } from "@/lib/graph-utils";
 
@@ -150,10 +151,24 @@ export async function PUT(request: Request) {
       return Response.json({ success: false, message: "شناسه درس الزامی است." }, { status: 400 });
     }
 
+    const existing = await getCourseById(id);
     const updated = await updateCourse(id, updateData);
     if (!updated) {
       return Response.json({ success: false, message: "درس مورد نظر یافت نشد." }, { status: 404 });
     }
+
+    const diff = existing
+      ? buildDiff(existing, updated, [
+          "name",
+          "code",
+          "abbreviation",
+          "units",
+          "degreeLevel",
+          "facultyId",
+          "offeredIn",
+          "description",
+        ])
+      : { changedFields: Object.keys(updateData), changes: {} };
 
     await logAdminAction({
       userId: auth.user!.id,
@@ -163,7 +178,10 @@ export async function PUT(request: Request) {
       entityType: "course",
       entityId: updated.id,
       entityName: updated.name,
-      details: updateData,
+      details: {
+        code: updated.code,
+        ...diff,
+      },
     });
 
     return Response.json({ success: true, data: updated });

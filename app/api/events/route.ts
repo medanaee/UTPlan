@@ -9,6 +9,7 @@ import {
   findUserById,
   getD1,
   logAdminAction,
+  buildDiff,
 } from "@/lib/db";
 import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
 
@@ -218,6 +219,12 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    let existing: any = null;
+    if (isAdmin) {
+      const existingEvents = await getEvents({ eventId: id });
+      existing = existingEvents && existingEvents.length > 0 ? existingEvents[0] : null;
+    }
+
     const updated = await updateEvent(id, {
       code,
       offeringId,
@@ -238,6 +245,20 @@ export async function PUT(request: NextRequest) {
     }
 
     if (isAdmin) {
+      const diff = existing
+        ? buildDiff(existing, updated, [
+            "code",
+            "offeringId",
+            "term",
+            "capacity",
+            "location",
+            "examDate",
+            "examStartTime",
+            "examEndTime",
+            "slots",
+          ])
+        : { changedFields: [], changes: {} };
+
       await logAdminAction({
         userId: session.id,
         userName: session.name || "مدیر سامانه",
@@ -246,7 +267,11 @@ export async function PUT(request: NextRequest) {
         entityType: "event",
         entityId: updated.id,
         entityName: updated.code || id,
-        details: { term: updated.term, location: updated.location },
+        details: {
+          term: updated.term,
+          location: updated.location,
+          ...diff,
+        },
       });
     }
 

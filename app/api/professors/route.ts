@@ -1,11 +1,13 @@
 import { requireAdminSession } from "@/lib/auth";
 import {
   getProfessors,
+  getProfessorById,
   createProfessor,
   updateProfessor,
   deleteProfessor,
   deleteProfessorsByFaculty,
   logAdminAction,
+  buildDiff,
 } from "@/lib/db";
 
 export async function GET(request: Request) {
@@ -77,6 +79,8 @@ export async function PUT(request: Request) {
       return Response.json({ success: false, message: "شناسه استاد الزامی است." }, { status: 400 });
     }
 
+    const existing = await getProfessorById(id);
+
     const updated = await updateProfessor(id, {
       facultyId,
       code,
@@ -93,6 +97,20 @@ export async function PUT(request: Request) {
       return Response.json({ success: false, message: "استاد مورد نظر یافت نشد." }, { status: 404 });
     }
 
+    const diff = existing
+      ? buildDiff(existing, updated, [
+          "facultyId",
+          "code",
+          "firstName",
+          "lastName",
+          "name",
+          "title",
+          "email",
+          "avatarUrl",
+          "links",
+        ])
+      : { changedFields: [], changes: {} };
+
     await logAdminAction({
       userId: auth.user!.id,
       userName: auth.user!.name,
@@ -101,7 +119,10 @@ export async function PUT(request: Request) {
       entityType: "professor",
       entityId: updated.id,
       entityName: updated.name,
-      details: { code: updated.code, title: updated.title },
+      details: {
+        code: updated.code,
+        ...diff,
+      },
     });
 
     return Response.json({ success: true, data: updated });
