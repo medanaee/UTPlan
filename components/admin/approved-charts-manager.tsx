@@ -428,7 +428,7 @@ export function ApprovedChartsManager({
                                 className="p-1.5 rounded-lg bg-background/80 border border-border/60 text-center"
                               >
                                 <span className="text-[10px] font-bold text-foreground block">
-                                  ترم {sem.semesterNumber}
+                                  {sem.semesterNumber % 1 !== 0 ? `تابستان (${Math.floor(sem.semesterNumber)})` : `ترم ${sem.semesterNumber}`}
                                 </span>
                                 <span className="text-[9px] text-muted-foreground block">
                                   {sem.courseIds.length} درس ({semCredits}و)

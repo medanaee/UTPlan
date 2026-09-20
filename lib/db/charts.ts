@@ -41,8 +41,10 @@ export async function getCharts(userId?: string, trackId?: string): Promise<Stud
             return cc.course_id;
           });
 
+        const semNum = Number(t.term_index) || 1;
         return {
-          semesterNumber: Number(t.term_index) || 1,
+          semesterNumber: semNum,
+          isSummer: semNum % 1 !== 0,
           courseIds: coursesInTerm,
           courseEventsMap,
         };
@@ -133,8 +135,10 @@ export async function getChartById(id: string): Promise<StudentChart | null> {
           return cc.course_id;
         });
 
+      const semNum = Number(t.term_index) || 1;
       return {
-        semesterNumber: Number(t.term_index) || 1,
+        semesterNumber: semNum,
+        isSummer: semNum % 1 !== 0,
         courseIds,
         courseEventsMap,
       };

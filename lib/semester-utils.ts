@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Standard Semester Utilities for UT-ECE
  *
  * System Convention:
@@ -33,18 +33,15 @@ export function formatSemesterLabel(termStr: string): string {
     const sem = parts[1];
     if (sem === "1" || sem === "spring") return `بهار ${year}`;
     if (sem === "2" || sem === "fall") return `پاییز ${year}`;
+    if (sem === "3" || sem === "summer") return `تابستان ${year}`;
     return `${sem} ${year}`;
   }
   return termStr;
 }
 
 /**
- * Calculates the exact semester for a given termIndex (1-based)
+ * Calculates the exact semester for a given termIndex (1-based or fractional like 2.5 for summer)
  * starting from user's entrySemester (e.g. "1402-2" for Fall 1402)
- *
- * Sequence:
- * (year, 2) [Fall] -> next is (year + 1, 1) [Spring]
- * (year, 1) [Spring] -> next is (year, 2) [Fall]
  */
 export function calculateSemesterForTerm(
   entrySemester: string | null | undefined,
@@ -52,7 +49,7 @@ export function calculateSemesterForTerm(
 ): string {
   if (!entrySemester || !entrySemester.trim()) {
     // Default fallback if no entry semester is set
-    return "1403-1";
+    return termIndex % 1 !== 0 ? "1403-3" : "1403-1";
   }
 
   const parts = entrySemester.trim().split("-");
@@ -61,9 +58,10 @@ export function calculateSemesterForTerm(
   let currentSem: 1 | 2 =
     parts[1] === "1" || parts[1] === "spring" ? 1 : 2;
 
-  const validTerm = Math.max(1, termIndex || 1);
+  const isSummer = termIndex % 1 !== 0;
+  const baseTerm = Math.max(1, Math.floor(termIndex));
 
-  for (let i = 1; i < validTerm; i++) {
+  for (let i = 1; i < baseTerm; i++) {
     if (currentSem === 2) {
       // Fall -> next is Spring of next calendar year
       currentSem = 1;
@@ -72,6 +70,10 @@ export function calculateSemesterForTerm(
       // Spring -> next is Fall of same calendar year
       currentSem = 2;
     }
+  }
+
+  if (isSummer) {
+    return `${currentYear}-3`;
   }
 
   return `${currentYear}-${currentSem}`;

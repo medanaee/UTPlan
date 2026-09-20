@@ -40,6 +40,7 @@ import {
   GraduationCap,
   Cloud,
   CloudOff,
+  Sun,
 } from "lucide-react";
 import { toPng } from "html-to-image";
 import { persianSearch } from "@/lib/search/persian-search";
@@ -65,7 +66,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Combobox } from "@/components/ui/combobox";
-import { validateFullChart } from "@/lib/rules-engine";
+import { validateFullChart, formatTermDisplay } from "@/lib/rules-engine";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { TermSchedulePlanner } from "./term-schedule-planner";
 import { usePersistedState } from "@/lib/hooks/use-persisted-state";
@@ -278,13 +279,13 @@ export function ChartEditor({
   // Derived start and end semester numbers
   const startSem = useMemo(() => {
     return chart.semesters.length > 0
-      ? Math.min(...chart.semesters.map((s) => s.semesterNumber))
+      ? Math.min(...chart.semesters.map((s) => Math.floor(s.semesterNumber)))
       : 1;
   }, [chart.semesters]);
 
   const endSem = useMemo(() => {
     return chart.semesters.length > 0
-      ? Math.max(...chart.semesters.map((s) => s.semesterNumber))
+      ? Math.max(...chart.semesters.map((s) => Math.floor(s.semesterNumber)))
       : 8;
   }, [chart.semesters]);
 
@@ -384,13 +385,15 @@ export function ChartEditor({
         if (c) semUnits += c.units;
       });
 
+      const isSummer = sem.isSummer || sem.semesterNumber % 1 !== 0;
       const isLastTerm = sem.semesterNumber === endSem;
 
       return {
         semesterNumber: sem.semesterNumber,
         units: semUnits,
-        isOverMax: semUnits > 24,
-        isUnderMin: !isLastTerm && semUnits < 12,
+        isOverMax: isSummer ? semUnits > 20 : semUnits > 24,
+        isUnderMin: !isSummer && !isLastTerm && semUnits < 12,
+        isSummer,
       };
     });
 
@@ -631,6 +634,51 @@ export function ChartEditor({
     setChart((prev) => ({
       ...prev,
       semesters: prev.semesters.slice(0, -1),
+    }));
+  };
+
+  // Add summer semester after an even semester (e.g. after term 2 -> 2.5)
+  const addSummerSemester = (evenSemesterNumber: number) => {
+    if (isReadOnly) return;
+    const summerNum = evenSemesterNumber + 0.5;
+    if (chart.semesters.some((s) => s.semesterNumber === summerNum)) return;
+
+    setChart((prev) => {
+      const newSemesters = [
+        ...prev.semesters,
+        {
+          semesterNumber: summerNum,
+          isSummer: true,
+          courseIds: [],
+        },
+      ];
+      newSemesters.sort((a, b) => a.semesterNumber - b.semesterNumber);
+      return {
+        ...prev,
+        semesters: newSemesters,
+      };
+    });
+  };
+
+  // Remove summer semester and return its courses to unplaced list
+  const removeSummerSemester = (summerSemesterNumber: number) => {
+    if (isReadOnly) return;
+    const targetSem = chart.semesters.find((s) => s.semesterNumber === summerSemesterNumber);
+    if (!targetSem) return;
+
+    if (targetSem.courseIds.length > 0) {
+      if (
+        !confirm(
+          `این ترم تابستان دارای ${targetSem.courseIds.length} درس است. با حذف آن، این دروس از چارت خارج شده و به لیست دروس برنامه‌ریزی‌نشده بازمی‌گردند. آیا از حذف آن مطمئن هستید؟`
+        )
+      ) {
+        return;
+      }
+    }
+
+    setChart((prev) => ({
+      ...prev,
+      semesters: prev.semesters.filter((s) => s.semesterNumber !== summerSemesterNumber),
     }));
   };
 
@@ -1469,7 +1517,7 @@ export function ChartEditor({
                             </Badge>
                           ) : isPlaced ? (
                             <Badge variant="secondary" className="text-[9px] h-4 px-1 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                              ترم {placedSem}
+                              {placedSem % 1 !== 0 ? `تابستان (${Math.floor(placedSem)})` : `ترم ${placedSem}`}
                             </Badge>
                           ) : null}
                         </div>
@@ -1840,6 +1888,7 @@ export function ChartEditor({
                 {/* Semesters Stacked Vertically (Full Width, z-10) */}
                 <div className="space-y-3 w-full relative z-10 pb-6">
                   {chart.semesters.map((sem) => {
+                    const isSummer = sem.isSummer || sem.semesterNumber % 1 !== 0;
                     const semStats = validation.semesterCredits.find(
                       (sc) => sc.semesterNumber === sem.semesterNumber
                     );
@@ -1848,71 +1897,117 @@ export function ChartEditor({
                     const isUnderMin = semStats?.isUnderMin || false;
                     const isOver = dragOverSemester === sem.semesterNumber;
 
+                    const isEvenRegularTerm = !isSummer && sem.semesterNumber % 2 === 0;
+                    const hasSummerAfter = chart.semesters.some(
+                      (s) => s.semesterNumber === sem.semesterNumber + 0.5
+                    );
+
                     return (
-                      <div
-                        key={sem.semesterNumber}
-                        onDragOver={(e) => {
-                          e.preventDefault();
-                          setDragOverSemester(sem.semesterNumber);
-                        }}
-                        onDragLeave={() => {
-                          setDragOverSemester(null);
-                        }}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          setDragOverSemester(null);
-                          setDragOverCardId(null);
-                          const courseId = e.dataTransfer.getData("text/plain") || draggedCourseId;
-                          if (courseId) {
-                            moveCourseToSemester(courseId, sem.semesterNumber);
-                          }
-                        }}
-                        className={`rounded-2xl border transition-all duration-150 flex flex-col bg-card shadow-2xs ${isOver
-                          ? "border-primary ring-2 ring-primary/20 bg-primary/5"
-                          : "border-border/80"
-                          }`}
-                      >
-                        {/* Semester Row Header */}
-                        <div className="px-3 py-1.5 sm:px-3.5 sm:py-2 border-b border-border/70 bg-card rounded-t-2xl flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-primary-foreground text-[11px] font-bold shadow-2xs">
-                              {sem.semesterNumber}
-                            </span>
-                            <div className="flex items-center gap-1.5">
-                              <h3 className="text-xs font-bold">ترم {sem.semesterNumber}</h3>
-                              <span
-                                className={`text-[11px] px-2 py-0.5 rounded-md font-semibold ${isOverMax
-                                  ? "bg-destructive/15 text-destructive border border-destructive/30"
-                                  : isUnderMin
-                                    ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
-                                    : "bg-muted text-foreground"
-                                  }`}
+                      <React.Fragment key={sem.semesterNumber}>
+                        <div
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            setDragOverSemester(sem.semesterNumber);
+                          }}
+                          onDragLeave={() => {
+                            setDragOverSemester(null);
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            setDragOverSemester(null);
+                            setDragOverCardId(null);
+                            const courseId = e.dataTransfer.getData("text/plain") || draggedCourseId;
+                            if (courseId) {
+                              moveCourseToSemester(courseId, sem.semesterNumber);
+                            }
+                          }}
+                          className={`relative rounded-2xl border transition-all duration-150 flex flex-col bg-card shadow-2xs ${isOver
+                            ? "border-primary ring-2 ring-primary/20 bg-primary/5"
+                            : "border-border/80"
+                            }`}
+                        >
+                          {/* Semester Row Header */}
+                          <div className="px-3 py-1.5 sm:px-3.5 sm:py-2 border-b border-border/70 bg-card rounded-t-2xl flex flex-wrap items-center justify-between gap-2">
+                            {isSummer ? (
+                              <div className="flex items-center gap-2">
+                                <span className="flex h-6 w-6 items-center justify-center rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[11px] font-bold shadow-2xs border border-amber-500/30">
+                                  <Sun className="h-3.5 w-3.5" />
+                                </span>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <h3 className="text-xs font-bold flex items-center gap-1.5">
+                                    <span>ترم تابستان</span>
+                                    <span className="text-[10px] text-muted-foreground font-normal">
+                                      (بعد از ترم {Math.floor(sem.semesterNumber)})
+                                    </span>
+                                  </h3>
+                                  <span
+                                    className={`text-[11px] px-2 py-0.5 rounded-md font-semibold ${isOverMax
+                                      ? "bg-destructive/15 text-destructive border border-destructive/30"
+                                      : "bg-muted text-foreground"
+                                      }`}
+                                  >
+                                    {semUnits} واحد
+                                  </span>
+                                  <span className="text-[11px] px-2 py-0.5 rounded-md font-semibold bg-muted/60 text-muted-foreground border border-border/40">
+                                    {sem.courseIds.length} درس
+                                  </span>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-primary-foreground text-[11px] font-bold shadow-2xs">
+                                  {sem.semesterNumber}
+                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  <h3 className="text-xs font-bold">ترم {sem.semesterNumber}</h3>
+                                  <span
+                                    className={`text-[11px] px-2 py-0.5 rounded-md font-semibold ${isOverMax
+                                      ? "bg-destructive/15 text-destructive border border-destructive/30"
+                                      : isUnderMin
+                                        ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                                        : "bg-muted text-foreground"
+                                      }`}
+                                  >
+                                    {semUnits} واحد
+                                  </span>
+                                  <span className="text-[11px] px-2 py-0.5 rounded-md font-semibold bg-muted/60 text-muted-foreground border border-border/40">
+                                    {sem.courseIds.length} درس
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Quick Link to Semester Weekly Schedule Planner & Delete Summer Button */}
+                            <div className="flex items-center gap-1.5" data-no-export="true">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setActivePlannerSemester(sem.semesterNumber)}
+                                className="text-[11px] text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5 font-medium bg-muted/40 hover:bg-muted px-2.5 py-1 rounded-lg border border-border/60 h-7"
                               >
-                                {semUnits} واحد
-                              </span>
-                              <span className="text-[11px] px-2 py-0.5 rounded-md font-semibold bg-muted/60 text-muted-foreground border border-border/40">
-                                {sem.courseIds.length} درس
-                              </span>
+                                <Clock className="h-3 w-3 text-primary" />
+                                <span>برنامه زمانی هفتگی</span>
+                                {sem.courseEventsMap && Object.keys(sem.courseEventsMap).length > 0 && (
+                                  <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                )}
+                              </Button>
+
+                              {isSummer && !isReadOnly && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeSummerSemester(sem.semesterNumber)}
+                                  className="text-[11px] text-destructive/80 hover:text-destructive hover:bg-destructive/10 transition-colors flex items-center gap-1 font-medium px-2 py-1 rounded-lg border border-destructive/20 h-7"
+                                  title="حذف ترم تابستان"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                  <span className="hidden sm:inline">حذف</span>
+                                </Button>
+                              )}
                             </div>
                           </div>
-
-                          {/* Quick Link to Semester Weekly Schedule Planner */}
-                          <div className="flex items-center" data-no-export="true">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setActivePlannerSemester(sem.semesterNumber)}
-                              className="text-[11px] text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5 font-medium bg-muted/40 hover:bg-muted px-2.5 py-1 rounded-lg border border-border/60 h-7"
-                            >
-                              <Clock className="h-3 w-3 text-primary" />
-                              <span>برنامه زمانی هفتگی</span>
-                              {sem.courseEventsMap && Object.keys(sem.courseEventsMap).length > 0 && (
-                                <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                              )}
-                            </Button>
-                          </div>
-                        </div>
 
                         {/* Semester Course Cards Grid (Drop Zone with Reordering) */}
                         <div className="p-2.5 sm:p-3 min-h-15">
@@ -2150,8 +2245,26 @@ export function ChartEditor({
                           )}
                         </div>
                       </div>
-                    );
-                  })}
+
+                      {/* Add Summer Term Button below even regular terms */}
+                      {isEvenRegularTerm && !hasSummerAfter && !isReadOnly && (
+                        <div className="flex justify-center my-1.5" data-no-export="true">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => addSummerSemester(sem.semesterNumber)}
+                            className="h-7 px-3 text-xs gap-1.5 border-dashed border-border/80 hover:border-amber-500 text-muted-foreground hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-500/5 rounded-full shadow-2xs transition-all group"
+                          >
+                            <Plus className="h-3.5 w-3.5 transition-transform group-hover:rotate-90 duration-200" />
+                            <Sun className="h-3.5 w-3.5 text-amber-500" />
+                            <span>ترم تابستان</span>
+                          </Button>
+                        </div>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
                 </div>
               </div>
             </main>
@@ -2205,7 +2318,7 @@ export function ChartEditor({
                             </div>
                             {issue.termIndex && (
                               <span className="inline-block text-[10px] opacity-75">
-                                مربوط به ترم {issue.termIndex}
+                                مربوط به {formatTermDisplay(issue.termIndex)}
                               </span>
                             )}
                           </div>
@@ -2470,7 +2583,9 @@ export function ChartEditor({
                                 key={sem.semesterNumber}
                                 className="p-1 rounded-md bg-muted/40 text-center text-[10px]"
                               >
-                                <span className="font-bold block">ترم {sem.semesterNumber}</span>
+                                <span className="font-bold block">
+                                  {sem.semesterNumber % 1 !== 0 ? `تابستان (${Math.floor(sem.semesterNumber)})` : `ترم ${sem.semesterNumber}`}
+                                </span>
                                 <span className="text-muted-foreground text-[9px] block">
                                   {sem.courseIds.length} درس ({semCredits}و)
                                 </span>

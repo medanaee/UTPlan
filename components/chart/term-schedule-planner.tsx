@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { calculateSemesterForTerm, formatSemesterLabel } from "@/lib/semester-utils";
+import { formatTermDisplay } from "@/lib/rules-engine";
 import { persianSearch } from "@/lib/search/persian-search";
 import { fetchJson, postJson, putJson, deleteJson } from "@/lib/api-client";
 import {
@@ -324,7 +325,7 @@ export function TermSchedulePlanner({
             </div>
             <div>
               <h1 className="text-sm font-bold text-foreground flex items-center gap-2">
-                <span>برنامه‌ریزی زمانی ترم {termIndex}</span>
+                <span>برنامه‌ریزی زمانی {formatTermDisplay(termIndex)}</span>
                 <Badge variant="secondary" className="text-xs font-bold gap-1 px-2.5 py-0.5">
                   <span>{formatSemesterLabel(activeTerm)}</span>
                   <span className="text-[10px] text-muted-foreground font-mono">({activeTerm})</span>

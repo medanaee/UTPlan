@@ -370,6 +370,7 @@ export interface ValidationResult {
 
 export interface ChartSemester {
   semesterNumber: number;
+  isSummer?: boolean;
   courseIds: string[];
   courseEventsMap?: Record<string, string>; // courseId -> selectedEventId
 }

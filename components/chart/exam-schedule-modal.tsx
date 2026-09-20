@@ -9,6 +9,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { formatTermDisplay } from "@/lib/rules-engine";
 import {
   CalendarDays,
   AlertTriangle,
@@ -139,7 +140,7 @@ export function ExamScheduleModal({
               </div>
               <div>
                 <DialogTitle className="text-base font-bold">
-                  برنامه امتحانات ترم {termIndex}
+                  برنامه امتحانات {formatTermDisplay(termIndex)}
                 </DialogTitle>
                 <DialogDescription className="text-xs">
                   برنامه زمانی و تقویم امتحانات پایان‌ترم دروس انتخاب‌شده

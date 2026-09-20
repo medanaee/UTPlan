@@ -37,6 +37,23 @@ export interface ValidationEngineInput {
 }
 
 /**
+ * Helper to identify whether a term index represents a summer semester (e.g. 2.5, 4.5)
+ */
+export function isSummerTerm(termIndex: number): boolean {
+  return termIndex % 1 !== 0;
+}
+
+/**
+ * Returns a human-friendly Persian term label for warnings and notifications
+ */
+export function formatTermDisplay(termIndex: number): string {
+  if (isSummerTerm(termIndex)) {
+    return `ترم تابستان (بعد از ترم ${Math.floor(termIndex)})`;
+  }
+  return `ترم ${termIndex}`;
+}
+
+/**
  * Helper to collect a category ID and all its recursive subcategory IDs
  */
 export function getCategoryAndDescendantIds(targetCatId: string, allCategories: Category[]): Set<string> {
@@ -179,36 +196,64 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
     }
   }
 
-  const totalTerms = inputTotalTerms ?? (activeTermIndices.size > 0 ? Math.max(...Array.from(activeTermIndices)) : 1);
+  const regularActiveTerms = Array.from(activeTermIndices).filter((t) => !isSummerTerm(t));
+  const totalTerms =
+    inputTotalTerms ?? (regularActiveTerms.length > 0 ? Math.max(...regularActiveTerms) : 1);
 
   // 2. Validate Term Credit Limits (Floor & Ceiling)
   const termCreditsList: { termIndex: number; credits: number; isWithinLimits: boolean }[] = [];
 
-  for (let termIndex = startTerm; termIndex <= totalTerms; termIndex++) {
+  // Collect all terms to validate: regular terms startTerm..totalTerms plus any active summer terms
+  const allTermsToValidate = new Set<number>();
+  for (let t = startTerm; t <= totalTerms; t++) {
+    allTermsToValidate.add(t);
+  }
+  for (const t of activeTermIndices) {
+    allTermsToValidate.add(t);
+  }
+
+  const sortedTerms = Array.from(allTermsToValidate).sort((a, b) => a - b);
+
+  for (const termIndex of sortedTerms) {
     const credits = termCreditsMap.get(termIndex) || 0;
+    const isSummer = isSummerTerm(termIndex);
     const isLastTerm = termIndex === totalTerms;
     let isWithin = true;
 
-    // Floor check: all terms EXCEPT the last term must have at least minCredits (12)
-    if (!isLastTerm && credits < minCredits) {
-      isWithin = false;
-      issues.push({
-        id: `issue_term_floor_${termIndex}`,
-        type: "warning",
-        message: `تعداد واحدهای ترم ${termIndex} (${credits} واحد) کمتر از حداقل مجاز (${minCredits} واحد) است.`,
-        termIndex,
-      });
-    }
+    if (isSummer) {
+      // Summer Term: NO floor limit, but ceiling of 20 units
+      const summerMaxCredits = 20;
+      if (credits > summerMaxCredits) {
+        isWithin = false;
+        issues.push({
+          id: `issue_term_ceiling_${termIndex}`,
+          type: "warning",
+          message: `تعداد واحدهای ${formatTermDisplay(termIndex)} (${credits} واحد) بیشتر از سقف مجاز (${summerMaxCredits} واحد) است.`,
+          termIndex,
+        });
+      }
+    } else {
+      // Regular Term: Floor check (all terms EXCEPT the last term must have at least minCredits)
+      if (!isLastTerm && credits < minCredits) {
+        isWithin = false;
+        issues.push({
+          id: `issue_term_floor_${termIndex}`,
+          type: "warning",
+          message: `تعداد واحدهای ترم ${termIndex} (${credits} واحد) کمتر از حداقل مجاز (${minCredits} واحد) است.`,
+          termIndex,
+        });
+      }
 
-    // Ceiling check
-    if (credits > maxCredits) {
-      isWithin = false;
-      issues.push({
-        id: `issue_term_ceiling_${termIndex}`,
-        type: "warning",
-        message: `تعداد واحدهای ترم ${termIndex} (${credits} واحد) بیشتر از سقف مجاز (${maxCredits} واحد) است.`,
-        termIndex,
-      });
+      // Regular Term: Ceiling check (maxCredits)
+      if (credits > maxCredits) {
+        isWithin = false;
+        issues.push({
+          id: `issue_term_ceiling_${termIndex}`,
+          type: "warning",
+          message: `تعداد واحدهای ترم ${termIndex} (${credits} واحد) بیشتر از سقف مجاز (${maxCredits} واحد) است.`,
+          termIndex,
+        });
+      }
     }
 
     termCreditsList.push({
@@ -271,7 +316,7 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
             issues.push({
               id: `issue_prereq_order_${entry.courseId}_${prereq.requiredCourseId}`,
               type: "error",
-              message: `درس «${targetName}» (ترم ${termP}) پیش‌نیاز رسمی «${courseName}» (ترم ${termC}) است و باید حتماً در ترم‌های قبل از آن گذرانده شود.`,
+              message: `درس «${targetName}» (${formatTermDisplay(termP)}) پیش‌نیاز رسمی «${courseName}» (${formatTermDisplay(termC)}) است و باید حتماً در ترم‌های قبل از آن گذرانده شود.`,
               termIndex: termC,
               courseId: entry.courseId,
               requiredCourseId: prereq.requiredCourseId,
@@ -282,7 +327,7 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
             issues.push({
               id: `issue_coreq_order_${entry.courseId}_${prereq.requiredCourseId}`,
               type: "error",
-              message: `درس «${targetName}» (ترم ${termP}) هم‌نیاز رسمی «${courseName}» (ترم ${termC}) است و باید همزمان یا در ترم‌های قبل از آن گذرانده شود.`,
+              message: `درس «${targetName}» (${formatTermDisplay(termP)}) هم‌نیاز رسمی «${courseName}» (${formatTermDisplay(termC)}) است و باید همزمان یا در ترم‌های قبل از آن گذرانده شود.`,
               termIndex: termC,
               courseId: entry.courseId,
               requiredCourseId: prereq.requiredCourseId,
@@ -293,7 +338,7 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
             issues.push({
               id: `issue_rec_prereq_order_${entry.courseId}_${prereq.requiredCourseId}`,
               type: "warning",
-              message: `درس «${targetName}» (ترم ${termP}) پیش‌نیاز پیشنهادی و غیررسمی «${courseName}» (ترم ${termC}) است و توصیه می‌شود قبل از آن برداشته شود.`,
+              message: `درس «${targetName}» (${formatTermDisplay(termP)}) پیش‌نیاز پیشنهادی و غیررسمی «${courseName}» (${formatTermDisplay(termC)}) است و توصیه می‌شود قبل از آن برداشته شود.`,
               termIndex: termC,
               courseId: entry.courseId,
               requiredCourseId: prereq.requiredCourseId,
@@ -308,6 +353,11 @@ export function validateFullChart(input: ValidationEngineInput): ValidationResul
   for (const entry of chartCourses) {
     const course = courseMap.get(entry.courseId);
     if (!course) continue;
+
+    // Rule 2: Course odd/even (fall/spring) restrictions do NOT apply to summer terms
+    if (isSummerTerm(entry.termIndex)) {
+      continue;
+    }
 
     const courseName = course.name || entry.courseId;
     const isOddTerm = entry.termIndex % 2 !== 0; // 1, 3, 5, 7, ...
@@ -769,7 +819,7 @@ function evaluateRuleNode(
         issues.push({
           id: `issue_leaf_${leaf.id}`,
           type: "error",
-          message: `شرط گذراندن پیش‌نیاز واحدی: قبل از اخذ درس «${targetName}» در ترم ${targetEntry.termIndex}، باید حداقل ${requiredBefore} واحد پاس کرده باشید (واحدهای گذرانده‌شده تا قبل این ترم: ${creditsBefore} واحد).`,
+          message: `شرط گذراندن پیش‌نیاز واحدی: قبل از اخذ درس «${targetName}» در ${formatTermDisplay(targetEntry.termIndex)}، باید حداقل ${requiredBefore} واحد پاس کرده باشید (واحدهای گذرانده‌شده تا قبل این ترم: ${creditsBefore} واحد).`,
           termIndex: targetEntry.termIndex,
           courseId: leaf.targetCourseId,
           ruleNodeId: leaf.id,
