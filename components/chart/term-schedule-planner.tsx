@@ -922,11 +922,11 @@ export function TermSchedulePlanner({
               </div>
 
               {/* Start and End Hour Controls (Shadcn UI Select) */}
-              <div className="flex items-center px-2 sm:px-3 gap-2 h-full border-l border-border/70 text-xs text-muted-foreground">
+              <div className="flex items-center px-2 sm:px-3 gap-2 h-full text-xs text-muted-foreground">
                 <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
                 <span className="hidden sm:inline font-medium text-foreground text-[11px]">بازه ساعت:</span>
 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2">
                   <span className="text-[11px]">از</span>
                   <Select value={startHour} onValueChange={setStartHour}>
                     <SelectTrigger
