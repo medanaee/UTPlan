@@ -19,7 +19,14 @@ export async function GET(request: Request) {
     }
 
     const assignments = await getTrackAssignments(trackId);
-    return Response.json({ success: true, data: assignments });
+    return Response.json(
+      { success: true, data: assignments },
+      {
+        headers: {
+          "Cache-Control": "public, max-age=60, s-maxage=3600, stale-while-revalidate=86400",
+        },
+      }
+    );
   } catch (error) {
     console.error("Get track assignments error:", error);
     return Response.json({ success: false, message: "خطا در دریافت لیست انتساب‌ها" }, { status: 500 });

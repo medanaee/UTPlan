@@ -9,6 +9,7 @@ import {
   getApprovedTrackChart,
   getApprovedTrackCharts,
   findUserById,
+  getD1,
 } from "@/lib/db";
 
 async function getEffectiveUserRole(session: any): Promise<{ isAdmin: boolean; userId: string; role: string }> {
@@ -126,14 +127,20 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ success: false, message: "شناسه چارت الزامی است." }, { status: 400 });
     }
 
-    const existing = await getChartById(id);
+    const d1 = getD1();
+    const existing = d1
+      ? await d1.prepare("SELECT id, user_id, is_approved_template FROM charts WHERE id = ?").bind(id).first()
+      : null;
+
     if (!existing) {
       return NextResponse.json({ success: false, message: "چارت مورد نظر یافت نشد." }, { status: 404 });
     }
 
+    const isCurrentlyApprovedDefault = Boolean(existing.is_approved_template);
+
     // Strict Security Guard:
     // 1. If this is an official approved default track chart, ONLY admins can edit it!
-    if (existing.isApprovedDefault && !isAdmin) {
+    if (isCurrentlyApprovedDefault && !isAdmin) {
       return NextResponse.json(
         {
           success: false,
@@ -144,7 +151,7 @@ export async function PUT(req: NextRequest) {
     }
 
     // 2. If this is a student's private chart, only the owner or admins can edit it.
-    if (!existing.isApprovedDefault && existing.userId !== userId && !isAdmin) {
+    if (!isCurrentlyApprovedDefault && existing.user_id !== userId && !isAdmin) {
       return NextResponse.json(
         {
           success: false,

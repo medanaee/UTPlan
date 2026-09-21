@@ -5,6 +5,7 @@ import {
   createCustomUserEvent,
   updateEvent,
   deleteEvent,
+  hardDeleteCustomEvent,
   deleteEventsByFacultyAndTerm,
   findUserById,
   getD1,
@@ -12,6 +13,13 @@ import {
   buildDiff,
 } from "@/lib/db";
 import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
+
+function getSessionRole(session: any): { isAdmin: boolean; userId: string; role: string } {
+  if (!session?.id) return { isAdmin: false, userId: "", role: "user" };
+  const role = session.role || "user";
+  const isAdmin = role === "admin" || role === "super_admin";
+  return { isAdmin, userId: session.id, role };
+}
 
 async function getEffectiveUserRole(session: any): Promise<{ isAdmin: boolean; userId: string; role: string }> {
   if (!session?.id) return { isAdmin: false, userId: "", role: "user" };
@@ -31,7 +39,7 @@ export async function GET(request: NextRequest) {
   try {
     const token = getAuthTokenFromRequest(request);
     const session = token ? await verifySessionToken(token) : null;
-    const { isAdmin, userId } = await getEffectiveUserRole(session);
+    const { isAdmin, userId } = getSessionRole(session);
 
     const { searchParams } = new URL(request.url);
     const offeringId = searchParams.get("offeringId") || undefined;
@@ -343,26 +351,50 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Check permissions: Admin can delete all, users can delete their own custom events
-    if (!isAdmin) {
-      const d1 = getD1();
-      if (d1) {
-        const existing = await d1
-          .prepare("SELECT user_id, is_user_custom FROM course_events WHERE id = ?")
-          .bind(id)
-          .first();
-        if (!existing || (existing as any).user_id !== userId) {
+    const d1 = getD1();
+    let isCustom = false;
+    if (d1) {
+      const existing = await d1
+        .prepare("SELECT user_id, is_user_custom FROM course_events WHERE id = ?")
+        .bind(id)
+        .first();
+
+      if (!existing) {
+        return NextResponse.json(
+          { success: false, message: "رویداد مورد نظر یافت نشد." },
+          { status: 404 }
+        );
+      }
+
+      isCustom = Boolean((existing as any).is_user_custom);
+
+      if (!isAdmin) {
+        if ((existing as any).user_id !== userId) {
           return NextResponse.json(
             { success: false, message: "تنها صاحب رویداد یا مدیر می‌تواند آن را حذف کند." },
+            { status: 403 }
+          );
+        }
+        if (!isCustom) {
+          return NextResponse.json(
+            { success: false, message: "این رویداد توسط مدیر تأیید شده و امکان حذف مستقیم آن وجود ندارد." },
             { status: 403 }
           );
         }
       }
     }
 
-    const success = await deleteEvent(id);
+    let success = false;
+    if (isCustom) {
+      // Hard delete unapproved custom event and its slots completely
+      success = await hardDeleteCustomEvent(id, isAdmin ? undefined : userId);
+    } else {
+      success = await deleteEvent(id);
+    }
+
     if (!success) {
       return NextResponse.json(
-        { success: false, message: "رویداد مورد نظر یافت نشد." },
+        { success: false, message: "خطا در حذف رویداد یا رویداد یافت نشد." },
         { status: 404 }
       );
     }

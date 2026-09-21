@@ -19,22 +19,6 @@ export async function getFaculties(): Promise<Faculty[]> {
   if (!d1) return [];
 
   try {
-    try {
-      await d1
-        .prepare(
-          `CREATE TABLE IF NOT EXISTS faculty_links (
-            id TEXT PRIMARY KEY,
-            target_faculty_id TEXT NOT NULL,
-            source_faculty_id TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            FOREIGN KEY (target_faculty_id) REFERENCES faculties(id) ON DELETE CASCADE,
-            FOREIGN KEY (source_faculty_id) REFERENCES faculties(id) ON DELETE CASCADE,
-            UNIQUE(target_faculty_id, source_faculty_id)
-          )`
-        )
-        .run();
-    } catch {}
-
     const { results } = await d1
       .prepare("SELECT * FROM faculties WHERE deleted_at IS NULL ORDER BY name ASC")
       .all();
@@ -72,22 +56,6 @@ export async function getFacultyLinks(targetFacultyId?: string): Promise<Faculty
   if (!d1) return [];
 
   try {
-    try {
-      await d1
-        .prepare(
-          `CREATE TABLE IF NOT EXISTS faculty_links (
-            id TEXT PRIMARY KEY,
-            target_faculty_id TEXT NOT NULL,
-            source_faculty_id TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            FOREIGN KEY (target_faculty_id) REFERENCES faculties(id) ON DELETE CASCADE,
-            FOREIGN KEY (source_faculty_id) REFERENCES faculties(id) ON DELETE CASCADE,
-            UNIQUE(target_faculty_id, source_faculty_id)
-          )`
-        )
-        .run();
-    } catch {}
-
     let query = `
       SELECT fl.id, fl.target_faculty_id, fl.source_faculty_id, fl.created_at,
              sf.name AS source_faculty_name, sf.code AS source_faculty_code
@@ -125,22 +93,6 @@ export async function setFacultyLinks(
   if (!d1) return;
 
   try {
-    try {
-      await d1
-        .prepare(
-          `CREATE TABLE IF NOT EXISTS faculty_links (
-            id TEXT PRIMARY KEY,
-            target_faculty_id TEXT NOT NULL,
-            source_faculty_id TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            FOREIGN KEY (target_faculty_id) REFERENCES faculties(id) ON DELETE CASCADE,
-            FOREIGN KEY (source_faculty_id) REFERENCES faculties(id) ON DELETE CASCADE,
-            UNIQUE(target_faculty_id, source_faculty_id)
-          )`
-        )
-        .run();
-    } catch {}
-
     // Delete existing links for this target faculty
     await d1
       .prepare("DELETE FROM faculty_links WHERE target_faculty_id = ?")
@@ -173,22 +125,6 @@ export async function getEffectiveFacultyIds(targetFacultyId: string): Promise<s
   if (!d1 || !targetFacultyId) return targetFacultyId ? [targetFacultyId] : [];
 
   try {
-    try {
-      await d1
-        .prepare(
-          `CREATE TABLE IF NOT EXISTS faculty_links (
-            id TEXT PRIMARY KEY,
-            target_faculty_id TEXT NOT NULL,
-            source_faculty_id TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            FOREIGN KEY (target_faculty_id) REFERENCES faculties(id) ON DELETE CASCADE,
-            FOREIGN KEY (source_faculty_id) REFERENCES faculties(id) ON DELETE CASCADE,
-            UNIQUE(target_faculty_id, source_faculty_id)
-          )`
-        )
-        .run();
-    } catch {}
-
     const { results } = await d1
       .prepare(
         `SELECT source_faculty_id

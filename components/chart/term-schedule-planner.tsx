@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
+import { toPng } from "html-to-image";
 import { calculateSemesterForTerm, formatSemesterLabel } from "@/lib/semester-utils";
 import { formatTermDisplay } from "@/lib/rules-engine";
 import { persianSearch } from "@/lib/search/persian-search";
@@ -26,6 +27,10 @@ import {
   ChevronUp,
   ExternalLink,
   Loader2,
+  ZoomIn,
+  ZoomOut,
+  Download,
+  Camera,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,19 +85,39 @@ const DAYS_OF_WEEK = [
   { value: 4, label: "چهارشنبه", shortLabel: "چ" },
 ];
 
-const TIME_COLUMNS = [
-  { start: "07:30", end: "09:00" },
-  { start: "09:00", end: "10:30" },
-  { start: "10:30", end: "12:00" },
-  { start: "12:00", end: "13:30" },
-  { start: "13:30", end: "15:00" },
-  { start: "15:00", end: "16:30" },
-  { start: "16:30", end: "18:00" },
-  { start: "18:00", end: "19:30" },
+export const START_HOUR_OPTIONS = [
+  "06:00",
+  "06:30",
+  "07:00",
+  "07:30",
+  "08:00",
+  "08:30",
+  "09:00",
+  "09:30",
+  "10:00",
 ];
 
-const START_DAY_MINUTES = 450; // 07:30
-const TOTAL_DAY_MINUTES = 720; // 12 hours (07:30 to 19:30)
+export const END_HOUR_OPTIONS = [
+  "16:00",
+  "16:30",
+  "17:00",
+  "17:30",
+  "18:00",
+  "18:30",
+  "19:00",
+  "19:30",
+  "20:00",
+  "20:30",
+  "21:00",
+  "21:30",
+  "22:00",
+];
+
+function formatMinutesToTime(totalMin: number): string {
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+}
 
 function parseTimeToMinutes(timeStr: string): number {
   if (!timeStr) return 0;
@@ -133,6 +158,40 @@ export function TermSchedulePlanner({
   const [examModalOpen, setExamModalOpen] = useState(false);
   const [savingCourseId, setSavingCourseId] = useState<string | null>(null);
 
+  // Weekly Schedule Toolbar States
+  const [zoom, setZoom] = useState(100);
+  const [startHour, setStartHour] = useState("07:30");
+  const [endHour, setEndHour] = useState("19:30");
+  const [isExporting, setIsExporting] = useState(false);
+  const [showCustomEvents, setShowCustomEvents] = useState(true);
+  const scheduleRef = useRef<HTMLDivElement>(null);
+
+  // Dynamic Time Calculations
+  const startDayMinutes = useMemo(() => parseTimeToMinutes(startHour), [startHour]);
+  const endDayMinutes = useMemo(() => parseTimeToMinutes(endHour), [endHour]);
+  const totalDayMinutes = useMemo(
+    () => Math.max(60, endDayMinutes - startDayMinutes),
+    [startDayMinutes, endDayMinutes]
+  );
+
+  const timeColumns = useMemo(() => {
+    if (endDayMinutes <= startDayMinutes) {
+      return [{ start: startHour, end: endHour }];
+    }
+    const cols: { start: string; end: string }[] = [];
+    const step = 90; // Standard 90-minute university blocks
+    let cur = startDayMinutes;
+    while (cur < endDayMinutes) {
+      const next = Math.min(cur + step, endDayMinutes);
+      cols.push({
+        start: formatMinutesToTime(cur),
+        end: formatMinutesToTime(next),
+      });
+      cur = next;
+    }
+    return cols;
+  }, [startDayMinutes, endDayMinutes, startHour, endHour]);
+
   // Load available events for the term
   const loadEvents = useCallback(async () => {
     try {
@@ -152,16 +211,47 @@ export function TermSchedulePlanner({
     loadEvents();
   }, [loadEvents]);
 
-  // Selected events array
+  // User Custom Events List
+  const userCustomEvents = useMemo(() => {
+    return events.filter(
+      (e) => Boolean(e.isUserCustom) && (!user?.id || !e.userId || e.userId === user?.id)
+    );
+  }, [events, user?.id]);
+
+  // Selected events array (both courses in termCourses and any custom events selected)
   const activeSelectedEvents = useMemo(() => {
-    return termCourses
-      .map((c) => {
-        const evtId = selectedEventsMap[c.id];
-        if (!evtId) return null;
-        const evt = events.find((e) => e.id === evtId);
-        return evt ? { course: c, event: evt } : null;
-      })
-      .filter(Boolean) as { course: Course; event: CourseEvent }[];
+    const list: { course: Course; event: CourseEvent }[] = [];
+
+    // 1. Placed term courses
+    for (const c of termCourses) {
+      const evtId = selectedEventsMap[c.id];
+      if (!evtId) continue;
+      const evt = events.find((e) => e.id === evtId);
+      if (evt) {
+        list.push({ course: c, event: evt });
+      }
+    }
+
+    // 2. Additional custom events
+    for (const [key, evtId] of Object.entries(selectedEventsMap)) {
+      if (!evtId) continue;
+      if (list.some((item) => item.event.id === evtId)) continue;
+      const evt = events.find((e) => e.id === evtId);
+      if (evt) {
+        const dummyCourse: Course = {
+          id: evt.courseId || key,
+          name: evt.courseName || "ارائه شخصی",
+          code: evt.courseCode || "شخصی",
+          facultyId: evt.facultyId || "",
+          units: evt.courseUnits || 3,
+          offeredIn: "both",
+          createdAt: evt.createdAt || new Date().toISOString(),
+        };
+        list.push({ course: dummyCourse, event: evt });
+      }
+    }
+
+    return list;
   }, [termCourses, selectedEventsMap, events]);
 
   // Conflict Detection
@@ -258,15 +348,22 @@ export function TermSchedulePlanner({
 
   const [hoveredEventId, setHoveredEventId] = useState<string | null>(null);
 
-  // Handle Delete Custom Event
-  const handleDeleteCustomEvent = async (eventId: string, courseId: string) => {
-    if (!confirm("آیا از حذف این ارائه شخصی اطمینان دارید؟")) return;
+  // Handle Delete Custom Event ("حذف کلی از بیخ")
+  const handleDeleteCustomEvent = async (eventId: string, courseId?: string) => {
+    if (
+      !confirm(
+        "آیا از حذف دائمی این ارائه شخصی اطمینان دارید؟ این ارائه به طور کامل از سیستم پاک خواهد شد."
+      )
+    ) {
+      return;
+    }
+    const targetKey = courseId || eventId;
     try {
-      setSavingCourseId(courseId);
+      setSavingCourseId(targetKey);
       const res = await deleteJson(`/api/events?id=${eventId}`);
       if (res.success) {
-        if (selectedEventsMap[courseId] === eventId) {
-          await handleSelectEvent(courseId, null);
+        if (selectedEventsMap[targetKey] === eventId) {
+          await handleSelectEvent(targetKey, null);
         }
         await loadEvents();
       } else {
@@ -274,8 +371,87 @@ export function TermSchedulePlanner({
       }
     } catch (err) {
       console.error("Delete custom event error:", err);
+      alert("خطا در برقراری ارتباط با سرور برای حذف رویداد.");
     } finally {
       setSavingCourseId(null);
+    }
+  };
+
+  // Handle Toggle Custom Event Select / Deselect
+  const handleToggleCustomEvent = async (evt: CourseEvent) => {
+    const targetKey = evt.courseId || evt.id;
+    const isSelected = selectedEventsMap[targetKey] === evt.id;
+    await handleSelectEvent(targetKey, isSelected ? null : evt.id);
+  };
+
+  // Handle High-Res PNG Schedule Image Export
+  const handleExportScheduleImage = async () => {
+    if (!scheduleRef.current || isExporting) return;
+    try {
+      setIsExporting(true);
+
+      const content = scheduleRef.current;
+      const originalZoom = content.style.zoom;
+
+      // 1. Temporarily reset zoom to 1 for crisp, unscaled capture
+      content.style.zoom = "1";
+
+      // 2. Allow DOM to complete reflow and paint
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      const isDark = document.documentElement.classList.contains("dark");
+      const backgroundColor = isDark ? "#09090b" : "#ffffff";
+
+      let dataUrl: string;
+      try {
+        dataUrl = await toPng(content, {
+          pixelRatio: 2,
+          cacheBust: true,
+          backgroundColor,
+          filter: (node: HTMLElement) => {
+            if (node?.getAttribute && node.getAttribute("data-no-export") === "true") {
+              return false;
+            }
+            return true;
+          },
+        });
+      } catch (firstErr) {
+        console.warn("Retrying schedule image export at 1.5x with skipFonts...", firstErr);
+        dataUrl = await toPng(content, {
+          pixelRatio: 1.5,
+          skipFonts: true,
+          backgroundColor,
+          filter: (node: HTMLElement) => {
+            if (node?.getAttribute && node.getAttribute("data-no-export") === "true") {
+              return false;
+            }
+            return true;
+          },
+        });
+      }
+
+      // 3. Restore original zoom
+      content.style.zoom = originalZoom;
+
+      // 4. Trigger download
+      const termTitle = formatTermDisplay(termIndex);
+      const safeTitle = `برنامه-هفتگی-${termTitle}-${activeTerm}`
+        .replace(/[/\\?%*:|"<>]/g, "-")
+        .trim();
+      const link = document.createElement("a");
+      link.download = `${safeTitle || "schedule"}.png`;
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error("Failed to export schedule image:", err);
+      alert("خطا در تهیه خروجی تصویر از برنامه هفتگی. لطفاً دوباره تلاش کنید.");
+    } finally {
+      if (scheduleRef.current) {
+        scheduleRef.current.style.zoom = `${zoom / 100}`;
+      }
+      setIsExporting(false);
     }
   };
 
@@ -454,6 +630,208 @@ export function TermSchedulePlanner({
           </div>
 
           <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
+            {/* ========================================================================= */}
+            {/* Dedicated Section: رویدادهای شخصی من (My Personal Events) */}
+            {/* ========================================================================= */}
+            <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 dark:bg-purple-950/20 overflow-hidden shadow-xs">
+              {/* Header */}
+              <div
+                onClick={() => setShowCustomEvents((prev) => !prev)}
+                className="p-3 cursor-pointer flex items-center justify-between gap-2 select-none hover:bg-purple-500/10 transition-colors"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="h-6 w-6 rounded-md bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+                    <Sparkles className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-bold text-xs text-foreground truncate">
+                        رویدادهای شخصی من
+                      </span>
+                      <Badge
+                        variant="secondary"
+                        className="text-[10px] font-bold px-1.5 py-0 bg-purple-500/20 text-purple-700 dark:text-purple-300"
+                      >
+                        {userCustomEvents.length}
+                      </Badge>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground block truncate">
+                      ارائه‌های اختصاصی تعریف‌شده توسط شما
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCustomEventCourse(termCourses[0] || null);
+                      setEditingCustomEvent(null);
+                    }}
+                    className="h-6 w-6 text-purple-600 dark:text-purple-400 hover:bg-purple-500/20 rounded-md"
+                    title="افزودن ارائه شخصی جدید"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                  {showCustomEvents ? (
+                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </div>
+              </div>
+
+              {/* Expanded Custom Events List */}
+              {showCustomEvents && (
+                <div className="border-t border-purple-500/20 bg-background/50 p-2.5 space-y-2">
+                  {userCustomEvents.length === 0 ? (
+                    <div className="p-3 text-center space-y-2">
+                      <p className="text-[11px] text-muted-foreground">
+                        شما هنوز هیچ ارائه شخصی برای این ترم ثبت نکرده‌اید.
+                      </p>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setCustomEventCourse(termCourses[0] || null);
+                          setEditingCustomEvent(null);
+                        }}
+                        className="h-7 text-xs gap-1.5 text-purple-600 dark:text-purple-400 border-purple-500/30 w-full hover:bg-purple-500/10"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        تعریف ارائه شخصی جدید
+                      </Button>
+                    </div>
+                  ) : (
+                    userCustomEvents.map((evt) => {
+                      const targetKey = evt.courseId || evt.id;
+                      const isSelected = selectedEventsMap[targetKey] === evt.id;
+                      const course = termCourses.find((c) => c.id === evt.courseId);
+
+                      return (
+                        <div
+                          key={evt.id}
+                          onMouseEnter={() => setHoveredEventId(evt.id)}
+                          onMouseLeave={() => setHoveredEventId(null)}
+                          className={`p-2.5 rounded-lg border transition-all space-y-2 ${
+                            isSelected
+                              ? "border-purple-500 bg-purple-500/10 ring-1 ring-purple-500/30"
+                              : "border-border/70 bg-card hover:border-purple-500/40"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-1">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-xs text-foreground truncate">
+                                  {evt.courseName || course?.name || "ارائه شخصی"}
+                                </span>
+                                {(evt.courseCode || course?.code) && (
+                                  <Badge variant="outline" className="text-[9px] px-1 py-0 font-mono">
+                                    {evt.courseCode || course?.code}
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5">
+                                <User className="h-3 w-3 text-purple-500 shrink-0" />
+                                <span className="truncate">{evt.professorName}</span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1 shrink-0">
+                              {/* Edit */}
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => {
+                                  const matchedCourse = termCourses.find((c) => c.id === evt.courseId) || {
+                                    id: evt.courseId || "",
+                                    name: evt.courseName || "درس اختصاصی",
+                                    code: evt.courseCode || "شخصی",
+                                    units: evt.courseUnits || 3,
+                                    facultyId: evt.facultyId || "",
+                                    offeredIn: "both",
+                                    createdAt: "",
+                                  };
+                                  setCustomEventCourse(matchedCourse);
+                                  setEditingCustomEvent(evt);
+                                }}
+                                className="h-6 w-6 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md"
+                                title="ویرایش ارائه شخصی"
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+
+                              {/* Permanent Hard Delete ("حذف کلی از بیخ") */}
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                disabled={savingCourseId === targetKey}
+                                onClick={() => handleDeleteCustomEvent(evt.id, evt.courseId)}
+                                className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md"
+                                title="حذف کلی و قطعی ارائه شخصی از سیستم (قبل از تایید ادمین)"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+
+                              {/* Select / Deselect */}
+                              <Button
+                                size="sm"
+                                variant={isSelected ? "destructive" : "default"}
+                                disabled={savingCourseId === targetKey}
+                                onClick={() => handleToggleCustomEvent(evt)}
+                                className="h-6 text-[11px] px-2"
+                              >
+                                {isSelected ? "حذف" : "انتخاب"}
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Slots details */}
+                          <div className="space-y-1 text-[11px] text-muted-foreground pt-1 border-t border-border/40">
+                            {evt.slots && evt.slots.length > 0 ? (
+                              evt.slots.map((s, idx) => (
+                                <div key={idx} className="flex items-center gap-1.5">
+                                  <Clock className="h-3 w-3 text-muted-foreground/70 shrink-0" />
+                                  <span>
+                                    {DAYS_OF_WEEK.find((d) => d.value === s.dayOfWeek)?.label || "شنبه"}:{" "}
+                                    {s.startTime} تا {s.endTime}
+                                  </span>
+                                </div>
+                              ))
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground italic">
+                                ساعت کلاسی ثبت نشده
+                              </span>
+                            )}
+
+                            {evt.examDate && (
+                              <div className="flex items-center gap-1.5 text-[10px] text-amber-700 dark:text-amber-300 pt-0.5">
+                                <CalendarDays className="h-3 w-3 shrink-0" />
+                                <span>
+                                  امتحان: {evt.examDate} ({evt.examStartTime || "۰۸:۳۰"})
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Courses section label */}
+            <div className="pt-1 flex items-center justify-between text-[11px] font-bold text-muted-foreground">
+              <span>دروس این ترم:</span>
+              <span>{filteredCourses.length} درس</span>
+            </div>
             {filteredCourses.length === 0 ? (
               <div className="py-8 text-center text-xs text-muted-foreground">
                 درسی در این ترم یافت نشد.
@@ -703,6 +1081,118 @@ export function TermSchedulePlanner({
 
         {/* Left/Main Area: Interactive Weekly Timetable Grid */}
         <main className="flex-1 flex flex-col overflow-hidden bg-muted/10">
+          {/* Sub-toolbar row above the timetable */}
+          <div className="shrink-0 h-8 sm:h-8.5 border-b border-border/70 bg-card/90 backdrop-blur flex items-stretch justify-between z-20 select-none p-0 overflow-x-auto overflow-y-hidden">
+            {/* Right side (start in RTL): Zoom Controller & Time Window */}
+            <div className="flex items-stretch h-full">
+              {/* Zoom Controller */}
+              <div className="flex items-center px-1.5 sm:px-2 gap-1 h-full border-l border-border/70">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setZoom((z) => Math.max(70, z - 10))}
+                  disabled={zoom <= 70}
+                  className="h-6 w-6 p-0 rounded-md text-foreground hover:bg-muted/80 disabled:opacity-40 transition-colors flex items-center justify-center"
+                  title="کوچک‌نمایی (Zoom Out)"
+                >
+                  <ZoomOut className="h-3.5 w-3.5 text-foreground shrink-0" />
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setZoom(100)}
+                  className="h-6 px-1.5 text-xs font-bold text-foreground hover:bg-muted/70 transition-colors cursor-pointer rounded-md flex items-center justify-center font-mono"
+                  title="کلیک جهت بازنشانی بزرگ‌نمایی به ۱۰۰٪"
+                >
+                  {zoom}%
+                </button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setZoom((z) => Math.min(130, z + 10))}
+                  disabled={zoom >= 130}
+                  className="h-6 w-6 p-0 rounded-md text-foreground hover:bg-muted/80 disabled:opacity-40 transition-colors flex items-center justify-center"
+                  title="بزرگ‌نمایی (Zoom In)"
+                >
+                  <ZoomIn className="h-3.5 w-3.5 text-foreground shrink-0" />
+                </Button>
+              </div>
+
+              {/* Start and End Hour Controls */}
+              <div className="flex items-center px-2 sm:px-3 gap-2 h-full border-l border-border/70 text-xs text-muted-foreground">
+                <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
+                <span className="hidden sm:inline font-medium text-foreground text-[11px]">بازه ساعت:</span>
+
+                <div className="flex items-center gap-1">
+                  <span className="text-[11px]">از</span>
+                  <select
+                    value={startHour}
+                    onChange={(e) => setStartHour(e.target.value)}
+                    className="h-6 px-1 text-[11px] font-mono font-medium rounded border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    {START_HOUR_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <span className="text-[11px]">تا</span>
+                  <select
+                    value={endHour}
+                    onChange={(e) => setEndHour(e.target.value)}
+                    className="h-6 px-1 text-[11px] font-mono font-medium rounded border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    {END_HOUR_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Left side (in RTL): Action Buttons (Image Export, Add Custom Event) */}
+            <div className="flex items-center px-2 gap-1.5 h-full">
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={handleExportScheduleImage}
+                disabled={isExporting}
+                className="h-6.5 px-2 text-[11px] font-medium text-foreground hover:bg-muted/80 gap-1.5 rounded-md"
+                title="دریافت تصویر با کیفیت بالا از برنامه هفتگی"
+              >
+                {isExporting ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                ) : (
+                  <Download className="h-3.5 w-3.5 text-primary" />
+                )}
+                <span>{isExporting ? "در حال دریافت..." : "خروجی تصویر"}</span>
+              </Button>
+
+              <div className="h-4 w-px bg-border/60 mx-0.5" />
+
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setCustomEventCourse(termCourses[0] || null);
+                  setEditingCustomEvent(null);
+                }}
+                className="h-6.5 px-2 text-[11px] font-medium text-purple-600 dark:text-purple-400 border-purple-500/30 hover:bg-purple-500/10 gap-1.5 rounded-md"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>+ ارائه شخصی</span>
+              </Button>
+            </div>
+          </div>
+
           {/* Class Conflict Alert Banner */}
           {classConflicts.length > 0 && (
             <div className="p-3 px-5 bg-destructive/10 border-b border-destructive/20 text-destructive text-xs flex items-center justify-between gap-3 shrink-0">
@@ -760,17 +1250,35 @@ export function TermSchedulePlanner({
 
           {/* Timetable Grid Canvas */}
           <div className="flex-1 overflow-auto p-4 sm:p-6 flex flex-col min-w-175">
-            <div className="flex-1 rounded-2xl border bg-card shadow-xs flex flex-col overflow-hidden">
+            <div
+              ref={scheduleRef}
+              style={{ zoom: `${zoom / 100}` }}
+              className="flex-1 rounded-2xl border bg-card shadow-xs flex flex-col overflow-hidden"
+            >
+              {/* Header Title for Image Export & Clarity */}
+              <div className="px-4 py-2.5 border-b bg-muted/40 flex items-center justify-between text-xs select-none">
+                <div className="flex items-center gap-2 font-bold text-foreground">
+                  <Calendar className="h-4 w-4 text-primary" />
+                  <span>برنامه زمانی هفتگی {formatTermDisplay(termIndex)}</span>
+                  <span className="text-[11px] font-normal text-muted-foreground">({formatSemesterLabel(activeTerm)})</span>
+                </div>
+                <div className="flex items-center gap-3 text-[11px] text-muted-foreground font-mono">
+                  <span>ساعت: {startHour} تا {endHour}</span>
+                  <span>•</span>
+                  <span>{activeSelectedEvents.length} درس فعال</span>
+                </div>
+              </div>
+
               {/* Hours Header Row */}
-              <div className="h-10 border-b bg-muted/30 flex items-center text-xs  text-muted-foreground select-none">
+              <div className="h-10 border-b bg-muted/30 flex items-center text-xs text-muted-foreground select-none">
                 <div className="w-20 border-l h-full flex items-center justify-center font-sans font-bold text-foreground text-[11px]">
                   روز / ساعت
                 </div>
                 <div className="flex-1 flex h-full relative">
-                  {TIME_COLUMNS.map((col, idx) => (
+                  {timeColumns.map((col, idx) => (
                     <div
                       key={idx}
-                      className="flex-1 border-l last:border-l-0 h-full flex items-center justify-center text-[10px] sm:text-[11px] "
+                      className="flex-1 border-l last:border-l-0 h-full flex items-center justify-center text-[10px] sm:text-[11px] font-mono"
                     >
                       {col.start}
                     </div>
@@ -796,7 +1304,7 @@ export function TermSchedulePlanner({
                       {/* Timeline Slots Container */}
                       <div className="flex-1 relative flex">
                         {/* Background Grid Lines */}
-                        {TIME_COLUMNS.map((_, idx) => (
+                        {timeColumns.map((_, idx) => (
                           <div
                             key={idx}
                             className="flex-1 border-l last:border-l-0 h-full pointer-events-none border-dashed border-border/30"
@@ -821,11 +1329,11 @@ export function TermSchedulePlanner({
 
                             const rightPercent = Math.max(
                               0,
-                              ((startMin - START_DAY_MINUTES) / TOTAL_DAY_MINUTES) * 100
+                              ((startMin - startDayMinutes) / totalDayMinutes) * 100
                             );
                             const widthPercent = Math.min(
                               100 - rightPercent,
-                              ((endMin - startMin) / TOTAL_DAY_MINUTES) * 100
+                              ((endMin - startMin) / totalDayMinutes) * 100
                             );
 
                             const hasConflict = classConflicts.some(
@@ -906,11 +1414,11 @@ export function TermSchedulePlanner({
 
                             const rightPercent = Math.max(
                               0,
-                              ((startMin - START_DAY_MINUTES) / TOTAL_DAY_MINUTES) * 100
+                              ((startMin - startDayMinutes) / totalDayMinutes) * 100
                             );
                             const widthPercent = Math.min(
                               100 - rightPercent,
-                              ((endMin - startMin) / TOTAL_DAY_MINUTES) * 100
+                              ((endMin - startMin) / totalDayMinutes) * 100
                             );
 
                             return (
@@ -952,9 +1460,10 @@ export function TermSchedulePlanner({
       {/* Custom Event Creator / Editor Dialog */}
       <CustomEventDialog
         course={customEventCourse}
+        courses={termCourses}
         term={activeTerm}
         eventToEdit={editingCustomEvent}
-        open={Boolean(customEventCourse)}
+        open={Boolean(customEventCourse) || Boolean(editingCustomEvent)}
         onOpenChange={(open) => {
           if (!open) {
             setCustomEventCourse(null);
@@ -988,6 +1497,7 @@ export function TermSchedulePlanner({
 
 interface CustomEventDialogProps {
   course: Course | null;
+  courses?: Course[];
   term: string;
   open: boolean;
   eventToEdit?: CourseEvent | null;
@@ -997,12 +1507,29 @@ interface CustomEventDialogProps {
 
 function CustomEventDialog({
   course,
+  courses,
   term,
   open,
   eventToEdit,
   onOpenChange,
   onCreated,
 }: CustomEventDialogProps) {
+  const [selectedCourseId, setSelectedCourseId] = useState<string>(course?.id || "");
+
+  useEffect(() => {
+    if (course?.id) {
+      setSelectedCourseId(course.id);
+    } else if (eventToEdit?.courseId) {
+      setSelectedCourseId(eventToEdit.courseId);
+    } else if (courses && courses.length > 0) {
+      setSelectedCourseId(courses[0].id);
+    }
+  }, [course, eventToEdit, courses, open]);
+
+  const activeCourse = useMemo(() => {
+    return (courses || []).find((c) => c.id === selectedCourseId) || course;
+  }, [courses, selectedCourseId, course]);
+
   const [offerings, setOfferings] = useState<CourseOffering[]>([]);
   const [loadingOfferings, setLoadingOfferings] = useState(false);
   const [selectedOfferingId, setSelectedOfferingId] = useState<string>("");
@@ -1018,10 +1545,10 @@ function CustomEventDialog({
 
   // Fetch registered offerings (professors) for this specific course
   useEffect(() => {
-    if (!course || !open) return;
+    if (!activeCourse || !open) return;
     let isMounted = true;
     setLoadingOfferings(true);
-    fetchJson(`/api/offerings?courseId=${course.id}`)
+    fetchJson(`/api/offerings?courseId=${activeCourse.id}`)
       .then((res) => {
         if (isMounted && res.success && Array.isArray(res.data)) {
           setOfferings(res.data);
@@ -1040,7 +1567,7 @@ function CustomEventDialog({
     return () => {
       isMounted = false;
     };
-  }, [course, open, eventToEdit]);
+  }, [activeCourse, open, eventToEdit]);
 
   useEffect(() => {
     if (eventToEdit) {
@@ -1069,7 +1596,7 @@ function CustomEventDialog({
     }
   }, [eventToEdit, open]);
 
-  if (!course) return null;
+  if (!activeCourse) return null;
 
   const handleAddSlot = () => {
     setSlots((prev) => [...prev, { dayOfWeek: 2, startTime: "10:30", endTime: "12:00" }]);
@@ -1211,9 +1738,9 @@ function CustomEventDialog({
           <div className="flex items-center gap-2.5">
             <div>
               <DialogTitle className="text-base font-bold flex items-center gap-2">
-                <span>{eventToEdit ? `ویرایش ارائه شخصی برای ${course.name}` : `تعریف ارائه شخصی برای ${course.name}`}</span>
+                <span>{eventToEdit ? `ویرایش ارائه شخصی برای ${activeCourse.name}` : `تعریف ارائه شخصی برای ${activeCourse.name}`}</span>
                 <Badge variant="outline" className="text-[10px] ">
-                  {course.code}
+                  {activeCourse.code}
                 </Badge>
               </DialogTitle>
               <DialogDescription className="text-xs">
@@ -1230,6 +1757,31 @@ function CustomEventDialog({
             <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-xs flex items-start gap-2">
               <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
               <span className="leading-relaxed font-medium">{error}</span>
+            </div>
+          )}
+
+          {/* Course Selector (if multiple courses available and not editing) */}
+          {courses && courses.length > 1 && !eventToEdit && (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5 text-primary" />
+                انتخاب درس مربوطه *
+              </Label>
+              <Combobox
+                items={courses.map((c) => ({
+                  value: c.id,
+                  label: c.name,
+                  sublabel: `${c.code} (${c.units} واحد)`,
+                  keywords: [c.name, c.code],
+                }))}
+                value={selectedCourseId}
+                onChange={(val) => {
+                  setSelectedCourseId(val);
+                  setSelectedOfferingId("");
+                }}
+                placeholder="-- انتخاب یا جستجوی درس --"
+                searchPlaceholder="جستجوی درس..."
+              />
             </div>
           )}
 

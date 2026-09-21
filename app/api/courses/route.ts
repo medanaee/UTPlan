@@ -26,12 +26,26 @@ export async function GET(request: Request) {
       if (!course) {
         return Response.json({ success: false, message: "درس یافت نشد." }, { status: 404 });
       }
-      return Response.json({ success: true, data: course });
+      return Response.json(
+        { success: true, data: course },
+        {
+          headers: {
+            "Cache-Control": "public, max-age=30, s-maxage=600, stale-while-revalidate=3600",
+          },
+        }
+      );
     }
 
     const directOnly = searchParams.get("directOnly") === "true";
     const courses = await getCourses(facultyId, trackId, directOnly);
-    return Response.json({ success: true, data: courses });
+    return Response.json(
+      { success: true, data: courses },
+      {
+        headers: {
+          "Cache-Control": "public, max-age=30, s-maxage=600, stale-while-revalidate=3600",
+        },
+      }
+    );
   } catch (error) {
     console.error("Get courses error:", error);
     return Response.json({ success: false, message: "خطا در دریافت لیست دروس" }, { status: 500 });

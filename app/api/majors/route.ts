@@ -6,7 +6,14 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const facultyId = searchParams.get("facultyId") || undefined;
     const majors = await getMajors(facultyId);
-    return Response.json({ success: true, data: majors });
+    return Response.json(
+      { success: true, data: majors },
+      {
+        headers: {
+          "Cache-Control": "public, max-age=60, s-maxage=3600, stale-while-revalidate=86400",
+        },
+      }
+    );
   } catch (error) {
     console.error("Get majors error:", error);
     return Response.json({ success: false, message: "خطا در دریافت لیست رشته‌ها" }, { status: 500 });

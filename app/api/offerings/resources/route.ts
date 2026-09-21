@@ -21,7 +21,14 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await getOfferingResources(offeringId);
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json(
+      { success: true, data },
+      {
+        headers: {
+          "Cache-Control": "public, max-age=60, s-maxage=600, stale-while-revalidate=3600",
+        },
+      }
+    );
   } catch (error: any) {
     console.error("GET offering resources error:", error);
     return NextResponse.json(

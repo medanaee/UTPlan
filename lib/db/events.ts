@@ -1,5 +1,5 @@
 import type { CourseEvent, CourseEventSlot } from "../types";
-import { getD1 } from "./client";
+import { getD1, fetchInChunks } from "./client";
 import { getEffectiveFacultyIds } from "./structure";
 import { generateUniqueCode, isCodeDuplicate } from "./code-generator";
 
@@ -30,12 +30,12 @@ export async function getEvents(
       SELECT e.id, e.code, e.offering_id, e.term, e.location, e.exam_date, e.exam_start_time, e.exam_end_time,
              e.is_user_custom, e.user_id, e.global_event_id, e.created_at, e.deleted_at,
              o.deleted_at AS offering_deleted_at,
-             c.id AS course_id, c.name AS course_name, c.units AS course_units,
+             c.id AS course_id, c.name AS course_name, c.code AS course_code, c.units AS course_units,
              c.faculty_id AS faculty_id, f.name AS faculty_name,
              p.id AS professor_id, (p.first_name || ' ' || p.last_name) AS professor_name, p.title AS professor_title, p.avatar_url AS professor_avatar_url
       FROM course_events e
-      JOIN course_offerings o ON e.offering_id = o.id
-      JOIN courses c ON o.course_id = c.id
+      LEFT JOIN course_offerings o ON e.offering_id = o.id
+      LEFT JOIN courses c ON o.course_id = c.id
       LEFT JOIN faculties f ON c.faculty_id = f.id
       LEFT JOIN offering_professors op ON op.offering_id = o.id AND op.is_primary = 1
       LEFT JOIN professors p ON op.professor_id = p.id
@@ -77,21 +77,43 @@ export async function getEvents(
     const { results: eventRows } = await d1.prepare(query).bind(...params).all();
     const eventsList = eventRows || [];
 
-    // Fetch event slots
-    const { results: slotRows } = await d1.prepare("SELECT * FROM course_event_slots").all();
-    const slotsList = slotRows || [];
+    if (eventsList.length === 0) {
+      return [];
+    }
 
-    // Fetch professor links for all offerings
-    const { results: allProfLinks } = await d1
-      .prepare(`
-        SELECT op.offering_id, op.is_primary, p.id, p.first_name, p.last_name, p.code, p.title, p.avatar_url, p.email
-        FROM offering_professors op
-        JOIN professors p ON op.professor_id = p.id
-        WHERE p.deleted_at IS NULL
-        ORDER BY op.is_primary DESC, p.last_name ASC, p.first_name ASC
-      `)
-      .all();
-    const profLinksList = allProfLinks || [];
+    const eventIds = eventsList.map((e: any) => e.id);
+    const offeringIds = Array.from(
+      new Set(eventsList.map((e: any) => e.offering_id).filter(Boolean))
+    ) as string[];
+
+    // Fetch only slots for these events (in safe chunks of 50)
+    const slotsList = await fetchInChunks(eventIds, 50, async (chunk) => {
+      const placeholders = chunk.map(() => "?").join(",");
+      const { results } = await d1
+        .prepare(`SELECT * FROM course_event_slots WHERE event_id IN (${placeholders})`)
+        .bind(...chunk)
+        .all();
+      return results || [];
+    });
+
+    // Fetch professor links only for these offerings
+    let profLinksList: any[] = [];
+    if (offeringIds.length > 0) {
+      profLinksList = await fetchInChunks(offeringIds, 50, async (chunk) => {
+        const placeholders = chunk.map(() => "?").join(",");
+        const { results } = await d1
+          .prepare(`
+            SELECT op.offering_id, op.is_primary, p.id, p.first_name, p.last_name, p.code, p.title, p.avatar_url, p.email
+            FROM offering_professors op
+            JOIN professors p ON op.professor_id = p.id
+            WHERE op.offering_id IN (${placeholders}) AND p.deleted_at IS NULL
+            ORDER BY op.is_primary DESC, p.last_name ASC, p.first_name ASC
+          `)
+          .bind(...chunk)
+          .all();
+        return results || [];
+      });
+    }
 
     return eventsList.map((e: any) => {
       const slots = slotsList
@@ -129,6 +151,7 @@ export async function getEvents(
         deletedAt: e.deleted_at || null,
         courseId: e.course_id,
         courseName: e.course_name,
+        courseCode: e.course_code || undefined,
         courseUnits: Number(e.course_units) || 3,
         facultyId: e.faculty_id,
         facultyName: e.faculty_name || undefined,
@@ -378,6 +401,29 @@ export async function updateEvent(
   } catch (err) {
     console.error("D1 updateEvent error:", err);
     throw err;
+  }
+}
+
+export async function hardDeleteCustomEvent(id: string, userId?: string): Promise<boolean> {
+  const d1 = getD1();
+  if (!d1) return false;
+
+  try {
+    // 1. Delete associated slots first to prevent orphan records
+    await d1.prepare("DELETE FROM course_event_slots WHERE event_id = ?").bind(id).run();
+
+    // 2. Hard-delete the event record itself if it's an unapproved custom event
+    let query = "DELETE FROM course_events WHERE id = ? AND is_user_custom = 1";
+    const params: any[] = [id];
+    if (userId) {
+      query += " AND user_id = ?";
+      params.push(userId);
+    }
+    const res = await d1.prepare(query).bind(...params).run();
+    return (res.meta?.changes ?? 1) > 0;
+  } catch (err) {
+    console.error("D1 hardDeleteCustomEvent error:", err);
+    return false;
   }
 }
 

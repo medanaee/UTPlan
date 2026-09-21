@@ -852,7 +852,7 @@ export function ChartEditor({
 
     debounceTimerRef.current = setTimeout(() => {
       syncToServer(currentPayloadStr);
-    }, 2500);
+    }, 3500);
 
     return () => {
       if (debounceTimerRef.current) {

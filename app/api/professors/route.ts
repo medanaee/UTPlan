@@ -16,7 +16,14 @@ export async function GET(request: Request) {
     const facultyId = searchParams.get("facultyId") || undefined;
     const directOnly = searchParams.get("directOnly") === "true";
     const profs = await getProfessors(facultyId, directOnly);
-    return Response.json({ success: true, data: profs });
+    return Response.json(
+      { success: true, data: profs },
+      {
+        headers: {
+          "Cache-Control": "public, max-age=30, s-maxage=600, stale-while-revalidate=3600",
+        },
+      }
+    );
   } catch (error) {
     console.error("Get professors error:", error);
     return Response.json({ success: false, message: "خطا در دریافت لیست اساتید" }, { status: 500 });

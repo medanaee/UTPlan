@@ -4,7 +4,14 @@ import { getFaculties, createFaculty, updateFaculty, deleteFaculty } from "@/lib
 export async function GET() {
   try {
     const faculties = await getFaculties();
-    return Response.json({ success: true, data: faculties });
+    return Response.json(
+      { success: true, data: faculties },
+      {
+        headers: {
+          "Cache-Control": "public, max-age=60, s-maxage=3600, stale-while-revalidate=86400",
+        },
+      }
+    );
   } catch (error) {
     console.error("Get faculties error:", error);
     return Response.json({ success: false, message: "خطا در دریافت لیست دانشکده‌ها" }, { status: 500 });

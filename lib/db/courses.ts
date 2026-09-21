@@ -1,5 +1,5 @@
 import type { Course, DegreeLevel, PrerequisiteRelation, PrerequisiteType } from "../types";
-import { getD1 } from "./client";
+import { getD1, fetchInChunks } from "./client";
 import { assignCourseToCategory, assignCourseToCategories, getEffectiveFacultyIds } from "./structure";
 import { generateUniqueCode, isCodeDuplicate } from "./code-generator";
 
@@ -37,15 +37,27 @@ export async function getCourses(
     const { results: courseRows } = await d1.prepare(query).bind(...params).all();
     const coursesList = courseRows || [];
 
-    // Fetch all prereqs
-    const prereqsQuery = `
-      SELECT p.id, p.course_id, p.required_course_id, p.type,
-             c.name AS required_course_name, c.code AS required_course_code
-      FROM prerequisites p
-      LEFT JOIN courses c ON p.required_course_id = c.id
-    `;
-    const { results: prereqRows } = await d1.prepare(prereqsQuery).all();
-    const prereqsList = prereqRows || [];
+    if (coursesList.length === 0) {
+      return [];
+    }
+
+    const courseIds = coursesList.map((c: any) => c.id);
+
+    // Fetch prereqs only for these courses (in safe chunks of 50)
+    const prereqsList = await fetchInChunks(courseIds, 50, async (chunk) => {
+      const placeholders = chunk.map(() => "?").join(",");
+      const { results } = await d1
+        .prepare(`
+          SELECT p.id, p.course_id, p.required_course_id, p.type,
+                 c.name AS required_course_name, c.code AS required_course_code
+          FROM prerequisites p
+          LEFT JOIN courses c ON p.required_course_id = c.id
+          WHERE p.course_id IN (${placeholders})
+        `)
+        .bind(...chunk)
+        .all();
+      return results || [];
+    });
 
     // Fetch track assignments
     let assignmentsList: any[] = [];
@@ -56,8 +68,14 @@ export async function getCourses(
         .all();
       assignmentsList = assignRows || [];
     } else {
-      const { results: assignRows } = await d1.prepare("SELECT * FROM track_course_assignments").all();
-      assignmentsList = assignRows || [];
+      assignmentsList = await fetchInChunks(courseIds, 50, async (chunk) => {
+        const placeholders = chunk.map(() => "?").join(",");
+        const { results } = await d1
+          .prepare(`SELECT * FROM track_course_assignments WHERE course_id IN (${placeholders})`)
+          .bind(...chunk)
+          .all();
+        return results || [];
+      });
     }
 
     return coursesList.map((c: any) => {
@@ -153,17 +171,22 @@ export async function getCourseById(id: string): Promise<Course | null> {
       .bind(id)
       .all();
 
-    const { results: allProfLinks } = await d1
-      .prepare(`
-        SELECT op.offering_id, op.is_primary, p.id, p.first_name, p.last_name, p.code, p.title, p.avatar_url, p.email
-        FROM offering_professors op
-        JOIN professors p ON op.professor_id = p.id
-        WHERE p.deleted_at IS NULL
-        ORDER BY op.is_primary DESC, p.last_name ASC, p.first_name ASC
-      `)
-      .all();
-
-    const courseProfLinks = allProfLinks || [];
+    const offeringIds = (offeringRows || []).map((o: any) => o.id);
+    let courseProfLinks: any[] = [];
+    if (offeringIds.length > 0) {
+      const placeholders = offeringIds.map(() => "?").join(",");
+      const { results: profLinks } = await d1
+        .prepare(`
+          SELECT op.offering_id, op.is_primary, p.id, p.first_name, p.last_name, p.code, p.title, p.avatar_url, p.email
+          FROM offering_professors op
+          JOIN professors p ON op.professor_id = p.id
+          WHERE op.offering_id IN (${placeholders}) AND p.deleted_at IS NULL
+          ORDER BY op.is_primary DESC, p.last_name ASC, p.first_name ASC
+        `)
+        .bind(...offeringIds)
+        .all();
+      courseProfLinks = profLinks || [];
+    }
 
     const { results: assignRows } = await d1
       .prepare("SELECT * FROM track_course_assignments WHERE course_id = ?")

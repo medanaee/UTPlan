@@ -1,5 +1,5 @@
 import type { StudentChart, ChartSemester } from "../types";
-import { getD1 } from "./client";
+import { getD1, fetchInChunks } from "./client";
 
 export async function getCharts(userId?: string, trackId?: string): Promise<StudentChart[]> {
   const d1 = getD1();
@@ -21,12 +21,35 @@ export async function getCharts(userId?: string, trackId?: string): Promise<Stud
     const { results: chartRows } = await d1.prepare(query).bind(...params).all();
     const chartsList = chartRows || [];
 
-    // Fetch all terms and courses for these charts
-    const { results: termRows } = await d1.prepare("SELECT * FROM chart_terms ORDER BY term_index ASC").all();
-    const { results: courseRows } = await d1.prepare("SELECT * FROM chart_courses ORDER BY sort_order ASC").all();
+    if (chartsList.length === 0) {
+      return [];
+    }
 
-    const termsList = termRows || [];
-    const chartCoursesList = courseRows || [];
+    const chartIds = chartsList.map((c: any) => c.id);
+
+    // Fetch terms only for these charts (in chunks of 50)
+    const termsList = await fetchInChunks(chartIds, 50, async (chunk) => {
+      const placeholders = chunk.map(() => "?").join(",");
+      const { results } = await d1
+        .prepare(`SELECT * FROM chart_terms WHERE chart_id IN (${placeholders}) ORDER BY term_index ASC`)
+        .bind(...chunk)
+        .all();
+      return results || [];
+    });
+
+    // Fetch courses only for these terms
+    const termIds = termsList.map((t: any) => t.id);
+    let chartCoursesList: any[] = [];
+    if (termIds.length > 0) {
+      chartCoursesList = await fetchInChunks(termIds, 50, async (chunk) => {
+        const placeholders = chunk.map(() => "?").join(",");
+        const { results } = await d1
+          .prepare(`SELECT * FROM chart_courses WHERE term_id IN (${placeholders}) ORDER BY sort_order ASC`)
+          .bind(...chunk)
+          .all();
+        return results || [];
+      });
+    }
 
     return chartsList.map((c: any) => {
       const terms = termsList.filter((t: any) => t.chart_id === c.id);
@@ -194,10 +217,6 @@ export async function createChart(data: {
   if (!d1) throw new Error("پایگاه‌داده در دسترس نیست.");
 
   try {
-    try {
-      await d1.prepare("ALTER TABLE charts ADD COLUMN waived_course_ids TEXT").run();
-    } catch {}
-
     const stmts: any[] = [];
     stmts.push(
       d1.prepare(
@@ -255,10 +274,6 @@ export async function updateChart(
   if (!d1) return null;
 
   try {
-    try {
-      await d1.prepare("ALTER TABLE charts ADD COLUMN waived_course_ids TEXT").run();
-    } catch {}
-
     if (
       data.title !== undefined ||
       data.trackId !== undefined ||

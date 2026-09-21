@@ -1,5 +1,5 @@
 import type { CourseOffering } from "../types";
-import { getD1 } from "./client";
+import { getD1, fetchInChunks } from "./client";
 import { getEvents } from "./events";
 import { getOfferingResources } from "./resources";
 import { getEffectiveFacultyIds } from "./structure";
@@ -34,6 +34,10 @@ export async function getOfferings(
       query += " AND o.course_id = ?";
       params.push(normFilter.courseId);
     }
+    if (normFilter?.professorId) {
+      query += " AND o.id IN (SELECT offering_id FROM offering_professors WHERE professor_id = ?)";
+      params.push(normFilter.professorId);
+    }
     if (normFilter?.facultyId) {
       if (isDirectOnly) {
         query += ` AND c.faculty_id = ?`;
@@ -50,19 +54,29 @@ export async function getOfferings(
     const { results } = await d1.prepare(query).bind(...params).all();
     const offeringRows = results || [];
 
-    // Fetch professor links from offering_professors junction table
+    if (offeringRows.length === 0) {
+      return [];
+    }
+
+    const offeringIds = offeringRows.map((r: any) => r.id);
+
+    // Fetch professor links only for these offerings
     let profLinksList: any[] = [];
     try {
-      const { results: allProfLinks } = await d1
-        .prepare(`
-          SELECT op.offering_id, op.is_primary, p.id, p.first_name, p.last_name, p.code, p.title, p.avatar_url, p.email
-          FROM offering_professors op
-          JOIN professors p ON op.professor_id = p.id
-          WHERE p.deleted_at IS NULL
-          ORDER BY op.is_primary DESC, p.last_name ASC, p.first_name ASC
-        `)
-        .all();
-      profLinksList = allProfLinks || [];
+      profLinksList = await fetchInChunks(offeringIds, 50, async (chunk) => {
+        const placeholders = chunk.map(() => "?").join(",");
+        const { results: allProfLinks } = await d1
+          .prepare(`
+            SELECT op.offering_id, op.is_primary, p.id, p.first_name, p.last_name, p.code, p.title, p.avatar_url, p.email
+            FROM offering_professors op
+            JOIN professors p ON op.professor_id = p.id
+            WHERE op.offering_id IN (${placeholders}) AND p.deleted_at IS NULL
+            ORDER BY op.is_primary DESC, p.last_name ASC, p.first_name ASC
+          `)
+          .bind(...chunk)
+          .all();
+        return allProfLinks || [];
+      });
     } catch (e) {
       // Safe fallback if junction table is not yet populated
     }

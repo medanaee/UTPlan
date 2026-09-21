@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getFacultyLinks, setFacultyLinks } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
 
@@ -8,7 +8,14 @@ export async function GET(request: NextRequest) {
     const targetFacultyId = searchParams.get("targetFacultyId") || searchParams.get("facultyId") || undefined;
 
     const links = await getFacultyLinks(targetFacultyId);
-    return NextResponse.json({ success: true, data: links });
+    return NextResponse.json(
+      { success: true, data: links },
+      {
+        headers: {
+          "Cache-Control": "public, max-age=60, s-maxage=3600, stale-while-revalidate=86400",
+        },
+      }
+    );
   } catch (error: any) {
     console.error("GET faculty links error:", error);
     return NextResponse.json(
