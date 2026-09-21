@@ -302,7 +302,7 @@ export function PhysicalFacultyManager({
     <div className="space-y-6">
       {/* Header and Actions */}
       <Card className="rounded-2xl border-border/80 shadow-xs">
-        <CardHeader className="pb-4">
+        <CardHeader className="border-b border-border">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2.5">
@@ -515,7 +515,7 @@ export function PhysicalFacultyManager({
 
       {/* Create / Edit Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col overflow-hidden" dir="rtl">
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col" dir="rtl">
           <DialogHeader className="shrink-0">
             <DialogTitle className="text-base font-bold">
               {editingFaculty ? "ویرایش مشخصات دانشکده فیزیکی" : "افزودن دانشکده فیزیکی جدید"}
@@ -525,7 +525,7 @@ export function PhysicalFacultyManager({
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto space-y-4">
+          <form id="physical-faculty-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-1 h-full space-y-4">
             {formError && (
               <div className="rounded-xl border border-destructive/30 bg-destructive/10 text-destructive text-xs flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -700,7 +700,7 @@ export function PhysicalFacultyManager({
             </div>
 
             {/* Row 4: Text Address */}
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 overflow-visible">
               <Label className="text-xs font-semibold">
                 آدرس متنی و مسیر دسترسی <span className="text-muted-foreground text-[10px]">(اختیاری)</span>
               </Label>
@@ -726,33 +726,32 @@ export function PhysicalFacultyManager({
                 className="text-xs resize-none"
               />
             </div>
-
-            <DialogFooter className="pt-2 border-t flex items-center justify-between">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsModalOpen(false)}
-                disabled={isSubmitting}
-                className="text-xs"
-              >
-                انصراف
-              </Button>
-              <Button
-                type="submit"
-                size="sm"
-                disabled={isSubmitting}
-                className="text-xs gap-1.5 font-bold shadow-xs"
-              >
-                {isSubmitting ? (
-                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Sparkles className="h-3.5 w-3.5" />
-                )}
-                <span>{editingFaculty ? "ذخیره تغییرات" : "ایجاد دانشکده فیزیکی"}</span>
-              </Button>
-            </DialogFooter>
           </form>
+
+          <DialogFooter className="pt-2 border-t flex items-center justify-between shrink-0">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsModalOpen(false)}
+              disabled={isSubmitting}
+              className="text-xs"
+            >
+              انصراف
+            </Button>
+            <Button
+              type="submit"
+              form="physical-faculty-form"
+              size="sm"
+              disabled={isSubmitting}
+              className="text-xs gap-1.5 font-bold shadow-xs"
+            >
+              {isSubmitting && (
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              )}
+              <span>{editingFaculty ? "ذخیره تغییرات" : "ایجاد دانشکده فیزیکی"}</span>
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

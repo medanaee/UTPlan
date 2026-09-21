@@ -138,8 +138,7 @@ export function PhysicalFacultyDetailView({ faculty }: PhysicalFacultyDetailView
           </div>
         </div>
 
-        {/* Info Grid */}
-        <div className="p-6 sm:p-8 space-y-6">
+        {(faculty.address || faculty.description) && (<div className="p-3 sm:p-3 space-y-6">
           {/* Address Block */}
           {faculty.address && (
             <div className="p-4 rounded-2xl border bg-muted/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -180,14 +179,16 @@ export function PhysicalFacultyDetailView({ faculty }: PhysicalFacultyDetailView
               </div>
             </div>
           )}
-        </div>
+        </div>)}
+        {/* Info Grid */}
+
       </div>
 
       {/* Map & Navigation Apps Section */}
       {hasCoordinates && (
         <Card className="rounded-3xl border-border/80 shadow-xs overflow-hidden">
-          <CardHeader className="p-6 border-b bg-muted/10">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <CardHeader className="border-b bg-muted/10">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between">
               <div className="space-y-1">
                 <CardTitle className="text-base font-bold flex items-center gap-2">
                   <Compass className="h-5 w-5 text-primary" />
@@ -204,7 +205,7 @@ export function PhysicalFacultyDetailView({ faculty }: PhysicalFacultyDetailView
             </div>
           </CardHeader>
 
-          <CardContent className="p-6 space-y-6">
+          <CardContent className="space-y-6">
             {/* Embedded OpenStreetMap */}
             <div className="h-80 sm:h-96 w-full rounded-2xl overflow-hidden border shadow-inner bg-background relative">
               <iframe
