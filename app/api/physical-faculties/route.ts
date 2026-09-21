@@ -14,11 +14,18 @@ export async function GET(request: NextRequest) {
 
     const faculties = await getPhysicalFaculties(includeDeleted, search);
 
-    return NextResponse.json({
-      success: true,
-      count: faculties.length,
-      data: faculties,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        count: faculties.length,
+        data: faculties,
+      },
+      {
+        headers: {
+          "Cache-Control": "public, max-age=60, s-maxage=3600, stale-while-revalidate=86400",
+        },
+      }
+    );
   } catch (error: any) {
     console.error("Get physical faculties error:", error);
     return NextResponse.json(

@@ -25,7 +25,14 @@ export async function GET(request: NextRequest) {
       facultyId,
       directOnly,
     });
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json(
+      { success: true, data },
+      {
+        headers: {
+          "Cache-Control": "public, max-age=30, s-maxage=600, stale-while-revalidate=3600",
+        },
+      }
+    );
   } catch (error) {
     console.error("GET offerings error:", error);
     return NextResponse.json(
