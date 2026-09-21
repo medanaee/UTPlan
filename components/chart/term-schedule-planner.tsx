@@ -930,8 +930,7 @@ export function TermSchedulePlanner({
                   <span className="text-[11px]">از</span>
                   <Select value={startHour} onValueChange={setStartHour}>
                     <SelectTrigger
-                      size="sm"
-                      className="h-6 w-fit text-[11px] font-mono px-1.5 py-0 gap-1 border-border/60 bg-transparent dark:bg-transparent hover:bg-muted/60 transition-colors shadow-none [&_svg]:size-3"
+                      className="h-full! w-fit font-mono px-1.5 gap-1 border-x rounded-none! border-border/60 bg-transparent dark:bg-transparent hover:bg-muted/60"
                     >
                       <SelectValue />
                     </SelectTrigger>
@@ -949,8 +948,7 @@ export function TermSchedulePlanner({
                   <span className="text-[11px]">تا</span>
                   <Select value={endHour} onValueChange={setEndHour}>
                     <SelectTrigger
-                      size="sm"
-                      className="h-6 w-fit text-[11px] font-mono px-1.5 py-0 gap-1 border-border/60 bg-transparent dark:bg-transparent hover:bg-muted/60 transition-colors shadow-none [&_svg]:size-3"
+                      className="h-full! w-fit font-mono px-1.5 gap-1 border-x rounded-none! border-border/60 bg-transparent dark:bg-transparent hover:bg-muted/60"
                     >
                       <SelectValue />
                     </SelectTrigger>
