@@ -1247,16 +1247,16 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
               <Label className="text-xs font-semibold text-foreground block">
                 امتیاز به معیارهای درس (از ۱۰ - اختیاری):
               </Label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-2.5 text-xs">
                 {/* Teaching */}
-                <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                <div className="space-y-1">
                   <div className="flex justify-between items-center text-xs">
                     <span className="font-semibold text-foreground">کیفیت و شیوه تدریس:</span>
                     <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${scores.teaching ? getScoreTextColor(scores.teaching) : "text-muted-foreground"}`}>
                       {scores.teaching ? `${scores.teaching} از ۱۰` : "بدون امتیاز"}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-1 pt-1 overflow-x-auto">
+                  <div className="flex items-center gap-1 pt-0.5 overflow-x-auto">
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                       <button
                         key={num}
@@ -1275,14 +1275,14 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                 </div>
 
                 {/* Grading */}
-                <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                <div className="space-y-1">
                   <div className="flex justify-between items-center text-xs">
                     <span className="font-semibold text-foreground">نحوه نمره‌دهی و تصحیح:</span>
                     <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${scores.grading ? getScoreTextColor(scores.grading) : "text-muted-foreground"}`}>
                       {scores.grading ? `${scores.grading} از ۱۰` : "بدون امتیاز"}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-1 pt-1 overflow-x-auto">
+                  <div className="flex items-center gap-1 pt-0.5 overflow-x-auto">
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                       <button
                         key={num}
@@ -1301,14 +1301,14 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                 </div>
 
                 {/* Content */}
-                <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                <div className="space-y-1">
                   <div className="flex justify-between items-center text-xs">
                     <span className="font-semibold text-foreground">کیفیت محتوا و منابع:</span>
                     <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${scores.content ? getScoreTextColor(scores.content) : "text-muted-foreground"}`}>
                       {scores.content ? `${scores.content} از ۱۰` : "بدون امتیاز"}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-1 pt-1 overflow-x-auto">
+                  <div className="flex items-center gap-1 pt-0.5 overflow-x-auto">
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                       <button
                         key={num}
@@ -1327,14 +1327,14 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                 </div>
 
                 {/* Difficulty */}
-                <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                <div className="space-y-1">
                   <div className="flex justify-between items-center text-xs">
                     <span className="font-semibold text-foreground">سطح دشواری و تکالیف:</span>
                     <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${scores.difficulty ? getScoreTextColor(scores.difficulty) : "text-muted-foreground"}`}>
                       {scores.difficulty ? `${scores.difficulty} از ۱۰` : "بدون امتیاز"}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-1 pt-1 overflow-x-auto">
+                  <div className="flex items-center gap-1 pt-0.5 overflow-x-auto">
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                       <button
                         key={num}
@@ -1459,16 +1459,16 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                 <Label className="text-xs font-semibold text-foreground block">
                   ویرایش امتیاز به معیارهای درس (از ۱۰ - اختیاری):
                 </Label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-2.5 text-xs">
                   {/* Teaching */}
-                  <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                  <div className="space-y-1">
                     <div className="flex justify-between items-center text-xs">
                       <span className="font-semibold text-foreground">کیفیت و شیوه تدریس:</span>
                       <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${editScores.teaching ? getScoreTextColor(editScores.teaching) : "text-muted-foreground"}`}>
                         {editScores.teaching ? `${editScores.teaching} از ۱۰` : "بدون امتیاز"}
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-1 pt-1 overflow-x-auto">
+                    <div className="flex items-center gap-1 pt-0.5 overflow-x-auto">
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                         <button
                           key={num}
@@ -1487,14 +1487,14 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                   </div>
 
                   {/* Grading */}
-                  <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                  <div className="space-y-1">
                     <div className="flex justify-between items-center text-xs">
                       <span className="font-semibold text-foreground">نحوه نمره‌دهی و تصحیح:</span>
                       <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${editScores.grading ? getScoreTextColor(editScores.grading) : "text-muted-foreground"}`}>
                         {editScores.grading ? `${editScores.grading} از ۱۰` : "بدون امتیاز"}
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-1 pt-1 overflow-x-auto">
+                    <div className="flex items-center gap-1 pt-0.5 overflow-x-auto">
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                         <button
                           key={num}
@@ -1513,14 +1513,14 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                   </div>
 
                   {/* Content */}
-                  <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                  <div className="space-y-1">
                     <div className="flex justify-between items-center text-xs">
                       <span className="font-semibold text-foreground">کیفیت محتوا و منابع:</span>
                       <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${editScores.content ? getScoreTextColor(editScores.content) : "text-muted-foreground"}`}>
                         {editScores.content ? `${editScores.content} از ۱۰` : "بدون امتیاز"}
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-1 pt-1 overflow-x-auto">
+                    <div className="flex items-center gap-1 pt-0.5 overflow-x-auto">
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                         <button
                           key={num}
@@ -1539,14 +1539,14 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                   </div>
 
                   {/* Difficulty */}
-                  <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                  <div className="space-y-1">
                     <div className="flex justify-between items-center text-xs">
                       <span className="font-semibold text-foreground">سطح دشواری و تکالیف:</span>
                       <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${editScores.difficulty ? getScoreTextColor(editScores.difficulty) : "text-muted-foreground"}`}>
                         {editScores.difficulty ? `${editScores.difficulty} از ۱۰` : "بدون امتیاز"}
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-1 pt-1 overflow-x-auto">
+                    <div className="flex items-center gap-1 pt-0.5 overflow-x-auto">
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                         <button
                           key={num}

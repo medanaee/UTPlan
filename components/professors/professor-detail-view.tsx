@@ -840,16 +840,16 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
               <Label className="text-xs font-semibold text-foreground block">
                 امتیاز به معیارهای استاد (از ۱۰ - اختیاری):
               </Label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-2.5 text-xs">
                 {/* Teaching */}
-                <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                <div className="space-y-1">
                   <div className="flex justify-between items-center text-xs">
                     <span className="font-semibold text-foreground">کیفیت و شیوه تدریس:</span>
                     <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${scores.teaching ? getScoreTextColor(scores.teaching) : "text-muted-foreground"}`}>
                       {scores.teaching ? `${scores.teaching} از ۱۰` : "بدون امتیاز"}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-1 pt-1 overflow-x-auto">
+                  <div className="flex items-center gap-1 pt-0.5 overflow-x-auto">
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                       <button
                         key={num}
@@ -868,14 +868,14 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
                 </div>
 
                 {/* Grading */}
-                <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                <div className="space-y-1">
                   <div className="flex justify-between items-center text-xs">
                     <span className="font-semibold text-foreground">نحوه نمره‌دهی و تصحیح:</span>
                     <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${scores.grading ? getScoreTextColor(scores.grading) : "text-muted-foreground"}`}>
                       {scores.grading ? `${scores.grading} از ۱۰` : "بدون امتیاز"}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-1 pt-1 overflow-x-auto">
+                  <div className="flex items-center gap-1 pt-0.5 overflow-x-auto">
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                       <button
                         key={num}
@@ -894,14 +894,14 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
                 </div>
 
                 {/* Behavior */}
-                <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                <div className="space-y-1">
                   <div className="flex justify-between items-center text-xs">
                     <span className="font-semibold text-foreground">اخلاق و تعامل با دانشجو:</span>
                     <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${scores.behavior ? getScoreTextColor(scores.behavior) : "text-muted-foreground"}`}>
                       {scores.behavior ? `${scores.behavior} از ۱۰` : "بدون امتیاز"}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-1 pt-1 overflow-x-auto">
+                  <div className="flex items-center gap-1 pt-0.5 overflow-x-auto">
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                       <button
                         key={num}
@@ -920,14 +920,14 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
                 </div>
 
                 {/* Mastery */}
-                <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                <div className="space-y-1">
                   <div className="flex justify-between items-center text-xs">
                     <span className="font-semibold text-foreground">تسلط علمی و پاسخگویی:</span>
                     <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${scores.mastery ? getScoreTextColor(scores.mastery) : "text-muted-foreground"}`}>
                       {scores.mastery ? `${scores.mastery} از ۱۰` : "بدون امتیاز"}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-1 pt-1 overflow-x-auto">
+                  <div className="flex items-center gap-1 pt-0.5 overflow-x-auto">
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                       <button
                         key={num}
@@ -1031,16 +1031,16 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
                 <Label className="text-xs font-semibold text-foreground block">
                   ویرایش امتیاز به معیارها (از ۱۰ - اختیاری):
                 </Label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-2.5 text-xs">
                   {/* Teaching */}
-                  <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                  <div className="space-y-1">
                     <div className="flex justify-between items-center text-xs">
                       <span className="font-semibold text-foreground">کیفیت و شیوه تدریس:</span>
                       <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${editScores.teaching ? getScoreTextColor(editScores.teaching) : "text-muted-foreground"}`}>
                         {editScores.teaching ? `${editScores.teaching} از ۱۰` : "بدون امتیاز"}
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-1 pt-1 overflow-x-auto">
+                    <div className="flex items-center gap-1 pt-0.5 overflow-x-auto">
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                         <button
                           key={num}
@@ -1059,14 +1059,14 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
                   </div>
 
                   {/* Grading */}
-                  <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                  <div className="space-y-1">
                     <div className="flex justify-between items-center text-xs">
                       <span className="font-semibold text-foreground">نحوه نمره‌دهی و تصحیح:</span>
                       <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${editScores.grading ? getScoreTextColor(editScores.grading) : "text-muted-foreground"}`}>
                         {editScores.grading ? `${editScores.grading} از ۱۰` : "بدون امتیاز"}
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-1 pt-1 overflow-x-auto">
+                    <div className="flex items-center gap-1 pt-0.5 overflow-x-auto">
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                         <button
                           key={num}
@@ -1085,14 +1085,14 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
                   </div>
 
                   {/* Behavior */}
-                  <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                  <div className="space-y-1">
                     <div className="flex justify-between items-center text-xs">
                       <span className="font-semibold text-foreground">اخلاق و تعامل با دانشجو:</span>
                       <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${editScores.behavior ? getScoreTextColor(editScores.behavior) : "text-muted-foreground"}`}>
                         {editScores.behavior ? `${editScores.behavior} از ۱۰` : "بدون امتیاز"}
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-1 pt-1 overflow-x-auto">
+                    <div className="flex items-center gap-1 pt-0.5 overflow-x-auto">
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                         <button
                           key={num}
@@ -1111,14 +1111,14 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
                   </div>
 
                   {/* Mastery */}
-                  <div className="space-y-1.5 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+                  <div className="space-y-1">
                     <div className="flex justify-between items-center text-xs">
                       <span className="font-semibold text-foreground">تسلط علمی و پاسخگویی:</span>
                       <Badge variant="outline" className={`text-xs font-bold border-primary/30 ${editScores.mastery ? getScoreTextColor(editScores.mastery) : "text-muted-foreground"}`}>
                         {editScores.mastery ? `${editScores.mastery} از ۱۰` : "بدون امتیاز"}
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-1 pt-1 overflow-x-auto">
+                    <div className="flex items-center gap-1 pt-0.5 overflow-x-auto">
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                         <button
                           key={num}
