@@ -18,8 +18,15 @@ import {
   Clock,
   User,
   MapPin,
+  BookOpen,
 } from "lucide-react";
+import { getJalaliDaysDifference } from "@/lib/jalali";
 import type { Course, CourseEvent, Category, VisualCategory } from "@/lib/types";
+
+function toPersianDigits(n: number | string): string {
+  const farsiDigits = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
+  return String(n).replace(/\d/g, (x) => farsiDigits[Number(x)]);
+}
 
 interface ExamScheduleModalProps {
   open: boolean;
@@ -231,64 +238,116 @@ export function ExamScheduleModal({
                 );
 
                 return (
-                  <div
-                    key={item.courseId}
-                    className={`p-3.5 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                      hasHourCollision
-                        ? "border-destructive/50 bg-destructive/5"
-                        : hasDayCollision
-                        ? "border-amber-500/40 bg-amber-500/5"
-                        : "border-border/60 bg-card hover:border-primary/30"
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div
-                        className="w-2.5 h-10 rounded-full shrink-0 mt-0.5"
-                        style={{ backgroundColor: item.categoryColor }}
-                      />
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-sm text-foreground">
-                            {item.courseName}
-                          </span>
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] "
-                          >
-                            {item.courseCode}
-                          </Badge>
-                          <span className="text-[11px] text-muted-foreground">
-                            ({item.courseUnits} واحد)
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <User className="h-3 w-3" />
-                            {item.professorName}
-                          </span>
-                          {item.location && item.location !== "نامشخص" && (
-                            <span className="flex items-center gap-1">
-                              <MapPin className="h-3 w-3" />
-                              {item.location}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                  <React.Fragment key={item.courseId}>
+                    {idx > 0 && (() => {
+                      const prevItem = examItems[idx - 1];
+                      const diffDays = getJalaliDaysDifference(prevItem.examDate, item.examDate);
 
-                    <div className="flex sm:flex-col items-end justify-between sm:justify-center border-t sm:border-t-0 pt-2 sm:pt-0 border-border/40 gap-1 text-right shrink-0">
-                      <div className="flex items-center gap-1.5 font-bold text-xs text-primary bg-primary/10 px-2.5 py-1 rounded-lg">
-                        <CalendarDays className="h-3.5 w-3.5" />
-                        <span>{item.examDate}</span>
+                      if (diffDays === null) return null;
+
+                      const gapDays = Math.max(0, diffDays - 1);
+
+                      let badgeColor = "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
+                      let label = `${toPersianDigits(gapDays)} روز فرجه`;
+                      let icon = <BookOpen className="size-4 shrink-0" />;
+
+                      if (diffDays === 0) {
+                        badgeColor = "border-destructive/40 bg-destructive/10 text-destructive";
+                        label = "بدون فرجه (در یک روز)";
+                        icon = <AlertTriangle className="size-4 shrink-0" />;
+                      } else if (diffDays === 1) {
+                        badgeColor = "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300";
+                        label = "بدون فرجه (روز متوالی)";
+                        icon = <Clock className="size-4 shrink-0" />;
+                      } else if (gapDays === 1) {
+                        badgeColor = "border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-300";
+                        label = "۱ روز فرجه";
+                        icon = <BookOpen className="size-4 shrink-0" />;
+                      }
+
+                      return (
+                        <div className="relative flex items-center justify-center my-3.5 py-1">
+                          <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                            <div className="w-full border-t border-border/60" />
+                          </div>
+                          <div className="relative flex items-center justify-center">
+                            <Badge
+                              variant="outline"
+                              className={`h-7 sm:h-8 px-3.5 sm:px-4 text-xs sm:text-sm font-semibold rounded-full shadow-2xs gap-2 flex items-center bg-card backdrop-blur select-none [&>svg]:size-4! ${badgeColor}`}
+                              title={
+                                diffDays === 0
+                                  ? "هر دو امتحان در یک تاریخ برگزار می‌شوند"
+                                  : diffDays === 1
+                                  ? "امتحانات در دو روز متوالی (بدون روز کامل فرجه برای مطالعه) برگزار می‌شوند"
+                                  : `${toPersianDigits(diffDays)} روز فاصله تقویمی (${toPersianDigits(gapDays)} روز فرجه مطالعه)`
+                              }
+                            >
+                              {icon}
+                              <span>{label}</span>
+                            </Badge>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    <div
+                      className={`p-3.5 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                        hasHourCollision
+                          ? "border-destructive/50 bg-destructive/5"
+                          : hasDayCollision
+                          ? "border-amber-500/40 bg-amber-500/5"
+                          : "border-border/60 bg-card hover:border-primary/30"
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div
+                          className="w-2.5 h-10 rounded-full shrink-0 mt-0.5"
+                          style={{ backgroundColor: item.categoryColor }}
+                        />
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-sm text-foreground">
+                              {item.courseName}
+                            </span>
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] "
+                            >
+                              {item.courseCode}
+                            </Badge>
+                            <span className="text-[11px] text-muted-foreground">
+                              ({item.courseUnits} واحد)
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <User className="h-3 w-3" />
+                              {item.professorName}
+                            </span>
+                            {item.location && item.location !== "نامشخص" && (
+                              <span className="flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />
+                                {item.location}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1 text-[11px] text-muted-foreground ">
-                        <Clock className="h-3 w-3" />
-                        <span>
-                          {item.examStartTime} تا {item.examEndTime}
-                        </span>
+
+                      <div className="flex sm:flex-col items-end justify-between sm:justify-center border-t sm:border-t-0 pt-2 sm:pt-0 border-border/40 gap-1 text-right shrink-0">
+                        <div className="flex items-center gap-1.5 font-bold text-xs text-primary bg-primary/10 px-2.5 py-1 rounded-lg">
+                          <CalendarDays className="h-3.5 w-3.5" />
+                          <span>{item.examDate}</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-[11px] text-muted-foreground ">
+                          <Clock className="h-3 w-3" />
+                          <span>
+                            {item.examStartTime} تا {item.examEndTime}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  </React.Fragment>
                 );
               })}
             </div>
