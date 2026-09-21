@@ -555,6 +555,25 @@ export function TermSchedulePlanner({
               </Badge>
             )}
 
+          {/* Export High-Quality Image Button */}
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={handleExportScheduleImage}
+            disabled={isExporting}
+            title="دریافت خروجی تصویری باکیفیت از برنامه هفتگی (PNG)"
+            className="h-8 gap-1.5 text-xs px-3 rounded-lg border border-border bg-background/50 text-foreground hover:bg-muted/70 transition-all shadow-2xs flex items-center cursor-pointer"
+          >
+            {isExporting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-primary shrink-0" />
+            ) : (
+              <Camera className="h-3.5 w-3.5 text-primary shrink-0" />
+            )}
+            <span className="hidden sm:inline">
+              {isExporting ? "در حال آماده‌سازی..." : "خروجی تصویر"}
+            </span>
+          </Button>
+
           {/* Exam Schedule Button */}
           <Button
             variant="outline"
@@ -1119,77 +1138,48 @@ export function TermSchedulePlanner({
                 </Button>
               </div>
 
-              {/* Start and End Hour Controls */}
+              {/* Start and End Hour Controls (Shadcn UI Select) */}
               <div className="flex items-center px-2 sm:px-3 gap-2 h-full border-l border-border/70 text-xs text-muted-foreground">
                 <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
                 <span className="hidden sm:inline font-medium text-foreground text-[11px]">بازه ساعت:</span>
 
                 <div className="flex items-center gap-1">
                   <span className="text-[11px]">از</span>
-                  <select
-                    value={startHour}
-                    onChange={(e) => setStartHour(e.target.value)}
-                    className="h-6 px-1 text-[11px] font-mono font-medium rounded border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                  >
-                    {START_HOUR_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
+                  <Select value={startHour} onValueChange={setStartHour}>
+                    <SelectTrigger className="h-6 w-20 text-[11px] font-mono px-2 py-0 border-border/70 bg-background/80 shadow-none">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {START_HOUR_OPTIONS.map((opt) => (
+                        <SelectItem key={opt} value={opt} className="text-xs font-mono">
+                          {opt}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="flex items-center gap-1">
                   <span className="text-[11px]">تا</span>
-                  <select
-                    value={endHour}
-                    onChange={(e) => setEndHour(e.target.value)}
-                    className="h-6 px-1 text-[11px] font-mono font-medium rounded border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                  >
-                    {END_HOUR_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
+                  <Select value={endHour} onValueChange={setEndHour}>
+                    <SelectTrigger className="h-6 w-20 text-[11px] font-mono px-2 py-0 border-border/70 bg-background/80 shadow-none">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {END_HOUR_OPTIONS.map((opt) => (
+                        <SelectItem key={opt} value={opt} className="text-xs font-mono">
+                          {opt}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
 
-            {/* Left side (in RTL): Action Buttons (Image Export, Add Custom Event) */}
-            <div className="flex items-center px-2 gap-1.5 h-full">
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={handleExportScheduleImage}
-                disabled={isExporting}
-                className="h-6.5 px-2 text-[11px] font-medium text-foreground hover:bg-muted/80 gap-1.5 rounded-md"
-                title="دریافت تصویر با کیفیت بالا از برنامه هفتگی"
-              >
-                {isExporting ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                ) : (
-                  <Download className="h-3.5 w-3.5 text-primary" />
-                )}
-                <span>{isExporting ? "در حال دریافت..." : "خروجی تصویر"}</span>
-              </Button>
-
-              <div className="h-4 w-px bg-border/60 mx-0.5" />
-
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setCustomEventCourse(termCourses[0] || null);
-                  setEditingCustomEvent(null);
-                }}
-                className="h-6.5 px-2 text-[11px] font-medium text-purple-600 dark:text-purple-400 border-purple-500/30 hover:bg-purple-500/10 gap-1.5 rounded-md"
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                <span>+ ارائه شخصی</span>
-              </Button>
+            {/* Left side (in RTL): Clean schedule days hint */}
+            <div className="flex items-center px-3 h-full text-[11px] text-muted-foreground font-medium select-none">
+              <span>شنبه تا چهارشنبه</span>
             </div>
           </div>
 
