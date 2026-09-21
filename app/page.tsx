@@ -20,6 +20,7 @@ import {
   Network,
   Clock,
   Award,
+  MapPin,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -185,6 +186,26 @@ export default function Home() {
               </div>
             </div>
           </Card>
+
+          {/* Feature 7: Physical Faculties & Campus Map */}
+          <Link href="/physical-faculties" className="block group">
+            <Card className="h-full border-border/70 bg-card p-5 shadow-2xs group-hover:border-primary/50 group-hover:shadow-sm transition-all">
+              <div className="flex flex-col gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-500/10 text-teal-600 group-hover:scale-105 transition-transform">
+                  <MapPin className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold group-hover:text-primary transition-colors flex items-center gap-1.5">
+                    <span>موقعیت مکانی و نقشه پردیس‌ها</span>
+                    <ArrowLeft className="h-3.5 w-3.5 text-primary opacity-0 group-hover:opacity-100 group-hover:translate-x-[-2px] transition-all" />
+                  </h3>
+                  <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
+                    یافتن نشانی، تصویر نما و موقعیت جغرافیایی دانشکده‌های فیزیکی دانشگاه تهران و مسیریابی مستقیم با نشان، بلد و ویز.
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </Link>
         </div>
       </section>
 

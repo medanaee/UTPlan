@@ -1,7 +1,7 @@
 import { getD1 } from "./client";
 
-export type CodeTable = "courses" | "professors" | "course_offerings" | "course_events";
-export type CodePrefix = "CRS" | "PRF" | "OFF" | "EVT";
+export type CodeTable = "courses" | "professors" | "course_offerings" | "course_events" | "physical_faculties";
+export type CodePrefix = "CRS" | "PRF" | "OFF" | "EVT" | "PFAC";
 
 /**
  * Generates a collision-free unique code with automatic retry mechanism.

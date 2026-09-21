@@ -262,6 +262,7 @@ export async function POST(request: NextRequest) {
       track: [],
       major: [],
       faculty: [],
+      physical_faculty: [],
     };
 
     for (const it of rawItems) {
@@ -400,6 +401,16 @@ export async function POST(request: NextRequest) {
           d1.prepare(`DELETE FROM faculty_links WHERE target_faculty_id IN (${placeholders}) OR source_faculty_id IN (${placeholders})`).bind(...chunk, ...chunk),
           d1.prepare(`UPDATE users SET faculty_id = NULL WHERE faculty_id IN (${placeholders})`).bind(...chunk),
           d1.prepare(`DELETE FROM faculties WHERE id IN (${placeholders})`).bind(...chunk)
+        );
+      }
+    }
+
+    // 8. Batch delete physical_faculties (independent)
+    if (itemsByType.physical_faculty.length > 0) {
+      for (const chunk of chunkArray(itemsByType.physical_faculty, 50)) {
+        const placeholders = chunk.map(() => "?").join(",");
+        stmts.push(
+          d1.prepare(`DELETE FROM physical_faculties WHERE id IN (${placeholders})`).bind(...chunk)
         );
       }
     }

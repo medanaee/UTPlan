@@ -24,6 +24,7 @@ import {
   DatabaseBackup,
   Trash2,
   ShieldAlert,
+  MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +34,7 @@ import { fetchJson, postJson } from "@/lib/api-client";
 
 import { useAdminStore } from "@/lib/stores/admin-store";
 import { UniversityStructureManager } from "@/components/admin/university-structure-manager";
+import { PhysicalFacultyManager } from "@/components/admin/physical-faculty-manager";
 import { CourseManager } from "@/components/admin/course-manager";
 import { OfferingManager } from "@/components/admin/offering-manager";
 import { EventManager } from "@/components/admin/event-manager";
@@ -53,6 +55,7 @@ export default function AdminDashboardPage() {
     setUser,
     loading,
     faculties,
+    physicalFaculties,
     majors,
     tracks,
     courses,
@@ -123,6 +126,11 @@ export default function AdminDashboardPage() {
       id: "structure" as const,
       label: "ساختار دانشگاه",
       icon: Building2,
+    },
+    {
+      id: "physical-faculties" as const,
+      label: "دانشکده‌های فیزیکی",
+      icon: MapPin,
     },
     {
       id: "courses" as const,
@@ -382,6 +390,14 @@ export default function AdminDashboardPage() {
 
             {/* TAB 1: UNIVERSITY STRUCTURE */}
             {activeTab === "structure" && <UniversityStructureManager />}
+
+            {/* TAB 1.5: PHYSICAL FACULTIES */}
+            {activeTab === "physical-faculties" && (
+              <PhysicalFacultyManager
+                physicalFaculties={physicalFaculties}
+                onDataChanged={loadAllData}
+              />
+            )}
 
             {/* TAB 2: COURSES & PREREQUISITES */}
             {activeTab === "courses" && (

@@ -19,6 +19,7 @@ import {
   GraduationCap,
   X,
   Loader2,
+  MapPin,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,7 +37,7 @@ interface RecycleBinManagerProps {
 }
 
 export function RecycleBinManager({ onDataChanged, selectedFacultyId }: RecycleBinManagerProps) {
-  const [activeTab, setActiveTab] = usePersistedState<"all" | "faculty" | "major" | "track" | "course" | "professor" | "offering" | "event">("ut_ece_trash_active_tab", "all");
+  const [activeTab, setActiveTab] = usePersistedState<"all" | "faculty" | "major" | "track" | "course" | "professor" | "offering" | "event" | "physical_faculty">("ut_ece_trash_active_tab", "all");
   const [items, setItems] = useState<TrashItem[]>([]);
   const [counts, setCounts] = useState({
     all: 0,
@@ -47,6 +48,7 @@ export function RecycleBinManager({ onDataChanged, selectedFacultyId }: RecycleB
     professor: 0,
     offering: 0,
     event: 0,
+    physical_faculty: 0,
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -484,6 +486,22 @@ export function RecycleBinManager({ onDataChanged, selectedFacultyId }: RecycleB
                 <span>رویدادها</span>
                 <Badge variant="secondary" className="h-4 px-1.5 text-[10px] font-mono">
                   {counts.event}
+                </Badge>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("physical_faculty")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                  activeTab === "physical_faculty"
+                    ? "bg-background text-primary shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <MapPin className="h-3.5 w-3.5 text-rose-500" />
+                <span>دانشکده‌های فیزیکی</span>
+                <Badge variant="secondary" className="h-4 px-1.5 text-[10px] font-mono">
+                  {counts.physical_faculty}
                 </Badge>
               </button>
             </div>

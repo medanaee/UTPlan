@@ -21,6 +21,7 @@ import {
   Calendar,
   Sparkles,
   Info,
+  MapPin,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -93,6 +94,7 @@ const ENTITY_CONFIG: Record<AuditEntityType, { label: string; icon: any }> = {
   offering: { label: "ارائه درسی", icon: Activity },
   event: { label: "رویداد / برنامه کلاسی", icon: Calendar },
   faculty: { label: "دانشکده", icon: Layers },
+  physical_faculty: { label: "دانشکده فیزیکی", icon: MapPin },
   major: { label: "رشته", icon: Layers },
   track: { label: "گرایش", icon: Layers },
   category: { label: "دسته‌بندی", icon: Layers },

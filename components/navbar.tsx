@@ -16,6 +16,7 @@ import {
   Search,
   Layers,
   User,
+  MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -79,6 +80,12 @@ export function Navbar({ user: initialUser }: NavbarProps) {
       label: "جستجوی ارائه‌های درسی",
       subtitle: "اساتید و نظرات",
       icon: Layers,
+    },
+    {
+      href: "/physical-faculties",
+      label: "دانشکده‌ها و پردیس‌ها",
+      subtitle: "نقشه و موقعیت مکانی",
+      icon: MapPin,
     },
   ];
 

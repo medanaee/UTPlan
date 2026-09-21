@@ -299,3 +299,21 @@ CREATE INDEX IF NOT EXISTS idx_review_reactions_user ON review_reactions(user_id
 CREATE INDEX IF NOT EXISTS idx_review_reactions_client ON review_reactions(client_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_reactions_user_unique ON review_reactions(review_id, user_id, emoji) WHERE user_id IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_reactions_client_unique ON review_reactions(review_id, client_id, emoji) WHERE user_id IS NULL AND client_id IS NOT NULL;
+
+-- 22. Physical Faculties Table (Physical campuses & buildings with geo location)
+CREATE TABLE IF NOT EXISTS physical_faculties (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  code TEXT,
+  image_url TEXT,
+  latitude REAL,
+  longitude REAL,
+  address TEXT,
+  description TEXT,
+  created_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_physical_faculties_deleted ON physical_faculties(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_physical_faculties_name ON physical_faculties(name);
+CREATE INDEX IF NOT EXISTS idx_physical_faculties_code ON physical_faculties(code);
+

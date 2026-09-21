@@ -12,10 +12,12 @@ import type {
   VisualCategory,
   RuleCategory,
   TrackCourseAssignment,
+  PhysicalFaculty,
 } from "@/lib/types";
 
 export type AdminTab =
   | "structure"
+  | "physical-faculties"
   | "courses"
   | "offerings"
   | "events"
@@ -31,6 +33,7 @@ export type AdminTab =
 interface AdminState {
   user: User | null;
   faculties: Faculty[];
+  physicalFaculties: PhysicalFaculty[];
   majors: Major[];
   tracks: Track[];
   courses: Course[];
@@ -63,6 +66,7 @@ interface AdminState {
   setSelectedTrackId: (id: string) => void;
   setActionMessage: (msg: string | null) => void;
   setFaculties: (faculties: Faculty[]) => void;
+  setPhysicalFaculties: (physicalFaculties: PhysicalFaculty[]) => void;
   setMajors: (majors: Major[]) => void;
   setTracks: (tracks: Track[]) => void;
   setCourses: (courses: Course[]) => void;
@@ -81,6 +85,7 @@ export const useAdminStore = create<AdminState>()(
     (set, get) => ({
       user: null,
       faculties: [],
+      physicalFaculties: [],
       majors: [],
       tracks: [],
       courses: [],
@@ -149,18 +154,10 @@ export const useAdminStore = create<AdminState>()(
         }
       },
 
-      setActionMessage: (actionMessage) => {
-        set({ actionMessage });
-        if (actionMessage) {
-          setTimeout(() => {
-            if (get().actionMessage === actionMessage) {
-              set({ actionMessage: null });
-            }
-          }, 4000);
-        }
-      },
+      setActionMessage: (actionMessage) => set({ actionMessage }),
 
       setFaculties: (faculties) => set({ faculties }),
+      setPhysicalFaculties: (physicalFaculties) => set({ physicalFaculties }),
       setMajors: (majors) => set({ majors }),
       setTracks: (tracks) => set({ tracks }),
       setCourses: (courses) => set({ courses }),
@@ -173,12 +170,13 @@ export const useAdminStore = create<AdminState>()(
       loadAllData: async () => {
         try {
           set({ loading: true });
-          const [facRes, majRes, trkRes, crsRes, prfRes] = await Promise.all([
+          const [facRes, majRes, trkRes, crsRes, prfRes, pfacRes] = await Promise.all([
             fetchJson("/api/faculties"),
             fetchJson("/api/majors"),
             fetchJson("/api/tracks"),
             fetchJson("/api/courses"),
             fetchJson("/api/professors"),
+            fetchJson("/api/physical-faculties"),
           ]);
 
           const faculties = facRes.success ? facRes.data : [];
@@ -186,6 +184,7 @@ export const useAdminStore = create<AdminState>()(
           const tracks = trkRes.success ? trkRes.data : [];
           const courses = crsRes.success ? crsRes.data : [];
           const professors = prfRes.success ? prfRes.data : [];
+          const physicalFaculties = pfacRes.success ? pfacRes.data : [];
 
           // Defensive fallback to direct localStorage in case of synchronous invocation before rehydration
           let currentSelectedFacultyId = get().selectedFacultyId;
@@ -231,6 +230,7 @@ export const useAdminStore = create<AdminState>()(
 
           set({
             faculties,
+            physicalFaculties,
             majors,
             tracks,
             courses,

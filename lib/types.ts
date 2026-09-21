@@ -30,6 +30,19 @@ export interface UserSession {
   avatarUrl?: string;
 }
 
+export interface PhysicalFaculty {
+  id: string;
+  name: string;
+  code?: string;
+  imageUrl?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  address?: string;
+  description?: string;
+  createdAt: string;
+  deletedAt?: string | null;
+}
+
 export interface Faculty {
   id: string;
   name: string;
@@ -37,6 +50,7 @@ export interface Faculty {
   createdAt: string;
   deletedAt?: string | null;
   linkedFacultyIds?: string[];
+  physicalFacultyId?: string;
 }
 
 export interface FacultyLink {
@@ -408,6 +422,7 @@ export type AuditEntityType =
   | "offering"
   | "event"
   | "faculty"
+  | "physical_faculty"
   | "major"
   | "track"
   | "category"

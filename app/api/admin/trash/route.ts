@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export interface TrashItem {
   id: string;
-  type: "course" | "professor" | "offering" | "event" | "faculty" | "major" | "track";
+  type: "course" | "professor" | "offering" | "event" | "faculty" | "major" | "track" | "physical_faculty";
   code?: string;
   title: string;
   details?: string;
@@ -41,6 +41,7 @@ export async function GET(request: NextRequest) {
       professor: 0,
       offering: 0,
       event: 0,
+      physical_faculty: 0,
     };
 
     // 1. Courses
@@ -262,6 +263,26 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // 8. Physical Faculties
+    if (typeFilter === "all" || typeFilter === "physical_faculty") {
+      const { results } = await d1
+        .prepare(
+          "SELECT id, name, code, address, created_at, deleted_at FROM physical_faculties WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC"
+        )
+        .all();
+      for (const r of results || []) {
+        items.push({
+          id: r.id as string,
+          type: "physical_faculty",
+          code: (r.code as string) || undefined,
+          title: `دانشکده فیزیکی ${r.name}`,
+          details: `آدرس: ${(r.address as string) || "نامشخص"} | کد: ${(r.code as string) || "-"}`,
+          deletedAt: r.deleted_at as string,
+          createdAt: (r.created_at as string) || undefined,
+        });
+      }
+    }
+
     // Calculate all counts
     let countFacQ = "SELECT count(*) as c FROM faculties WHERE deleted_at IS NOT NULL";
     let countMajQ = "SELECT count(*) as c FROM majors WHERE deleted_at IS NOT NULL";
@@ -270,6 +291,7 @@ export async function GET(request: NextRequest) {
     let countProfQ = "SELECT count(*) as c FROM professors WHERE deleted_at IS NOT NULL";
     let countOffQ = "SELECT count(*) as c FROM course_offerings o JOIN courses c ON o.course_id = c.id WHERE o.deleted_at IS NOT NULL";
     let countEvtQ = "SELECT count(*) as c FROM course_events e JOIN course_offerings o ON e.offering_id = o.id JOIN courses c ON o.course_id = c.id WHERE e.deleted_at IS NOT NULL";
+    let countPfacQ = "SELECT count(*) as c FROM physical_faculties WHERE deleted_at IS NOT NULL";
 
     const facParam = facultyId ? [facultyId] : [];
     if (facultyId) {
@@ -288,6 +310,7 @@ export async function GET(request: NextRequest) {
     const countProfRes = await d1.prepare(countProfQ).bind(...facParam).first();
     const countOffRes = await d1.prepare(countOffQ).bind(...facParam).first();
     const countEvtRes = await d1.prepare(countEvtQ).bind(...facParam).first();
+    const countPfacRes = await d1.prepare(countPfacQ).first();
 
     counts.faculty = Number(countFacultyRes?.c) || 0;
     counts.major = Number(countMajorRes?.c) || 0;
@@ -296,6 +319,7 @@ export async function GET(request: NextRequest) {
     counts.professor = Number(countProfRes?.c) || 0;
     counts.offering = Number(countOffRes?.c) || 0;
     counts.event = Number(countEvtRes?.c) || 0;
+    counts.physical_faculty = Number(countPfacRes?.c) || 0;
     counts.all =
       counts.faculty +
       counts.major +
@@ -303,7 +327,8 @@ export async function GET(request: NextRequest) {
       counts.course +
       counts.professor +
       counts.offering +
-      counts.event;
+      counts.event +
+      counts.physical_faculty;
 
     // Sort items by deletedAt descending
     items.sort((a, b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime());

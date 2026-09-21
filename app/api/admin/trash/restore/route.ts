@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
       professors: [],
       course_offerings: [],
       course_events: [],
+      physical_faculties: [],
     };
 
     for (const it of rawItems) {
@@ -40,6 +41,7 @@ export async function POST(request: NextRequest) {
       else if (it.type === "professor") idsByType.professors.push(it.id);
       else if (it.type === "offering") idsByType.course_offerings.push(it.id);
       else if (it.type === "event") idsByType.course_events.push(it.id);
+      else if (it.type === "physical_faculty") idsByType.physical_faculties.push(it.id);
     }
 
     const stmts: any[] = [];
