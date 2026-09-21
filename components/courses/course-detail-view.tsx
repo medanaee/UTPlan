@@ -334,7 +334,6 @@ export function CourseDetailView({ course }: CourseDetailViewProps) {
                   <GraduationCap className="h-4 w-4" />
                   این درس پیش‌نیاز/هم‌نیاز کدام دروس است؟ ({deps.length})
                 </CardTitle>
-                <span className="text-[11px] text-muted-foreground">دروس وابسته به این درس در چارت</span>
               </div>
             </CardHeader>
             <CardContent>

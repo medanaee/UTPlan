@@ -338,10 +338,10 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
       </div>
 
       {/* Hero Header Card - Flat & Minimal */}
-      <div className="relative overflow-hidden rounded-3xl border border-primary/20 bg-linear-to-b from-primary/10 via-background to-background p-6 sm:p-8 shadow-xs">
-        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4 max-w-3xl">
-            {/* Avatar */}
+      <div className="relative overflow-hidden rounded-3xl border border-primary/20 bg-linear-to-b from-primary/10 via-background to-background p-4.5 sm:p-8 shadow-xs">
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5 sm:gap-6">
+          <div className="flex flex-row items-center gap-3.5 sm:gap-5 max-w-3xl min-w-0">
+            {/* Avatar (Right in RTL) */}
             <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-primary/10 text-primary flex items-center justify-center font-black text-2xl sm:text-3xl shrink-0 border-2 border-primary/30 shadow-xs overflow-hidden">
               {professor.avatarUrl ? (
                 <img
@@ -354,18 +354,19 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
               )}
             </div>
 
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className="text-xs font-bold bg-background/80">
+            {/* Info: Rank on top, Name under rank (Left of Avatar in RTL) */}
+            <div className="space-y-1 sm:space-y-1.5 flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <Badge variant="outline" className="text-[10px] sm:text-xs font-bold bg-background/80 shrink-0">
                   {professor.title || "استاد تمام"}
                 </Badge>
-                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Building2 className="h-3.5 w-3.5 text-primary shrink-0 opacity-80" />
-                  <span>{professor.facultyName || "دانشکده مهندسی برق و کامپیوتر"}</span>
+                <span className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1 truncate">
+                  <Building2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-primary shrink-0 opacity-80" />
+                  <span className="truncate">{professor.facultyName || "دانشکده مهندسی برق و کامپیوتر"}</span>
                 </span>
               </div>
 
-              <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-foreground">
+              <h1 className="text-lg sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-foreground truncate">
                 {professor.name}
               </h1>
             </div>
