@@ -653,6 +653,7 @@ export function TermSchedulePlanner({
                 // Course available events
                 const courseEvents = events.filter(
                   (e) =>
+                    e.id === selectedEventId ||
                     e.courseId === course.id ||
                     (e.courseCode && e.courseCode === course.code)
                 );
@@ -1143,12 +1144,6 @@ export function TermSchedulePlanner({
                                     <span className="font-bold text-xs truncate">
                                       {course.name}
                                     </span>
-                                    <Badge
-                                      variant="outline"
-                                      className="text-[9px]  px-1 py-0 shrink-0 bg-background/80"
-                                    >
-                                      {course.code}
-                                    </Badge>
                                   </div>
                                   <div className="flex items-center gap-1 text-[11px] text-muted-foreground truncate">
                                     <User className="h-3 w-3 shrink-0" />
@@ -1304,7 +1299,7 @@ function CustomEventDialog({
   }, [course, eventToEdit, courses, open]);
 
   const activeCourse = useMemo(() => {
-    return (courses || []).find((c) => c.id === selectedCourseId) || course;
+    return course || (courses || []).find((c) => c.id === selectedCourseId);
   }, [courses, selectedCourseId, course]);
 
   const [offerings, setOfferings] = useState<CourseOffering[]>([]);
@@ -1537,8 +1532,8 @@ function CustomEventDialog({
             </div>
           )}
 
-          {/* Course Selector (if multiple courses available and not editing) */}
-          {courses && courses.length > 1 && !eventToEdit && (
+          {/* Course Selector (only if no specific course is pre-selected and not editing) */}
+          {!course && courses && courses.length > 1 && !eventToEdit && (
             <div className="space-y-1.5">
               <Label className="text-xs font-bold flex items-center gap-1.5">
                 <Calendar className="h-3.5 w-3.5 text-primary" />
@@ -1589,6 +1584,7 @@ function CustomEventDialog({
                 onChange={setSelectedOfferingId}
                 placeholder="-- انتخاب یا جستجوی استاد --"
                 searchPlaceholder="جستجوی نام استاد..."
+                className="w-full"
               />
             )}
           </div>

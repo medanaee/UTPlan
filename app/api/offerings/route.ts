@@ -15,9 +15,16 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const facultyId = searchParams.get("facultyId") || undefined;
+    const courseId = searchParams.get("courseId") || undefined;
+    const professorId = searchParams.get("professorId") || undefined;
     const directOnly = searchParams.get("directOnly") === "true";
 
-    const data = await getOfferings(facultyId, directOnly);
+    const data = await getOfferings({
+      courseId,
+      professorId,
+      facultyId,
+      directOnly,
+    });
     return NextResponse.json({ success: true, data });
   } catch (error) {
     console.error("GET offerings error:", error);
