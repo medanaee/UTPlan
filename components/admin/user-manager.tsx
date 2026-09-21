@@ -38,6 +38,7 @@ interface AdminUserItem {
   majorId?: string;
   trackId?: string;
   entrySemester?: string;
+  avatarUrl?: string;
   createdAt: string;
 }
 
@@ -265,9 +266,17 @@ export function UserManager({ currentUser }: UserManagerProps) {
                     <tr key={user.id} className="hover:bg-muted/20 transition-colors">
                       {/* Name & Badge */}
                       <td className="py-2.5 px-3">
-                        <div className="flex items-center gap-2">
-                          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-muted text-muted-foreground font-bold text-xs">
-                            {user.name.charAt(0)}
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary font-bold text-xs overflow-hidden shrink-0 border border-border/40">
+                            {user.avatarUrl ? (
+                              <img
+                                src={user.avatarUrl}
+                                alt={user.name}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <span>{user.name?.charAt(0) || "ک"}</span>
+                            )}
                           </div>
                           <div>
                             <div className="flex items-center gap-1.5">

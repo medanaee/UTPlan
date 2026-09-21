@@ -30,6 +30,7 @@ export async function GET(request: Request) {
       majorId: u.majorId,
       trackId: u.trackId,
       entrySemester: u.entrySemester,
+      avatarUrl: u.avatarUrl,
       createdAt: u.createdAt,
     }));
 
