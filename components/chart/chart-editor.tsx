@@ -2244,24 +2244,31 @@ export function ChartEditor({
                             </div>
                           )}
                         </div>
-                      </div>
 
-                      {/* Add Summer Term Button below even regular terms */}
-                      {isEvenRegularTerm && !hasSummerAfter && !isReadOnly && (
-                        <div className="flex justify-center my-1.5" data-no-export="true">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
+                        {/* Add Summer Term Bubble Trigger on Bottom Stroke of Even Terms */}
+                        {isEvenRegularTerm && !hasSummerAfter && !isReadOnly && (
+                          <div
+                            className="absolute bottom-0 translate-y-1/2 left-1/2 -translate-x-1/2 z-30 group/summer py-2.5 px-6 cursor-pointer select-none"
+                            data-no-export="true"
                             onClick={() => addSummerSemester(sem.semesterNumber)}
-                            className="h-7 px-3 text-xs gap-1.5 border-dashed border-border/80 hover:border-amber-500 text-muted-foreground hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-500/5 rounded-full shadow-2xs transition-all group"
+                            title="افزودن ترم تابستان"
                           >
-                            <Plus className="h-3.5 w-3.5 transition-transform group-hover:rotate-90 duration-200" />
-                            <Sun className="h-3.5 w-3.5 text-amber-500" />
-                            <span>ترم تابستان</span>
-                          </Button>
-                        </div>
-                      )}
+                            <div
+                              className="flex items-center justify-center rounded-full transition-all duration-300 ease-out origin-center overflow-hidden
+                                h-1 w-14 bg-amber-500/80
+                                group-hover/summer:h-7 group-hover/summer:w-32 group-hover/summer:bg-background dark:group-hover/summer:bg-card
+                                group-hover/summer:border group-hover/summer:border-amber-500 group-hover/summer:shadow-xs
+                                group-hover/summer:px-3"
+                            >
+                              <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400 whitespace-nowrap opacity-0 scale-75 group-hover/summer:opacity-100 group-hover/summer:scale-100 transition-all duration-200 delay-75 pointer-events-none">
+                                <Plus className="h-3.5 w-3.5 shrink-0 transition-transform group-hover/summer:rotate-90 duration-300 text-amber-500" />
+                                <Sun className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                                <span className="text-[11px] font-bold">ترم تابستان</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </React.Fragment>
                   );
                 })}
