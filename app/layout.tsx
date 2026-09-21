@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import "./fonts/vazir.css";
+import "./fonts/kalameh.css";
 import "./globals.css";
 import { Inter } from "next/font/google";
 import { cn } from "@/lib/utils";

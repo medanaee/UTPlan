@@ -1,90 +1,10 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@font-face {
-  font-family: 'Vazirmatn UI FD NL';
-  src: url('vazirmatn/misc/UI-Farsi-Digits-Non-Latin/fonts/webfonts/Vazirmatn-UI-FD-NL-Thin.woff2') format('woff2');
-  font-weight: 100;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Vazirmatn UI FD NL';
-  src: url('vazirmatn/misc/UI-Farsi-Digits-Non-Latin/fonts/webfonts/Vazirmatn-UI-FD-NL-ExtraLight.woff2') format('woff2');
-  font-weight: 200;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Vazirmatn UI FD NL';
-  src: url('vazirmatn/misc/UI-Farsi-Digits-Non-Latin/fonts/webfonts/Vazirmatn-UI-FD-NL-Light.woff2') format('woff2');
-  font-weight: 300;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Vazirmatn UI FD NL';
-  src: url('vazirmatn/misc/UI-Farsi-Digits-Non-Latin/fonts/webfonts/Vazirmatn-UI-FD-NL-Regular.woff2') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Vazirmatn UI FD NL';
-  src: url('vazirmatn/misc/UI-Farsi-Digits-Non-Latin/fonts/webfonts/Vazirmatn-UI-FD-NL-Medium.woff2') format('woff2');
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Vazirmatn UI FD NL';
-  src: url('vazirmatn/misc/UI-Farsi-Digits-Non-Latin/fonts/webfonts/Vazirmatn-UI-FD-NL-SemiBold.woff2') format('woff2');
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Vazirmatn UI FD NL';
-  src: url('vazirmatn/misc/UI-Farsi-Digits-Non-Latin/fonts/webfonts/Vazirmatn-UI-FD-NL-Bold.woff2') format('woff2');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Vazirmatn UI FD NL';
-  src: url('vazirmatn/misc/UI-Farsi-Digits-Non-Latin/fonts/webfonts/Vazirmatn-UI-FD-NL-ExtraBold.woff2') format('woff2');
-  font-weight: 800;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Vazirmatn UI FD NL';
-  src: url('vazirmatn/misc/UI-Farsi-Digits-Non-Latin/fonts/webfonts/Vazirmatn-UI-FD-NL-Black.woff2') format('woff2');
-  font-weight: 900;
-  font-style: normal;
-  font-display: swap;
-}
-
+@import "./fonts/vazir.css";
+@import "./fonts/kalameh.css";
 
 @custom-variant dark (&:is(.dark *));
-
-@font-face {
-  font-family: 'Vazir Code';
-  src: url('vazir-code-font/dist/Vazir-Code.woff2') format('woff2'),
-       url('vazir-code-font/dist/Vazir-Code.woff') format('woff'),
-       url('vazir-code-font/dist/Vazir-Code.ttf') format('truetype');
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
 
 :root {
   /* Scale factor: 1.1 equals 10% increase */
@@ -104,7 +24,14 @@
 
 :root {
   color-scheme: light;
-  --font-sans: "Vazirmatn UI FD NL", var(--font-inter), Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* ==========================================================================
+     تنظیم فونت سامانه
+     برای تغییر فونت بین کلمه و وزیر، کامنت یکی از دو خط زیر را جابجا کنید:
+     ========================================================================== */
+  --font-sans: "Kalameh", var(--font-inter), Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* --font-sans: "Vazirmatn UI FD NL", var(--font-inter), Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; */
+
   font-family: var(--font-sans);
   --font-mono: 'Vazir Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --card: oklch(1 0 0);
@@ -331,3 +258,13 @@ html.dark::-webkit-scrollbar-track,
 .dark::-webkit-scrollbar-track {
   background-color: transparent !important;
 }
+
+/* Helper font utility classes */
+.font-kalameh {
+  font-family: 'Kalameh', sans-serif !important;
+}
+
+.font-vazir {
+  font-family: 'Vazirmatn UI FD NL', sans-serif !important;
+}
+

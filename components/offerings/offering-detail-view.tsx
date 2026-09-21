@@ -858,16 +858,16 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                         </Badge>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3.5 pt-1">
                         {criteriaAverages.teaching && (
-                          <div className="space-y-1 bg-card/80 p-2.5 rounded-xl border">
+                          <div className="space-y-1.5">
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-muted-foreground font-medium">کیفیت تدریس</span>
                               <span className={`font-bold ${getScoreTextColor(Number(criteriaAverages.teaching))}`}>
                                 {criteriaAverages.teaching} <span className="text-[10px] text-muted-foreground font-normal">/ ۱۰</span>
                               </span>
                             </div>
-                            <div className="h-2.5 w-full rounded-full bg-muted/80 overflow-hidden">
+                            <div className="h-2 w-full rounded-full bg-muted/80 overflow-hidden">
                               <div
                                 className={`h-full rounded-full transition-all duration-700 ${getScoreBarColor(Number(criteriaAverages.teaching))}`}
                                 style={{ width: `${(Number(criteriaAverages.teaching) / 10) * 100}%` }}
@@ -877,14 +877,14 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                         )}
 
                         {criteriaAverages.grading && (
-                          <div className="space-y-1 bg-card/80 p-2.5 rounded-xl border">
+                          <div className="space-y-1.5">
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-muted-foreground font-medium">نحوه نمره‌دهی</span>
                               <span className={`font-bold ${getScoreTextColor(Number(criteriaAverages.grading))}`}>
                                 {criteriaAverages.grading} <span className="text-[10px] text-muted-foreground font-normal">/ ۱۰</span>
                               </span>
                             </div>
-                            <div className="h-2.5 w-full rounded-full bg-muted/80 overflow-hidden">
+                            <div className="h-2 w-full rounded-full bg-muted/80 overflow-hidden">
                               <div
                                 className={`h-full rounded-full transition-all duration-700 ${getScoreBarColor(Number(criteriaAverages.grading))}`}
                                 style={{ width: `${(Number(criteriaAverages.grading) / 10) * 100}%` }}
@@ -894,14 +894,14 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                         )}
 
                         {criteriaAverages.content && (
-                          <div className="space-y-1 bg-card/80 p-2.5 rounded-xl border">
+                          <div className="space-y-1.5">
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-muted-foreground font-medium">کیفیت محتوا و اسلایدها</span>
                               <span className={`font-bold ${getScoreTextColor(Number(criteriaAverages.content))}`}>
                                 {criteriaAverages.content} <span className="text-[10px] text-muted-foreground font-normal">/ ۱۰</span>
                               </span>
                             </div>
-                            <div className="h-2.5 w-full rounded-full bg-muted/80 overflow-hidden">
+                            <div className="h-2 w-full rounded-full bg-muted/80 overflow-hidden">
                               <div
                                 className={`h-full rounded-full transition-all duration-700 ${getScoreBarColor(Number(criteriaAverages.content))}`}
                                 style={{ width: `${(Number(criteriaAverages.content) / 10) * 100}%` }}
@@ -911,14 +911,14 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                         )}
 
                         {criteriaAverages.difficulty && (
-                          <div className="space-y-1 bg-card/80 p-2.5 rounded-xl border">
+                          <div className="space-y-1.5">
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-muted-foreground font-medium">سطح دشواری و تکالیف</span>
                               <span className={`font-bold ${getScoreTextColor(Number(criteriaAverages.difficulty))}`}>
                                 {criteriaAverages.difficulty} <span className="text-[10px] text-muted-foreground font-normal">/ ۱۰</span>
                               </span>
                             </div>
-                            <div className="h-2.5 w-full rounded-full bg-muted/80 overflow-hidden">
+                            <div className="h-2 w-full rounded-full bg-muted/80 overflow-hidden">
                               <div
                                 className={`h-full rounded-full transition-all duration-700 ${getScoreBarColor(Number(criteriaAverages.difficulty))}`}
                                 style={{ width: `${(Number(criteriaAverages.difficulty) / 10) * 100}%` }}
