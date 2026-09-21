@@ -236,7 +236,7 @@ export interface ReviewItem {
   targetId: string;
   isAnonymous: boolean;
   comment: string;
-  overallRating: number; // 1-10
+  overallRating: number | null; // 1-10 or null if not rated
   criteriaRatings?: ReviewCriteria;
   studentGrade?: number | null; // e.g. 18.5 out of 20
   createdAt: string;
@@ -290,7 +290,7 @@ export interface Review {
   isAnonymous: boolean;
   comment: string;
   authorName?: string;
-  overallRating: number; // 1-10
+  overallRating: number | null; // 1-10 or null if not rated
   criteriaRatings?: Record<string, number>; // e.g. { teaching: 8, grading: 7, workload: 6 }
   studentGrade?: number | null; // e.g. 18.5 out of 20
   createdAt: string;

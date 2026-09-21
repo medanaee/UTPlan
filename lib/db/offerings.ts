@@ -195,14 +195,25 @@ export async function getOfferingById(id: string): Promise<CourseOffering | null
     let avgRating = 0;
     try {
       const { results: reviewRows } = await d1
-        .prepare("SELECT overall_rating FROM reviews WHERE target_type = 'offering' AND target_id = ? AND deleted_at IS NULL")
+        .prepare("SELECT overall_rating, criteria_ratings FROM reviews WHERE target_type = 'offering' AND target_id = ? AND deleted_at IS NULL")
         .bind(id)
         .all();
 
       revCount = reviewRows?.length || 0;
+      const scoredReviews = (reviewRows || []).filter((r: any) => {
+        let c: any = null;
+        if (r.criteria_ratings) {
+          try {
+            c = typeof r.criteria_ratings === "string" ? JSON.parse(r.criteria_ratings) : r.criteria_ratings;
+          } catch {}
+        }
+        const hasC = c && typeof c === "object" && Object.values(c).some((v: any) => typeof v === "number" && v > 0);
+        return hasC && Number(r.overall_rating) > 0;
+      });
+
       avgRating =
-        revCount > 0
-          ? (reviewRows || []).reduce((sum: number, r: any) => sum + Number(r.overall_rating), 0) / revCount
+        scoredReviews.length > 0
+          ? scoredReviews.reduce((sum: number, r: any) => sum + Number(r.overall_rating), 0) / scoredReviews.length
           : 0;
     } catch (e) {}
 

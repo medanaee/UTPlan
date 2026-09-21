@@ -364,9 +364,15 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
 
   const isAdmin = currentUser?.role === "admin" || currentUser?.role === "super_admin";
 
+  const scoredReviews = reviews.filter((r) => {
+    const c = r.criteriaRatings;
+    const hasC = c && typeof c === "object" && Object.values(c).some((v) => typeof v === "number" && v > 0);
+    return hasC && r.overallRating !== null && r.overallRating !== undefined && r.overallRating > 0;
+  });
+
   const totalAvg =
-    reviews.length > 0
-      ? (reviews.reduce((acc, r) => acc + (r.overallRating || 10), 0) / reviews.length).toFixed(1)
+    scoredReviews.length > 0
+      ? (scoredReviews.reduce((acc, r) => acc + (r.overallRating || 0), 0) / scoredReviews.length).toFixed(1)
       : null;
 
   const avgReportedGrade = React.useMemo(() => {
@@ -488,36 +494,45 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
           </div>
 
           {/* Quick Score Box */}
-          <div className="flex items-center gap-3 shrink-0 self-start lg:self-end">
-            <div className="rounded-xl border border-border/80 p-4 text-center min-w-27.5 shadow-2xs">
-              <div className="flex items-center justify-center gap-1 text-primary">
-                <Star className="h-5 w-5 fill-primary text-primary" />
-                <span className="text-2xl font-black">{totalAvg || "۱۰"}</span>
-              </div>
-              <span className="text-[10px] text-muted-foreground font-semibold mt-1 block">
-                میانگین رضایت از ۱۰
-              </span>
-            </div>
-
-            <div className="rounded-xl border border-border/80 p-4 text-center min-w-22.5 shadow-2xs">
-              <span className="text-2xl font-black text-foreground block">{reviews.length}</span>
-              <span className="text-[10px] text-muted-foreground font-medium mt-1 block">
-                نظر و تجربه
-              </span>
-            </div>
-
-            {avgReportedGrade && (
-              <div className="rounded-2xl border border-emerald-500/30 bg-card p-4 text-center min-w-27.5 shadow-2xs">
-                <div className="flex items-center justify-center gap-1 text-emerald-600">
-                  <GraduationCap className="h-5 w-5" />
-                  <span className="text-2xl font-black">{avgReportedGrade}</span>
+          {(totalAvg || reviews.length > 0 || avgReportedGrade) && (
+            <div className="flex items-center gap-3 shrink-0 self-start lg:self-end">
+              {totalAvg && (
+                <div className="rounded-xl border border-border/80 p-3.5 sm:p-4 text-center min-w-27.5 shadow-2xs">
+                  <div className="flex items-baseline justify-center gap-1.5 text-primary">
+                    <Star className="h-4.5 w-4.5 fill-primary text-primary self-center" />
+                    <span className="text-2xl font-black">{totalAvg}</span>
+                    <span className="text-xs font-semibold text-muted-foreground">
+                      ({reviews.length} نظر)
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground font-semibold mt-1 block">
+                    میانگین رضایت از ۱۰
+                  </span>
                 </div>
-                <span className="text-[10px] text-muted-foreground font-semibold mt-1 block">
-                  میانگین نمره از ۲۰
-                </span>
-              </div>
-            )}
-          </div>
+              )}
+
+              {!totalAvg && reviews.length > 0 && (
+                <div className="rounded-xl border border-border/80 p-3.5 sm:p-4 text-center min-w-22.5 shadow-2xs">
+                  <span className="text-2xl font-black text-foreground block">{reviews.length}</span>
+                  <span className="text-[10px] text-muted-foreground font-medium mt-1 block">
+                    نظر و تجربه
+                  </span>
+                </div>
+              )}
+
+              {avgReportedGrade && (
+                <div className="rounded-2xl border border-emerald-500/30 bg-card p-3.5 sm:p-4 text-center min-w-27.5 shadow-2xs">
+                  <div className="flex items-center justify-center gap-1 text-emerald-600">
+                    <GraduationCap className="h-5 w-5" />
+                    <span className="text-2xl font-black">{avgReportedGrade}</span>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground font-semibold mt-1 block">
+                    میانگین نمره از ۲۰
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -935,6 +950,15 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                     const canDelete = isMyReview || isAdmin;
                     const canEdit = isMyReview || isAdmin;
 
+                    const hasCriteriaScores = Object.values(cRatings).some(
+                      (v) => typeof v === "number" && v > 0
+                    );
+                    const reviewScore =
+                      hasCriteriaScores && rev.overallRating && rev.overallRating > 0
+                        ? rev.overallRating
+                        : null;
+                    const hasGrade = rev.studentGrade !== null && rev.studentGrade !== undefined;
+
                     return (
                       <div
                         key={rev.id}
@@ -943,75 +967,93 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                         } space-y-3`}
                       >
                         {/* Review Header */}
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2.5">
-                            <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
-                              {rev.isAnonymous ? "ن" : rev.authorName?.[0] || "ک"}
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-xs block text-foreground">
-                                  {rev.isAnonymous ? "دانشجوی دانشگاه تهران (ناشناس)" : (rev.authorName || "کاربر سامانه")}
+                        <div className="flex flex-col gap-2.5 sm:gap-0 sm:flex-row sm:items-center sm:justify-between">
+                          {/* Row 1: Student info on right, date on left in mobile */}
+                          <div className="flex items-center justify-between sm:justify-start gap-2.5">
+                            <div className="flex items-center gap-2.5">
+                              <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0">
+                                {rev.isAnonymous ? "ن" : rev.authorName?.[0] || "ک"}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-xs block text-foreground">
+                                    {rev.isAnonymous ? "دانشجوی دانشگاه تهران (ناشناس)" : (rev.authorName || "کاربر سامانه")}
+                                  </span>
+                                  {isMyReview && (
+                                    <Badge variant="secondary" className="text-[9px] px-1.5 py-0 bg-primary/15 text-primary border border-primary/25">
+                                      نظر شما
+                                    </Badge>
+                                  )}
+                                </div>
+                                <span className="hidden sm:block text-[10px] text-muted-foreground">
+                                  {new Date(rev.createdAt).toLocaleDateString("fa-IR")}
                                 </span>
-                                {isMyReview && (
-                                  <Badge variant="secondary" className="text-[9px] px-1.5 py-0 bg-primary/15 text-primary border border-primary/25">
-                                    نظر شما
+                              </div>
+                            </div>
+
+                            {/* Mobile date (pushed to the left) */}
+                            <span className="sm:hidden text-[11px] text-muted-foreground font-medium shrink-0">
+                              {new Date(rev.createdAt).toLocaleDateString("fa-IR")}
+                            </span>
+                          </div>
+
+                          {/* Row 2 on mobile: Badges and Action buttons bar */}
+                          {(hasGrade || reviewScore || canEdit || canDelete) && (
+                            <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-0 border-border/40">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {/* Student Grade Badge if present */}
+                                {hasGrade && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-xs font-bold gap-1 px-2.5 py-0.5 border-emerald-500/30 text-emerald-600 bg-emerald-500/10 shrink-0"
+                                  >
+                                    <GraduationCap className="h-3.5 w-3.5" />
+                                    <span>نمره: {rev.studentGrade} از ۲۰</span>
+                                  </Badge>
+                                )}
+
+                                {/* Overall score badge */}
+                                {reviewScore && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-xs font-bold gap-1 px-2.5 py-0.5 border-primary/30 text-primary bg-primary/5 shrink-0"
+                                  >
+                                    <Star className="h-3 w-3 fill-primary text-primary" />
+                                    <span>{reviewScore} / 10</span>
                                   </Badge>
                                 )}
                               </div>
-                              <span className="text-[10px] text-muted-foreground">
-                                {new Date(rev.createdAt).toLocaleDateString("fa-IR")}
-                              </span>
+
+                              {/* Action buttons (Edit / Delete) */}
+                              {(canEdit || canDelete) && (
+                                <div className="flex items-center gap-1 shrink-0">
+                                  {canEdit && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleOpenEdit(rev)}
+                                      title="ویرایش نظر شما"
+                                      className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                    >
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </Button>
+                                  )}
+
+                                  {canDelete && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleDeleteReview(rev.id)}
+                                      title={isMyReview ? "حذف نظر شما" : "حذف این نظر (ویژه مدیر)"}
+                                      className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
                             </div>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            {/* Student Grade Badge if present */}
-                            {rev.studentGrade !== null && rev.studentGrade !== undefined && (
-                              <Badge
-                                variant="outline"
-                                className="text-xs font-bold gap-1 px-2.5 py-0.5 border-emerald-500/30 text-emerald-600 bg-emerald-500/10"
-                              >
-                                <GraduationCap className="h-3.5 w-3.5" />
-                                <span>نمره: {rev.studentGrade} از ۲۰</span>
-                              </Badge>
-                            )}
-
-                            {/* Score badge */}
-                            <Badge
-                              variant="outline"
-                              className="text-xs font-bold gap-1 px-2.5 py-0.5 border-primary/30 text-primary bg-primary/5"
-                            >
-                              <Star className="h-3 w-3 fill-primary text-primary" />
-                              <span>{rev.overallRating} / 10</span>
-                            </Badge>
-
-                            {/* User Edit Button */}
-                            {canEdit && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleOpenEdit(rev)}
-                                title="ویرایش نظر شما"
-                                className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                              </Button>
-                            )}
-
-                            {/* User / Admin Delete Button */}
-                            {canDelete && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDeleteReview(rev.id)}
-                                title={isMyReview ? "حذف نظر شما" : "حذف این نظر (ویژه مدیر)"}
-                                className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            )}
-                          </div>
+                          )}
                         </div>
 
                         {/* Compact Individual Review Criteria Scores */}

@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let overallRating = 10;
+    let overallRating: number | null = null;
     if (criteriaRatings && typeof criteriaRatings === "object") {
       const validScores: number[] = [];
       for (const val of Object.values(criteriaRatings)) {
@@ -148,7 +148,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    let overallRating = 10;
+    let overallRating: number | null = null;
     if (criteriaRatings && typeof criteriaRatings === "object") {
       const validScores: number[] = [];
       for (const val of Object.values(criteriaRatings)) {

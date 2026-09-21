@@ -101,14 +101,25 @@ export async function getProfessorById(id: string): Promise<Professor | null> {
       .all();
 
     const { results: revRows } = await d1
-      .prepare("SELECT overall_rating FROM reviews WHERE target_type = 'professor' AND target_id = ? AND deleted_at IS NULL")
+      .prepare("SELECT overall_rating, criteria_ratings FROM reviews WHERE target_type = 'professor' AND target_id = ? AND deleted_at IS NULL")
       .bind(id)
       .all();
 
+    const scoredRows = (revRows || []).filter((r: any) => {
+      let c: any = null;
+      if (r.criteria_ratings) {
+        try {
+          c = typeof r.criteria_ratings === "string" ? JSON.parse(r.criteria_ratings) : r.criteria_ratings;
+        } catch {}
+      }
+      const hasC = c && typeof c === "object" && Object.values(c).some((v: any) => typeof v === "number" && v > 0);
+      return hasC && Number(r.overall_rating) > 0;
+    });
+
     const revCount = revRows?.length || 0;
     const avg =
-      revCount > 0
-        ? (revRows || []).reduce((sum: number, r: any) => sum + Number(r.overall_rating), 0) / revCount
+      scoredRows.length > 0
+        ? scoredRows.reduce((sum: number, r: any) => sum + Number(r.overall_rating), 0) / scoredRows.length
         : 0;
 
     const firstName = (p as any).first_name || "";

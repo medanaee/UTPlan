@@ -171,6 +171,13 @@ export async function getReviews(
           criteriaRatings = typeof r.criteria_ratings === "string" ? JSON.parse(r.criteria_ratings) : r.criteria_ratings;
         } catch {}
       }
+      const hasScores =
+        criteriaRatings &&
+        typeof criteriaRatings === "object" &&
+        Object.values(criteriaRatings).some((v: any) => typeof v === "number" && v > 0);
+      const rawRating = Number(r.overall_rating);
+      const overallRating = hasScores && rawRating > 0 ? rawRating : null;
+
       return {
         id: r.id,
         userId: r.user_id || null,
@@ -179,7 +186,7 @@ export async function getReviews(
         isAnonymous: Boolean(r.is_anonymous),
         comment: r.comment,
         authorName: r.is_anonymous ? "دانشجوی دانشگاه تهران" : (r.author_name || "کاربر سامانه"),
-        overallRating: Number(r.overall_rating) || 10,
+        overallRating,
         criteriaRatings,
         studentGrade: r.student_grade !== null && r.student_grade !== undefined ? Number(r.student_grade) : null,
         createdAt: r.created_at,
@@ -233,6 +240,13 @@ export async function getReviewById(
 
     const reactionsMap = await getReactionsForReviews([id], currentUserId, currentClientId);
 
+    const hasScores =
+      criteriaRatings &&
+      typeof criteriaRatings === "object" &&
+      Object.values(criteriaRatings).some((v: any) => typeof v === "number" && v > 0);
+    const rawRating = Number((r as any).overall_rating);
+    const overallRating = hasScores && rawRating > 0 ? rawRating : null;
+
     return {
       id: (r as any).id,
       userId: (r as any).user_id || null,
@@ -241,7 +255,7 @@ export async function getReviewById(
       isAnonymous: Boolean((r as any).is_anonymous),
       comment: (r as any).comment,
       authorName: (r as any).is_anonymous ? "دانشجوی دانشگاه تهران" : ((r as any).author_name || "کاربر سامانه"),
-      overallRating: Number((r as any).overall_rating) || 10,
+      overallRating,
       criteriaRatings,
       studentGrade: (r as any).student_grade !== null && (r as any).student_grade !== undefined ? Number((r as any).student_grade) : null,
       createdAt: (r as any).created_at,
@@ -259,7 +273,7 @@ export async function createReview(data: {
   targetId: string;
   isAnonymous?: boolean;
   comment: string;
-  overallRating: number;
+  overallRating: number | null;
   criteriaRatings?: Record<string, number>;
   studentGrade?: number | null;
 }): Promise<Review> {
@@ -268,6 +282,7 @@ export async function createReview(data: {
   const criteriaJson = data.criteriaRatings ? JSON.stringify(data.criteriaRatings) : null;
   const isAnon = data.isAnonymous ? 1 : 0;
   const grade = data.studentGrade !== undefined && data.studentGrade !== null ? Number(data.studentGrade) : null;
+  const ratingToStore = data.overallRating !== null && data.overallRating !== undefined ? data.overallRating : 0;
 
   const d1 = getD1();
   if (!d1) throw new Error("پایگاه‌داده در دسترس نیست.");
@@ -285,7 +300,7 @@ export async function createReview(data: {
         data.targetId,
         isAnon,
         data.comment.trim(),
-        data.overallRating,
+        ratingToStore,
         criteriaJson,
         grade,
         now
@@ -317,7 +332,7 @@ export async function updateReview(
     comment?: string;
     isAnonymous?: boolean;
     criteriaRatings?: Record<string, number>;
-    overallRating?: number;
+    overallRating?: number | null;
     studentGrade?: number | null;
   }
 ): Promise<Review | null> {
@@ -336,7 +351,14 @@ export async function updateReview(
         : existing.criteriaRatings
         ? JSON.stringify(existing.criteriaRatings)
         : null;
-    const overallRating = data.overallRating !== undefined ? data.overallRating : existing.overallRating;
+    const overallRating =
+      data.overallRating !== undefined
+        ? data.overallRating !== null
+          ? data.overallRating
+          : 0
+        : existing.overallRating !== null
+        ? existing.overallRating
+        : 0;
     const grade = data.studentGrade !== undefined ? (data.studentGrade !== null ? Number(data.studentGrade) : null) : existing.studentGrade ?? null;
 
     await d1
