@@ -1151,15 +1151,21 @@ export function TermSchedulePlanner({
                                   </div>
                                 </div>
 
-                                <div className="relative z-10 flex items-center justify-between text-[10px] text-muted-foreground  pt-1 border-t border-border/30">
-                                  <span className="flex items-center gap-0.5">
-                                    <Clock className="h-2.5 w-2.5" />
-                                    {slot.startTime} - {slot.endTime}
-                                  </span>
-                                  {event.location && (
-                                    <span className="truncate max-w-20">
-                                      {event.location}
+                                <div className="relative z-10 flex flex-col gap-0 text-[11px] text-muted-foreground pt-1 border-t border-border/30 min-w-0">
+                                  <div className="flex items-center gap-1">
+                                    <Clock className="h-2.5 w-2.5 shrink-0" />
+                                    <span>
+                                      {slot.startTime} - {slot.endTime}
                                     </span>
+                                  </div>
+                                  {event.location && (
+                                    <div
+                                      className="flex items-center gap-1 text-[11px] text-muted-foreground/90 truncate"
+                                      title={event.location}
+                                    >
+                                      <MapPin className="h-2.5 w-2.5 shrink-0 text-muted-foreground/70" />
+                                      <span className="truncate">{event.location}</span>
+                                    </div>
                                   )}
                                 </div>
                               </div>
@@ -1210,8 +1216,15 @@ export function TermSchedulePlanner({
                                     {hEvt.professorName}
                                   </div>
                                 </div>
-                                <div className="text-[10px] ">
-                                  {slot.startTime} - {slot.endTime}
+                                <div className="text-[10px] flex flex-col gap-0.5">
+                                  <span className="font-mono">
+                                    {slot.startTime} - {slot.endTime}
+                                  </span>
+                                  {hEvt.location && (
+                                    <span className="text-[9.5px] truncate opacity-80">
+                                      {hEvt.location}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             );
