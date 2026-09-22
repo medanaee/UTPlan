@@ -293,8 +293,9 @@ export function PhysicalFacultyManager({
   };
 
   const filteredFaculties = useMemo(() => {
-    if (!search.trim()) return physicalFaculties;
-    return persianSearch(physicalFaculties, search);
+    const activeList = physicalFaculties.filter((f) => !f.deletedAt);
+    if (!search.trim()) return activeList;
+    return persianSearch(activeList, search);
   }, [physicalFaculties, search]);
 
   const hasCoordinates = (f: PhysicalFaculty) =>

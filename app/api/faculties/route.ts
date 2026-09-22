@@ -1,21 +1,14 @@
 import { requireAdminSession } from "@/lib/auth";
 import { getFaculties, createFaculty, updateFaculty, deleteFaculty } from "@/lib/db";
 
-export async function GET(request?: Request) {
+export async function GET() {
   try {
-    const isNoCache =
-      request &&
-      (new URL(request.url).searchParams.has("_t") ||
-        request.headers.get("cache-control")?.includes("no-cache"));
-
     const faculties = await getFaculties();
     return Response.json(
       { success: true, data: faculties },
       {
         headers: {
-          "Cache-Control": isNoCache
-            ? "no-store, no-cache, must-revalidate"
-            : "public, max-age=60, s-maxage=3600, stale-while-revalidate=86400",
+          "Cache-Control": "no-store, no-cache, must-revalidate",
         },
       }
     );

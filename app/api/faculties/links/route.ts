@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
       { success: true, data: links },
       {
         headers: {
-          "Cache-Control": "public, max-age=60, s-maxage=3600, stale-while-revalidate=86400",
+          "Cache-Control": "no-store, no-cache, must-revalidate",
         },
       }
     );

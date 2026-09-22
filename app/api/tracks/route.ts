@@ -15,17 +15,11 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const majorId = searchParams.get("majorId") || undefined;
     const tracks = await getTracks(majorId);
-    const isNoCache =
-      searchParams.has("_t") ||
-      request.headers.get("cache-control")?.includes("no-cache");
-
     return Response.json(
       { success: true, data: tracks },
       {
         headers: {
-          "Cache-Control": isNoCache
-            ? "no-store, no-cache, must-revalidate"
-            : "public, max-age=60, s-maxage=3600, stale-while-revalidate=86400",
+          "Cache-Control": "no-store, no-cache, must-revalidate",
         },
       }
     );

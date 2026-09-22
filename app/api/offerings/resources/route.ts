@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       { success: true, data },
       {
         headers: {
-          "Cache-Control": "public, max-age=60, s-maxage=600, stale-while-revalidate=3600",
+          "Cache-Control": "no-store, no-cache, must-revalidate",
         },
       }
     );

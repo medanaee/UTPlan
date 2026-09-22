@@ -30,6 +30,7 @@ export function NeshanMapView({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<{ id: string; marker: maplibregl.Marker; el: HTMLElement }[]>([]);
+  const activePopupRef = useRef<maplibregl.Popup | null>(null);
   const { resolvedTheme } = useTheme();
 
   // Initialize map
@@ -58,6 +59,21 @@ export function NeshanMapView({
       logoPosition: "bottom-left",
     });
 
+    // Dismiss any open tooltip when user pans or clicks the map
+    map.on("movestart", () => {
+      if (activePopupRef.current) {
+        activePopupRef.current.remove();
+        activePopupRef.current = null;
+      }
+    });
+
+    map.on("click", () => {
+      if (activePopupRef.current) {
+        activePopupRef.current.remove();
+        activePopupRef.current = null;
+      }
+    });
+
     // Add navigation controls (zoom, compass)
     map.addControl(
       new maplibregl.NavigationControl({
@@ -82,6 +98,10 @@ export function NeshanMapView({
     }
 
     return () => {
+      if (activePopupRef.current) {
+        activePopupRef.current.remove();
+        activePopupRef.current = null;
+      }
       resizeObserver.disconnect();
       markersRef.current.forEach(({ marker }) => marker.remove());
       markersRef.current = [];
@@ -107,7 +127,11 @@ export function NeshanMapView({
     const map = mapInstanceRef.current;
     if (!map) return;
 
-    // Clear existing markers
+    // Clear existing markers and active popup
+    if (activePopupRef.current) {
+      activePopupRef.current.remove();
+      activePopupRef.current = null;
+    }
     markersRef.current.forEach(({ marker }) => marker.remove());
     markersRef.current = [];
 
@@ -179,18 +203,38 @@ export function NeshanMapView({
       `;
 
       markerEl.addEventListener("mouseenter", () => {
+        // Skip hover popup if this faculty is currently selected and drawer is open
+        if (selectedFaculty?.id === faculty.id) return;
+
+        if (activePopupRef.current) {
+          activePopupRef.current.remove();
+        }
+
         popup
           .setLngLat([faculty.longitude!, faculty.latitude!])
           .setHTML(popupHtml)
           .addTo(map);
+
+        activePopupRef.current = popup;
       });
 
       markerEl.addEventListener("mouseleave", () => {
         popup.remove();
+        if (activePopupRef.current === popup) {
+          activePopupRef.current = null;
+        }
       });
 
       markerEl.addEventListener("click", (e) => {
         e.stopPropagation();
+
+        // Immediately remove popup when marker is clicked
+        popup.remove();
+        if (activePopupRef.current) {
+          activePopupRef.current.remove();
+          activePopupRef.current = null;
+        }
+
         if (onSelectFaculty) {
           onSelectFaculty(faculty);
         }

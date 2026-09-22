@@ -182,7 +182,7 @@ export const useAdminStore = create<AdminState>()(
             fetchJson(`/api/tracks?_t=${t}`, noCacheOptions),
             fetchJson(`/api/courses?_t=${t}`, noCacheOptions),
             fetchJson(`/api/professors?_t=${t}`, noCacheOptions),
-            fetchJson(`/api/physical-faculties?includeDeleted=true&_t=${t}`, noCacheOptions),
+            fetchJson(`/api/physical-faculties?_t=${t}`, noCacheOptions),
           ]);
 
           const faculties = facRes.success ? facRes.data : [];

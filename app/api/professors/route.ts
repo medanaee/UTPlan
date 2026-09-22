@@ -20,7 +20,7 @@ export async function GET(request: Request) {
       { success: true, data: profs },
       {
         headers: {
-          "Cache-Control": "public, max-age=30, s-maxage=600, stale-while-revalidate=3600",
+          "Cache-Control": "no-store, no-cache, must-revalidate",
         },
       }
     );
