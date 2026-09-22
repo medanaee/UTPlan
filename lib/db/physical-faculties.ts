@@ -1,6 +1,7 @@
 import type { PhysicalFaculty } from "../types";
 import { getD1 } from "./client";
 import { generateUniqueCode, isCodeDuplicate } from "./code-generator";
+import { getCached, setCached, invalidateCache } from "../server-cache";
 
 function mapRowToPhysicalFaculty(r: any): PhysicalFaculty {
   return {
@@ -21,6 +22,10 @@ export async function getPhysicalFaculties(
   includeDeleted = false,
   search?: string
 ): Promise<PhysicalFaculty[]> {
+  const cacheKey = `physical_faculties_${includeDeleted}_${search || ""}`;
+  const cached = getCached<PhysicalFaculty[]>(cacheKey);
+  if (cached) return cached;
+
   const d1 = getD1();
   if (!d1) return [];
 
@@ -48,7 +53,9 @@ export async function getPhysicalFaculties(
     const stmt = params.length > 0 ? d1.prepare(query).bind(...params) : d1.prepare(query);
     const { results } = await stmt.all();
 
-    return (results || []).map(mapRowToPhysicalFaculty);
+    const list = (results || []).map(mapRowToPhysicalFaculty);
+    setCached(cacheKey, list, 60);
+    return list;
   } catch (err) {
     console.error("D1 getPhysicalFaculties error:", err);
     return [];
@@ -56,6 +63,10 @@ export async function getPhysicalFaculties(
 }
 
 export async function getPhysicalFacultyById(id: string): Promise<PhysicalFaculty | null> {
+  const cacheKey = `physical_faculty_${id}`;
+  const cached = getCached<PhysicalFaculty>(cacheKey);
+  if (cached) return cached;
+
   const d1 = getD1();
   if (!d1 || !id) return null;
 
@@ -65,7 +76,11 @@ export async function getPhysicalFacultyById(id: string): Promise<PhysicalFacult
       .bind(id)
       .first();
 
-    return row ? mapRowToPhysicalFaculty(row) : null;
+    const result = row ? mapRowToPhysicalFaculty(row) : null;
+    if (result) {
+      setCached(cacheKey, result, 60);
+    }
+    return result;
   } catch (err) {
     console.error("D1 getPhysicalFacultyById error:", err);
     return null;
@@ -125,6 +140,9 @@ export async function createPhysicalFaculty(data: {
       createdAt
     )
     .run();
+
+  invalidateCache("physical_faculties");
+  invalidateCache("physical_faculty_");
 
   return {
     id,
@@ -198,6 +216,9 @@ export async function updatePhysicalFaculty(
     .bind(name, code || null, imageUrl, lat, lon, address, description, id)
     .run();
 
+  invalidateCache("physical_faculties");
+  invalidateCache("physical_faculty_");
+
   return {
     ...existing,
     name,
@@ -224,6 +245,8 @@ export async function deletePhysicalFaculty(id: string, hard = false): Promise<b
         .bind(now, id)
         .run();
     }
+    invalidateCache("physical_faculties");
+    invalidateCache("physical_faculty_");
     return true;
   } catch (err) {
     console.error("D1 deletePhysicalFaculty error:", err);
@@ -240,6 +263,8 @@ export async function restorePhysicalFaculty(id: string): Promise<boolean> {
       .prepare(`UPDATE physical_faculties SET deleted_at = NULL WHERE id = ?`)
       .bind(id)
       .run();
+    invalidateCache("physical_faculties");
+    invalidateCache("physical_faculty_");
     return true;
   } catch (err) {
     console.error("D1 restorePhysicalFaculty error:", err);

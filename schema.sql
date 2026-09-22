@@ -92,6 +92,8 @@ CREATE TABLE IF NOT EXISTS courses (
 CREATE INDEX IF NOT EXISTS idx_courses_faculty ON courses(faculty_id);
 CREATE INDEX IF NOT EXISTS idx_courses_code ON courses(code);
 CREATE INDEX IF NOT EXISTS idx_courses_abbreviation ON courses(abbreviation);
+CREATE INDEX IF NOT EXISTS idx_courses_deleted_name ON courses(deleted_at, name);
+CREATE INDEX IF NOT EXISTS idx_courses_faculty_deleted ON courses(faculty_id, deleted_at);
 
 -- 7. Prerequisites Table
 CREATE TABLE IF NOT EXISTS prerequisites (
@@ -139,6 +141,8 @@ CREATE TABLE IF NOT EXISTS professors (
 CREATE INDEX IF NOT EXISTS idx_professors_faculty ON professors(faculty_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_professors_code ON professors(code);
 CREATE INDEX IF NOT EXISTS idx_professors_name ON professors(last_name, first_name);
+CREATE INDEX IF NOT EXISTS idx_professors_deleted_name ON professors(deleted_at, last_name, first_name);
+CREATE INDEX IF NOT EXISTS idx_professors_faculty_deleted ON professors(faculty_id, deleted_at);
 
 -- 11. Course Offerings Table (Course offering entity)
 CREATE TABLE IF NOT EXISTS course_offerings (
@@ -153,6 +157,7 @@ CREATE TABLE IF NOT EXISTS course_offerings (
 );
 CREATE INDEX IF NOT EXISTS idx_offerings_course ON course_offerings(course_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_offerings_code ON course_offerings(code);
+CREATE INDEX IF NOT EXISTS idx_offerings_deleted ON course_offerings(deleted_at);
 
 -- 12. Offering Professors Junction Table (Co-teaching / Multi-professors)
 CREATE TABLE IF NOT EXISTS offering_professors (

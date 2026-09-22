@@ -2,6 +2,7 @@ import type { Course, DegreeLevel, PrerequisiteRelation, PrerequisiteType } from
 import { getD1, fetchInChunks } from "./client";
 import { assignCourseToCategory, assignCourseToCategories, getEffectiveFacultyIds } from "./structure";
 import { generateUniqueCode, isCodeDuplicate } from "./code-generator";
+import { getCached, setCached, invalidateCache } from "../server-cache";
 
 // ----------------------------------------------------
 // COURSES CRUD
@@ -11,6 +12,12 @@ export async function getCourses(
   trackId?: string,
   directOnly: boolean = false
 ): Promise<Course[]> {
+  const cacheKey = `courses_${facultyId || "all"}_${trackId || "all"}_${directOnly}`;
+  const cached = getCached<Course[]>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   const d1 = getD1();
   if (!d1) return [];
 
@@ -78,7 +85,7 @@ export async function getCourses(
       });
     }
 
-    return coursesList.map((c: any) => {
+    const mappedCourses = coursesList.map((c: any) => {
       const prereqs = prereqsList
         .filter((p: any) => p.course_id === c.id)
         .map((p: any) => ({
@@ -118,6 +125,9 @@ export async function getCourses(
         trackAssignments: assignments,
       };
     });
+
+    setCached(cacheKey, mappedCourses, 60);
+    return mappedCourses;
   } catch (err) {
     console.error("D1 getCourses error:", err);
     return [];
@@ -125,6 +135,10 @@ export async function getCourses(
 }
 
 export async function getCourseById(id: string): Promise<Course | null> {
+  const cacheKey = `course_${id}`;
+  const cached = getCached<Course>(cacheKey);
+  if (cached) return cached;
+
   const d1 = getD1();
   if (!d1) return null;
 
@@ -193,7 +207,7 @@ export async function getCourseById(id: string): Promise<Course | null> {
       .bind(id)
       .all();
 
-    return {
+    const courseData: Course = {
       id: (c as any).id,
       facultyId: (c as any).faculty_id,
       facultyName: (c as any).faculty_name || undefined,
@@ -267,6 +281,9 @@ export async function getCourseById(id: string): Promise<Course | null> {
         ruleCategoryId: a.category_id || a.rule_category_id || null,
       })),
     };
+
+    setCached(cacheKey, courseData, 60);
+    return courseData;
   } catch (err) {
     console.error("D1 getCourseById error:", err);
     return null;
@@ -321,6 +338,9 @@ export async function createCourse(data: {
       const catId = data.categoryId ?? data.ruleCategoryId ?? data.visualCategoryId ?? null;
       await assignCourseToCategory(data.trackId, id, catId);
     }
+
+    invalidateCache("courses");
+    invalidateCache("course_");
   } catch (err) {
     console.error("D1 createCourse error:", err);
     throw err;
@@ -409,6 +429,9 @@ export async function updateCourse(
       await assignCourseToCategory(data.trackId, id, catId);
     }
 
+    invalidateCache("courses");
+    invalidateCache("course_");
+
     return await getCourseById(id);
   } catch (err) {
     console.error("D1 updateCourse error:", err);
@@ -423,6 +446,8 @@ export async function deleteCourse(id: string): Promise<boolean> {
 
   try {
     await d1.prepare("UPDATE courses SET deleted_at = ? WHERE id = ?").bind(now, id).run();
+    invalidateCache("courses");
+    invalidateCache("course_");
     return true;
   } catch (err) {
     console.error("D1 deleteCourse error:", err);
@@ -512,6 +537,8 @@ export async function addPrerequisite(
         )
         .bind(id, courseId, requiredCourseId, type)
         .run();
+      invalidateCache("courses");
+      invalidateCache("course_");
     } catch (err) {
       console.error("D1 addPrerequisite error:", err);
       throw err;
@@ -532,6 +559,8 @@ export async function removePrerequisite(id: string): Promise<boolean> {
 
   try {
     await d1.prepare("DELETE FROM prerequisites WHERE id = ?").bind(id).run();
+    invalidateCache("courses");
+    invalidateCache("course_");
     return true;
   } catch (err) {
     console.error("D1 removePrerequisite error:", err);
@@ -550,6 +579,8 @@ export async function deleteCoursesByFaculty(facultyId: string): Promise<boolean
       .bind(now, facultyId)
       .run();
 
+    invalidateCache("courses");
+    invalidateCache("course_");
     return true;
   } catch (err) {
     console.error("D1 deleteCoursesByFaculty error:", err);
