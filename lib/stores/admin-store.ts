@@ -170,13 +170,19 @@ export const useAdminStore = create<AdminState>()(
       loadAllData: async () => {
         try {
           set({ loading: true });
+          const t = Date.now();
+          const noCacheOptions = {
+            cache: "no-store" as RequestCache,
+            headers: { "Cache-Control": "no-cache" },
+          };
+
           const [facRes, majRes, trkRes, crsRes, prfRes, pfacRes] = await Promise.all([
-            fetchJson("/api/faculties"),
-            fetchJson("/api/majors"),
-            fetchJson("/api/tracks"),
-            fetchJson("/api/courses"),
-            fetchJson("/api/professors"),
-            fetchJson("/api/physical-faculties"),
+            fetchJson(`/api/faculties?_t=${t}`, noCacheOptions),
+            fetchJson(`/api/majors?_t=${t}`, noCacheOptions),
+            fetchJson(`/api/tracks?_t=${t}`, noCacheOptions),
+            fetchJson(`/api/courses?_t=${t}`, noCacheOptions),
+            fetchJson(`/api/professors?_t=${t}`, noCacheOptions),
+            fetchJson(`/api/physical-faculties?includeDeleted=true&_t=${t}`, noCacheOptions),
           ]);
 
           const faculties = facRes.success ? facRes.data : [];
@@ -253,9 +259,14 @@ export const useAdminStore = create<AdminState>()(
       loadTrackDetails: async (trackId: string) => {
         if (!trackId) return;
         try {
+          const t = Date.now();
+          const noCacheOptions = {
+            cache: "no-store" as RequestCache,
+            headers: { "Cache-Control": "no-cache" },
+          };
           const [catRes, assignRes] = await Promise.all([
-            fetchJson(`/api/categories?trackId=${trackId}`),
-            fetchJson(`/api/tracks/assignments?trackId=${trackId}`),
+            fetchJson(`/api/categories?trackId=${trackId}&_t=${t}`, noCacheOptions),
+            fetchJson(`/api/tracks/assignments?trackId=${trackId}&_t=${t}`, noCacheOptions),
           ]);
 
           const categories = catRes.success

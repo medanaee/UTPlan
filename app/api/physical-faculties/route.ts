@@ -14,6 +14,11 @@ export async function GET(request: NextRequest) {
 
     const faculties = await getPhysicalFaculties(includeDeleted, search);
 
+    const isNoCache =
+      includeDeleted ||
+      searchParams.has("_t") ||
+      request.headers.get("cache-control")?.includes("no-cache");
+
     return NextResponse.json(
       {
         success: true,
@@ -22,7 +27,9 @@ export async function GET(request: NextRequest) {
       },
       {
         headers: {
-          "Cache-Control": "public, max-age=60, s-maxage=3600, stale-while-revalidate=86400",
+          "Cache-Control": isNoCache
+            ? "no-store, no-cache, must-revalidate"
+            : "public, max-age=60, s-maxage=3600, stale-while-revalidate=86400",
         },
       }
     );

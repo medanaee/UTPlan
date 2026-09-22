@@ -43,6 +43,7 @@ import {
   Building,
 } from "lucide-react";
 import { PhysicalFacultyImportDialog } from "./physical-faculty-import-dialog";
+import { useAdminStore } from "@/lib/stores/admin-store";
 
 interface PhysicalFacultyManagerProps {
   physicalFaculties: PhysicalFaculty[];
@@ -218,6 +219,12 @@ export function PhysicalFacultyManager({
         const res = await putJson(`/api/physical-faculties/${editingFaculty.id}`, payload);
         if (res.success) {
           setIsModalOpen(false);
+          if (res.data) {
+            const { physicalFaculties, setPhysicalFaculties } = useAdminStore.getState();
+            setPhysicalFaculties(
+              physicalFaculties.map((f) => (f.id === res.data.id ? res.data : f))
+            );
+          }
           await onDataChanged();
         } else {
           setFormError(res.message || "خطا در ویرایش دانشکده");
@@ -226,6 +233,10 @@ export function PhysicalFacultyManager({
         const res = await postJson("/api/physical-faculties", payload);
         if (res.success) {
           setIsModalOpen(false);
+          if (res.data) {
+            const { physicalFaculties, setPhysicalFaculties } = useAdminStore.getState();
+            setPhysicalFaculties([res.data, ...physicalFaculties]);
+          }
           await onDataChanged();
         } else {
           setFormError(res.message || "خطا در ایجاد دانشکده");
@@ -244,6 +255,8 @@ export function PhysicalFacultyManager({
     try {
       const res = await deleteJson(`/api/physical-faculties/${deleteTarget.id}`);
       if (res.success) {
+        const { physicalFaculties, setPhysicalFaculties } = useAdminStore.getState();
+        setPhysicalFaculties(physicalFaculties.filter((f) => f.id !== deleteTarget.id));
         setDeleteTarget(null);
         await onDataChanged();
       } else {

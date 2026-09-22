@@ -74,6 +74,10 @@ export function UniversityStructureManager() {
       const res = await putJson("/api/faculties", { id: editingFaculty.id, ...facultyForm });
 
       if (res.success) {
+        if (res.data) {
+          const { faculties, setFaculties } = useAdminStore.getState();
+          setFaculties(faculties.map((f) => (f.id === res.data.id ? res.data : f)));
+        }
         setFacultyModalOpen(false);
         setEditingFaculty(null);
         setFacultyForm({ name: "", code: "" });
@@ -86,6 +90,10 @@ export function UniversityStructureManager() {
       const res = await postJson("/api/faculties", facultyForm);
 
       if (res.success) {
+        if (res.data) {
+          const { faculties, setFaculties } = useAdminStore.getState();
+          setFaculties([res.data, ...faculties]);
+        }
         setFacultyModalOpen(false);
         setFacultyForm({ name: "", code: "" });
         setActionMessage("دانشکده جدید با موفقیت ایجاد شد.");

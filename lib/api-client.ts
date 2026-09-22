@@ -30,9 +30,14 @@ export async function fetchJson<T = any>(
 ): Promise<T> {
   const method = (init?.method || "GET").toUpperCase();
   const isGet = method === "GET";
+  const noCache =
+    init?.cache === "no-store" ||
+    (typeof init?.headers === "object" &&
+      init?.headers !== null &&
+      ("Cache-Control" in init.headers && (init.headers as any)["Cache-Control"] === "no-cache"));
   const urlKey = typeof input === "string" ? input : input instanceof URL ? input.toString() : null;
 
-  if (isGet && urlKey) {
+  if (isGet && urlKey && !noCache) {
     // 1. Check memory cache (valid for 2 seconds to absorb double mounts & concurrent renders)
     const cached = memoryCache.get(urlKey);
     if (cached && Date.now() < cached.expiry) {
