@@ -5,6 +5,7 @@
   "packageManager": "npm",
   "dependencies": {
     "@base-ui/react": "^1.7.0",
+    "@neshan-maps-platform/maplibre-sdk": "^5.24.4",
     "@types/sql.js": "^1.4.11",
     "@vinext/cloudflare": "latest",
     "class-variance-authority": "^0.7.1",

@@ -57,7 +57,14 @@ export async function GET(request: NextRequest) {
       customOnly: customOnly && isAdmin,
     });
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json(
+      { success: true, data },
+      {
+        headers: {
+          "Cache-Control": "private, max-age=15, stale-while-revalidate=60",
+        },
+      }
+    );
   } catch (error) {
     console.error("GET events error:", error);
     return NextResponse.json(
