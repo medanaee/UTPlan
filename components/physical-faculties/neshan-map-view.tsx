@@ -16,8 +16,8 @@ const DEFAULT_ZOOM = 12.5;
 
 interface NeshanMapViewProps {
   faculties: PhysicalFaculty[];
-  selectedFaculty: PhysicalFaculty | null;
-  onSelectFaculty: (faculty: PhysicalFaculty) => void;
+  selectedFaculty?: PhysicalFaculty | null;
+  onSelectFaculty?: (faculty: PhysicalFaculty) => void;
   flyToCoords?: [number, number] | null;
 }
 
@@ -38,13 +38,23 @@ export function NeshanMapView({
 
     const styleUrl = resolvedTheme === "dark" ? NESHAN_DARK_STYLE : NESHAN_LIGHT_STYLE;
 
+    // If viewing a single faculty, center directly on it
+    const hasSingleCoords =
+      faculties.length === 1 &&
+      typeof faculties[0].longitude === "number" &&
+      typeof faculties[0].latitude === "number";
+
+    const initialCenter: [number, number] = hasSingleCoords
+      ? [faculties[0].longitude!, faculties[0].latitude!]
+      : DEFAULT_CENTER;
+    const initialZoom = hasSingleCoords ? 15.5 : DEFAULT_ZOOM;
+
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
       style: styleUrl,
-      center: DEFAULT_CENTER,
-      zoom: DEFAULT_ZOOM,
+      center: initialCenter,
+      zoom: initialZoom,
       apiKey: NESHAN_API_KEY,
-      attributionControl: true,
       logoPosition: "bottom-left",
     });
 
@@ -181,7 +191,9 @@ export function NeshanMapView({
 
       markerEl.addEventListener("click", (e) => {
         e.stopPropagation();
-        onSelectFaculty(faculty);
+        if (onSelectFaculty) {
+          onSelectFaculty(faculty);
+        }
         map.flyTo({
           center: [faculty.longitude!, faculty.latitude!],
           zoom: 15.5,
@@ -217,17 +229,6 @@ export function NeshanMapView({
   return (
     <div className="relative w-full h-full">
       <div ref={mapContainerRef} className="w-full h-full min-h-[400px]" />
-      <style jsx global>{`
-        .neshan-faculty-popup .maplibregl-popup-content {
-          background: transparent !important;
-          box-shadow: none !important;
-          padding: 0 !important;
-          border-radius: 0 !important;
-        }
-        .neshan-faculty-popup .maplibregl-popup-tip {
-          border-top-color: var(--border) !important;
-        }
-      `}</style>
     </div>
   );
 }

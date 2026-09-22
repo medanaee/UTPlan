@@ -268,3 +268,18 @@ html.dark::-webkit-scrollbar-track,
   font-family: 'Vazirmatn UI FD NL', sans-serif !important;
 }
 
+/* ==========================================================================
+   Neshan Map & Popup Custom Styles
+   ========================================================================== */
+.neshan-faculty-popup .maplibregl-popup-content {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+
+.neshan-faculty-popup .maplibregl-popup-tip {
+  border-top-color: var(--border) !important;
+}
+
+

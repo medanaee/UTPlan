@@ -18,6 +18,21 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import type { PhysicalFaculty } from "@/lib/types";
+import dynamic from "next/dynamic";
+import { Loader2 } from "lucide-react";
+
+const NeshanMapView = dynamic(
+  () => import("./neshan-map-view").then((mod) => mod.NeshanMapView),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-full min-h-[320px] flex flex-col items-center justify-center bg-muted/20 gap-2 text-muted-foreground">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <span className="text-xs">در حال بارگذاری نقشه نشان...</span>
+      </div>
+    ),
+  }
+);
 
 interface PhysicalFacultyDetailViewProps {
   faculty: PhysicalFaculty;
@@ -206,16 +221,11 @@ export function PhysicalFacultyDetailView({ faculty }: PhysicalFacultyDetailView
           </CardHeader>
 
           <CardContent className="space-y-6">
-            {/* Embedded OpenStreetMap */}
+            {/* Neshan MapLibre Map */}
             <div className="h-80 sm:h-96 w-full rounded-2xl overflow-hidden border shadow-inner bg-background relative">
-              <iframe
-                title={`نقشه ${faculty.name}`}
-                width="100%"
-                height="100%"
-                frameBorder="0"
-                scrolling="no"
-                src={`https://www.openstreetmap.org/export/embed.html?bbox=${lon - 0.007}%2C${lat - 0.004}%2C${lon + 0.007}%2C${lat + 0.004}&layer=mapnik&marker=${lat}%2C${lon}`}
-                className="w-full h-full"
+              <NeshanMapView
+                faculties={[faculty]}
+                selectedFaculty={faculty}
               />
             </div>
 
