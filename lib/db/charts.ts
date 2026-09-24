@@ -1,97 +1,108 @@
 import type { StudentChart, ChartSemester } from "../types";
-import { getD1, fetchInChunks } from "./client";
+import { getD1 } from "./client";
+
+function mapChartRow(c: any): StudentChart {
+  let terms: any[] = [];
+  try {
+    if (c.terms_json) {
+      const parsed = JSON.parse(c.terms_json);
+      if (Array.isArray(parsed)) terms = parsed;
+    }
+  } catch {}
+
+  const semesters: ChartSemester[] = terms.map((t: any) => {
+    const courseEventsMap: Record<string, string> = {};
+    let termCourses: any[] = [];
+    try {
+      if (typeof t.courses === "string") {
+        termCourses = JSON.parse(t.courses);
+      } else if (Array.isArray(t.courses)) {
+        termCourses = t.courses;
+      }
+    } catch {}
+
+    const coursesInTerm = termCourses.map((cc: any) => {
+      if (cc.selected_event_id) {
+        courseEventsMap[cc.course_id] = cc.selected_event_id;
+      }
+      return cc.course_id;
+    });
+
+    const semNum = Number(t.term_index) || 1;
+    return {
+      semesterNumber: semNum,
+      isSummer: semNum % 1 !== 0,
+      courseIds: coursesInTerm,
+      courseEventsMap,
+    };
+  });
+
+  let waivedCourseIds: string[] = [];
+  if (c.waived_course_ids) {
+    try {
+      waivedCourseIds = JSON.parse(c.waived_course_ids);
+    } catch {}
+  }
+
+  return {
+    id: c.id,
+    userId: c.user_id,
+    trackId: c.track_id,
+    title: c.title,
+    isApprovedDefault: Boolean(c.is_approved_template),
+    semesters,
+    waivedCourseIds,
+    createdAt: c.created_at,
+    updatedAt: c.updated_at,
+  };
+}
+
+const CHART_SELECT_SQL = `
+  SELECT c.*,
+    (
+      SELECT json_group_array(
+        json_object(
+          'id', t.id,
+          'term_index', t.term_index,
+          'courses', (
+            SELECT json_group_array(
+              json_object(
+                'course_id', cc.course_id,
+                'selected_event_id', cc.selected_event_id
+              )
+            )
+            FROM chart_courses cc
+            WHERE cc.term_id = t.id
+            ORDER BY cc.sort_order ASC
+          )
+        )
+      )
+      FROM chart_terms t
+      WHERE t.chart_id = c.id
+      ORDER BY t.term_index ASC
+    ) AS terms_json
+  FROM charts c
+`;
 
 export async function getCharts(userId?: string, trackId?: string): Promise<StudentChart[]> {
   const d1 = getD1();
   if (!d1) return [];
 
   try {
-    let query = "SELECT * FROM charts WHERE 1=1";
+    let query = `${CHART_SELECT_SQL} WHERE 1=1`;
     const params: any[] = [];
     if (userId) {
-      query += " AND (user_id = ? OR is_approved_template = 1)";
+      query += " AND (c.user_id = ? OR c.is_approved_template = 1)";
       params.push(userId);
     }
     if (trackId) {
-      query += " AND track_id = ?";
+      query += " AND c.track_id = ?";
       params.push(trackId);
     }
-    query += " ORDER BY created_at DESC";
+    query += " ORDER BY c.created_at DESC";
 
-    const { results: chartRows } = await d1.prepare(query).bind(...params).all();
-    const chartsList = chartRows || [];
-
-    if (chartsList.length === 0) {
-      return [];
-    }
-
-    const chartIds = chartsList.map((c: any) => c.id);
-
-    // Fetch terms only for these charts (in chunks of 50)
-    const termsList = await fetchInChunks(chartIds, 50, async (chunk) => {
-      const placeholders = chunk.map(() => "?").join(",");
-      const { results } = await d1
-        .prepare(`SELECT * FROM chart_terms WHERE chart_id IN (${placeholders}) ORDER BY term_index ASC`)
-        .bind(...chunk)
-        .all();
-      return results || [];
-    });
-
-    // Fetch courses only for these terms
-    const termIds = termsList.map((t: any) => t.id);
-    let chartCoursesList: any[] = [];
-    if (termIds.length > 0) {
-      chartCoursesList = await fetchInChunks(termIds, 50, async (chunk) => {
-        const placeholders = chunk.map(() => "?").join(",");
-        const { results } = await d1
-          .prepare(`SELECT * FROM chart_courses WHERE term_id IN (${placeholders}) ORDER BY sort_order ASC`)
-          .bind(...chunk)
-          .all();
-        return results || [];
-      });
-    }
-
-    return chartsList.map((c: any) => {
-      const terms = termsList.filter((t: any) => t.chart_id === c.id);
-      const semesters: ChartSemester[] = terms.map((t: any) => {
-        const courseEventsMap: Record<string, string> = {};
-        const coursesInTerm = chartCoursesList
-          .filter((cc: any) => cc.term_id === t.id)
-          .map((cc: any) => {
-            if (cc.selected_event_id) {
-              courseEventsMap[cc.course_id] = cc.selected_event_id;
-            }
-            return cc.course_id;
-          });
-
-        const semNum = Number(t.term_index) || 1;
-        return {
-          semesterNumber: semNum,
-          isSummer: semNum % 1 !== 0,
-          courseIds: coursesInTerm,
-          courseEventsMap,
-        };
-      });
-
-      let waivedCourseIds: string[] = [];
-      if (c.waived_course_ids) {
-        try {
-          waivedCourseIds = JSON.parse(c.waived_course_ids);
-        } catch {}
-      }
-
-      return {
-        id: c.id,
-        userId: c.user_id,
-        trackId: c.track_id,
-        title: c.title,
-        isApprovedDefault: Boolean(c.is_approved_template),
-        semesters,
-        waivedCourseIds,
-        createdAt: c.created_at,
-        updatedAt: c.updated_at,
-      };
-    });
+    const { results } = await d1.prepare(query).bind(...params).all();
+    return (results || []).map(mapChartRow);
   } catch (err) {
     console.error("D1 getCharts error:", err);
     return [];
@@ -126,65 +137,10 @@ export async function getChartById(id: string): Promise<StudentChart | null> {
   if (!d1) return null;
 
   try {
-    const c = await d1.prepare("SELECT * FROM charts WHERE id = ?").bind(id).first();
+    const query = `${CHART_SELECT_SQL} WHERE c.id = ?`;
+    const c = await d1.prepare(query).bind(id).first();
     if (!c) return null;
-
-    const { results: termRows } = await d1
-      .prepare("SELECT * FROM chart_terms WHERE chart_id = ? ORDER BY term_index ASC")
-      .bind(id)
-      .all();
-
-    const { results: courseRows } = await d1
-      .prepare(
-        `SELECT cc.* FROM chart_courses cc
-         JOIN chart_terms ct ON cc.term_id = ct.id
-         WHERE ct.chart_id = ?
-         ORDER BY cc.sort_order ASC`
-      )
-      .bind(id)
-      .all();
-
-    const terms = termRows || [];
-    const courses = courseRows || [];
-
-    const semesters: ChartSemester[] = terms.map((t: any) => {
-      const courseEventsMap: Record<string, string> = {};
-      const courseIds = courses
-        .filter((cc: any) => cc.term_id === t.id)
-        .map((cc: any) => {
-          if (cc.selected_event_id) {
-            courseEventsMap[cc.course_id] = cc.selected_event_id;
-          }
-          return cc.course_id;
-        });
-
-      const semNum = Number(t.term_index) || 1;
-      return {
-        semesterNumber: semNum,
-        isSummer: semNum % 1 !== 0,
-        courseIds,
-        courseEventsMap,
-      };
-    });
-
-    let waivedCourseIds: string[] = [];
-    if ((c as any).waived_course_ids) {
-      try {
-        waivedCourseIds = JSON.parse((c as any).waived_course_ids);
-      } catch {}
-    }
-
-    return {
-      id: (c as any).id,
-      userId: (c as any).user_id,
-      trackId: (c as any).track_id,
-      title: (c as any).title,
-      isApprovedDefault: Boolean((c as any).is_approved_template),
-      semesters,
-      waivedCourseIds,
-      createdAt: (c as any).created_at,
-      updatedAt: (c as any).updated_at,
-    };
+    return mapChartRow(c);
   } catch (err) {
     console.error("D1 getChartById error:", err);
     return null;

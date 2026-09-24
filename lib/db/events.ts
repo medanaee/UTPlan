@@ -1,5 +1,5 @@
 import type { CourseEvent, CourseEventSlot } from "../types";
-import { getD1, fetchInChunks } from "./client";
+import { getD1 } from "./client";
 import { getEffectiveFacultyIds } from "./structure";
 import { generateUniqueCode, isCodeDuplicate } from "./code-generator";
 
@@ -32,13 +32,39 @@ export async function getEvents(
              o.deleted_at AS offering_deleted_at,
              c.id AS course_id, c.name AS course_name, c.code AS course_code, c.units AS course_units,
              c.faculty_id AS faculty_id, f.name AS faculty_name,
-             p.id AS professor_id, (p.first_name || ' ' || p.last_name) AS professor_name, p.title AS professor_title, p.avatar_url AS professor_avatar_url
+             (
+               SELECT json_group_array(
+                 json_object(
+                   'id', s.id,
+                   'day_of_week', s.day_of_week,
+                   'start_time', s.start_time,
+                   'end_time', s.end_time
+                 )
+               )
+               FROM course_event_slots s
+               WHERE s.event_id = e.id
+             ) AS slots_json,
+             (
+               SELECT json_group_array(
+                 json_object(
+                   'id', p.id,
+                   'is_primary', op.is_primary,
+                   'first_name', p.first_name,
+                   'last_name', p.last_name,
+                   'code', p.code,
+                   'title', p.title,
+                   'avatar_url', p.avatar_url,
+                   'email', p.email
+                 )
+               )
+               FROM offering_professors op
+               JOIN professors p ON op.professor_id = p.id
+               WHERE op.offering_id = e.offering_id AND p.deleted_at IS NULL
+             ) AS professors_json
       FROM course_events e
       LEFT JOIN course_offerings o ON e.offering_id = o.id
       LEFT JOIN courses c ON o.course_id = c.id
       LEFT JOIN faculties f ON c.faculty_id = f.id
-      LEFT JOIN offering_professors op ON op.offering_id = o.id AND op.is_primary = 1
-      LEFT JOIN professors p ON op.professor_id = p.id
       WHERE e.deleted_at IS NULL
     `;
     const params: any[] = [];
@@ -81,59 +107,46 @@ export async function getEvents(
       return [];
     }
 
-    const eventIds = eventsList.map((e: any) => e.id);
-    const offeringIds = Array.from(
-      new Set(eventsList.map((e: any) => e.offering_id).filter(Boolean))
-    ) as string[];
-
-    // Fetch only slots for these events (in safe chunks of 50)
-    const slotsList = await fetchInChunks(eventIds, 50, async (chunk) => {
-      const placeholders = chunk.map(() => "?").join(",");
-      const { results } = await d1
-        .prepare(`SELECT * FROM course_event_slots WHERE event_id IN (${placeholders})`)
-        .bind(...chunk)
-        .all();
-      return results || [];
-    });
-
-    // Fetch professor links only for these offerings
-    let profLinksList: any[] = [];
-    if (offeringIds.length > 0) {
-      profLinksList = await fetchInChunks(offeringIds, 50, async (chunk) => {
-        const placeholders = chunk.map(() => "?").join(",");
-        const { results } = await d1
-          .prepare(`
-            SELECT op.offering_id, op.is_primary, p.id, p.first_name, p.last_name, p.code, p.title, p.avatar_url, p.email
-            FROM offering_professors op
-            JOIN professors p ON op.professor_id = p.id
-            WHERE op.offering_id IN (${placeholders}) AND p.deleted_at IS NULL
-            ORDER BY op.is_primary DESC, p.last_name ASC, p.first_name ASC
-          `)
-          .bind(...chunk)
-          .all();
-        return results || [];
-      });
-    }
-
     return eventsList.map((e: any) => {
-      const slots = slotsList
-        .filter((s: any) => s.event_id === e.id)
-        .map((s: any) => ({
-          id: s.id,
-          eventId: s.event_id,
-          dayOfWeek: Number(s.day_of_week),
-          startTime: s.start_time,
-          endTime: s.end_time,
-        }));
+      let rawSlots: any[] = [];
+      try {
+        if (e.slots_json) {
+          const parsed = JSON.parse(e.slots_json);
+          if (Array.isArray(parsed)) rawSlots = parsed;
+        }
+      } catch (err) {}
 
-      const offProfs = profLinksList.filter((lp: any) => lp.offering_id === e.offering_id);
+      const slots: CourseEventSlot[] = rawSlots.map((s: any) => ({
+        id: s.id,
+        eventId: e.id,
+        dayOfWeek: Number(s.day_of_week),
+        startTime: s.start_time,
+        endTime: s.end_time,
+      }));
+
+      let offProfs: any[] = [];
+      try {
+        if (e.professors_json) {
+          const parsed = JSON.parse(e.professors_json);
+          if (Array.isArray(parsed)) offProfs = parsed;
+        }
+      } catch (err) {}
+
+      offProfs.sort((a: any, b: any) => {
+        const pDiff = (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0);
+        if (pDiff !== 0) return pDiff;
+        const lDiff = (a.last_name || "").localeCompare(b.last_name || "");
+        if (lDiff !== 0) return lDiff;
+        return (a.first_name || "").localeCompare(b.first_name || "");
+      });
+
       const primaryProf = offProfs.find((p: any) => p.is_primary) || offProfs[0];
       const profNames =
         offProfs.length > 0
           ? offProfs
               .map((p: any) => [p.first_name, p.last_name].filter(Boolean).join(" ") || "استاد")
               .join(" و ")
-          : e.professor_name || "نامشخص";
+          : "نامشخص";
 
       return {
         id: e.id,
@@ -155,10 +168,10 @@ export async function getEvents(
         courseUnits: Number(e.course_units) || 3,
         facultyId: e.faculty_id,
         facultyName: e.faculty_name || undefined,
-        professorId: primaryProf?.id || e.professor_id,
-        professorName: profNames || e.professor_name || "استاد نامشخص",
-        professorTitle: primaryProf?.title || e.professor_title,
-        professorAvatarUrl: primaryProf?.avatar_url || e.professor_avatar_url,
+        professorId: primaryProf?.id || undefined,
+        professorName: profNames || "استاد نامشخص",
+        professorTitle: primaryProf?.title || undefined,
+        professorAvatarUrl: primaryProf?.avatar_url || undefined,
         isOfferingDeleted: Boolean(e.offering_deleted_at),
         slots,
       };

@@ -1,5 +1,5 @@
 import type { Course, DegreeLevel, PrerequisiteRelation, PrerequisiteType } from "../types";
-import { getD1, fetchInChunks } from "./client";
+import { getD1 } from "./client";
 import { assignCourseToCategory, assignCourseToCategories, getEffectiveFacultyIds } from "./structure";
 import { generateUniqueCode, isCodeDuplicate } from "./code-generator";
 
@@ -15,13 +15,51 @@ export async function getCourses(
   if (!d1) return [];
 
   try {
+    const params: any[] = [];
+    let assignmentSubquery = `
+      (
+        SELECT json_group_array(
+          json_object(
+            'id', a.id,
+            'track_id', a.track_id,
+            'course_id', a.course_id,
+            'category_id', a.category_id,
+            'rule_category_id', a.rule_category_id,
+            'visual_category_id', a.visual_category_id
+          )
+        )
+        FROM track_course_assignments a
+        WHERE a.course_id = c.id
+    `;
+    if (trackId) {
+      assignmentSubquery += " AND a.track_id = ?";
+      params.push(trackId);
+    }
+    assignmentSubquery += ") AS assignments_json";
+
     let query = `
-      SELECT c.*, f.name AS faculty_name
+      SELECT c.*, f.name AS faculty_name,
+        (
+          SELECT json_group_array(
+            json_object(
+              'id', p.id,
+              'course_id', p.course_id,
+              'required_course_id', p.required_course_id,
+              'type', p.type,
+              'required_course_name', rc.name,
+              'required_course_code', rc.code
+            )
+          )
+          FROM prerequisites p
+          LEFT JOIN courses rc ON p.required_course_id = rc.id
+          WHERE p.course_id = c.id
+        ) AS prereqs_json,
+        ${assignmentSubquery}
       FROM courses c
       LEFT JOIN faculties f ON c.faculty_id = f.id
       WHERE c.deleted_at IS NULL
     `;
-    const params: any[] = [];
+
     if (facultyId) {
       if (directOnly) {
         query += ` AND c.faculty_id = ?`;
@@ -34,6 +72,7 @@ export async function getCourses(
       }
     }
     query += " ORDER BY c.name ASC";
+
     const { results: courseRows } = await d1.prepare(query).bind(...params).all();
     const coursesList = courseRows || [];
 
@@ -41,65 +80,40 @@ export async function getCourses(
       return [];
     }
 
-    const courseIds = coursesList.map((c: any) => c.id);
-
-    // Fetch prereqs only for these courses (in safe chunks of 50)
-    const prereqsList = await fetchInChunks(courseIds, 50, async (chunk) => {
-      const placeholders = chunk.map(() => "?").join(",");
-      const { results } = await d1
-        .prepare(`
-          SELECT p.id, p.course_id, p.required_course_id, p.type,
-                 c.name AS required_course_name, c.code AS required_course_code
-          FROM prerequisites p
-          LEFT JOIN courses c ON p.required_course_id = c.id
-          WHERE p.course_id IN (${placeholders})
-        `)
-        .bind(...chunk)
-        .all();
-      return results || [];
-    });
-
-    // Fetch track assignments
-    let assignmentsList: any[] = [];
-    if (trackId) {
-      const { results: assignRows } = await d1
-        .prepare("SELECT * FROM track_course_assignments WHERE track_id = ?")
-        .bind(trackId)
-        .all();
-      assignmentsList = assignRows || [];
-    } else {
-      assignmentsList = await fetchInChunks(courseIds, 50, async (chunk) => {
-        const placeholders = chunk.map(() => "?").join(",");
-        const { results } = await d1
-          .prepare(`SELECT * FROM track_course_assignments WHERE course_id IN (${placeholders})`)
-          .bind(...chunk)
-          .all();
-        return results || [];
-      });
-    }
-
     return coursesList.map((c: any) => {
-      const prereqs = prereqsList
-        .filter((p: any) => p.course_id === c.id)
-        .map((p: any) => ({
-          id: p.id,
-          courseId: p.course_id,
-          requiredCourseId: p.required_course_id,
-          type: p.type as any,
-          requiredCourseName: p.required_course_name || "نامشخص",
-          requiredCourseCode: p.required_course_code || "---",
-        }));
+      let prereqsList: any[] = [];
+      try {
+        if (c.prereqs_json) {
+          const parsed = JSON.parse(c.prereqs_json);
+          if (Array.isArray(parsed)) prereqsList = parsed;
+        }
+      } catch (e) {}
 
-      const assignments = assignmentsList
-        .filter((a: any) => a.course_id === c.id)
-        .map((a: any) => ({
-          id: a.id,
-          trackId: a.track_id,
-          courseId: a.course_id,
-          categoryId: a.category_id || a.rule_category_id || a.visual_category_id || null,
-          visualCategoryId: a.category_id || a.visual_category_id || null,
-          ruleCategoryId: a.category_id || a.rule_category_id || null,
-        }));
+      let assignmentsList: any[] = [];
+      try {
+        if (c.assignments_json) {
+          const parsed = JSON.parse(c.assignments_json);
+          if (Array.isArray(parsed)) assignmentsList = parsed;
+        }
+      } catch (e) {}
+
+      const prereqs = prereqsList.map((p: any) => ({
+        id: p.id,
+        courseId: p.course_id,
+        requiredCourseId: p.required_course_id,
+        type: p.type as any,
+        requiredCourseName: p.required_course_name || "نامشخص",
+        requiredCourseCode: p.required_course_code || "---",
+      }));
+
+      const assignments = assignmentsList.map((a: any) => ({
+        id: a.id,
+        trackId: a.track_id,
+        courseId: a.course_id,
+        categoryId: a.category_id || a.rule_category_id || a.visual_category_id || null,
+        visualCategoryId: a.category_id || a.visual_category_id || null,
+        ruleCategoryId: a.category_id || a.rule_category_id || null,
+      }));
 
       return {
         id: c.id,
@@ -164,29 +178,29 @@ export async function getCourseById(id: string): Promise<Course | null> {
 
     const { results: offeringRows } = await d1
       .prepare(
-        `SELECT o.id, o.code, o.course_id, o.created_at
+        `SELECT o.id, o.code, o.course_id, o.created_at,
+                (
+                  SELECT json_group_array(
+                    json_object(
+                      'id', p.id,
+                      'is_primary', op.is_primary,
+                      'first_name', p.first_name,
+                      'last_name', p.last_name,
+                      'code', p.code,
+                      'title', p.title,
+                      'avatar_url', p.avatar_url,
+                      'email', p.email
+                    )
+                  )
+                  FROM offering_professors op
+                  JOIN professors p ON op.professor_id = p.id
+                  WHERE op.offering_id = o.id AND p.deleted_at IS NULL
+                ) AS professors_json
          FROM course_offerings o
          WHERE o.course_id = ? AND o.deleted_at IS NULL`
       )
       .bind(id)
       .all();
-
-    const offeringIds = (offeringRows || []).map((o: any) => o.id);
-    let courseProfLinks: any[] = [];
-    if (offeringIds.length > 0) {
-      const placeholders = offeringIds.map(() => "?").join(",");
-      const { results: profLinks } = await d1
-        .prepare(`
-          SELECT op.offering_id, op.is_primary, p.id, p.first_name, p.last_name, p.code, p.title, p.avatar_url, p.email
-          FROM offering_professors op
-          JOIN professors p ON op.professor_id = p.id
-          WHERE op.offering_id IN (${placeholders}) AND p.deleted_at IS NULL
-          ORDER BY op.is_primary DESC, p.last_name ASC, p.first_name ASC
-        `)
-        .bind(...offeringIds)
-        .all();
-      courseProfLinks = profLinks || [];
-    }
 
     const { results: assignRows } = await d1
       .prepare("SELECT * FROM track_course_assignments WHERE course_id = ?")
@@ -222,24 +236,38 @@ export async function getCourseById(id: string): Promise<Course | null> {
         type: d.type as any,
       })),
       offerings: (offeringRows || []).map((o: any) => {
-        const offProfs = courseProfLinks
-          .filter((lp: any) => lp.offering_id === o.id)
-          .map((lp: any) => {
-            const fName = lp.first_name || "";
-            const lName = lp.last_name || "";
-            const fullName = [fName, lName].filter(Boolean).join(" ") || "استاد";
-            return {
-              id: lp.id,
-              firstName: fName || undefined,
-              lastName: lName || undefined,
-              name: fullName,
-              code: lp.code || undefined,
-              title: lp.title || undefined,
-              avatarUrl: lp.avatar_url || undefined,
-              email: lp.email || undefined,
-              isPrimary: Boolean(lp.is_primary),
-            };
-          });
+        let rawProfs: any[] = [];
+        try {
+          if (o.professors_json) {
+            const parsed = JSON.parse(o.professors_json);
+            if (Array.isArray(parsed)) rawProfs = parsed;
+          }
+        } catch (e) {}
+
+        rawProfs.sort((a: any, b: any) => {
+          const pDiff = (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0);
+          if (pDiff !== 0) return pDiff;
+          const lDiff = (a.last_name || "").localeCompare(b.last_name || "");
+          if (lDiff !== 0) return lDiff;
+          return (a.first_name || "").localeCompare(b.first_name || "");
+        });
+
+        const offProfs = rawProfs.map((lp: any) => {
+          const fName = lp.first_name || "";
+          const lName = lp.last_name || "";
+          const fullName = [fName, lName].filter(Boolean).join(" ") || "استاد";
+          return {
+            id: lp.id,
+            firstName: fName || undefined,
+            lastName: lName || undefined,
+            name: fullName,
+            code: lp.code || undefined,
+            title: lp.title || undefined,
+            avatarUrl: lp.avatar_url || undefined,
+            email: lp.email || undefined,
+            isPrimary: Boolean(lp.is_primary),
+          };
+        });
 
         const primaryProf = offProfs.find((p: any) => p.isPrimary) || offProfs[0];
         const profNames = offProfs.map((p: any) => p.name).join(" و ");

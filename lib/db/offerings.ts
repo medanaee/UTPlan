@@ -1,9 +1,44 @@
 import type { CourseOffering } from "../types";
-import { getD1, fetchInChunks } from "./client";
+import { getD1 } from "./client";
 import { getEvents } from "./events";
 import { getOfferingResources } from "./resources";
 import { getEffectiveFacultyIds } from "./structure";
 import { generateUniqueCode, isCodeDuplicate } from "./code-generator";
+
+function parseProfessorsFromJson(jsonStr: string | null | undefined) {
+  let rawProfs: any[] = [];
+  try {
+    if (jsonStr) {
+      const parsed = JSON.parse(jsonStr);
+      if (Array.isArray(parsed)) rawProfs = parsed;
+    }
+  } catch (e) {}
+
+  rawProfs.sort((a: any, b: any) => {
+    const pDiff = (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0);
+    if (pDiff !== 0) return pDiff;
+    const lDiff = (a.last_name || "").localeCompare(b.last_name || "");
+    if (lDiff !== 0) return lDiff;
+    return (a.first_name || "").localeCompare(b.first_name || "");
+  });
+
+  return rawProfs.map((lp: any) => {
+    const fName = lp.first_name || "";
+    const lName = lp.last_name || "";
+    const fullName = [fName, lName].filter(Boolean).join(" ") || "استاد";
+    return {
+      id: lp.id,
+      firstName: fName || undefined,
+      lastName: lName || undefined,
+      name: fullName,
+      code: lp.code || undefined,
+      title: lp.title || undefined,
+      avatarUrl: lp.avatar_url || undefined,
+      email: lp.email || undefined,
+      isPrimary: Boolean(lp.is_primary),
+    };
+  });
+}
 
 export async function getOfferings(
   filter?: {
@@ -23,7 +58,24 @@ export async function getOfferings(
     let query = `
       SELECT o.*,
              c.name AS course_name, c.code AS course_code, c.units AS course_units, c.faculty_id AS course_faculty_id,
-             f.name AS course_faculty_name
+             f.name AS course_faculty_name,
+             (
+               SELECT json_group_array(
+                 json_object(
+                   'id', p.id,
+                   'is_primary', op.is_primary,
+                   'first_name', p.first_name,
+                   'last_name', p.last_name,
+                   'code', p.code,
+                   'title', p.title,
+                   'avatar_url', p.avatar_url,
+                   'email', p.email
+                 )
+               )
+               FROM offering_professors op
+               JOIN professors p ON op.professor_id = p.id
+               WHERE op.offering_id = o.id AND p.deleted_at IS NULL
+             ) AS professors_json
       FROM course_offerings o
       JOIN courses c ON o.course_id = c.id
       LEFT JOIN faculties f ON c.faculty_id = f.id
@@ -58,49 +110,8 @@ export async function getOfferings(
       return [];
     }
 
-    const offeringIds = offeringRows.map((r: any) => r.id);
-
-    // Fetch professor links only for these offerings
-    let profLinksList: any[] = [];
-    try {
-      profLinksList = await fetchInChunks(offeringIds, 50, async (chunk) => {
-        const placeholders = chunk.map(() => "?").join(",");
-        const { results: allProfLinks } = await d1
-          .prepare(`
-            SELECT op.offering_id, op.is_primary, p.id, p.first_name, p.last_name, p.code, p.title, p.avatar_url, p.email
-            FROM offering_professors op
-            JOIN professors p ON op.professor_id = p.id
-            WHERE op.offering_id IN (${placeholders}) AND p.deleted_at IS NULL
-            ORDER BY op.is_primary DESC, p.last_name ASC, p.first_name ASC
-          `)
-          .bind(...chunk)
-          .all();
-        return allProfLinks || [];
-      });
-    } catch (e) {
-      // Safe fallback if junction table is not yet populated
-    }
-
     let list = offeringRows.map((r: any) => {
-      const finalProfs = profLinksList
-        .filter((lp: any) => lp.offering_id === r.id)
-        .map((lp: any) => {
-          const fName = lp.first_name || "";
-          const lName = lp.last_name || "";
-          const fullName = [fName, lName].filter(Boolean).join(" ") || "استاد";
-          return {
-            id: lp.id,
-            firstName: fName || undefined,
-            lastName: lName || undefined,
-            name: fullName,
-            code: lp.code || undefined,
-            title: lp.title || undefined,
-            avatarUrl: lp.avatar_url || undefined,
-            email: lp.email || undefined,
-            isPrimary: Boolean(lp.is_primary),
-          };
-        });
-
+      const finalProfs = parseProfessorsFromJson(r.professors_json);
       const primaryProf = finalProfs.find((p: any) => p.isPrimary) || finalProfs[0];
       const profNames = finalProfs.map((p: any) => p.name).join(" و ");
 
@@ -155,7 +166,24 @@ export async function getOfferingById(id: string): Promise<CourseOffering | null
     const query = `
       SELECT o.*,
              c.name AS course_name, c.code AS course_code, c.units AS course_units, c.description AS course_description, c.faculty_id AS course_faculty_id,
-             f.name AS faculty_name
+             f.name AS faculty_name,
+             (
+               SELECT json_group_array(
+                 json_object(
+                   'id', p.id,
+                   'is_primary', op.is_primary,
+                   'first_name', p.first_name,
+                   'last_name', p.last_name,
+                   'code', p.code,
+                   'title', p.title,
+                   'avatar_url', p.avatar_url,
+                   'email', p.email
+                 )
+               )
+               FROM offering_professors op
+               JOIN professors p ON op.professor_id = p.id
+               WHERE op.offering_id = o.id AND p.deleted_at IS NULL
+             ) AS professors_json
       FROM course_offerings o
       JOIN courses c ON o.course_id = c.id
       LEFT JOIN faculties f ON c.faculty_id = f.id
@@ -164,40 +192,7 @@ export async function getOfferingById(id: string): Promise<CourseOffering | null
     const row = await d1.prepare(query).bind(id).first();
     if (!row) return null;
 
-    let profRows: any[] = [];
-    try {
-      const { results } = await d1
-        .prepare(`
-          SELECT op.is_primary, p.id, p.first_name, p.last_name, p.code, p.title, p.avatar_url, p.email
-          FROM offering_professors op
-          JOIN professors p ON op.professor_id = p.id
-          WHERE op.offering_id = ? AND p.deleted_at IS NULL
-          ORDER BY op.is_primary DESC, p.last_name ASC, p.first_name ASC
-        `)
-        .bind(id)
-        .all();
-      profRows = results || [];
-    } catch (e) {
-      // Safe fallback
-    }
-
-    const finalProfs = (profRows || []).map((lp: any) => {
-      const fName = lp.first_name || "";
-      const lName = lp.last_name || "";
-      const fullName = [fName, lName].filter(Boolean).join(" ") || "استاد";
-      return {
-        id: lp.id,
-        firstName: fName || undefined,
-        lastName: lName || undefined,
-        name: fullName,
-        code: lp.code || undefined,
-        title: lp.title || undefined,
-        avatarUrl: lp.avatar_url || undefined,
-        email: lp.email || undefined,
-        isPrimary: Boolean(lp.is_primary),
-      };
-    });
-
+    const finalProfs = parseProfessorsFromJson((row as any).professors_json);
     const primaryProf = finalProfs.find((p: any) => p.isPrimary) || finalProfs[0];
     const profNames = finalProfs.map((p: any) => p.name).join(" و ");
 
