@@ -25,6 +25,7 @@ import {
   Trash2,
   ShieldAlert,
   MapPin,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -108,6 +109,16 @@ export default function AdminDashboardPage() {
     await postJson("/api/auth/logout");
     router.push("/login");
   };
+
+  // Auto-dismiss action message banner after 4 seconds
+  useEffect(() => {
+    if (actionMessage) {
+      const timer = setTimeout(() => {
+        setActionMessage(null);
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [actionMessage, setActionMessage]);
 
   if (authChecking) {
     return (
@@ -385,9 +396,19 @@ export default function AdminDashboardPage() {
           <div className="mx-auto space-y-5">
             {/* Banner notification */}
             {actionMessage && (
-              <div className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-700 dark:text-emerald-300">
-                <Check className="h-4 w-4 shrink-0" />
-                <span>{actionMessage}</span>
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-700 dark:text-emerald-300 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="flex items-center gap-2">
+                  <Check className="h-4 w-4 shrink-0" />
+                  <span className="font-medium">{actionMessage}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActionMessage(null)}
+                  className="rounded-lg p-1 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 transition-colors cursor-pointer"
+                  title="بستن پیام"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
               </div>
             )}
 
