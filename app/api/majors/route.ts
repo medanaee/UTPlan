@@ -1,19 +1,13 @@
 import { requireAdminSession } from "@/lib/auth";
 import { getMajors, createMajor, updateMajor, deleteMajor } from "@/lib/db";
+import { createCachedJsonResponse } from "@/lib/edge-cache";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const facultyId = searchParams.get("facultyId") || undefined;
     const majors = await getMajors(facultyId);
-    return Response.json(
-      { success: true, data: majors },
-      {
-        headers: {
-          "Cache-Control": "no-store, no-cache, must-revalidate",
-        },
-      }
-    );
+    return createCachedJsonResponse(majors, "majors", request);
   } catch (error) {
     console.error("Get majors error:", error);
     return Response.json({ success: false, message: "خطا در دریافت لیست رشته‌ها" }, { status: 500 });

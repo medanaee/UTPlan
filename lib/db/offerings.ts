@@ -4,6 +4,7 @@ import { getEvents } from "./events";
 import { getOfferingResources } from "./resources";
 import { getEffectiveFacultyIds } from "./structure";
 import { generateUniqueCode, isCodeDuplicate } from "./code-generator";
+import { getCached, setCached, invalidateCache } from "../server-cache";
 
 export async function getOfferings(
   filter?: {
@@ -16,6 +17,11 @@ export async function getOfferings(
 ): Promise<CourseOffering[]> {
   const normFilter = typeof filter === "string" ? { facultyId: filter } : filter;
   const isDirectOnly = directOnly || Boolean(normFilter?.directOnly);
+
+  const cacheKey = `offerings_${normFilter?.courseId || "all"}_${normFilter?.professorId || "all"}_${normFilter?.facultyId || "all"}_${isDirectOnly}`;
+  const cached = getCached<CourseOffering[]>(cacheKey);
+  if (cached) return cached;
+
   const d1 = getD1();
   if (!d1) return [];
 
@@ -140,6 +146,7 @@ export async function getOfferings(
       );
     }
 
+    setCached(cacheKey, list);
     return list;
   } catch (err) {
     console.error("D1 getOfferings error:", err);
@@ -148,6 +155,10 @@ export async function getOfferings(
 }
 
 export async function getOfferingById(id: string): Promise<CourseOffering | null> {
+  const cacheKey = `offering_${id}`;
+  const cached = getCached<CourseOffering>(cacheKey);
+  if (cached) return cached;
+
   const d1 = getD1();
   if (!d1) return null;
 
@@ -239,7 +250,7 @@ export async function getOfferingById(id: string): Promise<CourseOffering | null
       }
     } catch (e) {}
 
-    return {
+    const offeringData: CourseOffering = {
       id: (row as any).id,
       code: (row as any).code || undefined,
       courseId: (row as any).course_id,
@@ -265,6 +276,9 @@ export async function getOfferingById(id: string): Promise<CourseOffering | null
       reviewsCount: revCount,
       averageRating: Number(avgRating.toFixed(1)),
     };
+
+    setCached(cacheKey, offeringData);
+    return offeringData;
   } catch (err) {
     console.error("D1 getOfferingById error:", err);
     return null;
@@ -353,6 +367,9 @@ export async function createOffering(
         .run()
         .catch(() => {});
     }
+
+    invalidateCache("offerings");
+    invalidateCache("offering_");
 
     const offs = await getOfferings();
     const created = offs.find((o) => o.id === id);
@@ -456,6 +473,9 @@ export async function updateOffering(
       }
     }
 
+    invalidateCache("offerings");
+    invalidateCache("offering_");
+
     const offs = await getOfferings();
     const updated = offs.find((o) => o.id === id);
     return updated || null;
@@ -472,6 +492,8 @@ export async function deleteOffering(id: string): Promise<boolean> {
 
   try {
     await d1.prepare("UPDATE course_offerings SET deleted_at = ? WHERE id = ?").bind(now, id).run();
+    invalidateCache("offerings");
+    invalidateCache("offering_");
     return true;
   } catch (err) {
     console.error("D1 deleteOffering error:", err);
@@ -493,6 +515,8 @@ export async function deleteOfferingsByFaculty(facultyId: string): Promise<boole
       .bind(now, facultyId)
       .run();
 
+    invalidateCache("offerings");
+    invalidateCache("offering_");
     return true;
   } catch (err) {
     console.error("D1 deleteOfferingsByFaculty error:", err);

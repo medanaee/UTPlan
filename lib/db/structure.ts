@@ -51,7 +51,7 @@ export async function getFaculties(): Promise<Faculty[]> {
       };
     });
 
-    setCached(cacheKey, list, 60);
+    setCached(cacheKey, list);
     return list;
   } catch (err) {
     console.error("D1 getFaculties error:", err);
@@ -262,7 +262,7 @@ export async function getMajors(facultyId?: string): Promise<Major[]> {
       deletedAt: r.deleted_at || null,
     }));
 
-    setCached(cacheKey, list, 60);
+    setCached(cacheKey, list);
     return list;
   } catch (err) {
     console.error("D1 getMajors error:", err);
@@ -385,7 +385,7 @@ export async function getTracks(majorId?: string): Promise<Track[]> {
       };
     });
 
-    setCached(cacheKey, list, 60);
+    setCached(cacheKey, list);
     return list;
   } catch (err) {
     console.error("D1 getTracks error:", err);
@@ -568,7 +568,7 @@ export async function getCategories(trackId: string): Promise<Category[]> {
       createdAt: r.created_at,
     }));
 
-    setCached(cacheKey, list, 60);
+    setCached(cacheKey, list);
     return list;
   } catch (err) {
     console.error("D1 getCategories error:", err);
@@ -816,7 +816,7 @@ export async function getTrackAssignments(trackId: string): Promise<TrackCourseA
       units: Number(r.course_units) || 3,
     }));
 
-    setCached(cacheKey, list, 60);
+    setCached(cacheKey, list);
     return list;
   } catch (err) {
     console.error("D1 getTrackAssignments error:", err);

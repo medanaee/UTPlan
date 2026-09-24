@@ -9,6 +9,7 @@ import {
   logAdminAction,
   buildDiff,
 } from "@/lib/db";
+import { createCachedJsonResponse } from "@/lib/edge-cache";
 
 export async function GET(request: Request) {
   try {
@@ -21,25 +22,17 @@ export async function GET(request: Request) {
 
     const categories = await getCategories(trackId);
 
-    return Response.json(
-      {
-        success: true,
-        data: {
-          categories,
-          items: categories,
-          // Backward compatibility
-          visual: categories,
-          visualCategories: categories,
-          rule: categories,
-          ruleCategories: categories,
-        },
-      },
-      {
-        headers: {
-          "Cache-Control": "no-store, no-cache, must-revalidate",
-        },
-      }
-    );
+    const payload = {
+      categories,
+      items: categories,
+      // Backward compatibility
+      visual: categories,
+      visualCategories: categories,
+      rule: categories,
+      ruleCategories: categories,
+    };
+
+    return createCachedJsonResponse(payload, "categories", request);
   } catch (error) {
     console.error("Get categories error:", error);
     return Response.json({ success: false, message: "خطا در دریافت لیست دسته‌ها" }, { status: 500 });

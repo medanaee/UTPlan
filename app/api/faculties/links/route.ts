@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getFacultyLinks, setFacultyLinks } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
+import { createCachedJsonResponse } from "@/lib/edge-cache";
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,14 +9,7 @@ export async function GET(request: NextRequest) {
     const targetFacultyId = searchParams.get("targetFacultyId") || searchParams.get("facultyId") || undefined;
 
     const links = await getFacultyLinks(targetFacultyId);
-    return NextResponse.json(
-      { success: true, data: links },
-      {
-        headers: {
-          "Cache-Control": "no-store, no-cache, must-revalidate",
-        },
-      }
-    );
+    return createCachedJsonResponse(links, "faculties", request);
   } catch (error: any) {
     console.error("GET faculty links error:", error);
     return NextResponse.json(

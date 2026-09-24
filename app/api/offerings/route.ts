@@ -10,6 +10,7 @@ import {
   buildDiff,
 } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
+import { createCachedJsonResponse } from "@/lib/edge-cache";
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,14 +26,7 @@ export async function GET(request: NextRequest) {
       facultyId,
       directOnly,
     });
-    return NextResponse.json(
-      { success: true, data },
-      {
-        headers: {
-          "Cache-Control": "no-store, no-cache, must-revalidate",
-        },
-      }
-    );
+    return createCachedJsonResponse(data, "offerings", request);
   } catch (error) {
     console.error("GET offerings error:", error);
     return NextResponse.json(

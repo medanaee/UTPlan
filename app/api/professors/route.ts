@@ -9,6 +9,7 @@ import {
   logAdminAction,
   buildDiff,
 } from "@/lib/db";
+import { createCachedJsonResponse } from "@/lib/edge-cache";
 
 export async function GET(request: Request) {
   try {
@@ -16,14 +17,7 @@ export async function GET(request: Request) {
     const facultyId = searchParams.get("facultyId") || undefined;
     const directOnly = searchParams.get("directOnly") === "true";
     const profs = await getProfessors(facultyId, directOnly);
-    return Response.json(
-      { success: true, data: profs },
-      {
-        headers: {
-          "Cache-Control": "no-store, no-cache, must-revalidate",
-        },
-      }
-    );
+    return createCachedJsonResponse(profs, "professors", request);
   } catch (error) {
     console.error("Get professors error:", error);
     return Response.json({ success: false, message: "خطا در دریافت لیست اساتید" }, { status: 500 });

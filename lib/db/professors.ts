@@ -65,7 +65,7 @@ export async function getProfessors(
       };
     });
 
-    setCached(cacheKey, mapped, 60);
+    setCached(cacheKey, mapped);
     return mapped;
   } catch (err) {
     console.error("D1 getProfessors error:", err);
@@ -165,7 +165,7 @@ export async function getProfessorById(id: string): Promise<Professor | null> {
       deletedAt: (p as any).deleted_at || null,
     };
 
-    setCached(cacheKey, profData, 60);
+    setCached(cacheKey, profData);
     return profData;
   } catch (err) {
     console.error("D1 getProfessorById error:", err);

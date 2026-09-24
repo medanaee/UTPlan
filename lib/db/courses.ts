@@ -126,7 +126,7 @@ export async function getCourses(
       };
     });
 
-    setCached(cacheKey, mappedCourses, 60);
+    setCached(cacheKey, mappedCourses);
     return mappedCourses;
   } catch (err) {
     console.error("D1 getCourses error:", err);
@@ -282,7 +282,7 @@ export async function getCourseById(id: string): Promise<Course | null> {
       })),
     };
 
-    setCached(cacheKey, courseData, 60);
+    setCached(cacheKey, courseData);
     return courseData;
   } catch (err) {
     console.error("D1 getCourseById error:", err);

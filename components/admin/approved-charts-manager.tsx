@@ -93,10 +93,9 @@ export function ApprovedChartsManager({
   const loadApprovedCharts = async () => {
     setLoading(true);
     try {
-      const json = await fetchJson("/api/charts");
+      const json = await fetchJson("/api/charts?approved=true");
       if (json.success && Array.isArray(json.data)) {
-        const approved = json.data.filter((c: StudentChart) => c.isApprovedDefault);
-        setAllApprovedCharts(approved);
+        setAllApprovedCharts(json.data);
       }
     } catch (e) {
       console.error("Error loading approved charts:", e);

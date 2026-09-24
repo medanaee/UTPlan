@@ -40,7 +40,8 @@ export function UniversityStructureManager() {
     setSelectedFacultyId,
     setSelectedMajorId,
     setSelectedTrackId,
-    loadAllData,
+    loadStructureData,
+    invalidatePanel,
     setActionMessage,
   } = useAdminStore();
 
@@ -82,7 +83,7 @@ export function UniversityStructureManager() {
         setEditingFaculty(null);
         setFacultyForm({ name: "", code: "" });
         setActionMessage("دانشکده با موفقیت ویرایش شد.");
-        await loadAllData();
+        await loadStructureData(true);
       } else {
         alert(res.message || "خطا در ویرایش دانشکده");
       }
@@ -97,7 +98,7 @@ export function UniversityStructureManager() {
         setFacultyModalOpen(false);
         setFacultyForm({ name: "", code: "" });
         setActionMessage("دانشکده جدید با موفقیت ایجاد شد.");
-        await loadAllData();
+        await loadStructureData(true);
         setSelectedFacultyId(res.data.id);
       } else {
         alert(res.message || "خطا در ایجاد دانشکده");
@@ -111,7 +112,7 @@ export function UniversityStructureManager() {
     const res = await deleteJson(`/api/faculties?id=${id}`);
     if (res.success) {
       setActionMessage(`دانشکده «${name}» با موفقیت حذف شد.`);
-      await loadAllData();
+      await loadStructureData(true);
     } else {
       alert(res.message || "خطا در حذف دانشکده");
     }
@@ -141,7 +142,9 @@ export function UniversityStructureManager() {
       if (res.success) {
         setLinksModalOpen(false);
         setActionMessage("اتصالات دانشکده با موفقیت ذخیره شد.");
-        await loadAllData();
+        await loadStructureData(true);
+        invalidatePanel("courses");
+        invalidatePanel("professors");
       } else {
         alert(res.message || "خطا در ذخیره اتصالات");
       }
@@ -165,7 +168,7 @@ export function UniversityStructureManager() {
         setEditingMajor(null);
         setMajorForm({ name: "", code: "" });
         setActionMessage("رشته تحصیلی با موفقیت ویرایش شد.");
-        await loadAllData();
+        await loadStructureData(true);
       } else {
         alert(res.message || "خطا در ویرایش رشته");
       }
@@ -176,7 +179,7 @@ export function UniversityStructureManager() {
         setMajorModalOpen(false);
         setMajorForm({ name: "", code: "" });
         setActionMessage("رشته جدید با موفقیت ایجاد شد.");
-        await loadAllData();
+        await loadStructureData(true);
         setSelectedMajorId(res.data.id);
       } else {
         alert(res.message || "خطا در ایجاد رشته");
@@ -190,7 +193,7 @@ export function UniversityStructureManager() {
     const res = await deleteJson(`/api/majors?id=${id}`);
     if (res.success) {
       setActionMessage(`رشته «${name}» با موفقیت حذف شد.`);
-      await loadAllData();
+      await loadStructureData(true);
     } else {
       alert(res.message || "خطا در حذف رشته");
     }
@@ -209,7 +212,7 @@ export function UniversityStructureManager() {
         setEditingTrack(null);
         setTrackForm({ name: "", code: "" });
         setActionMessage("گرایش با موفقیت ویرایش شد.");
-        await loadAllData();
+        await loadStructureData(true);
       } else {
         alert(res.message || "خطا در ویرایش گرایش");
       }
@@ -220,7 +223,7 @@ export function UniversityStructureManager() {
         setTrackModalOpen(false);
         setTrackForm({ name: "", code: "" });
         setActionMessage("گرایش جدید با موفقیت ایجاد شد.");
-        await loadAllData();
+        await loadStructureData(true);
         setSelectedTrackId(res.data.id);
       } else {
         alert(res.message || "خطا در ایجاد گرایش");
@@ -234,7 +237,7 @@ export function UniversityStructureManager() {
     const res = await deleteJson(`/api/tracks?id=${id}`);
     if (res.success) {
       setActionMessage(`گرایش «${name}» با موفقیت حذف شد.`);
-      await loadAllData();
+      await loadStructureData(true);
     } else {
       alert(res.message || "خطا در حذف گرایش");
     }

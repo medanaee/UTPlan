@@ -51,6 +51,7 @@
     "db:schema:local": "wrangler d1 execute ut_ece_db --local --file=./schema.sql",
     "db:schema:remote": "wrangler d1 execute ut_ece_db --remote --file=./schema.sql",
     "db:migrate:local": "wrangler d1 migrations apply ut_ece_db --local",
-    "db:migrate:remote": "wrangler d1 migrations apply ut_ece_db --remote"
+    "db:migrate:remote": "wrangler d1 migrations apply ut_ece_db --remote",
+    "cache:purge": "node scripts/purge-cache.mjs"
   }
 }

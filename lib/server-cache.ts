@@ -1,6 +1,8 @@
-// Server-Side In-Memory Cache with Automatic Invalidation
+// Server-Side In-Memory Cache with Automatic Invalidation & Entity Versioning
 // Provides instant (0ms) reads for rapid repetitive queries without consuming D1 rows.
-// Any mutation (create, update, delete) immediately invalidates the respective cache.
+// Any mutation (create, update, delete) immediately invalidates the respective cache and bumps the entity version.
+
+export const TEN_DAYS_SECONDS = 864000; // 10 days in seconds
 
 interface CacheEntry<T> {
   data: T;
@@ -9,6 +11,18 @@ interface CacheEntry<T> {
 
 // In-memory cache map scoped to the server runtime
 const memoryCache = new Map<string, CacheEntry<any>>();
+
+// Entity version map for ETags and cache busting
+const entityVersions = new Map<string, number>();
+
+let globalVersion = Date.now();
+
+/**
+ * Get current version/timestamp for an entity (used for ETags and cache keys).
+ */
+export function getEntityVersion(entity: string): number {
+  return entityVersions.get(entity) || globalVersion;
+}
 
 /**
  * Retrieve data from server memory cache if available and not expired.
@@ -26,9 +40,9 @@ export function getCached<T>(key: string): T | null {
 }
 
 /**
- * Store data in server memory cache with TTL (defaults to 60 seconds).
+ * Store data in server memory cache with TTL (defaults to 10 days).
  */
-export function setCached<T>(key: string, data: T, ttlSeconds: number = 60): void {
+export function setCached<T>(key: string, data: T, ttlSeconds: number = TEN_DAYS_SECONDS): void {
   memoryCache.set(key, {
     data,
     expiresAt: Date.now() + ttlSeconds * 1000,
@@ -36,14 +50,21 @@ export function setCached<T>(key: string, data: T, ttlSeconds: number = 60): voi
 }
 
 /**
- * Instantly invalidate cache entries matching the given prefix.
- * If no prefix is provided, clears the entire cache.
+ * Instantly invalidate cache entries matching the given prefix and bump entity version.
+ * If no prefix is provided, clears the entire cache and bumps global version.
  */
 export function invalidateCache(prefix?: string): void {
+  const now = Date.now();
   if (!prefix) {
+    globalVersion = now;
     memoryCache.clear();
+    for (const key of entityVersions.keys()) {
+      entityVersions.set(key, now);
+    }
     return;
   }
+
+  entityVersions.set(prefix, now);
 
   for (const key of memoryCache.keys()) {
     if (key.startsWith(prefix)) {
@@ -57,4 +78,5 @@ export function invalidateCache(prefix?: string): void {
  */
 export function clearAllCache(): void {
   memoryCache.clear();
+  entityVersions.clear();
 }

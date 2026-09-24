@@ -71,12 +71,19 @@ export default function AdminDashboardPage() {
     setIsSidebarCollapsed,
     actionMessage,
     loadAllData,
+    loadStructureData,
+    loadPhysicalFaculties,
+    loadCourses,
+    loadProfessors,
+    loadPanelData,
+    loadTrackDetails,
+    invalidatePanel,
     setActionMessage,
   } = useAdminStore();
 
   const [initialLoading, setInitialLoading] = useState(true);
 
-  // Authentication check and initial data load
+  // Authentication check and initial data load: only load structure + activeTab
   useEffect(() => {
     async function checkAuthAndLoad() {
       try {
@@ -86,7 +93,8 @@ export default function AdminDashboardPage() {
           return;
         }
         setUser(data.user);
-        await loadAllData();
+        await loadStructureData();
+        await loadPanelData(activeTab);
       } catch {
         router.push("/login");
       } finally {
@@ -94,7 +102,14 @@ export default function AdminDashboardPage() {
       }
     }
     checkAuthAndLoad();
-  }, [router, setUser, loadAllData]);
+  }, [router, setUser, loadStructureData, loadPanelData]);
+
+  // Lazy-load data whenever switching to a new tab (0ms & 0 network requests if already loaded)
+  useEffect(() => {
+    if (!initialLoading) {
+      loadPanelData(activeTab);
+    }
+  }, [activeTab, initialLoading, loadPanelData]);
 
   const handleLogout = async () => {
     await postJson("/api/auth/logout");
@@ -395,7 +410,7 @@ export default function AdminDashboardPage() {
             {activeTab === "physical-faculties" && (
               <PhysicalFacultyManager
                 physicalFaculties={physicalFaculties}
-                onDataChanged={loadAllData}
+                onDataChanged={() => loadPhysicalFaculties(true)}
               />
             )}
 
@@ -428,7 +443,7 @@ export default function AdminDashboardPage() {
                 professors={professors}
                 faculties={faculties}
                 selectedFacultyId={selectedFacultyId}
-                onDataChanged={loadAllData}
+                onDataChanged={() => loadProfessors(true)}
               />
             )}
 
@@ -513,7 +528,7 @@ export default function AdminDashboardPage() {
                       courses={courses}
                       onTreeSaved={async () => {
                         setActionMessage("درخت قوانین با موفقیت ذخیره شد.");
-                        await loadAllData();
+                        await loadTrackDetails(selectedTrackId, true);
                       }}
                     />
 
@@ -544,7 +559,10 @@ export default function AdminDashboardPage() {
             {/* TAB 11: RECYCLE BIN & CASCADE RESOLUTION */}
             {activeTab === "trash" && (
               <RecycleBinManager
-                onDataChanged={loadAllData}
+                onDataChanged={async () => {
+                  invalidatePanel("all");
+                  await loadPanelData(activeTab, true);
+                }}
               />
             )}
 

@@ -6,6 +6,7 @@ import {
   deletePhysicalFaculty,
   logAdminAction,
 } from "@/lib/db";
+import { createCachedJsonResponse } from "@/lib/edge-cache";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    return NextResponse.json({ success: true, data: faculty });
+    return createCachedJsonResponse(faculty, "physical_faculties", request);
   } catch (error: any) {
     console.error("Get physical faculty detail error:", error);
     return NextResponse.json(

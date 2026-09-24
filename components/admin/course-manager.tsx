@@ -52,7 +52,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
     faculties,
     courses,
     selectedFacultyId,
-    loadAllData,
+    loadCourses,
     setActionMessage,
   } = useAdminStore();
 
@@ -132,7 +132,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
           description: "",
         });
         setActionMessage("مشخصات درس با موفقیت ویرایش شد.");
-        await loadAllData();
+        await loadCourses(true);
       } else {
         setCourseFormError(res.message || "خطا در ویرایش درس");
       }
@@ -163,7 +163,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
           description: "",
         });
         setActionMessage("درس جدید با موفقیت ایجاد شد.");
-        await loadAllData();
+        await loadCourses(true);
       } else {
         setCourseFormError(res.message || "خطا در ایجاد درس");
       }
@@ -189,9 +189,9 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
     }
 
     setPrereqForm({ requiredCourseId: "", type: "prerequisite" });
-    await loadAllData();
     const updatedCourse = await fetchJson(`/api/courses?id=${selectedCourseForPrereq.id}`);
     if (updatedCourse.success) setSelectedCourseForPrereq(updatedCourse.data);
+    await loadCourses(true);
   };
 
   // Remove Prerequisite
@@ -201,9 +201,9 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
       action: "remove_prerequisite",
       relationId,
     });
-    await loadAllData();
     const updatedCourse = await fetchJson(`/api/courses?id=${selectedCourseForPrereq.id}`);
     if (updatedCourse.success) setSelectedCourseForPrereq(updatedCourse.data);
+    await loadCourses(true);
   };
 
   const offeredInSelectItems = [
@@ -327,7 +327,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                   const res = await deleteJson(`/api/courses?all=true&facultyId=${selectedFacultyId}`);
                   if (res.success) {
                     setActionMessage("کلیه دروس دانشکده با موفقیت حذف (Soft Delete) شدند.");
-                    await loadAllData();
+                    await loadCourses(true);
                   } else {
                     alert(res.message || "خطا در حذف دروس");
                   }
@@ -487,10 +487,15 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => {
+                          onClick={async () => {
                             setSelectedCourseForPrereq(course);
                             setPrereqError(null);
                             setPrereqModalOpen(true);
+                            // Lazy fetch single course prerequisites to ensure up-to-date data
+                            const fresh = await fetchJson(`/api/courses?id=${course.id}`);
+                            if (fresh.success && fresh.data) {
+                              setSelectedCourseForPrereq(fresh.data);
+                            }
                           }}
                           className="h-7 gap-1 text-[11px]"
                         >
@@ -531,7 +536,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                               if (confirm(`آیا از حذف درس ${course.name} مطمئن هستید؟`)) {
                                 await deleteJson(`/api/courses?id=${course.id}`);
                                 setActionMessage(`درس «${course.name}» حذف شد.`);
-                                await loadAllData();
+                                await loadCourses(true);
                               }
                             }}
                             className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
@@ -858,7 +863,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
         onOpenChange={setImportModalOpen}
         defaultFacultyId={selectedFacultyId}
         targetFaculty={currentFaculty}
-        onSuccess={() => loadAllData()}
+        onSuccess={() => loadCourses(true)}
       />
     </div>
   );

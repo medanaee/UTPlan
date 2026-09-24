@@ -54,7 +54,7 @@ export async function getPhysicalFaculties(
     const { results } = await stmt.all();
 
     const list = (results || []).map(mapRowToPhysicalFaculty);
-    setCached(cacheKey, list, 60);
+    setCached(cacheKey, list);
     return list;
   } catch (err) {
     console.error("D1 getPhysicalFaculties error:", err);
@@ -78,7 +78,7 @@ export async function getPhysicalFacultyById(id: string): Promise<PhysicalFacult
 
     const result = row ? mapRowToPhysicalFaculty(row) : null;
     if (result) {
-      setCached(cacheKey, result, 60);
+      setCached(cacheKey, result);
     }
     return result;
   } catch (err) {

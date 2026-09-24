@@ -30,6 +30,17 @@ export type AdminTab =
   | "trash"
   | "audit";
 
+export interface LoadedPanels {
+  structure: boolean;
+  physicalFaculties: boolean;
+  courses: boolean;
+  professors: boolean;
+  offerings: boolean;
+  events: boolean;
+  categories: Record<string, boolean>; // trackId -> boolean
+  approvedCharts: boolean;
+}
+
 interface AdminState {
   user: User | null;
   faculties: Faculty[];
@@ -56,6 +67,9 @@ interface AdminState {
   loading: boolean;
   actionMessage: string | null;
 
+  // Track which panels have loaded their data
+  loadedPanels: LoadedPanels;
+
   // Actions
   setUser: (user: User | null) => void;
   setActiveTab: (tab: AdminTab) => void;
@@ -76,8 +90,17 @@ interface AdminState {
   setRuleCats: (ruleCats: Category[]) => void;
   setTrackAssignments: (assignments: TrackCourseAssignment[]) => void;
 
+  // Granular panel loaders
+  loadStructureData: (force?: boolean) => Promise<void>;
+  loadPhysicalFaculties: (force?: boolean) => Promise<void>;
+  loadCourses: (force?: boolean) => Promise<void>;
+  loadProfessors: (force?: boolean) => Promise<void>;
+  loadApprovedCharts: (force?: boolean) => Promise<void>;
+  loadPanelData: (tab: AdminTab, force?: boolean) => Promise<void>;
+  invalidatePanel: (tab: AdminTab | "all") => void;
+
   loadAllData: () => Promise<void>;
-  loadTrackDetails: (trackId: string) => Promise<void>;
+  loadTrackDetails: (trackId: string, force?: boolean) => Promise<void>;
 }
 
 export const useAdminStore = create<AdminState>()(
@@ -105,6 +128,17 @@ export const useAdminStore = create<AdminState>()(
 
       loading: false,
       actionMessage: null,
+
+      loadedPanels: {
+        structure: false,
+        physicalFaculties: false,
+        courses: false,
+        professors: false,
+        offerings: false,
+        events: false,
+        categories: {},
+        approvedCharts: false,
+      },
 
       setUser: (user) => set({ user }),
       setActiveTab: (activeTab) => set({ activeTab }),
@@ -167,30 +201,21 @@ export const useAdminStore = create<AdminState>()(
       setRuleCats: (ruleCats) => set({ categories: ruleCats, visualCats: ruleCats, ruleCats }),
       setTrackAssignments: (trackAssignments) => set({ trackAssignments }),
 
-      loadAllData: async () => {
-        try {
-          set({ loading: true });
-          const t = Date.now();
-          const noCacheOptions = {
-            cache: "no-store" as RequestCache,
-            headers: { "Cache-Control": "no-cache" },
-          };
+      loadStructureData: async (force = false) => {
+        if (!force && get().loadedPanels.structure && get().faculties.length > 0) {
+          return;
+        }
 
-          const [facRes, majRes, trkRes, crsRes, prfRes, pfacRes] = await Promise.all([
-            fetchJson(`/api/faculties?_t=${t}`, noCacheOptions),
-            fetchJson(`/api/majors?_t=${t}`, noCacheOptions),
-            fetchJson(`/api/tracks?_t=${t}`, noCacheOptions),
-            fetchJson(`/api/courses?_t=${t}`, noCacheOptions),
-            fetchJson(`/api/professors?_t=${t}`, noCacheOptions),
-            fetchJson(`/api/physical-faculties?_t=${t}`, noCacheOptions),
+        try {
+          const [facRes, majRes, trkRes] = await Promise.all([
+            fetchJson("/api/faculties"),
+            fetchJson("/api/majors"),
+            fetchJson("/api/tracks"),
           ]);
 
           const faculties = facRes.success ? facRes.data : [];
           const majors = majRes.success ? majRes.data : [];
           const tracks = trkRes.success ? trkRes.data : [];
-          const courses = crsRes.success ? crsRes.data : [];
-          const professors = prfRes.success ? prfRes.data : [];
-          const physicalFaculties = pfacRes.success ? pfacRes.data : [];
 
           // Defensive fallback to direct localStorage in case of synchronous invocation before rehydration
           let currentSelectedFacultyId = get().selectedFacultyId;
@@ -234,53 +259,216 @@ export const useAdminStore = create<AdminState>()(
               ? currentSelectedTrackId
               : relatedTracks[0]?.id || "";
 
-          set({
+          set((state) => ({
             faculties,
-            physicalFaculties,
             majors,
             tracks,
-            courses,
-            professors,
             selectedFacultyId: effectiveFacultyId,
             selectedMajorId: effectiveMajorId,
             selectedTrackId: effectiveTrackId,
-            loading: false,
-          });
-
-          if (effectiveTrackId) {
-            await get().loadTrackDetails(effectiveTrackId);
-          }
+            loadedPanels: { ...state.loadedPanels, structure: true },
+          }));
         } catch (e) {
-          console.error("useAdminStore.loadAllData error:", e);
-          set({ loading: false });
+          console.error("useAdminStore.loadStructureData error:", e);
         }
       },
 
-      loadTrackDetails: async (trackId: string) => {
-        if (!trackId) return;
+      loadPhysicalFaculties: async (force = false) => {
+        if (!force && get().loadedPanels.physicalFaculties && get().physicalFaculties.length > 0) {
+          return;
+        }
+
         try {
-          const t = Date.now();
-          const noCacheOptions = {
-            cache: "no-store" as RequestCache,
-            headers: { "Cache-Control": "no-cache" },
-          };
+          const res = await fetchJson("/api/physical-faculties");
+          if (res.success && Array.isArray(res.data)) {
+            set((state) => ({
+              physicalFaculties: res.data,
+              loadedPanels: { ...state.loadedPanels, physicalFaculties: true },
+            }));
+          }
+        } catch (e) {
+          console.error("useAdminStore.loadPhysicalFaculties error:", e);
+        }
+      },
+
+      loadCourses: async (force = false) => {
+        if (!force && get().loadedPanels.courses && get().courses.length > 0) {
+          return;
+        }
+
+        try {
+          const res = await fetchJson("/api/courses");
+          if (res.success && Array.isArray(res.data)) {
+            set((state) => ({
+              courses: res.data,
+              loadedPanels: { ...state.loadedPanels, courses: true },
+            }));
+          }
+        } catch (e) {
+          console.error("useAdminStore.loadCourses error:", e);
+        }
+      },
+
+      loadProfessors: async (force = false) => {
+        if (!force && get().loadedPanels.professors && get().professors.length > 0) {
+          return;
+        }
+
+        try {
+          const res = await fetchJson("/api/professors");
+          if (res.success && Array.isArray(res.data)) {
+            set((state) => ({
+              professors: res.data,
+              loadedPanels: { ...state.loadedPanels, professors: true },
+            }));
+          }
+        } catch (e) {
+          console.error("useAdminStore.loadProfessors error:", e);
+        }
+      },
+
+      loadApprovedCharts: async (force = false) => {
+        if (!force && get().loadedPanels.approvedCharts) {
+          return;
+        }
+
+        try {
+          set((state) => ({
+            loadedPanels: { ...state.loadedPanels, approvedCharts: true },
+          }));
+        } catch (e) {
+          console.error("useAdminStore.loadApprovedCharts error:", e);
+        }
+      },
+
+      loadTrackDetails: async (trackId: string, force = false) => {
+        if (!trackId) return;
+        if (!force && get().loadedPanels.categories[trackId]) {
+          return;
+        }
+
+        try {
           const [catRes, assignRes] = await Promise.all([
-            fetchJson(`/api/categories?trackId=${trackId}&_t=${t}`, noCacheOptions),
-            fetchJson(`/api/tracks/assignments?trackId=${trackId}&_t=${t}`, noCacheOptions),
+            fetchJson(`/api/categories?trackId=${trackId}`),
+            fetchJson(`/api/tracks/assignments?trackId=${trackId}`),
           ]);
 
           const categories = catRes.success
             ? (catRes.data.categories || catRes.data.items || catRes.data.rule || [])
             : [];
 
-          set({
+          set((state) => ({
             categories,
             visualCats: categories,
             ruleCats: categories,
             trackAssignments: assignRes.success ? assignRes.data : [],
-          });
+            loadedPanels: {
+              ...state.loadedPanels,
+              categories: { ...state.loadedPanels.categories, [trackId]: true },
+            },
+          }));
         } catch (e) {
           console.error("useAdminStore.loadTrackDetails error:", e);
+        }
+      },
+
+      loadPanelData: async (tab: AdminTab, force = false) => {
+        // Ensure structure is always loaded first for top-bar context
+        if (!get().loadedPanels.structure) {
+          await get().loadStructureData();
+        }
+
+        switch (tab) {
+          case "structure":
+            if (force) await get().loadStructureData(true);
+            break;
+          case "physical-faculties":
+            await get().loadPhysicalFaculties(force);
+            break;
+          case "courses":
+            await get().loadCourses(force);
+            break;
+          case "professors":
+            await get().loadProfessors(force);
+            break;
+          case "offerings":
+            await Promise.all([
+              get().loadCourses(force),
+              get().loadProfessors(force),
+            ]);
+            break;
+          case "categories":
+            await get().loadCourses(force);
+            if (get().selectedTrackId) {
+              await get().loadTrackDetails(get().selectedTrackId, force);
+            }
+            break;
+          case "rules":
+            await get().loadCourses(force);
+            if (get().selectedTrackId) {
+              await get().loadTrackDetails(get().selectedTrackId, force);
+            }
+            break;
+          case "approved-charts":
+            await get().loadCourses(force);
+            break;
+          case "events":
+          case "users":
+          case "backup":
+          case "trash":
+          case "audit":
+            break;
+        }
+      },
+
+      invalidatePanel: (tab: AdminTab | "all") => {
+        if (tab === "all") {
+          set({
+            loadedPanels: {
+              structure: false,
+              physicalFaculties: false,
+              courses: false,
+              professors: false,
+              offerings: false,
+              events: false,
+              categories: {},
+              approvedCharts: false,
+            },
+          });
+          return;
+        }
+
+        set((state) => {
+          const updated = { ...state.loadedPanels };
+          if (tab === "structure") updated.structure = false;
+          else if (tab === "physical-faculties") updated.physicalFaculties = false;
+          else if (tab === "courses") updated.courses = false;
+          else if (tab === "professors") updated.professors = false;
+          else if (tab === "offerings") updated.offerings = false;
+          else if (tab === "events") updated.events = false;
+          else if (tab === "categories") updated.categories = {};
+          else if (tab === "approved-charts") updated.approvedCharts = false;
+          return { loadedPanels: updated };
+        });
+      },
+
+      loadAllData: async () => {
+        try {
+          set({ loading: true });
+          await Promise.all([
+            get().loadStructureData(true),
+            get().loadPhysicalFaculties(true),
+            get().loadCourses(true),
+            get().loadProfessors(true),
+          ]);
+
+          if (get().selectedTrackId) {
+            await get().loadTrackDetails(get().selectedTrackId, true);
+          }
+        } catch (e) {
+          console.error("useAdminStore.loadAllData error:", e);
+        } finally {
+          set({ loading: false });
         }
       },
     }),
@@ -297,4 +485,3 @@ export const useAdminStore = create<AdminState>()(
     }
   )
 );
-
