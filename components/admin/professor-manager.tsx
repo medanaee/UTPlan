@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import type { Professor, Faculty } from "@/lib/types";
 import { persianSearch } from "@/lib/search/persian-search";
 import { fetchJson, postJson, putJson, deleteJson } from "@/lib/api-client";
+import { useAdminStore } from "@/lib/stores/admin-store";
 import {
   Card,
   CardHeader,
@@ -68,6 +69,27 @@ export function ProfessorManager({
   selectedFacultyId,
   onDataChanged,
 }: ProfessorManagerProps) {
+  const { setProfessors } = useAdminStore();
+  const [loading, setLoading] = useState(professors.length === 0);
+
+  const fetchProfessors = async () => {
+    setLoading(true);
+    try {
+      const res = await fetchJson("/api/professors");
+      if (res.success && Array.isArray(res.data)) {
+        setProfessors(res.data);
+      }
+    } catch (e) {
+      console.error("ProfessorManager fetch error:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfessors();
+  }, []);
+
   const [search, setSearch] = useState("");
   const [facultyFilter, setFacultyFilter] = useState<string>("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -188,7 +210,7 @@ export function ProfessorManager({
         if (res.success) {
           setIsModalOpen(false);
           setFormError(null);
-          await onDataChanged();
+          await fetchProfessors();
         } else {
           setFormError(res.message || "خطا در ویرایش اطلاعات استاد");
         }
@@ -199,7 +221,7 @@ export function ProfessorManager({
         if (res.success) {
           setIsModalOpen(false);
           setFormError(null);
-          await onDataChanged();
+          await fetchProfessors();
         } else {
           setFormError(res.message || "خطا در ثبت استاد جدید");
         }
@@ -219,7 +241,7 @@ export function ProfessorManager({
       const res = await deleteJson(`/api/professors?id=${prof.id}`);
 
       if (res.success) {
-        await onDataChanged();
+        await fetchProfessors();
       }
     } catch (err) {
       console.error("Delete professor error:", err);
@@ -391,7 +413,7 @@ export function ProfessorManager({
                 ) {
                   const res = await deleteJson(`/api/professors?all=true&facultyId=${selectedFacultyId}`);
                   if (res.success) {
-                    await onDataChanged();
+                    await fetchProfessors();
                   } else {
                     alert(res.message || "خطا در حذف اساتید");
                   }
@@ -432,13 +454,30 @@ export function ProfessorManager({
               </div>
             </div>
 
-            <div className="text-xs text-muted-foreground">
-              مجموع اساتید: <span className="font-bold text-foreground">{filteredProfessors.length}</span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={fetchProfessors}
+                disabled={loading}
+                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                title="تازه‌سازی لیست اساتید"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+              </Button>
+              <div className="text-xs text-muted-foreground">
+                مجموع اساتید: <span className="font-bold text-foreground">{filteredProfessors.length}</span>
+              </div>
             </div>
           </div>
 
-          {/* Professors Grid */}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-2 text-muted-foreground">
+              <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+              <p className="text-xs font-medium">در حال دریافت اساتید از سرور...</p>
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {filteredProfessors.map((p) => {
               const faculty = faculties.find((f) => f.id === p.facultyId);
               const displayName = p.firstName && p.lastName ? `${p.firstName} ${p.lastName}` : p.name;
@@ -572,6 +611,7 @@ export function ProfessorManager({
               </div>
             )}
           </div>
+          )}
         </CardContent>
       </Card>
 
@@ -854,7 +894,7 @@ export function ProfessorManager({
         onOpenChange={setImportModalOpen}
         defaultFacultyId={selectedFacultyId}
         targetFaculty={currentFaculty}
-        onSuccess={onDataChanged}
+        onSuccess={fetchProfessors}
       />
     </div>
   );

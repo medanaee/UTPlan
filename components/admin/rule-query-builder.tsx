@@ -19,7 +19,8 @@ import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
-import { putJson } from "@/lib/api-client";
+import { putJson, fetchJson } from "@/lib/api-client";
+import { useAdminStore } from "@/lib/stores/admin-store";
 import {
   Select,
   SelectContent,
@@ -78,6 +79,19 @@ export function RuleQueryBuilder({
       });
     }
   }, [initialTree, trackId]);
+
+  useEffect(() => {
+    if (courses.length === 0) {
+      fetchJson("/api/courses").then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          useAdminStore.getState().setCourses(res.data);
+        }
+      });
+    }
+    if (trackId && ruleCategories.length === 0) {
+      useAdminStore.getState().loadTrackDetails(trackId, true);
+    }
+  }, [courses.length, ruleCategories.length, trackId]);
 
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);

@@ -1,11 +1,17 @@
 import { requireAdminSession } from "@/lib/auth";
 import { getFaculties, createFaculty, updateFaculty, deleteFaculty } from "@/lib/db";
-import { createCachedJsonResponse } from "@/lib/edge-cache";
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     const faculties = await getFaculties();
-    return createCachedJsonResponse(faculties, "faculties", request);
+    return Response.json(
+      { success: true, data: faculties },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate",
+        },
+      }
+    );
   } catch (error) {
     console.error("Get faculties error:", error);
     return Response.json({ success: false, message: "خطا در دریافت لیست دانشکده‌ها" }, { status: 500 });

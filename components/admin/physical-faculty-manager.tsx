@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import type { PhysicalFaculty } from "@/lib/types";
 import { persianSearch } from "@/lib/search/persian-search";
 import { fetchJson, postJson, putJson, deleteJson } from "@/lib/api-client";
@@ -89,6 +89,26 @@ export function PhysicalFacultyManager({
   physicalFaculties = [],
   onDataChanged,
 }: PhysicalFacultyManagerProps) {
+  const { setPhysicalFaculties } = useAdminStore();
+  const [loading, setLoading] = useState(physicalFaculties.length === 0);
+
+  const fetchPhysicalFaculties = async () => {
+    setLoading(true);
+    try {
+      const res = await fetchJson("/api/physical-faculties");
+      if (res.success && Array.isArray(res.data)) {
+        setPhysicalFaculties(res.data);
+      }
+    } catch (e) {
+      console.error("PhysicalFacultyManager fetch error:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPhysicalFaculties();
+  }, []);
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
@@ -225,7 +245,7 @@ export function PhysicalFacultyManager({
               physicalFaculties.map((f) => (f.id === res.data.id ? res.data : f))
             );
           }
-          await onDataChanged();
+          await fetchPhysicalFaculties();
         } else {
           setFormError(res.message || "خطا در ویرایش دانشکده");
         }
@@ -237,7 +257,7 @@ export function PhysicalFacultyManager({
             const { physicalFaculties, setPhysicalFaculties } = useAdminStore.getState();
             setPhysicalFaculties([res.data, ...physicalFaculties]);
           }
-          await onDataChanged();
+          await fetchPhysicalFaculties();
         } else {
           setFormError(res.message || "خطا در ایجاد دانشکده");
         }
@@ -258,7 +278,7 @@ export function PhysicalFacultyManager({
         const { physicalFaculties, setPhysicalFaculties } = useAdminStore.getState();
         setPhysicalFaculties(physicalFaculties.filter((f) => f.id !== deleteTarget.id));
         setDeleteTarget(null);
-        await onDataChanged();
+        await fetchPhysicalFaculties();
       } else {
         alert(res.message || "خطا در حذف دانشکده");
       }
@@ -384,13 +404,30 @@ export function PhysicalFacultyManager({
               />
             </div>
 
-            <Badge variant="secondary" className="text-xs font-mono h-7 px-2.5 w-fit">
-              {filteredFaculties.length} دانشکده فیزیکی ثبت‌شده
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={fetchPhysicalFaculties}
+                disabled={loading}
+                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                title="تازه‌سازی لیست دانشکده‌های فیزیکی"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+              </Button>
+              <Badge variant="secondary" className="text-xs font-mono h-7 px-2.5 w-fit">
+                {filteredFaculties.length} دانشکده فیزیکی ثبت‌شده
+              </Badge>
+            </div>
           </div>
 
           {/* Cards Grid */}
-          {filteredFaculties.length === 0 ? (
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-2 text-muted-foreground">
+              <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+              <p className="text-xs font-medium">در حال دریافت دانشکده‌های فیزیکی از سرور...</p>
+            </div>
+          ) : filteredFaculties.length === 0 ? (
             <div className="py-14 text-center text-muted-foreground space-y-3 rounded-2xl border border-dashed border-border/70">
               <Compass className="h-10 w-10 mx-auto opacity-30 text-primary" />
               <div className="space-y-1">
@@ -813,7 +850,7 @@ export function PhysicalFacultyManager({
         open={isImportOpen}
         onOpenChange={setIsImportOpen}
         onSuccess={async () => {
-          await onDataChanged();
+          await fetchPhysicalFaculties();
         }}
       />
     </div>

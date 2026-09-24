@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import type { Course, Professor, CourseOffering, Faculty, OfferingResource, OfferingResourceType } from "@/lib/types";
 import { fetchJson, postJson, putJson, deleteJson } from "@/lib/api-client";
+import { useAdminStore } from "@/lib/stores/admin-store";
 import { persianSearch } from "@/lib/search/persian-search";
 import {
   Card,
@@ -336,6 +337,23 @@ export function OfferingManager({
   useEffect(() => {
     loadOfferings();
   }, [selectedFacultyId]);
+
+  useEffect(() => {
+    if (courses.length === 0) {
+      fetchJson("/api/courses").then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          useAdminStore.getState().setCourses(res.data);
+        }
+      });
+    }
+    if (professors.length === 0) {
+      fetchJson("/api/professors").then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          useAdminStore.getState().setProfessors(res.data);
+        }
+      });
+    }
+  }, [courses.length, professors.length]);
 
   const handleOpenCreateModal = (initialCourseId?: string) => {
     setEditingOffering(null);

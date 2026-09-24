@@ -13,7 +13,6 @@ import {
   buildDiff,
 } from "@/lib/db";
 import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
-import { createCachedJsonResponse } from "@/lib/edge-cache";
 
 function getSessionRole(session: any): { isAdmin: boolean; userId: string; role: string } {
   if (!session?.id) return { isAdmin: false, userId: "", role: "user" };
@@ -58,15 +57,11 @@ export async function GET(request: NextRequest) {
       customOnly: customOnly && isAdmin,
     });
 
-    if (!userId && !customOnly) {
-      return createCachedJsonResponse(data, "events", request);
-    }
-
     return NextResponse.json(
       { success: true, data },
       {
         headers: {
-          "Cache-Control": "private, no-store",
+          "Cache-Control": "no-store, no-cache, must-revalidate",
         },
       }
     );

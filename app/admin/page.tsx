@@ -81,11 +81,11 @@ export default function AdminDashboardPage() {
     setActionMessage,
   } = useAdminStore();
 
-  const [initialLoading, setInitialLoading] = useState(true);
+  const [authChecking, setAuthChecking] = useState(true);
 
-  // Authentication check and initial data load: only load structure + activeTab
+  // Fast authentication check only; page shell renders immediately
   useEffect(() => {
-    async function checkAuthAndLoad() {
+    async function checkAuth() {
       try {
         const data = await fetchJson("/api/auth/me");
         if (!data.authenticated || (data.user?.role !== "admin" && data.user?.role !== "super_admin")) {
@@ -93,40 +93,28 @@ export default function AdminDashboardPage() {
           return;
         }
         setUser(data.user);
-        await loadStructureData();
-        await loadPanelData(activeTab);
+        // Non-blocking background load for top navigation context path
+        loadStructureData();
       } catch {
         router.push("/login");
       } finally {
-        setInitialLoading(false);
+        setAuthChecking(false);
       }
     }
-    checkAuthAndLoad();
-  }, [router, setUser, loadStructureData, loadPanelData]);
-
-  // Lazy-load data whenever switching to a new tab (0ms & 0 network requests if already loaded)
-  useEffect(() => {
-    if (!initialLoading) {
-      loadPanelData(activeTab);
-    }
-  }, [activeTab, initialLoading, loadPanelData]);
+    checkAuth();
+  }, [router, setUser, loadStructureData]);
 
   const handleLogout = async () => {
     await postJson("/api/auth/logout");
     router.push("/login");
   };
 
-  if (initialLoading) {
+  if (authChecking) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background" dir="rtl">
-        <div className="flex flex-col items-center gap-3 p-8 rounded-2xl border border-border/80 bg-card shadow-sm text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <RefreshCw className="h-6 w-6 animate-spin text-primary" />
-          </div>
-          <div className="space-y-1">
-            <p className="text-sm font-semibold text-foreground">در حال بارگذاری پنل مدیریت دانشکده...</p>
-            <p className="text-xs text-muted-foreground">دریافت ساختار دانشگاه، دروس، اساتید و قوانین</p>
-          </div>
+        <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium">
+          <RefreshCw className="h-4 w-4 animate-spin text-primary" />
+          <span>در حال بررسی احراز هویت...</span>
         </div>
       </div>
     );

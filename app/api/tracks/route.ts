@@ -9,14 +9,20 @@ import {
   logAdminAction,
   buildDiff,
 } from "@/lib/db";
-import { createCachedJsonResponse } from "@/lib/edge-cache";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const majorId = searchParams.get("majorId") || undefined;
     const tracks = await getTracks(majorId);
-    return createCachedJsonResponse(tracks, "tracks", request);
+    return Response.json(
+      { success: true, data: tracks },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate",
+        },
+      }
+    );
   } catch (error) {
     console.error("Get tracks error:", error);
     return Response.json({ success: false, message: "خطا در دریافت لیست گرایش‌ها" }, { status: 500 });

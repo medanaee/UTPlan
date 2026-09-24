@@ -5,7 +5,6 @@ import {
   createPhysicalFaculty,
   logAdminAction,
 } from "@/lib/db";
-import { createCachedJsonResponse } from "@/lib/edge-cache";
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,7 +13,19 @@ export async function GET(request: NextRequest) {
     const includeDeleted = searchParams.get("includeDeleted") === "true";
 
     const faculties = await getPhysicalFaculties(includeDeleted, search);
-    return createCachedJsonResponse(faculties, "physical_faculties", request);
+
+    return NextResponse.json(
+      {
+        success: true,
+        count: faculties.length,
+        data: faculties,
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate",
+        },
+      }
+    );
   } catch (error: any) {
     console.error("Get physical faculties error:", error);
     return NextResponse.json(

@@ -8,7 +8,6 @@ import {
   clearCategoryCourses,
   logAdminAction,
 } from "@/lib/db";
-import { createCachedJsonResponse } from "@/lib/edge-cache";
 
 export async function GET(request: Request) {
   try {
@@ -20,7 +19,14 @@ export async function GET(request: Request) {
     }
 
     const assignments = await getTrackAssignments(trackId);
-    return createCachedJsonResponse(assignments, "track_assignments", request);
+    return Response.json(
+      { success: true, data: assignments },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate",
+        },
+      }
+    );
   } catch (error) {
     console.error("Get track assignments error:", error);
     return Response.json({ success: false, message: "خطا در دریافت لیست انتساب‌ها" }, { status: 500 });

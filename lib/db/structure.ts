@@ -10,16 +10,11 @@ import type {
   RuleGroupNode,
 } from "../types";
 import { getD1 } from "./client";
-import { getCached, setCached, invalidateCache } from "../server-cache";
 
 // ----------------------------------------------------
 // 1. FACULTIES CRUD
 // ----------------------------------------------------
 export async function getFaculties(): Promise<Faculty[]> {
-  const cacheKey = "faculties";
-  const cached = getCached<Faculty[]>(cacheKey);
-  if (cached) return cached;
-
   const d1 = getD1();
   if (!d1) return [];
 
@@ -36,7 +31,7 @@ export async function getFaculties(): Promise<Faculty[]> {
       allLinks = linkRows || [];
     } catch {}
 
-    const list = (results || []).map((r: any) => {
+    return (results || []).map((r: any) => {
       const linkedFacultyIds = allLinks
         .filter((l: any) => l.target_faculty_id === r.id)
         .map((l: any) => l.source_faculty_id);
@@ -50,9 +45,6 @@ export async function getFaculties(): Promise<Faculty[]> {
         linkedFacultyIds,
       };
     });
-
-    setCached(cacheKey, list);
-    return list;
   } catch (err) {
     console.error("D1 getFaculties error:", err);
     return [];
@@ -122,9 +114,6 @@ export async function setFacultyLinks(
         .bind(linkId, targetFacultyId, sourceId, now)
         .run();
     }
-    invalidateCache("faculties");
-    invalidateCache("courses");
-    invalidateCache("professors");
   } catch (err) {
     console.error("D1 setFacultyLinks error:", err);
     throw err;
@@ -167,10 +156,6 @@ export async function createFaculty(name: string, code: string): Promise<Faculty
       .prepare("INSERT INTO faculties (id, name, code, created_at) VALUES (?, ?, ?, ?)")
       .bind(id, name.trim(), cleanCode, now)
       .run();
-
-    invalidateCache("faculties");
-    invalidateCache("courses");
-    invalidateCache("professors");
   } catch (err) {
     console.error("D1 createFaculty error:", err);
     throw err;
@@ -195,11 +180,6 @@ export async function updateFaculty(id: string, name: string, code: string): Pro
       .prepare("UPDATE faculties SET name = ?, code = ? WHERE id = ?")
       .bind(name.trim(), cleanCode, id)
       .run();
-
-    invalidateCache("faculties");
-    invalidateCache("courses");
-    invalidateCache("professors");
-
     const updated = await d1.prepare("SELECT * FROM faculties WHERE id = ?").bind(id).first();
     if (updated) {
       return {
@@ -223,9 +203,6 @@ export async function deleteFaculty(id: string): Promise<boolean> {
 
   try {
     await d1.prepare("UPDATE faculties SET deleted_at = ? WHERE id = ?").bind(now, id).run();
-    invalidateCache("faculties");
-    invalidateCache("courses");
-    invalidateCache("professors");
     return true;
   } catch (err) {
     console.error("D1 deleteFaculty error:", err);
@@ -237,10 +214,6 @@ export async function deleteFaculty(id: string): Promise<boolean> {
 // 2. MAJORS CRUD
 // ----------------------------------------------------
 export async function getMajors(facultyId?: string): Promise<Major[]> {
-  const cacheKey = `majors_${facultyId || "all"}`;
-  const cached = getCached<Major[]>(cacheKey);
-  if (cached) return cached;
-
   const d1 = getD1();
   if (!d1) return [];
 
@@ -253,7 +226,7 @@ export async function getMajors(facultyId?: string): Promise<Major[]> {
     }
     query += " ORDER BY name ASC";
     const { results } = await d1.prepare(query).bind(...params).all();
-    const list = (results || []).map((r: any) => ({
+    return (results || []).map((r: any) => ({
       id: r.id,
       facultyId: r.faculty_id,
       name: r.name,
@@ -261,9 +234,6 @@ export async function getMajors(facultyId?: string): Promise<Major[]> {
       createdAt: r.created_at,
       deletedAt: r.deleted_at || null,
     }));
-
-    setCached(cacheKey, list);
-    return list;
   } catch (err) {
     console.error("D1 getMajors error:", err);
     return [];
@@ -283,8 +253,6 @@ export async function createMajor(facultyId: string, name: string, code: string)
       .prepare("INSERT INTO majors (id, faculty_id, name, code, created_at) VALUES (?, ?, ?, ?, ?)")
       .bind(id, facultyId, name.trim(), cleanCode, now)
       .run();
-
-    invalidateCache("majors");
   } catch (err) {
     console.error("D1 createMajor error:", err);
     throw err;
@@ -310,9 +278,6 @@ export async function updateMajor(id: string, name: string, code: string): Promi
       .prepare("UPDATE majors SET name = ?, code = ? WHERE id = ?")
       .bind(name.trim(), cleanCode, id)
       .run();
-
-    invalidateCache("majors");
-
     const row = await d1.prepare("SELECT * FROM majors WHERE id = ?").bind(id).first();
     if (row) {
       return {
@@ -337,7 +302,6 @@ export async function deleteMajor(id: string): Promise<boolean> {
 
   try {
     await d1.prepare("UPDATE majors SET deleted_at = ? WHERE id = ?").bind(now, id).run();
-    invalidateCache("majors");
     return true;
   } catch (err) {
     console.error("D1 deleteMajor error:", err);
@@ -349,10 +313,6 @@ export async function deleteMajor(id: string): Promise<boolean> {
 // 3. TRACKS CRUD
 // ----------------------------------------------------
 export async function getTracks(majorId?: string): Promise<Track[]> {
-  const cacheKey = `tracks_${majorId || "all"}`;
-  const cached = getCached<Track[]>(cacheKey);
-  if (cached) return cached;
-
   const d1 = getD1();
   if (!d1) return [];
 
@@ -365,7 +325,7 @@ export async function getTracks(majorId?: string): Promise<Track[]> {
     }
     query += " ORDER BY name ASC";
     const { results } = await d1.prepare(query).bind(...params).all();
-    const list = (results || []).map((r: any) => {
+    return (results || []).map((r: any) => {
       let parsedRules: RuleGroupNode | undefined = undefined;
       if (r.rules_tree) {
         try {
@@ -384,9 +344,6 @@ export async function getTracks(majorId?: string): Promise<Track[]> {
         deletedAt: r.deleted_at || null,
       };
     });
-
-    setCached(cacheKey, list);
-    return list;
   } catch (err) {
     console.error("D1 getTracks error:", err);
     return [];
@@ -443,8 +400,6 @@ export async function createTrack(
       .prepare("INSERT INTO tracks (id, major_id, name, code, rules_tree, created_at) VALUES (?, ?, ?, ?, ?, ?)")
       .bind(id, majorId, name.trim(), cleanCode, rulesJson, now)
       .run();
-
-    invalidateCache("tracks");
   } catch (err) {
     console.error("D1 createTrack error:", err);
     throw err;
@@ -485,8 +440,6 @@ export async function updateTrack(
         .run();
     }
 
-    invalidateCache("tracks");
-
     const row = await d1.prepare("SELECT * FROM tracks WHERE id = ?").bind(id).first();
     if (row) {
       let parsedRules: any = undefined;
@@ -518,7 +471,6 @@ export async function updateTrackRules(trackId: string, rulesTree: any): Promise
 
   try {
     await d1.prepare("UPDATE tracks SET rules_tree = ? WHERE id = ?").bind(rulesJson, trackId).run();
-    invalidateCache("tracks");
     return true;
   } catch (err) {
     console.error("D1 updateTrackRules error:", err);
@@ -533,7 +485,6 @@ export async function deleteTrack(id: string): Promise<boolean> {
 
   try {
     await d1.prepare("UPDATE tracks SET deleted_at = ? WHERE id = ?").bind(now, id).run();
-    invalidateCache("tracks");
     return true;
   } catch (err) {
     console.error("D1 deleteTrack error:", err);
@@ -545,10 +496,6 @@ export async function deleteTrack(id: string): Promise<boolean> {
 // 4. CATEGORIES (Unified hierarchical categories with color per track)
 // ----------------------------------------------------
 export async function getCategories(trackId: string): Promise<Category[]> {
-  const cacheKey = `categories_${trackId}`;
-  const cached = getCached<Category[]>(cacheKey);
-  if (cached) return cached;
-
   const d1 = getD1();
   if (!d1) return [];
 
@@ -557,7 +504,7 @@ export async function getCategories(trackId: string): Promise<Category[]> {
       .prepare("SELECT * FROM categories WHERE track_id = ? ORDER BY sort_order ASC, created_at ASC")
       .bind(trackId)
       .all();
-    const list = (results || []).map((r: any) => ({
+    return (results || []).map((r: any) => ({
       id: r.id,
       trackId: r.track_id,
       code: r.code || undefined,
@@ -567,9 +514,6 @@ export async function getCategories(trackId: string): Promise<Category[]> {
       sortOrder: Number(r.sort_order) || 0,
       createdAt: r.created_at,
     }));
-
-    setCached(cacheKey, list);
-    return list;
   } catch (err) {
     console.error("D1 getCategories error:", err);
     return [];
@@ -623,8 +567,6 @@ export async function createCategory(
       )
       .bind(id, trackId, parentId, cleanCode, name.trim(), color, sortOrder, now)
       .run();
-
-    invalidateCache("categories");
   } catch (err) {
     console.error("D1 createCategory error:", err);
     throw err;
@@ -690,8 +632,6 @@ export async function updateCategory(
       .bind(code, name, color, parentId, sortOrder, id)
       .run();
 
-    invalidateCache("categories");
-
     return {
       id,
       trackId: (existing as any).track_id,
@@ -727,9 +667,6 @@ export async function deleteCategory(id: string): Promise<boolean> {
     // Clean up orphan assignments
     await d1.prepare("DELETE FROM track_course_assignments WHERE category_id IS NULL").run();
     await d1.prepare("DELETE FROM categories WHERE id = ?").bind(id).run();
-
-    invalidateCache("categories");
-    invalidateCache("track_assignments");
     return true;
   } catch (err) {
     console.error("D1 deleteCategory error:", err);
@@ -753,7 +690,6 @@ export async function reorderCategories(
       return d1.prepare("UPDATE categories SET sort_order = ? WHERE id = ?").bind(item.sortOrder, item.id);
     });
     await d1.batch(stmts);
-    invalidateCache("categories");
     return true;
   } catch (err) {
     console.error("D1 reorderCategories error:", err);
@@ -788,10 +724,6 @@ export const reorderRuleCategories = reorderCategories;
 // 5. TRACK COURSE ASSIGNMENTS
 // ----------------------------------------------------
 export async function getTrackAssignments(trackId: string): Promise<TrackCourseAssignment[]> {
-  const cacheKey = `track_assignments_${trackId}`;
-  const cached = getCached<TrackCourseAssignment[]>(cacheKey);
-  if (cached) return cached;
-
   const d1 = getD1();
   if (!d1) return [];
 
@@ -804,7 +736,7 @@ export async function getTrackAssignments(trackId: string): Promise<TrackCourseA
       WHERE a.track_id = ?
     `;
     const { results } = await d1.prepare(query).bind(trackId).all();
-    const list = (results || []).map((r: any) => ({
+    return (results || []).map((r: any) => ({
       id: r.id,
       trackId: r.track_id,
       courseId: r.course_id,
@@ -815,9 +747,6 @@ export async function getTrackAssignments(trackId: string): Promise<TrackCourseA
       courseCode: r.course_code || "---",
       units: Number(r.course_units) || 3,
     }));
-
-    setCached(cacheKey, list);
-    return list;
   } catch (err) {
     console.error("D1 getTrackAssignments error:", err);
     return [];
@@ -850,8 +779,6 @@ export async function assignCourseToCategory(
           .bind(id, trackId, courseId, categoryId)
           .run();
       }
-      invalidateCache("track_assignments");
-      invalidateCache("courses");
     } catch (err) {
       console.error("D1 assignCourseToCategory error:", err);
     }
@@ -909,8 +836,6 @@ export async function bulkAssignTrackCourses(
   for (let i = 0; i < stmts.length; i += 100) {
     await d1.batch(stmts.slice(i, i + 100));
   }
-  invalidateCache("track_assignments");
-  invalidateCache("courses");
   return true;
 }
 
@@ -967,8 +892,6 @@ export async function assignCategoryCourses(
       .bind(trackId)
       .run();
 
-    invalidateCache("track_assignments");
-    invalidateCache("courses");
     return true;
   } catch (err) {
     console.error("D1 assignCategoryCourses error:", err);
@@ -995,8 +918,6 @@ export async function clearCategoryCourses(
       .prepare("DELETE FROM track_course_assignments WHERE track_id = ? AND category_id IS NULL")
       .bind(trackId)
       .run();
-    invalidateCache("track_assignments");
-    invalidateCache("courses");
     return true;
   } catch (err) {
     console.error("D1 clearCategoryCourses error:", err);
@@ -1181,11 +1102,6 @@ export async function cloneTrackStructure(
       await bulkAssignTrackCourses(targetTrackId, assignmentsToClone);
       stats.assignmentsCloned = assignmentsToClone.length;
     }
-
-    invalidateCache("categories");
-    invalidateCache("track_assignments");
-    invalidateCache("tracks");
-    invalidateCache("courses");
 
     return {
       success: true,

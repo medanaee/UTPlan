@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Building2,
   GraduationCap,
@@ -10,6 +10,7 @@ import {
   Trash2,
   ChevronLeft,
   Link2,
+  RefreshCw,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,23 @@ export function UniversityStructureManager() {
     invalidatePanel,
     setActionMessage,
   } = useAdminStore();
+
+  const [loading, setLoading] = useState(faculties.length === 0);
+
+  const fetchStructure = async () => {
+    setLoading(true);
+    try {
+      await loadStructureData(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (faculties.length === 0) {
+      fetchStructure();
+    }
+  }, []);
 
   // Modals state
   const [facultyModalOpen, setFacultyModalOpen] = useState(false);
@@ -266,13 +284,31 @@ export function UniversityStructureManager() {
             </Badge>
           </div>
         </div>
-        <div className="text-[11px] text-muted-foreground">
-          برای تغییر هر بخش، روی آیتم مورد نظر در ۳ ستون زیر کلیک کنید.
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={fetchStructure}
+            disabled={loading}
+            className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+            title="تازه‌سازی ساختار دانشگاه"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+          </Button>
+          <div className="text-[11px] text-muted-foreground">
+            برای تغییر هر بخش، روی آیتم مورد نظر در ۳ ستون زیر کلیک کنید.
+          </div>
         </div>
       </div>
 
-      {/* 3-Column Visual Hierarchy Grid */}
-      <div className="grid gap-4 md:grid-cols-3">
+      {loading && faculties.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-2 text-muted-foreground">
+          <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+          <p className="text-xs font-medium">در حال دریافت ساختار دانشگاه از سرور...</p>
+        </div>
+      ) : (
+        /* 3-Column Visual Hierarchy Grid */
+        <div className="grid gap-4 md:grid-cols-3">
         {/* Column 1: Faculties */}
         <Card className="border-border/70 shadow-xs">
           <CardHeader className="flex flex-row items-center justify-between border-b pb-3">
@@ -575,6 +611,7 @@ export function UniversityStructureManager() {
           </CardContent>
         </Card>
       </div>
+      )}
 
       {/* Add / Edit Faculty Modal */}
       <Dialog

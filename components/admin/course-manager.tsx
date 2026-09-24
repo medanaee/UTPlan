@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { persianSearch } from "@/lib/search/persian-search";
 import { fetchJson, postJson, putJson, deleteJson } from "@/lib/api-client";
 import {
@@ -13,6 +13,7 @@ import {
   Link2,
   Lock,
   AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,10 +53,12 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
     faculties,
     courses,
     selectedFacultyId,
-    loadCourses,
+    setCourses,
     setActionMessage,
   } = useAdminStore();
 
+  const [loading, setLoading] = useState(courses.length === 0);
+  const [facultyFilter, setFacultyFilter] = useState<string>("all");
   const [courseSearch, setCourseSearch] = useState("");
   const [courseModalOpen, setCourseModalOpen] = useState(false);
   const [courseFormError, setCourseFormError] = useState<string | null>(null);
@@ -63,6 +66,24 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
   const [selectedCourseForPrereq, setSelectedCourseForPrereq] = useState<Course | null>(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+
+  const fetchCourses = async () => {
+    setLoading(true);
+    try {
+      const res = await fetchJson("/api/courses");
+      if (res.success && Array.isArray(res.data)) {
+        setCourses(res.data);
+      }
+    } catch (e) {
+      console.error("CourseManager fetch error:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCourses();
+  }, []);
 
   const [courseForm, setCourseForm] = useState({
     name: "",
@@ -82,13 +103,16 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
   });
   const [prereqError, setPrereqError] = useState<string | null>(null);
 
-  const currentFaculty = faculties.find((f) => f.id === selectedFacultyId);
+  const targetFacultyId = facultyFilter !== "all" ? facultyFilter : selectedFacultyId;
+  const currentFaculty = faculties.find((f) => f.id === targetFacultyId);
   const linkedFacultyIds = currentFaculty?.linkedFacultyIds || [];
 
-  const facultyCourses = courses.filter((c) => {
-    if (!selectedFacultyId) return true;
-    return c.facultyId === selectedFacultyId || linkedFacultyIds.includes(c.facultyId);
-  });
+  const facultyCourses = useMemo(() => {
+    if (facultyFilter === "all" && !selectedFacultyId) return courses;
+    const fid = facultyFilter !== "all" ? facultyFilter : selectedFacultyId;
+    if (!fid || fid === "all") return courses;
+    return courses.filter((c) => c.facultyId === fid || linkedFacultyIds.includes(c.facultyId));
+  }, [courses, facultyFilter, selectedFacultyId, linkedFacultyIds]);
 
   const filteredCourses = useMemo(() => {
     return persianSearch(facultyCourses, courseSearch);
@@ -132,7 +156,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
           description: "",
         });
         setActionMessage("مشخصات درس با موفقیت ویرایش شد.");
-        await loadCourses(true);
+        await fetchCourses();
       } else {
         setCourseFormError(res.message || "خطا در ویرایش درس");
       }
@@ -163,7 +187,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
           description: "",
         });
         setActionMessage("درس جدید با موفقیت ایجاد شد.");
-        await loadCourses(true);
+        await fetchCourses();
       } else {
         setCourseFormError(res.message || "خطا در ایجاد درس");
       }
@@ -191,7 +215,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
     setPrereqForm({ requiredCourseId: "", type: "prerequisite" });
     const updatedCourse = await fetchJson(`/api/courses?id=${selectedCourseForPrereq.id}`);
     if (updatedCourse.success) setSelectedCourseForPrereq(updatedCourse.data);
-    await loadCourses(true);
+    await fetchCourses();
   };
 
   // Remove Prerequisite
@@ -203,7 +227,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
     });
     const updatedCourse = await fetchJson(`/api/courses?id=${selectedCourseForPrereq.id}`);
     if (updatedCourse.success) setSelectedCourseForPrereq(updatedCourse.data);
-    await loadCourses(true);
+    await fetchCourses();
   };
 
   const offeredInSelectItems = [
@@ -327,7 +351,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                   const res = await deleteJson(`/api/courses?all=true&facultyId=${selectedFacultyId}`);
                   if (res.success) {
                     setActionMessage("کلیه دروس دانشکده با موفقیت حذف (Soft Delete) شدند.");
-                    await loadCourses(true);
+                    await fetchCourses();
                   } else {
                     alert(res.message || "خطا در حذف دروس");
                   }
@@ -369,21 +393,55 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
         </CardHeader>
 
         <CardContent className="px-4 space-y-4">
-          {/* Search Bar */}
-          <div className="flex items-center justify-between gap-3">
-            <Input
-              placeholder="جستجو بر اساس نام یا کد درس..."
-              value={courseSearch}
-              onChange={(e) => setCourseSearch(e.target.value)}
-              className="h-8 max-w-sm text-xs"
-            />
-            <Badge variant="secondary" className="text-xs">
-              نمایش {filteredCourses.length} از {facultyCourses.length} درس این دانشکده
-            </Badge>
+          {/* Search Bar & Filters */}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2 flex-1 max-w-md">
+              <Input
+                placeholder="جستجو بر اساس نام یا کد درس..."
+                value={courseSearch}
+                onChange={(e) => setCourseSearch(e.target.value)}
+                className="h-8 text-xs"
+              />
+              <Select value={facultyFilter} onValueChange={setFacultyFilter}>
+                <SelectTrigger className="h-8 text-xs w-[170px]">
+                  <SelectValue placeholder="فیلتر دانشکده" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">همه دانشکده‌ها</SelectItem>
+                  {faculties.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>
+                      {f.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={fetchCourses}
+                disabled={loading}
+                className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+                title="تازه‌سازی لیست دروس"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+              </Button>
+              <Badge variant="secondary" className="text-xs">
+                نمایش {filteredCourses.length} از {facultyCourses.length} درس
+              </Badge>
+            </div>
           </div>
 
-          {/* Courses Grid */}
-          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-2 text-muted-foreground">
+              <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+              <p className="text-xs font-medium">در حال دریافت دروس از سرور...</p>
+            </div>
+          ) : (
+            <>
+              {/* Courses Grid */}
+              <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {filteredCourses.map((course) => {
               const isLinked = Boolean(selectedFacultyId && course.facultyId !== selectedFacultyId);
               return (
@@ -536,7 +594,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
                               if (confirm(`آیا از حذف درس ${course.name} مطمئن هستید؟`)) {
                                 await deleteJson(`/api/courses?id=${course.id}`);
                                 setActionMessage(`درس «${course.name}» حذف شد.`);
-                                await loadCourses(true);
+                                await fetchCourses();
                               }
                             }}
                             className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
@@ -554,8 +612,10 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
           </div>
           {filteredCourses.length === 0 && (
             <p className="text-center text-xs text-muted-foreground py-8">
-              درسی در این دانشکده یافت نشد.
+              درسی یافت نشد.
             </p>
+          )}
+            </>
           )}
         </CardContent>
       </Card>
@@ -863,7 +923,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
         onOpenChange={setImportModalOpen}
         defaultFacultyId={selectedFacultyId}
         targetFaculty={currentFaculty}
-        onSuccess={() => loadCourses(true)}
+        onSuccess={() => fetchCourses()}
       />
     </div>
   );

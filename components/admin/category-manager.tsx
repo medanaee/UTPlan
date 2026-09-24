@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Layers,
   Building2,
@@ -21,6 +21,7 @@ import {
   ChevronDown,
   ChevronUp,
   AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -75,6 +76,37 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
     loadTrackDetails,
     setActionMessage,
   } = useAdminStore();
+
+  const [loading, setLoading] = useState(false);
+
+  // Self-fetch courses if not already in store
+  useEffect(() => {
+    if (courses.length === 0) {
+      fetchJson("/api/courses").then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          useAdminStore.getState().setCourses(res.data);
+        }
+      });
+    }
+  }, [courses.length]);
+
+  const fetchTrackData = async (trackId: string) => {
+    if (!trackId) return;
+    setLoading(true);
+    try {
+      await loadTrackDetails(trackId, true);
+    } catch (e) {
+      console.error("CategoryManager fetchTrackData error:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedTrackId) {
+      fetchTrackData(selectedTrackId);
+    }
+  }, [selectedTrackId]);
 
   // Create & Clone Modals
   const [catModalOpen, setCatModalOpen] = useState(false);
@@ -532,6 +564,20 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
               افزودن دسته اصلی
             </Button>
 
+            {selectedTrackId && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => fetchTrackData(selectedTrackId)}
+                disabled={loading}
+                className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+                title="تازه‌سازی دسته‌بندی‌ها"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+              </Button>
+            )}
+
             {categories.length > 0 && (
               <div className="flex items-center gap-1 border-r pr-2 mr-1">
                 <Button
@@ -562,7 +608,12 @@ export function CategoryManager({ onNavigateToStructure }: CategoryManagerProps)
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {(() => {
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-2 text-muted-foreground">
+              <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+              <p className="text-xs font-medium">در حال دریافت دسته‌بندی‌ها و انتساب دروس گرایش...</p>
+            </div>
+          ) : (() => {
             const topLevelCats = categories.filter(
               (c) => !c.parentId || !categories.some((p) => p.id === c.parentId)
             );

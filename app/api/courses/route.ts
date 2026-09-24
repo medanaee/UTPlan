@@ -13,7 +13,6 @@ import {
   buildDiff,
 } from "@/lib/db";
 import { wouldCreatePrerequisiteCycle } from "@/lib/graph-utils";
-import { createCachedJsonResponse } from "@/lib/edge-cache";
 
 export async function GET(request: Request) {
   try {
@@ -27,12 +26,26 @@ export async function GET(request: Request) {
       if (!course) {
         return Response.json({ success: false, message: "درس یافت نشد." }, { status: 404 });
       }
-      return createCachedJsonResponse(course, "courses", request);
+      return Response.json(
+        { success: true, data: course },
+        {
+          headers: {
+            "Cache-Control": "no-store, no-cache, must-revalidate",
+          },
+        }
+      );
     }
 
     const directOnly = searchParams.get("directOnly") === "true";
     const courses = await getCourses(facultyId, trackId, directOnly);
-    return createCachedJsonResponse(courses, "courses", request);
+    return Response.json(
+      { success: true, data: courses },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate",
+        },
+      }
+    );
   } catch (error) {
     console.error("Get courses error:", error);
     return Response.json({ success: false, message: "خطا در دریافت لیست دروس" }, { status: 500 });

@@ -11,7 +11,6 @@ import {
   findUserById,
   getD1,
 } from "@/lib/db";
-import { createCachedJsonResponse } from "@/lib/edge-cache";
 
 async function getEffectiveUserRole(session: any): Promise<{ isAdmin: boolean; userId: string; role: string }> {
   if (!session?.id) return { isAdmin: false, userId: "", role: "user" };
@@ -46,7 +45,7 @@ export async function GET(req: NextRequest) {
 
     if (approved === "true") {
       const approvedCharts = await getApprovedTrackCharts(trackId || undefined);
-      return createCachedJsonResponse(approvedCharts, "approved_charts", req);
+      return NextResponse.json({ success: true, data: approvedCharts });
     }
 
     const userId = session?.id;

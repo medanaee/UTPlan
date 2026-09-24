@@ -2,16 +2,11 @@ import type { Professor } from "../types";
 import { getD1 } from "./client";
 import { getEffectiveFacultyIds } from "./structure";
 import { generateUniqueCode, isCodeDuplicate } from "./code-generator";
-import { getCached, setCached, invalidateCache } from "../server-cache";
 
 export async function getProfessors(
   facultyId?: string,
   directOnly: boolean = false
 ): Promise<Professor[]> {
-  const cacheKey = `professors_${facultyId || "all"}_${directOnly}`;
-  const cached = getCached<Professor[]>(cacheKey);
-  if (cached) return cached;
-
   const d1 = getD1();
   if (!d1) return [];
 
@@ -36,7 +31,7 @@ export async function getProfessors(
     }
     query += " ORDER BY p.last_name ASC, p.first_name ASC";
     const { results } = await d1.prepare(query).bind(...params).all();
-    const mapped = (results || []).map((p: any) => {
+    return (results || []).map((p: any) => {
       let links: any = undefined;
       if (p.links) {
         try {
@@ -64,9 +59,6 @@ export async function getProfessors(
         deletedAt: p.deleted_at || null,
       };
     });
-
-    setCached(cacheKey, mapped);
-    return mapped;
   } catch (err) {
     console.error("D1 getProfessors error:", err);
     return [];
@@ -74,10 +66,6 @@ export async function getProfessors(
 }
 
 export async function getProfessorById(id: string): Promise<Professor | null> {
-  const cacheKey = `professor_${id}`;
-  const cached = getCached<Professor>(cacheKey);
-  if (cached) return cached;
-
   const d1 = getD1();
   if (!d1) return null;
 
@@ -124,31 +112,31 @@ export async function getProfessorById(id: string): Promise<Professor | null> {
           c = typeof r.criteria_ratings === "string" ? JSON.parse(r.criteria_ratings) : r.criteria_ratings;
         } catch {}
       }
-      return c !== null && typeof c === "object" && !Array.isArray(c);
+      const hasC = c && typeof c === "object" && Object.values(c).some((v: any) => typeof v === "number" && v > 0);
+      return hasC && Number(r.overall_rating) > 0;
     });
 
-    const revCount = scoredRows.length;
-    let avg = 0;
-    if (revCount > 0) {
-      const sum = scoredRows.reduce((acc: number, r: any) => acc + (Number(r.overall_rating) || 0), 0);
-      avg = sum / revCount;
-    }
+    const revCount = revRows?.length || 0;
+    const avg =
+      scoredRows.length > 0
+        ? scoredRows.reduce((sum: number, r: any) => sum + Number(r.overall_rating), 0) / scoredRows.length
+        : 0;
 
-    const fName = (p as any).first_name || "";
-    const lName = (p as any).last_name || "";
-    const fullName = [fName, lName].filter(Boolean).join(" ");
+    const firstName = (p as any).first_name || "";
+    const lastName = (p as any).last_name || "";
+    const fullName = [firstName, lastName].filter(Boolean).join(" ");
 
-    const profData: Professor = {
+    return {
       id: (p as any).id,
-      facultyId: (p as any).faculty_id,
-      facultyName: (p as any).faculty_name || undefined,
       code: (p as any).code || undefined,
-      firstName: fName || undefined,
-      lastName: lName || undefined,
+      firstName: firstName || undefined,
+      lastName: lastName || undefined,
       name: fullName || "استاد",
-      avatarUrl: (p as any).avatar_url || "",
-      title: (p as any).title || "استاد تمام",
-      email: (p as any).email || "",
+      facultyId: (p as any).faculty_id,
+      facultyName: (p as any).faculty_name || "نامشخص",
+      title: (p as any).title || undefined,
+      email: (p as any).email || undefined,
+      avatarUrl: (p as any).avatar_url || undefined,
       links,
       offerings: (offRows || []).map((o: any) => ({
         id: o.id,
@@ -164,9 +152,6 @@ export async function getProfessorById(id: string): Promise<Professor | null> {
       createdAt: (p as any).created_at,
       deletedAt: (p as any).deleted_at || null,
     };
-
-    setCached(cacheKey, profData);
-    return profData;
   } catch (err) {
     console.error("D1 getProfessorById error:", err);
     return null;
@@ -227,9 +212,6 @@ export async function createProfessor(data: {
       )
       .bind(id, code, data.facultyId, firstName, lastName, cleanTitle, cleanEmail, cleanAvatarUrl, linksStr, now)
       .run();
-
-    invalidateCache("professors");
-    invalidateCache("professor_");
 
     return {
       id,
@@ -320,9 +302,6 @@ export async function updateProfessor(
       .bind(...params)
       .run();
 
-    invalidateCache("professors");
-    invalidateCache("professor_");
-
     return await getProfessorById(id);
   } catch (err) {
     console.error("D1 updateProfessor error:", err);
@@ -337,8 +316,6 @@ export async function deleteProfessor(id: string): Promise<boolean> {
 
   try {
     await d1.prepare("UPDATE professors SET deleted_at = ? WHERE id = ?").bind(now, id).run();
-    invalidateCache("professors");
-    invalidateCache("professor_");
     return true;
   } catch (err) {
     console.error("D1 deleteProfessor error:", err);
@@ -357,8 +334,6 @@ export async function deleteProfessorsByFaculty(facultyId: string): Promise<bool
       .bind(now, facultyId)
       .run();
 
-    invalidateCache("professors");
-    invalidateCache("professor_");
     return true;
   } catch (err) {
     console.error("D1 deleteProfessorsByFaculty error:", err);
