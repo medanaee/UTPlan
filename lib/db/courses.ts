@@ -23,9 +23,7 @@ export async function getCourses(
             'id', a.id,
             'track_id', a.track_id,
             'course_id', a.course_id,
-            'category_id', a.category_id,
-            'rule_category_id', a.rule_category_id,
-            'visual_category_id', a.visual_category_id
+            'category_id', a.category_id
           )
         )
         FROM track_course_assignments a
@@ -110,9 +108,9 @@ export async function getCourses(
         id: a.id,
         trackId: a.track_id,
         courseId: a.course_id,
-        categoryId: a.category_id || a.rule_category_id || a.visual_category_id || null,
-        visualCategoryId: a.category_id || a.visual_category_id || null,
-        ruleCategoryId: a.category_id || a.rule_category_id || null,
+        categoryId: a.category_id || null,
+        visualCategoryId: a.category_id || null,
+        ruleCategoryId: a.category_id || null,
       }));
 
       return {
