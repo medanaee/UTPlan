@@ -318,14 +318,22 @@ export async function DELETE(request: NextRequest) {
 
     const { isAdmin, userId } = await getEffectiveUserRole(session);
 
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-    const facultyId = searchParams.get("facultyId");
-    const term = searchParams.get("term") || undefined;
-    const all = searchParams.get("all") === "true";
+    let body: any = null;
+    try {
+      body = await request.json();
+    } catch {
+      // Body may not be present or not JSON, which is normal for standard DELETE requests
+    }
 
-    // Bulk soft delete for faculty & term (admin only)
-    if (all && facultyId) {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id") || body?.id;
+    const facultyId = searchParams.get("facultyId") || body?.facultyId;
+    const term = searchParams.get("term") || body?.term || undefined;
+    const all = searchParams.get("all") === "true" || body?.all === true;
+    const eventIds: string[] | undefined = Array.isArray(body?.ids) ? body.ids : undefined;
+
+    // Bulk soft delete for faculty & term or specific event IDs (admin only)
+    if (all || (eventIds && eventIds.length > 0)) {
       if (!isAdmin) {
         return NextResponse.json(
           { success: false, message: "تنها مدیران می‌توانند رویدادها را به صورت دسته‌ای حذف کنند." },
@@ -333,20 +341,26 @@ export async function DELETE(request: NextRequest) {
         );
       }
 
-      const success = await deleteEventsByFacultyAndTerm(facultyId, term);
+      const success = await deleteEventsByFacultyAndTerm({
+        facultyId: facultyId || undefined,
+        term,
+        eventIds,
+      });
+
       await logAdminAction({
         userId: session.id,
         userName: session.name || "مدیر سامانه",
         userEmail: session.email || "",
         action: "DELETE",
         entityType: "event",
-        details: { facultyId, term, all: true },
+        details: { facultyId, term, all: true, count: eventIds?.length },
       });
+
       return NextResponse.json({
         success,
         message: term
-          ? `کلیه رویدادهای کلاسی این دانشکده در نیمسال ${term} به سطل بازیافت منتقل شدند.`
-          : "کلیه رویدادهای کلاسی این دانشکده به سطل بازیافت منتقل شدند.",
+          ? `کلیه رویدادهای کلاسی این نیمسال (${term}) به سطل بازیافت منتقل شدند.`
+          : "کلیه رویدادهای کلاسی به سطل بازیافت منتقل شدند.",
       });
     }
 
@@ -392,10 +406,11 @@ export async function DELETE(request: NextRequest) {
     }
 
     let success = false;
-    if (isCustom) {
-      // Hard delete unapproved custom event and its slots completely
-      success = await hardDeleteCustomEvent(id, isAdmin ? undefined : userId);
+    if (isCustom && !isAdmin) {
+      // Regular user deleting their own unapproved custom event: hard delete
+      success = await hardDeleteCustomEvent(id, userId);
     } else {
+      // Admin soft deletes event (or moves to recycle bin)
       success = await deleteEvent(id);
     }
 

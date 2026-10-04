@@ -455,30 +455,76 @@ export async function deleteEvent(id: string): Promise<boolean> {
 }
 
 export async function deleteEventsByFacultyAndTerm(
-  facultyId: string,
-  term?: string
+  optionsOrFacultyId:
+    | {
+        facultyId?: string;
+        term?: string;
+        eventIds?: string[];
+      }
+    | string,
+  maybeTerm?: string
 ): Promise<boolean> {
   const d1 = getD1();
   if (!d1) return false;
 
   try {
     const now = new Date().toISOString();
+
+    let facultyId: string | undefined;
+    let term: string | undefined;
+    let eventIds: string[] | undefined;
+
+    if (typeof optionsOrFacultyId === "string") {
+      facultyId = optionsOrFacultyId;
+      term = maybeTerm;
+    } else if (optionsOrFacultyId) {
+      facultyId = optionsOrFacultyId.facultyId;
+      term = optionsOrFacultyId.term;
+      eventIds = optionsOrFacultyId.eventIds;
+    }
+
+    // 1. If explicit event IDs are provided, batch update in chunks (fast & index-backed)
+    if (eventIds && eventIds.length > 0) {
+      const chunkSize = 100;
+      for (let i = 0; i < eventIds.length; i += chunkSize) {
+        const chunk = eventIds.slice(i, i + chunkSize);
+        const placeholders = chunk.map(() => "?").join(",");
+        await d1
+          .prepare(
+            `UPDATE course_events SET deleted_at = ? WHERE id IN (${placeholders}) AND deleted_at IS NULL`
+          )
+          .bind(now, ...chunk)
+          .run();
+      }
+      return true;
+    }
+
+    // 2. Otherwise update by term and/or faculty
     let query = `
       UPDATE course_events
       SET deleted_at = ?
-      WHERE offering_id IN (
-        SELECT o.id FROM course_offerings o
-        JOIN courses c ON o.course_id = c.id
-        WHERE c.faculty_id = ?
-      )
-      AND is_user_custom = 0
-      AND deleted_at IS NULL
+      WHERE deleted_at IS NULL
     `;
-    const params: any[] = [now, facultyId];
+    const params: any[] = [now];
 
     if (term) {
       query += " AND term = ?";
       params.push(term);
+    }
+
+    if (facultyId && facultyId !== "all") {
+      const effectiveIds = await getEffectiveFacultyIds(facultyId);
+      if (effectiveIds.length > 0) {
+        const placeholders = effectiveIds.map(() => "?").join(",");
+        query += `
+          AND offering_id IN (
+            SELECT o.id FROM course_offerings o
+            JOIN courses c ON o.course_id = c.id
+            WHERE c.faculty_id IN (${placeholders})
+          )
+        `;
+        params.push(...effectiveIds);
+      }
     }
 
     await d1.prepare(query).bind(...params).run();

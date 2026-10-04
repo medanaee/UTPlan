@@ -58,6 +58,7 @@ import {
   Lock,
   Download,
   Upload,
+  Loader2,
 } from "lucide-react";
 import { EventImportDialog } from "./event-import-dialog";
 
@@ -121,6 +122,7 @@ export function EventManager({
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
 
   // New Term Form state
   const [newTermYear, setNewTermYear] = useState("1404");
@@ -387,15 +389,21 @@ export function EventManager({
   const [customFilter, setCustomFilter] = useState<"all" | "official" | "custom">("all");
 
   const handleDeleteEvent = async (id: string) => {
-    if (!confirm("آیا از حذف این رویداد کلاسی مطمئن هستید؟")) return;
+    if (!confirm("آیا از حذف این رویداد کلاسی مطمئن هستید؟ این رویداد به سطل بازیافت منتقل می‌شود.")) return;
 
     try {
+      setEvents((prev) => prev.filter((e) => e.id !== id));
       const res = await deleteJson(`/api/events?id=${id}`);
       if (res.success) {
         await loadData();
+      } else {
+        alert(res.message || "خطا در حذف رویداد");
+        await loadData();
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Delete event error:", err);
+      alert("خطا در برقراری ارتباط با سرور: " + (err?.message || "نامشخص"));
+      await loadData();
     }
   };
 
@@ -452,6 +460,50 @@ export function EventManager({
       (evt.location || "").toLowerCase().includes(q)
     );
   });
+
+  const handleDeleteAllEvents = async () => {
+    if (termEvents.length === 0) return;
+    const termLabel = formatSemesterLabel(activeTerm);
+    const facultyName = currentFaculty ? `دانشکده ${currentFaculty.name}` : "کلیه دانشکده‌ها";
+    if (
+      !confirm(
+        `هشدار مهم: آیا از حذف کلیه (${termEvents.length}) رویداد کلاسی مربوط به ${facultyName} در نیمسال «${termLabel}» (${activeTerm}) مطمئن هستید؟ این رویدادها به سطل بازیافت منتقل شده و در صورت لزوم قابل بازیابی خواهند بود.`
+      )
+    ) {
+      return;
+    }
+
+    setIsDeletingAll(true);
+    const prevEvents = events;
+    // Optimistic UI update
+    setEvents((prev) => prev.filter((e) => e.term !== activeTerm));
+
+    try {
+      const idsToDelete = termEvents.map((e) => e.id);
+      const res = await deleteJson("/api/events", {
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          all: true,
+          term: activeTerm,
+          facultyId: selectedFacultyId || undefined,
+          ids: idsToDelete,
+        }),
+      });
+
+      if (res.success) {
+        await loadData();
+      } else {
+        setEvents(prevEvents);
+        alert(res.message || "خطا در حذف دسته‌ای رویدادها");
+      }
+    } catch (err: any) {
+      setEvents(prevEvents);
+      console.error("Delete all events error:", err);
+      alert("خطا در برقراری ارتباط با سرور: " + (err?.message || "نامشخص"));
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
 
   // Other terms that contain events (eligible for cloning)
   const cloneableSourceTerms = Array.from(
@@ -616,34 +668,17 @@ export function EventManager({
               type="button"
               variant="outline"
               size="sm"
-              onClick={async () => {
-                if (!selectedFacultyId || !activeTerm) return;
-                const termLabel = formatSemesterLabel(activeTerm);
-                const facultyName = currentFaculty?.name || "این دانشکده";
-                if (
-                  confirm(
-                    `هشدار: آیا از حذف کلیه رویدادهای کلاسی ${facultyName} در نیمسال «${termLabel}» (${activeTerm}) مطمئن هستید؟ این رویدادها به صورت موقت (Soft Delete) به سطل بازیافت منتقل می‌شوند و در صورت نیاز قابل بازیابی خواهند بود.`
-                  )
-                ) {
-                  try {
-                    const res = await deleteJson(
-                      `/api/events?all=true&facultyId=${selectedFacultyId}&term=${encodeURIComponent(activeTerm)}`
-                    );
-                    if (res.success) {
-                      await loadData();
-                    } else {
-                      alert(res.message || "خطا در حذف رویدادها");
-                    }
-                  } catch (e: any) {
-                    alert("خطا در برقراری ارتباط با سرور: " + (e?.message || "نامشخص"));
-                  }
-                }
-              }}
-              disabled={!selectedFacultyId || termEvents.length === 0}
+              onClick={handleDeleteAllEvents}
+              disabled={isDeletingAll || termEvents.length === 0}
               className="h-8 gap-1.5 text-xs text-destructive border-destructive/30 hover:bg-destructive/10 shadow-2xs font-medium"
+              title="انتقال کلیه رویدادهای این نیمسال به سطل بازیافت"
             >
-              <Trash2 className="h-3.5 w-3.5 text-destructive" />
-              <span>حذف همه رویدادها</span>
+              {isDeletingAll ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-destructive" />
+              ) : (
+                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+              )}
+              <span>{isDeletingAll ? "در حال حذف..." : "حذف همه رویدادها"}</span>
             </Button>
 
             {/* Create Event Button */}
@@ -837,50 +872,45 @@ export function EventManager({
 
                       {/* Actions */}
                       <td className="py-2.5 px-3 text-center">
-                        {isLinked ? (
-                          <Badge
-                            variant="secondary"
-                            className="text-[10px] gap-1 text-muted-foreground select-none"
-                            title={`این رویداد متعلق به دانشکده ${evt.facultyName || "مبدأ"} است و فقط از همان پنل قابل ویرایش است.`}
-                          >
-                            <Lock className="h-3 w-3" />
-                            فقط‌خواندنی
-                          </Badge>
-                        ) : (
-                          <div className="flex items-center justify-center gap-1">
-                            {evt.isUserCustom && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handlePromoteEvent(evt.id)}
-                                className="h-7 px-2 text-[11px] text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 gap-1"
-                                title="تأیید و تبدیل به رویداد رسمی سراسری"
-                              >
-                                <Sparkles className="h-3 w-3" />
-                                <span>تأیید سراسری</span>
-                              </Button>
-                            )}
+                        <div className="flex items-center justify-center gap-1.5 flex-nowrap">
+                          {evt.isUserCustom && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handlePromoteEvent(evt.id)}
+                              className="h-7 px-2 text-[11px] text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 gap-1 font-medium"
+                              title="تأیید و تبدیل به رویداد رسمی سراسری"
+                            >
+                              <Sparkles className="h-3 w-3" />
+                              <span>تأیید</span>
+                            </Button>
+                          )}
 
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleOpenEditModal(evt)}
-                              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-                              title="ویرایش رویداد"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteEvent(evt.id)}
-                              className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                              title="حذف رویداد"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        )}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenEditModal(evt)}
+                            className="h-7 px-2.5 text-xs gap-1 text-primary border-primary/20 hover:bg-primary/10 shadow-2xs font-medium"
+                            title="ویرایش مشخصات، جلسات یا آزمون این رویداد"
+                          >
+                            <Pencil className="h-3 w-3" />
+                            <span>ویرایش</span>
+                          </Button>
+
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteEvent(evt.id)}
+                            className="h-7 px-2.5 text-xs gap-1 text-destructive border-destructive/20 hover:bg-destructive/10 shadow-2xs font-medium"
+                            title="حذف این رویداد کلاسی"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            <span>حذف</span>
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -1212,28 +1242,51 @@ export function EventManager({
               </div>
             </div>
           </form>
-          <DialogFooter className="pt-3 border-t">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsModalOpen(false)}
-              disabled={isSubmitting}
-            >
-              انصراف
-            </Button>
-            <Button
-              type="submit"
-              form="admin-event-form"
-              onClick={() => handleSaveEvent()}
-              disabled={isSubmitting || !selectedOfferingId}
-              className="gap-1.5 font-semibold"
-            >
-              {isSubmitting
-                ? "در حال ثبت..."
-                : editingEvent
-                  ? `ذخیره تغییرات رویداد`
-                  : `ثبت رویداد کلاسی`}
-            </Button>
+          <DialogFooter className="pt-3 border-t flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+            {editingEvent ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  if (editingEvent) {
+                    setIsModalOpen(false);
+                    await handleDeleteEvent(editingEvent.id);
+                  }
+                }}
+                disabled={isSubmitting}
+                className="text-xs text-destructive border-destructive/30 hover:bg-destructive/10 gap-1.5 self-start sm:self-auto"
+                title="حذف این رویداد کلاسی"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>حذف این رویداد</span>
+              </Button>
+            ) : (
+              <div />
+            )}
+            <div className="flex items-center gap-2 justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsModalOpen(false)}
+                disabled={isSubmitting}
+              >
+                انصراف
+              </Button>
+              <Button
+                type="submit"
+                form="admin-event-form"
+                onClick={() => handleSaveEvent()}
+                disabled={isSubmitting || !selectedOfferingId}
+                className="gap-1.5 font-semibold"
+              >
+                {isSubmitting
+                  ? "در حال ثبت..."
+                  : editingEvent
+                    ? `ذخیره تغییرات رویداد`
+                    : `ثبت رویداد کلاسی`}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
