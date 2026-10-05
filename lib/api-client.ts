@@ -7,6 +7,10 @@ export interface ApiResponse<T = any> {
   success?: boolean;
   data?: T;
   message?: string;
+  status?: string;
+  errors?: unknown;
+  execution?: string;
+  version?: string;
   authenticated?: boolean;
   user?: any;
   [key: string]: any;
@@ -17,6 +21,19 @@ const memoryCache = new Map<string, { data: any; expiry: number }>();
 
 export function clearApiClientCache() {
   memoryCache.clear();
+}
+
+function normalizeResponse<T>(data: T): T {
+  if (data && typeof data === "object" && !Array.isArray(data)) {
+    const response = data as Record<string, any>;
+    if (typeof response.status === "string" && response.success === undefined) {
+      return {
+        ...response,
+        success: response.status === "success" || response.status === "ok",
+      } as T;
+    }
+  }
+  return data;
 }
 
 /**
@@ -53,7 +70,7 @@ export async function fetchJson<T = any>(
     const promise = (async () => {
       try {
         const res = await fetch(input, init);
-        const data = (await res.json()) as T;
+        const data = normalizeResponse((await res.json()) as T);
         memoryCache.set(urlKey, { data, expiry: Date.now() + 2000 });
         return data;
       } finally {
@@ -71,7 +88,7 @@ export async function fetchJson<T = any>(
   }
 
   const res = await fetch(input, init);
-  return (await res.json()) as T;
+  return normalizeResponse((await res.json()) as T);
 }
 
 /**
