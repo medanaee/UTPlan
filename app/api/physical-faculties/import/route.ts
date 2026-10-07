@@ -1,4 +1,4 @@
-import { apiResponseJson } from "@/lib/api-response";
+import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import {
   getPhysicalFaculties,
@@ -20,7 +20,7 @@ interface ImportPhysicalFacultyItem {
   description?: string;
 }
 
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response! as NextResponse;
@@ -169,3 +169,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = withApiTiming(POSTHandler);

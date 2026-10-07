@@ -1,4 +1,4 @@
-import { apiResponseJson } from "@/lib/api-response";
+import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { requireUserSession } from "@/lib/auth";
 import crypto from "node:crypto";
@@ -8,7 +8,7 @@ import crypto from "node:crypto";
  * Handles direct image upload to Cloudinary (Cloud name: mmlnviaw)
  * with seamless local data URI fallback if offline.
  */
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     const auth = await requireUserSession(request);
     if (!auth.authorized) return auth.response! as NextResponse;
@@ -97,3 +97,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = withApiTiming(POSTHandler);

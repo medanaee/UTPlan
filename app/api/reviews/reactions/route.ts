@@ -1,9 +1,9 @@
-import { apiResponseJson } from "@/lib/api-response";
+import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { toggleReviewReaction, ALLOWED_REACTION_EMOJIS } from "@/lib/db";
 import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
 
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     const token = getAuthTokenFromRequest(request);
     const session = token ? await verifySessionToken(token) : null;
@@ -61,3 +61,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = withApiTiming(POSTHandler);

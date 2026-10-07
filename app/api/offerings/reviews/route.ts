@@ -1,4 +1,4 @@
-import { apiResponseJson } from "@/lib/api-response";
+import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { getReviews, getReviewById, createReview, updateReview, deleteReview, findUserById } from "@/lib/db";
 import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
@@ -17,7 +17,7 @@ async function getEffectiveUserRole(session: any): Promise<{ isAdmin: boolean; u
   }
 }
 
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const offeringId = searchParams.get("offeringId");
@@ -45,7 +45,9 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+export const GET = withApiTiming(GETHandler);
+
+async function POSTHandler(request: NextRequest) {
   try {
     const token = getAuthTokenFromRequest(request);
     const session = token ? await verifySessionToken(token) : null;
@@ -108,7 +110,9 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function PUT(request: NextRequest) {
+export const POST = withApiTiming(POSTHandler);
+
+async function PUTHandler(request: NextRequest) {
   try {
     const token = getAuthTokenFromRequest(request);
     const session = token ? await verifySessionToken(token) : null;
@@ -194,7 +198,9 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-export async function DELETE(request: NextRequest) {
+export const PUT = withApiTiming(PUTHandler);
+
+async function DELETEHandler(request: NextRequest) {
   try {
     const token = getAuthTokenFromRequest(request);
     const session = token ? await verifySessionToken(token) : null;
@@ -255,3 +261,5 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
+
+export const DELETE = withApiTiming(DELETEHandler);

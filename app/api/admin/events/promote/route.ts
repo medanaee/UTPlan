@@ -1,9 +1,9 @@
-import { apiResponseJson } from "@/lib/api-response";
+import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { promoteCustomEventToGlobal } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
 
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response! as NextResponse;
@@ -29,3 +29,5 @@ export async function POST(request: NextRequest) {
     return apiResponseJson({ success: false, message: "خطا در تایید رویداد" }, { status: 500 });
   }
 }
+
+export const POST = withApiTiming(POSTHandler);

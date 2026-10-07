@@ -1,4 +1,4 @@
-import { apiResponseJson } from "@/lib/api-response";
+import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { requireAdminSession } from "@/lib/auth";
 import {
   getTrackAssignments,
@@ -10,7 +10,7 @@ import {
   logAdminAction,
 } from "@/lib/db";
 
-export async function GET(request: Request) {
+async function GETHandler(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const trackId = searchParams.get("trackId");
@@ -34,7 +34,9 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+export const GET = withApiTiming(GETHandler);
+
+async function POSTHandler(request: Request) {
   try {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response!;
@@ -156,3 +158,5 @@ export async function POST(request: Request) {
     return apiResponseJson({ success: false, message: "خطا در به‌روزرسانی انتساب دروس" }, { status: 500 });
   }
 }
+
+export const POST = withApiTiming(POSTHandler);

@@ -1,4 +1,4 @@
-import { apiResponseJson } from "@/lib/api-response";
+import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import {
   getAuthTokenFromRequest,
@@ -8,7 +8,7 @@ import {
 } from "@/lib/auth";
 import { findUserById, updateUserProfile, changeUserPassword } from "@/lib/db";
 
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const token = getAuthTokenFromRequest(request);
     if (!token) {
@@ -48,7 +48,9 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function PUT(request: NextRequest) {
+export const GET = withApiTiming(GETHandler);
+
+async function PUTHandler(request: NextRequest) {
   try {
     const token = getAuthTokenFromRequest(request);
     if (!token) {
@@ -137,3 +139,5 @@ export async function PUT(request: NextRequest) {
     return apiResponseJson({ success: false, message: "خطا در ویرایش پروفایل" }, { status: 500 });
   }
 }
+
+export const PUT = withApiTiming(PUTHandler);

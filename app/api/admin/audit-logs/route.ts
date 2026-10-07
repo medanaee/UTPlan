@@ -1,8 +1,8 @@
-import { apiResponseJson } from "@/lib/api-response";
+import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { requireSuperAdminSession } from "@/lib/auth";
 import { getAuditLogs } from "@/lib/db";
 
-export async function GET(request: Request) {
+async function GETHandler(request: Request) {
   try {
     const auth = await requireSuperAdminSession(request);
     if (!auth.authorized) return auth.response!;
@@ -42,3 +42,5 @@ export async function GET(request: Request) {
     );
   }
 }
+
+export const GET = withApiTiming(GETHandler);

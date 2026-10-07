@@ -1,8 +1,8 @@
-import { apiResponseJson } from "@/lib/api-response";
+import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { requireAdminSession } from "@/lib/auth";
 import { getMajors, createMajor, updateMajor, deleteMajor } from "@/lib/db";
 
-export async function GET(request: Request) {
+async function GETHandler(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const facultyId = searchParams.get("facultyId") || undefined;
@@ -21,7 +21,9 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+export const GET = withApiTiming(GETHandler);
+
+async function POSTHandler(request: Request) {
   try {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response!;
@@ -40,7 +42,9 @@ export async function POST(request: Request) {
   }
 }
 
-export async function PUT(request: Request) {
+export const POST = withApiTiming(POSTHandler);
+
+async function PUTHandler(request: Request) {
   try {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response!;
@@ -63,7 +67,9 @@ export async function PUT(request: Request) {
   }
 }
 
-export async function DELETE(request: Request) {
+export const PUT = withApiTiming(PUTHandler);
+
+async function DELETEHandler(request: Request) {
   try {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response!;
@@ -80,3 +86,5 @@ export async function DELETE(request: Request) {
     return apiResponseJson({ success: false, message: "خطا در حذف رشته" }, { status: 500 });
   }
 }
+
+export const DELETE = withApiTiming(DELETEHandler);

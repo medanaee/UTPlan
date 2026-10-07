@@ -1,4 +1,4 @@
-import { apiResponseJson } from "@/lib/api-response";
+import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import {
   getOfferings,
@@ -12,7 +12,7 @@ import {
 } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
 
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const facultyId = searchParams.get("facultyId") || undefined;
@@ -43,7 +43,9 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+export const GET = withApiTiming(GETHandler);
+
+async function POSTHandler(request: NextRequest) {
   try {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response! as NextResponse;
@@ -98,7 +100,9 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function PUT(request: NextRequest) {
+export const POST = withApiTiming(POSTHandler);
+
+async function PUTHandler(request: NextRequest) {
   try {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response! as NextResponse;
@@ -175,7 +179,9 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-export async function DELETE(request: NextRequest) {
+export const PUT = withApiTiming(PUTHandler);
+
+async function DELETEHandler(request: NextRequest) {
   try {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response! as NextResponse;
@@ -237,3 +243,5 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
+
+export const DELETE = withApiTiming(DELETEHandler);

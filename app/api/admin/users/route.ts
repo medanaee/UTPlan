@@ -1,8 +1,8 @@
-import { apiResponseJson } from "@/lib/api-response";
+import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
 import { getAllUsers, updateUserRole, findUserById, logAdminAction } from "@/lib/db";
 
-export async function GET(request: Request) {
+async function GETHandler(request: Request) {
   try {
     const token = getAuthTokenFromRequest(request);
     if (!token) {
@@ -45,7 +45,9 @@ export async function GET(request: Request) {
   }
 }
 
-export async function PATCH(request: Request) {
+export const GET = withApiTiming(GETHandler);
+
+async function PATCHHandler(request: Request) {
   try {
     const token = getAuthTokenFromRequest(request);
     if (!token) {
@@ -129,3 +131,5 @@ export async function PATCH(request: Request) {
     return apiResponseJson({ success: false, message: "خطای سرور" }, { status: 500 });
   }
 }
+
+export const PATCH = withApiTiming(PATCHHandler);

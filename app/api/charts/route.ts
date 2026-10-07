@@ -1,4 +1,4 @@
-import { apiResponseJson } from "@/lib/api-response";
+import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
 import {
@@ -27,7 +27,7 @@ async function getEffectiveUserRole(session: any): Promise<{ isAdmin: boolean; u
   }
 }
 
-export async function GET(req: NextRequest) {
+async function GETHandler(req: NextRequest) {
   try {
     const token = getAuthTokenFromRequest(req);
     const session = token ? await verifySessionToken(token) : null;
@@ -58,7 +58,9 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+export const GET = withApiTiming(GETHandler);
+
+async function POSTHandler(req: NextRequest) {
   try {
     const token = getAuthTokenFromRequest(req);
     const session = token ? await verifySessionToken(token) : null;
@@ -108,7 +110,9 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function PUT(req: NextRequest) {
+export const POST = withApiTiming(POSTHandler);
+
+async function PUTHandler(req: NextRequest) {
   try {
     const token = getAuthTokenFromRequest(req);
     const session = token ? await verifySessionToken(token) : null;
@@ -177,7 +181,9 @@ export async function PUT(req: NextRequest) {
   }
 }
 
-export async function DELETE(req: NextRequest) {
+export const PUT = withApiTiming(PUTHandler);
+
+async function DELETEHandler(req: NextRequest) {
   try {
     const token = getAuthTokenFromRequest(req);
     const session = token ? await verifySessionToken(token) : null;
@@ -225,7 +231,9 @@ export async function DELETE(req: NextRequest) {
   }
 }
 
-export async function PATCH(req: NextRequest) {
+export const DELETE = withApiTiming(DELETEHandler);
+
+async function PATCHHandler(req: NextRequest) {
   try {
     const token = getAuthTokenFromRequest(req);
     const session = token ? await verifySessionToken(token) : null;
@@ -265,3 +273,5 @@ export async function PATCH(req: NextRequest) {
     return apiResponseJson({ success: false, message: "خطا در ثبت رویداد درس" }, { status: 500 });
   }
 }
+
+export const PATCH = withApiTiming(PATCHHandler);

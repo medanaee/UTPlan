@@ -1,9 +1,9 @@
-import { apiResponseJson } from "@/lib/api-response";
+import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { cloneTrackStructure, findUserById, getTrackById, logAdminAction } from "@/lib/db";
 import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
 
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     const token = getAuthTokenFromRequest(request);
     if (!token) {
@@ -92,3 +92,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = withApiTiming(POSTHandler);

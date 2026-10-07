@@ -1,4 +1,4 @@
-import { apiResponseJson } from "@/lib/api-response";
+import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import {
@@ -12,7 +12,7 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-export async function GET(request: NextRequest, { params }: RouteParams) {
+async function GETHandler(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
     const faculty = await getPhysicalFacultyById(id);
@@ -34,7 +34,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-export async function PUT(request: NextRequest, { params }: RouteParams) {
+export const GET = withApiTiming(GETHandler);
+
+async function PUTHandler(request: NextRequest, { params }: RouteParams) {
   try {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response! as NextResponse;
@@ -73,7 +75,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export const PUT = withApiTiming(PUTHandler);
+
+async function DELETEHandler(request: NextRequest, { params }: RouteParams) {
   try {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response! as NextResponse;
@@ -120,3 +124,5 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     );
   }
 }
+
+export const DELETE = withApiTiming(DELETEHandler);

@@ -1,4 +1,4 @@
-import { apiResponseJson } from "@/lib/api-response";
+import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import {
   deleteCoursesByFaculty,
@@ -71,7 +71,7 @@ function extractCourseRefs(rawVal: any): string[] {
   return [];
 }
 
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     const token = getAuthTokenFromRequest(request);
     if (!token) {
@@ -395,3 +395,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = withApiTiming(POSTHandler);

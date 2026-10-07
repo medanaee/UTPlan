@@ -1,8 +1,8 @@
-import { apiResponseJson } from "@/lib/api-response";
+import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { seedDatabase } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
 
-export async function POST(request: Request) {
+async function POSTHandler(request: Request) {
   try {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response!;
@@ -33,3 +33,5 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export const POST = withApiTiming(POSTHandler);

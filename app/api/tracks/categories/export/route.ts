@@ -1,4 +1,4 @@
-import { apiResponseJson } from "@/lib/api-response";
+import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import { getTrackById, getCategories, getTrackAssignments } from "@/lib/db";
@@ -12,7 +12,7 @@ interface HierarchicalCategoryNode {
   children: HierarchicalCategoryNode[];
 }
 
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response!;
@@ -90,3 +90,5 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export const GET = withApiTiming(GETHandler);

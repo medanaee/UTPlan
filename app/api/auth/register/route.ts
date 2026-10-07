@@ -1,8 +1,8 @@
-import { apiResponseJson } from "@/lib/api-response";
+import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { findUserByEmail, createUser } from "@/lib/db";
 import { hashPassword, createSessionToken, createAuthCookieHeader } from "@/lib/auth";
 
-export async function POST(request: Request) {
+async function POSTHandler(request: Request) {
   try {
     const body: any = await request.json();
     const { firstName, lastName, name, email, password, role } = body as {
@@ -83,3 +83,5 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export const POST = withApiTiming(POSTHandler);

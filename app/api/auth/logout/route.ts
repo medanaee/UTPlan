@@ -1,7 +1,7 @@
-import { apiResponseJson } from "@/lib/api-response";
+import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { createClearAuthCookieHeader } from "@/lib/auth";
 
-export async function POST() {
+async function POSTHandler() {
   return apiResponseJson(
     { success: true, message: "با موفقیت خارج شدید." },
     {
@@ -12,3 +12,5 @@ export async function POST() {
     }
   );
 }
+
+export const POST = withApiTiming(POSTHandler);

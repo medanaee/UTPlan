@@ -1,4 +1,4 @@
-import { apiResponseJson } from "@/lib/api-response";
+import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { getD1 } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
@@ -57,7 +57,7 @@ function chunkArray<T>(items: T[], size: number): T[][] {
   return chunks;
 }
 
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response! as NextResponse;
@@ -898,3 +898,5 @@ export async function POST(request: NextRequest) {
     return apiResponseJson({ success: false, message: "خطا در استعلام وابستگی‌ها: " + err?.message }, { status: 500 });
   }
 }
+
+export const POST = withApiTiming(POSTHandler);

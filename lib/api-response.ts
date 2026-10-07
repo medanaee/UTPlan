@@ -84,6 +84,38 @@ export function apiResponseJson(
   );
 }
 
+/**
+ * Measures the complete route handler, including async database work, and
+ * updates the execution field on JSON API responses.
+ */
+export function withApiTiming<T extends (...args: any[]) => Response | Promise<Response>>(
+  handler: T
+): T {
+  return (async (...args: Parameters<T>) => {
+    const startedAt = performance.now();
+    const response = await handler(...args);
+    const body = await response.clone().json().catch(() => null);
+
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return response;
+    }
+
+    const headers = new Headers(response.headers);
+    headers.delete("content-length");
+    return new Response(
+      JSON.stringify({
+        ...(body as Record<string, unknown>),
+        execution: `${Math.round(performance.now() - startedAt)}ms`,
+      }),
+      {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      }
+    );
+  }) as T;
+}
+
 export function apiError(
   message: string,
   status = 500,

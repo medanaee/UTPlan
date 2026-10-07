@@ -1,4 +1,4 @@
-import { apiResponseJson } from "@/lib/api-response";
+import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { getD1 } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
@@ -18,7 +18,7 @@ export interface TrashItem {
   metadata?: Record<string, any>;
 }
 
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response! as NextResponse;
@@ -346,3 +346,5 @@ export async function GET(request: NextRequest) {
     return apiResponseJson({ success: false, message: "خطا در دریافت لیست سطل بازیافت: " + err?.message }, { status: 500 });
   }
 }
+
+export const GET = withApiTiming(GETHandler);
