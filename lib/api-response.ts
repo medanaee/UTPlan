@@ -105,7 +105,7 @@ export function withApiTiming<T extends (...args: any[]) => Response | Promise<R
     return new Response(
       JSON.stringify({
         ...(body as Record<string, unknown>),
-        execution: `${Math.round(performance.now() - startedAt)}ms`,
+        execution: `${Math.max(1, Math.round(performance.now() - startedAt))}ms`,
       }),
       {
         status: response.status,
