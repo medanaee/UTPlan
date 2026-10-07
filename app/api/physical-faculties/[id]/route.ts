@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import {
@@ -17,16 +18,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const faculty = await getPhysicalFacultyById(id);
 
     if (!faculty) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "دانشکده فیزیکی مورد نظر یافت نشد." },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ success: true, data: faculty });
+    return apiResponseJson({ success: true, data: faculty });
   } catch (error: any) {
     console.error("Get physical faculty detail error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: "خطا در دریافت اطلاعات دانشکده" },
       { status: 500 }
     );
@@ -43,7 +44,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     const updated = await updatePhysicalFaculty(id, body);
     if (!updated) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "دانشکده فیزیکی یافت نشد." },
         { status: 404 }
       );
@@ -62,10 +63,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       });
     }
 
-    return NextResponse.json({ success: true, data: updated });
+    return apiResponseJson({ success: true, data: updated });
   } catch (error: any) {
     console.error("Update physical faculty error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: error?.message || "خطا در ویرایش دانشکده فیزیکی" },
       { status: 500 }
     );
@@ -80,7 +81,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const existing = await getPhysicalFacultyById(id);
     if (!existing) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "دانشکده فیزیکی یافت نشد." },
         { status: 404 }
       );
@@ -88,7 +89,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     const ok = await deletePhysicalFaculty(id, false);
     if (!ok) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "خطا در حذف دانشکده فیزیکی" },
         { status: 500 }
       );
@@ -107,13 +108,13 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       });
     }
 
-    return NextResponse.json({
+    return apiResponseJson({
       success: true,
       message: "دانشکده فیزیکی با موفقیت به سطل زباله منتقل شد.",
     });
   } catch (error: any) {
     console.error("Delete physical faculty error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: "خطا در حذف دانشکده فیزیکی" },
       { status: 500 }
     );

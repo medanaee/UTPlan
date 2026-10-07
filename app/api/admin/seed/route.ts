@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { seedDatabase } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
 
@@ -7,7 +8,7 @@ export async function POST(request: Request) {
     if (!auth.authorized) return auth.response!;
 
     if (process.env.NODE_ENV === "production") {
-      return Response.json(
+      return apiResponseJson(
         {
           success: false,
           message: "عملیات بارگذاری داده‌های نمونه به دلایل امنیتی در محیط پروداکشن مسدود است.",
@@ -23,10 +24,10 @@ export async function POST(request: Request) {
     } catch {}
 
     const result = await seedDatabase(full);
-    return Response.json(result);
+    return apiResponseJson(result);
   } catch (error) {
     console.error("Seed error:", error);
-    return Response.json(
+    return apiResponseJson(
       { success: false, message: "خطا در بارگذاری داده‌های اولیه" },
       { status: 500 }
     );

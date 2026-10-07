@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { requireAdminSession } from "@/lib/auth";
 import {
   getCourses,
@@ -24,9 +25,9 @@ export async function GET(request: Request) {
     if (courseId) {
       const course = await getCourseById(courseId);
       if (!course) {
-        return Response.json({ success: false, message: "درس یافت نشد." }, { status: 404 });
+        return apiResponseJson({ success: false, message: "درس یافت نشد." }, { status: 404 });
       }
-      return Response.json(
+      return apiResponseJson(
         { success: true, data: course },
         {
           headers: {
@@ -38,7 +39,7 @@ export async function GET(request: Request) {
 
     const directOnly = searchParams.get("directOnly") === "true";
     const courses = await getCourses(facultyId, trackId, directOnly);
-    return Response.json(
+    return apiResponseJson(
       { success: true, data: courses },
       {
         headers: {
@@ -48,7 +49,7 @@ export async function GET(request: Request) {
     );
   } catch (error) {
     console.error("Get courses error:", error);
-    return Response.json({ success: false, message: "خطا در دریافت لیست دروس" }, { status: 500 });
+    return apiResponseJson({ success: false, message: "خطا در دریافت لیست دروس" }, { status: 500 });
   }
 }
 
@@ -72,7 +73,7 @@ export async function POST(request: Request) {
     } = body;
 
     if (!facultyId || !name) {
-      return Response.json({ success: false, message: "دانشکده و نام درس الزامی است." }, { status: 400 });
+      return apiResponseJson({ success: false, message: "دانشکده و نام درس الزامی است." }, { status: 400 });
     }
 
     const newCourse = await createCourse({
@@ -100,11 +101,11 @@ export async function POST(request: Request) {
       details: { code: newCourse.code, units: newCourse.units },
     });
 
-    return Response.json({ success: true, data: newCourse }, { status: 201 });
+    return apiResponseJson({ success: true, data: newCourse }, { status: 201 });
   } catch (error: any) {
     console.error("Create course error:", error);
     const isConflict = error?.message?.includes("تکراری");
-    return Response.json(
+    return apiResponseJson(
       { success: false, message: error?.message || "خطا در ایجاد درس" },
       { status: isConflict ? 409 : 500 }
     );
@@ -121,11 +122,11 @@ export async function PUT(request: Request) {
     // Sub-action: Add Prerequisite with Cycle Detection
     if (action === "add_prerequisite") {
       if (!courseId || !requiredCourseId) {
-        return Response.json({ success: false, message: "شناسه هر دو درس الزامی است." }, { status: 400 });
+        return apiResponseJson({ success: false, message: "شناسه هر دو درس الزامی است." }, { status: 400 });
       }
 
       if (courseId === requiredCourseId) {
-        return Response.json({ success: false, message: "یک درس نمی‌تواند پیش‌نیاز خودش باشد!" }, { status: 400 });
+        return apiResponseJson({ success: false, message: "یک درس نمی‌تواند پیش‌نیاز خودش باشد!" }, { status: 400 });
       }
 
       // Check for cycles in prerequisites graph
@@ -137,7 +138,7 @@ export async function PUT(request: Request) {
       });
 
       if (causesCycle) {
-        return Response.json(
+        return apiResponseJson(
           {
             success: false,
             message: "خطای چرخه: افزودن این پیش‌نیاز باعث ایجاد چرخه و وابستگی دوری بین دروس می‌شود!",
@@ -147,28 +148,28 @@ export async function PUT(request: Request) {
       }
 
       const relation = await addPrerequisite(courseId, requiredCourseId, type || "prerequisite");
-      return Response.json({ success: true, data: relation });
+      return apiResponseJson({ success: true, data: relation });
     }
 
     // Sub-action: Remove Prerequisite
     if (action === "remove_prerequisite") {
       const { relationId } = body;
       if (!relationId) {
-        return Response.json({ success: false, message: "شناسه رابطه الزامی است." }, { status: 400 });
+        return apiResponseJson({ success: false, message: "شناسه رابطه الزامی است." }, { status: 400 });
       }
       const success = await removePrerequisite(relationId);
-      return Response.json({ success });
+      return apiResponseJson({ success });
     }
 
     // General Course Update
     if (!id) {
-      return Response.json({ success: false, message: "شناسه درس الزامی است." }, { status: 400 });
+      return apiResponseJson({ success: false, message: "شناسه درس الزامی است." }, { status: 400 });
     }
 
     const existing = await getCourseById(id);
     const updated = await updateCourse(id, updateData);
     if (!updated) {
-      return Response.json({ success: false, message: "درس مورد نظر یافت نشد." }, { status: 404 });
+      return apiResponseJson({ success: false, message: "درس مورد نظر یافت نشد." }, { status: 404 });
     }
 
     const diff = existing
@@ -198,11 +199,11 @@ export async function PUT(request: Request) {
       },
     });
 
-    return Response.json({ success: true, data: updated });
+    return apiResponseJson({ success: true, data: updated });
   } catch (error: any) {
     console.error("Update course error:", error);
     const isConflict = error?.message?.includes("تکراری");
-    return Response.json(
+    return apiResponseJson(
       { success: false, message: error?.message || "خطا در به‌روزرسانی درس" },
       { status: isConflict ? 409 : 500 }
     );
@@ -228,11 +229,11 @@ export async function DELETE(request: Request) {
         entityType: "course",
         details: { facultyId, all: true },
       });
-      return Response.json({ success, message: "کلیه دروس دانشکده حذف شدند." });
+      return apiResponseJson({ success, message: "کلیه دروس دانشکده حذف شدند." });
     }
 
     if (!id) {
-      return Response.json({ success: false, message: "شناسه درس الزامی است." }, { status: 400 });
+      return apiResponseJson({ success: false, message: "شناسه درس الزامی است." }, { status: 400 });
     }
 
     const courseBefore = await getCourseById(id);
@@ -249,9 +250,9 @@ export async function DELETE(request: Request) {
       });
     }
 
-    return Response.json({ success });
+    return apiResponseJson({ success });
   } catch (error) {
     console.error("Delete course error:", error);
-    return Response.json({ success: false, message: "خطا در حذف درس" }, { status: 500 });
+    return apiResponseJson({ success: false, message: "خطا در حذف درس" }, { status: 500 });
   }
 }

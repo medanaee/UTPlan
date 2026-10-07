@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { requireAdminSession } from "@/lib/auth";
 import {
   getProfessors,
@@ -16,7 +17,7 @@ export async function GET(request: Request) {
     const facultyId = searchParams.get("facultyId") || undefined;
     const directOnly = searchParams.get("directOnly") === "true";
     const profs = await getProfessors(facultyId, directOnly);
-    return Response.json(
+    return apiResponseJson(
       { success: true, data: profs },
       {
         headers: {
@@ -26,7 +27,7 @@ export async function GET(request: Request) {
     );
   } catch (error) {
     console.error("Get professors error:", error);
-    return Response.json({ success: false, message: "خطا در دریافت لیست اساتید" }, { status: 500 });
+    return apiResponseJson({ success: false, message: "خطا در دریافت لیست اساتید" }, { status: 500 });
   }
 }
 
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
     const { facultyId, code, firstName, lastName, name, title, email, avatarUrl, links } = body;
 
     if (!facultyId || (!name && !firstName && !lastName)) {
-      return Response.json({ success: false, message: "دانشکده و نام استاد الزامی است." }, { status: 400 });
+      return apiResponseJson({ success: false, message: "دانشکده و نام استاد الزامی است." }, { status: 400 });
     }
 
     const newProf = await createProfessor({
@@ -64,11 +65,11 @@ export async function POST(request: Request) {
       details: { code: newProf.code, title: newProf.title },
     });
 
-    return Response.json({ success: true, data: newProf }, { status: 201 });
+    return apiResponseJson({ success: true, data: newProf }, { status: 201 });
   } catch (error: any) {
     console.error("Create professor error:", error);
     const isConflict = error?.message?.includes("تکراری");
-    return Response.json(
+    return apiResponseJson(
       { success: false, message: error?.message || "خطا در ایجاد استاد" },
       { status: isConflict ? 409 : 500 }
     );
@@ -83,7 +84,7 @@ export async function PUT(request: Request) {
     const { id, facultyId, code, firstName, lastName, name, title, email, avatarUrl, links } = body;
 
     if (!id) {
-      return Response.json({ success: false, message: "شناسه استاد الزامی است." }, { status: 400 });
+      return apiResponseJson({ success: false, message: "شناسه استاد الزامی است." }, { status: 400 });
     }
 
     const existing = await getProfessorById(id);
@@ -101,7 +102,7 @@ export async function PUT(request: Request) {
     });
 
     if (!updated) {
-      return Response.json({ success: false, message: "استاد مورد نظر یافت نشد." }, { status: 404 });
+      return apiResponseJson({ success: false, message: "استاد مورد نظر یافت نشد." }, { status: 404 });
     }
 
     const diff = existing
@@ -132,11 +133,11 @@ export async function PUT(request: Request) {
       },
     });
 
-    return Response.json({ success: true, data: updated });
+    return apiResponseJson({ success: true, data: updated });
   } catch (error: any) {
     console.error("Update professor error:", error);
     const isConflict = error?.message?.includes("تکراری");
-    return Response.json(
+    return apiResponseJson(
       { success: false, message: error?.message || "خطا در به‌روزرسانی استاد" },
       { status: isConflict ? 409 : 500 }
     );
@@ -162,11 +163,11 @@ export async function DELETE(request: Request) {
         entityType: "professor",
         details: { facultyId, all: true },
       });
-      return Response.json({ success, message: "کلیه اساتید دانشکده حذف شدند." });
+      return apiResponseJson({ success, message: "کلیه اساتید دانشکده حذف شدند." });
     }
 
     if (!id) {
-      return Response.json({ success: false, message: "شناسه استاد الزامی است." }, { status: 400 });
+      return apiResponseJson({ success: false, message: "شناسه استاد الزامی است." }, { status: 400 });
     }
 
     const profs = await getProfessors();
@@ -184,9 +185,9 @@ export async function DELETE(request: Request) {
       });
     }
 
-    return Response.json({ success });
+    return apiResponseJson({ success });
   } catch (error) {
     console.error("Delete professor error:", error);
-    return Response.json({ success: false, message: "خطا در حذف استاد" }, { status: 500 });
+    return apiResponseJson({ success: false, message: "خطا در حذف استاد" }, { status: 500 });
   }
 }

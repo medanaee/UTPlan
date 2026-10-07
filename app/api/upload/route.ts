@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { requireUserSession } from "@/lib/auth";
 import crypto from "node:crypto";
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest) {
     const file = formData.get("file") as File | null;
 
     if (!file) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "هیچ فایلی ارسال نشده است." },
         { status: 400 }
       );
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
 
     // Check file size (e.g. max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "حجم فایل نباید بیش از ۱۰ مگابایت باشد." },
         { status: 400 }
       );
@@ -61,7 +62,7 @@ export async function POST(request: NextRequest) {
 
         const cldData: any = await cldRes.json();
         if (cldData.secure_url) {
-          return NextResponse.json({
+          return apiResponseJson({
             success: true,
             url: cldData.secure_url,
             provider: "cloudinary",
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest) {
     const mimeType = file.type || "image/jpeg";
     const dataUrl = `data:${mimeType};base64,${base64}`;
 
-    return NextResponse.json({
+    return apiResponseJson({
       success: true,
       url: dataUrl,
       provider: "data_uri_fallback",
@@ -90,7 +91,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Upload API error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: "خطا در پردازش و آپلود تصویر" },
       { status: 500 }
     );

@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { getD1 } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
 
     const d1 = getD1();
     if (!d1) {
-      return NextResponse.json({ success: false, message: "پایگاه داده در دسترس نیست." }, { status: 500 });
+      return apiResponseJson({ success: false, message: "پایگاه داده در دسترس نیست." }, { status: 500 });
     }
 
     const items: TrashItem[] = [];
@@ -333,7 +334,7 @@ export async function GET(request: NextRequest) {
     // Sort items by deletedAt descending
     items.sort((a, b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime());
 
-    return NextResponse.json({
+    return apiResponseJson({
       success: true,
       data: {
         items,
@@ -342,6 +343,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (err: any) {
     console.error("Trash GET error:", err);
-    return NextResponse.json({ success: false, message: "خطا در دریافت لیست سطل بازیافت: " + err?.message }, { status: 500 });
+    return apiResponseJson({ success: false, message: "خطا در دریافت لیست سطل بازیافت: " + err?.message }, { status: 500 });
   }
 }

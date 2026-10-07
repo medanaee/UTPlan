@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import {
   getOfferings,
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
       facultyId,
       directOnly,
     });
-    return NextResponse.json(
+    return apiResponseJson(
       { success: true, data },
       {
         headers: {
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
     );
   } catch (error) {
     console.error("GET offerings error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: "خطا در دریافت ارائه‌های درسی" },
       { status: 500 }
     );
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
       : [];
 
     if (!courseId || resolvedProfIds.length === 0) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "شناسه درس و حداقل یک استاد الزامی است." },
         { status: 400 }
       );
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest) {
       details: { code: newOffering.code, courseId: newOffering.courseId },
     });
 
-    return NextResponse.json({
+    return apiResponseJson({
       success: true,
       message: "اتصال ارائه درس با موفقیت تعریف شد.",
       data: newOffering,
@@ -90,7 +91,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("POST offering error:", error);
     const isConflict = error?.message?.includes("تکراری");
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: error?.message || "خطا در تعریف ارائه درس" },
       { status: isConflict ? 409 : 500 }
     );
@@ -112,7 +113,7 @@ export async function PUT(request: NextRequest) {
       : undefined;
 
     if (!id || !courseId || (resolvedProfIds && resolvedProfIds.length === 0)) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "شناسه ارائه، درس و حداقل یک استاد الزامی است." },
         { status: 400 }
       );
@@ -128,7 +129,7 @@ export async function PUT(request: NextRequest) {
       finalizedSemesters: Array.isArray(finalizedSemesters) ? finalizedSemesters : undefined,
     });
     if (!updated) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "ارائه درس مورد نظر یافت نشد." },
         { status: 404 }
       );
@@ -159,7 +160,7 @@ export async function PUT(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({
+    return apiResponseJson({
       success: true,
       message: "ارائه درس با موفقیت ویرایش شد.",
       data: updated,
@@ -167,7 +168,7 @@ export async function PUT(request: NextRequest) {
   } catch (error: any) {
     console.error("PUT offering error:", error);
     const isConflict = error?.message?.includes("تکراری");
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: error?.message || "خطا در ویرایش ارائه درس" },
       { status: isConflict ? 409 : 500 }
     );
@@ -194,14 +195,14 @@ export async function DELETE(request: NextRequest) {
         entityType: "offering",
         details: { facultyId, all: true },
       });
-      return NextResponse.json({
+      return apiResponseJson({
         success,
         message: "کلیه ارائه‌های درسی دانشکده حذف شدند.",
       });
     }
 
     if (!id) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "شناسه ارائه الزامی است." },
         { status: 400 }
       );
@@ -209,7 +210,7 @@ export async function DELETE(request: NextRequest) {
 
     const success = await deleteOffering(id);
     if (!success) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "ارائه درس یافت نشد یا حذف نشد." },
         { status: 404 }
       );
@@ -224,13 +225,13 @@ export async function DELETE(request: NextRequest) {
       entityId: id,
     });
 
-    return NextResponse.json({
+    return apiResponseJson({
       success: true,
       message: "ارائه درس با موفقیت حذف شد.",
     });
   } catch (error) {
     console.error("DELETE offering error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: "خطا در حذف ارائه درس" },
       { status: 500 }
     );

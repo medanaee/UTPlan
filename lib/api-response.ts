@@ -34,7 +34,7 @@ export function apiResponse<T>(data: T, options: ApiResponseOptions = {}) {
       success: isSuccess,
       status: isSuccess ? "success" : "error",
       message: options.message ?? (isSuccess ? "OK" : "Request failed"),
-      errors: options.errors ?? (isSuccess ? [] : undefined),
+      errors: options.errors ?? [],
       execution: `${Date.now() - startedAt}ms`,
       version: API_VERSION,
     },
@@ -42,6 +42,45 @@ export function apiResponse<T>(data: T, options: ApiResponseOptions = {}) {
       status: statusCode,
       headers: options.headers,
     }
+  );
+}
+
+/**
+ * Drop-in replacement for Response.json/NextResponse.json used by the
+ * existing route handlers. It preserves legacy top-level fields while also
+ * adding the Resora envelope, so current clients remain compatible.
+ */
+export function apiResponseJson(
+  body: unknown,
+  init: ResponseInit = {}
+): Response {
+  const startedAt = Date.now();
+  const statusCode = init.status ?? 200;
+  const record = body && typeof body === "object" && !Array.isArray(body)
+    ? (body as Record<string, unknown>)
+    : undefined;
+  const hasData = Boolean(record && Object.prototype.hasOwnProperty.call(record, "data"));
+  const { data, success, message, errors, status: _status, ...legacyFields } = record ?? {};
+  const payload = hasData ? data : Object.keys(legacyFields).length ? legacyFields : null;
+  const kind = Array.isArray(payload) ? "collection" : "resource";
+  const envelope = buildResponseEnvelope({
+    payload,
+    context: { type: kind },
+  });
+  const isSuccess = success === undefined ? statusCode < 400 : Boolean(success);
+
+  return Response.json(
+    {
+      ...envelope,
+      ...legacyFields,
+      success: isSuccess,
+      status: isSuccess ? "success" : "error",
+      message: typeof message === "string" ? message : isSuccess ? "OK" : "Request failed",
+      errors: errors ?? [],
+      execution: `${Date.now() - startedAt}ms`,
+      version: API_VERSION,
+    },
+    init
   );
 }
 

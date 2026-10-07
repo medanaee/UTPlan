@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import {
   getEvents,
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
       customOnly: customOnly && isAdmin,
     });
 
-    return NextResponse.json(
+    return apiResponseJson(
       { success: true, data },
       {
         headers: {
@@ -67,7 +68,7 @@ export async function GET(request: NextRequest) {
     );
   } catch (error) {
     console.error("GET events error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: "خطا در دریافت زمان‌بندی رویدادها" },
       { status: 500 }
     );
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
     const token = getAuthTokenFromRequest(request);
     const session = token ? await verifySessionToken(token) : null;
     if (!session) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "عدم احراز هویت" },
         { status: 401 }
       );
@@ -105,7 +106,7 @@ export async function POST(request: NextRequest) {
     // Student custom event creation
     if (isUserCustom) {
       if (!offeringId) {
-        return NextResponse.json(
+        return apiResponseJson(
           { success: false, message: "انتخاب ارائه درس الزامی است." },
           { status: 400 }
         );
@@ -123,7 +124,7 @@ export async function POST(request: NextRequest) {
         slots: slots || [],
       });
 
-      return NextResponse.json({
+      return apiResponseJson({
         success: true,
         message: "ارائه شخصی شما با موفقیت ثبت شد.",
         data: newCustomEvent,
@@ -132,14 +133,14 @@ export async function POST(request: NextRequest) {
 
     // Official admin event creation
     if (!offeringId) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "شناسه ارائه الزامی است." },
         { status: 400 }
       );
     }
 
     if (!isAdmin) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "تنها مدیران می‌توانند رویداد رسمی ثبت کنند." },
         { status: 403 }
       );
@@ -168,7 +169,7 @@ export async function POST(request: NextRequest) {
       details: { term: newEvent.term, location: newEvent.location },
     });
 
-    return NextResponse.json({
+    return apiResponseJson({
       success: true,
       message: "زمان‌بندی رویداد با موفقیت ذخیره شد.",
       data: newEvent,
@@ -176,7 +177,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("POST event error:", error);
     const isConflict = error?.message?.includes("تکراری");
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: error?.message || "خطا در ثبت زمان‌بندی رویداد" },
       { status: isConflict ? 409 : 500 }
     );
@@ -188,7 +189,7 @@ export async function PUT(request: NextRequest) {
     const token = getAuthTokenFromRequest(request);
     const session = token ? await verifySessionToken(token) : null;
     if (!session) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "عدم احراز هویت" },
         { status: 401 }
       );
@@ -211,7 +212,7 @@ export async function PUT(request: NextRequest) {
     } = body;
 
     if (!id) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "شناسه رویداد الزامی است." },
         { status: 400 }
       );
@@ -226,7 +227,7 @@ export async function PUT(request: NextRequest) {
           .bind(id)
           .first();
         if (!existing || (existing as any).user_id !== userId) {
-          return NextResponse.json(
+          return apiResponseJson(
             { success: false, message: "تنها صاحب رویداد یا مدیر می‌تواند آن را ویرایش کند." },
             { status: 403 }
           );
@@ -253,7 +254,7 @@ export async function PUT(request: NextRequest) {
     });
 
     if (!updated) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "رویداد مورد نظر یافت نشد." },
         { status: 404 }
       );
@@ -290,7 +291,7 @@ export async function PUT(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({
+    return apiResponseJson({
       success: true,
       message: "زمان‌بندی رویداد با موفقیت به‌روزرسانی شد.",
       data: updated,
@@ -298,7 +299,7 @@ export async function PUT(request: NextRequest) {
   } catch (error: any) {
     console.error("PUT event error:", error);
     const isConflict = error?.message?.includes("تکراری");
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: error?.message || "خطا در ویرایش زمان‌بندی رویداد" },
       { status: isConflict ? 409 : 500 }
     );
@@ -310,7 +311,7 @@ export async function DELETE(request: NextRequest) {
     const token = getAuthTokenFromRequest(request);
     const session = token ? await verifySessionToken(token) : null;
     if (!session) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "عدم احراز هویت" },
         { status: 401 }
       );
@@ -335,7 +336,7 @@ export async function DELETE(request: NextRequest) {
     // Bulk soft delete for faculty & term or specific event IDs (admin only)
     if (all || (eventIds && eventIds.length > 0)) {
       if (!isAdmin) {
-        return NextResponse.json(
+        return apiResponseJson(
           { success: false, message: "تنها مدیران می‌توانند رویدادها را به صورت دسته‌ای حذف کنند." },
           { status: 403 }
         );
@@ -356,7 +357,7 @@ export async function DELETE(request: NextRequest) {
         details: { facultyId, term, all: true, count: eventIds?.length },
       });
 
-      return NextResponse.json({
+      return apiResponseJson({
         success,
         message: term
           ? `کلیه رویدادهای کلاسی این نیمسال (${term}) به سطل بازیافت منتقل شدند.`
@@ -365,7 +366,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     if (!id) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "شناسه رویداد الزامی است." },
         { status: 400 }
       );
@@ -381,7 +382,7 @@ export async function DELETE(request: NextRequest) {
         .first();
 
       if (!existing) {
-        return NextResponse.json(
+        return apiResponseJson(
           { success: false, message: "رویداد مورد نظر یافت نشد." },
           { status: 404 }
         );
@@ -391,13 +392,13 @@ export async function DELETE(request: NextRequest) {
 
       if (!isAdmin) {
         if ((existing as any).user_id !== userId) {
-          return NextResponse.json(
+          return apiResponseJson(
             { success: false, message: "تنها صاحب رویداد یا مدیر می‌تواند آن را حذف کند." },
             { status: 403 }
           );
         }
         if (!isCustom) {
-          return NextResponse.json(
+          return apiResponseJson(
             { success: false, message: "این رویداد توسط مدیر تأیید شده و امکان حذف مستقیم آن وجود ندارد." },
             { status: 403 }
           );
@@ -415,7 +416,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     if (!success) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "خطا در حذف رویداد یا رویداد یافت نشد." },
         { status: 404 }
       );
@@ -432,13 +433,13 @@ export async function DELETE(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({
+    return apiResponseJson({
       success: true,
       message: "رویداد با موفقیت حذف شد.",
     });
   } catch (error) {
     console.error("DELETE event error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: "خطا در حذف رویداد" },
       { status: 500 }
     );

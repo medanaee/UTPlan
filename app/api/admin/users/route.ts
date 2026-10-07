@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
 import { getAllUsers, updateUserRole, findUserById, logAdminAction } from "@/lib/db";
 
@@ -5,18 +6,18 @@ export async function GET(request: Request) {
   try {
     const token = getAuthTokenFromRequest(request);
     if (!token) {
-      return Response.json({ success: false, message: "احراز هویت نشده‌اید." }, { status: 401 });
+      return apiResponseJson({ success: false, message: "احراز هویت نشده‌اید." }, { status: 401 });
     }
 
     const session = await verifySessionToken(token);
     if (!session) {
-      return Response.json({ success: false, message: "دسترسی غیرمجاز." }, { status: 403 });
+      return apiResponseJson({ success: false, message: "دسترسی غیرمجاز." }, { status: 403 });
     }
 
     // Live DB validation of requester role
     const currentUser = await findUserById(session.id);
     if (!currentUser || (currentUser.role !== "admin" && currentUser.role !== "super_admin")) {
-      return Response.json({ success: false, message: "دسترسی غیرمجاز." }, { status: 403 });
+      return apiResponseJson({ success: false, message: "دسترسی غیرمجاز." }, { status: 403 });
     }
 
     const rawUsers = await getAllUsers();
@@ -34,13 +35,13 @@ export async function GET(request: Request) {
       createdAt: u.createdAt,
     }));
 
-    return Response.json({
+    return apiResponseJson({
       success: true,
       data: users,
     });
   } catch (error) {
     console.error("GET /api/admin/users error:", error);
-    return Response.json({ success: false, message: "خطای سرور" }, { status: 500 });
+    return apiResponseJson({ success: false, message: "خطای سرور" }, { status: 500 });
   }
 }
 
@@ -48,18 +49,18 @@ export async function PATCH(request: Request) {
   try {
     const token = getAuthTokenFromRequest(request);
     if (!token) {
-      return Response.json({ success: false, message: "احراز هویت نشده‌اید." }, { status: 401 });
+      return apiResponseJson({ success: false, message: "احراز هویت نشده‌اید." }, { status: 401 });
     }
 
     const session = await verifySessionToken(token);
     if (!session) {
-      return Response.json({ success: false, message: "دسترسی غیرمجاز." }, { status: 403 });
+      return apiResponseJson({ success: false, message: "دسترسی غیرمجاز." }, { status: 403 });
     }
 
     // 1. Live DB check of requester's current role
     const currentUser = await findUserById(session.id);
     if (!currentUser || currentUser.role !== "super_admin") {
-      return Response.json(
+      return apiResponseJson(
         { success: false, message: "تنها مدیر ارشد سامانه مجاز به تغییر نقش کاربران است." },
         { status: 403 }
       );
@@ -69,16 +70,16 @@ export async function PATCH(request: Request) {
     const { userId, role } = body as { userId: string; role: "super_admin" | "admin" | "user" };
 
     if (!userId || !role) {
-      return Response.json({ success: false, message: "شناسه کاربر و نقش الزامی است." }, { status: 400 });
+      return apiResponseJson({ success: false, message: "شناسه کاربر و نقش الزامی است." }, { status: 400 });
     }
 
     if (!["super_admin", "admin", "user"].includes(role)) {
-      return Response.json({ success: false, message: "نقش نامعتبر است." }, { status: 400 });
+      return apiResponseJson({ success: false, message: "نقش نامعتبر است." }, { status: 400 });
     }
 
     // 2. Self-Role Modification Prevention
     if (currentUser.id === userId) {
-      return Response.json(
+      return apiResponseJson(
         { success: false, message: "شما نمی‌توانید نقش حساب کاربری خودتان را تغییر دهید." },
         { status: 400 }
       );
@@ -86,7 +87,7 @@ export async function PATCH(request: Request) {
 
     const targetUser = await findUserById(userId);
     if (!targetUser) {
-      return Response.json({ success: false, message: "کاربر یافت نشد." }, { status: 404 });
+      return apiResponseJson({ success: false, message: "کاربر یافت نشد." }, { status: 404 });
     }
 
     // 3. Last Super Admin Protection
@@ -94,7 +95,7 @@ export async function PATCH(request: Request) {
       const allUsers = await getAllUsers();
       const superAdminsCount = allUsers.filter((u) => u.role === "super_admin").length;
       if (superAdminsCount <= 1) {
-        return Response.json(
+        return apiResponseJson(
           { success: false, message: "حداقل یک مدیر ارشد باید در سامانه فعال باقی بماند." },
           { status: 400 }
         );
@@ -103,7 +104,7 @@ export async function PATCH(request: Request) {
 
     const ok = await updateUserRole(userId, role);
     if (!ok) {
-      return Response.json({ success: false, message: "خطا در به‌روزرسانی نقش کاربر." }, { status: 400 });
+      return apiResponseJson({ success: false, message: "خطا در به‌روزرسانی نقش کاربر." }, { status: 400 });
     }
 
     await logAdminAction({
@@ -117,7 +118,7 @@ export async function PATCH(request: Request) {
       details: { previousRole: targetUser.role, newRole: role, targetEmail: targetUser.email },
     });
 
-    return Response.json({
+    return apiResponseJson({
       success: true,
       message: `نقش کاربر «${targetUser.name}» با موفقیت به «${
         role === "super_admin" ? "مدیر ارشد" : role === "admin" ? "مدیر سامانه" : "دانشجو / کاربر عادی"
@@ -125,6 +126,6 @@ export async function PATCH(request: Request) {
     });
   } catch (error) {
     console.error("PATCH /api/admin/users error:", error);
-    return Response.json({ success: false, message: "خطای سرور" }, { status: 500 });
+    return apiResponseJson({ success: false, message: "خطای سرور" }, { status: 500 });
   }
 }

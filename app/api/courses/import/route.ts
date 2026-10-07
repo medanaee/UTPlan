@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import {
   deleteCoursesByFaculty,
@@ -74,17 +75,17 @@ export async function POST(request: NextRequest) {
   try {
     const token = getAuthTokenFromRequest(request);
     if (!token) {
-      return NextResponse.json({ success: false, message: "احراز هویت نشده‌اید." }, { status: 401 });
+      return apiResponseJson({ success: false, message: "احراز هویت نشده‌اید." }, { status: 401 });
     }
 
     const session = await verifySessionToken(token);
     if (!session) {
-      return NextResponse.json({ success: false, message: "دسترسی غیرمجاز." }, { status: 403 });
+      return apiResponseJson({ success: false, message: "دسترسی غیرمجاز." }, { status: 403 });
     }
 
     const liveUser = await findUserById(session.id);
     if (!liveUser || (liveUser.role !== "admin" && liveUser.role !== "super_admin")) {
-      return NextResponse.json({ success: false, message: "تنها مدیران مجاز به ورود دسته‌ای دروس هستند." }, { status: 403 });
+      return apiResponseJson({ success: false, message: "تنها مدیران مجاز به ورود دسته‌ای دروس هستند." }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -106,7 +107,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!Array.isArray(rawList) || rawList.length === 0) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "لیست دروس ارسالی خالی یا نامعتبر است." },
         { status: 400 }
       );
@@ -118,7 +119,7 @@ export async function POST(request: NextRequest) {
       if (existingFaculties.length > 0) {
         targetFacultyId = existingFaculties[0].id;
       } else {
-        return NextResponse.json(
+        return apiResponseJson(
           { success: false, message: "هیچ دانشکده‌ای در سامانه تعریف نشده است." },
           { status: 400 }
         );
@@ -164,7 +165,7 @@ export async function POST(request: NextRequest) {
 
     const d1 = getD1();
     if (!d1) {
-      return NextResponse.json({ success: false, message: "پایگاه داده در دسترس نیست." }, { status: 500 });
+      return apiResponseJson({ success: false, message: "پایگاه داده در دسترس نیست." }, { status: 500 });
     }
 
     // 4. Step 1: Create or Update Courses (Batched)
@@ -375,7 +376,7 @@ export async function POST(request: NextRequest) {
       userAgent: request.headers.get("user-agent"),
     });
 
-    return NextResponse.json({
+    return apiResponseJson({
       success: true,
       message: `ورود اطلاعات دروس با موفقیت انجام شد: ${createdCount} درس ایجاد، ${updatedCount} درس به‌روزرسانی و ${prereqsAdded} پیش‌نیاز/هم‌نیاز/پیشنهادی ثبت گردید.`,
       stats: {
@@ -388,7 +389,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Courses import error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: "خطا در ورود دسته‌ای دروس: " + (error?.message || "نامشخص") },
       { status: 500 }
     );

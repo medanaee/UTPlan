@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { getEvents, getOfferings, getFaculties } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
@@ -12,7 +13,7 @@ export async function GET(request: NextRequest) {
     const facultyId = searchParams.get("facultyId") || undefined;
 
     if (!term) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "نیمسال تحصیلی (term) الزامی است." },
         { status: 400 }
       );
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Events export error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: error?.message || "خطا در دریافت خروجی رویدادها" },
       { status: 500 }
     );

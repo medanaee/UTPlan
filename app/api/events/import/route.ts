@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { getOfferings, getD1, logAdminAction } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
@@ -39,14 +40,14 @@ export async function POST(request: NextRequest) {
     };
 
     if (!term || typeof term !== "string" || !term.trim()) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "نیمسال تحصیلی هدف (term) مشخص نشده است." },
         { status: 400 }
       );
     }
 
     if (!Array.isArray(events) || events.length === 0) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "هیچ رویدادی برای ورود ارسال نشده است یا آرایه خالی است." },
         { status: 400 }
       );
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     const d1 = getD1();
     if (!d1) {
-      return NextResponse.json({ success: false, message: "پایگاه داده در دسترس نیست." }, { status: 500 });
+      return apiResponseJson({ success: false, message: "پایگاه داده در دسترس نیست." }, { status: 500 });
     }
 
     // 1. Fetch available offerings for matching
@@ -121,7 +122,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (validationErrors.length > 0) {
-      return NextResponse.json(
+      return apiResponseJson(
         {
           success: false,
           message: "داده‌های فایل دارای خطاهای اعتبارسنجی است.",
@@ -252,7 +253,7 @@ export async function POST(request: NextRequest) {
       userAgent: request.headers.get("user-agent"),
     });
 
-    return NextResponse.json({
+    return apiResponseJson({
       success: true,
       message: `پردازش با موفقیت انجام شد: ${createdCount} رویداد جدید ایجاد شد و ${updatedCount} رویداد به‌روزرسانی گردید.`,
       stats: {
@@ -264,7 +265,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Events import error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: error?.message || "خطا در ورود رویدادها" },
       { status: 500 }
     );

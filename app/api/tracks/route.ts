@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { requireAdminSession } from "@/lib/auth";
 import {
   getTracks,
@@ -15,7 +16,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const majorId = searchParams.get("majorId") || undefined;
     const tracks = await getTracks(majorId);
-    return Response.json(
+    return apiResponseJson(
       { success: true, data: tracks },
       {
         headers: {
@@ -25,7 +26,7 @@ export async function GET(request: Request) {
     );
   } catch (error) {
     console.error("Get tracks error:", error);
-    return Response.json({ success: false, message: "خطا در دریافت لیست گرایش‌ها" }, { status: 500 });
+    return apiResponseJson({ success: false, message: "خطا در دریافت لیست گرایش‌ها" }, { status: 500 });
   }
 }
 
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
     };
 
     if (!majorId || !name || !code) {
-      return Response.json({ success: false, message: "رشته، نام و کد گرایش الزامی است." }, { status: 400 });
+      return apiResponseJson({ success: false, message: "رشته، نام و کد گرایش الزامی است." }, { status: 400 });
     }
 
     const newTrack = await createTrack(majorId, name, code, rulesTree);
@@ -55,10 +56,10 @@ export async function POST(request: Request) {
       entityId: newTrack.id,
       entityName: name,
     });
-    return Response.json({ success: true, data: newTrack }, { status: 201 });
+    return apiResponseJson({ success: true, data: newTrack }, { status: 201 });
   } catch (error) {
     console.error("Create track error:", error);
-    return Response.json({ success: false, message: "خطا در ایجاد گرایش" }, { status: 500 });
+    return apiResponseJson({ success: false, message: "خطا در ایجاد گرایش" }, { status: 500 });
   }
 }
 
@@ -77,14 +78,14 @@ export async function PUT(request: Request) {
 
     const targetId = id || trackId;
     if (!targetId) {
-      return Response.json({ success: false, message: "شناسه گرایش الزامی است." }, { status: 400 });
+      return apiResponseJson({ success: false, message: "شناسه گرایش الزامی است." }, { status: 400 });
     }
 
     if (name && code) {
       const existing = await getTrackById(targetId);
       const updated = await updateTrack(targetId, name, code, rulesTree);
       if (!updated) {
-        return Response.json({ success: false, message: "گرایش یافت نشد." }, { status: 404 });
+        return apiResponseJson({ success: false, message: "گرایش یافت نشد." }, { status: 404 });
       }
 
       const diff = existing
@@ -104,7 +105,7 @@ export async function PUT(request: Request) {
           ...diff,
         },
       });
-      return Response.json({ success: true, data: updated });
+      return apiResponseJson({ success: true, data: updated });
     }
 
     if (rulesTree) {
@@ -120,13 +121,13 @@ export async function PUT(request: Request) {
           entityName: "درخت قوانین گرایش",
         });
       }
-      return Response.json({ success });
+      return apiResponseJson({ success });
     }
 
-    return Response.json({ success: false, message: "اطلاعات ویرایش نامعتبر است." }, { status: 400 });
+    return apiResponseJson({ success: false, message: "اطلاعات ویرایش نامعتبر است." }, { status: 400 });
   } catch (error) {
     console.error("Update track error:", error);
-    return Response.json({ success: false, message: "خطا در به‌روزرسانی گرایش" }, { status: 500 });
+    return apiResponseJson({ success: false, message: "خطا در به‌روزرسانی گرایش" }, { status: 500 });
   }
 }
 
@@ -137,7 +138,7 @@ export async function DELETE(request: Request) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     if (!id) {
-      return Response.json({ success: false, message: "شناسه گرایش الزامی است." }, { status: 400 });
+      return apiResponseJson({ success: false, message: "شناسه گرایش الزامی است." }, { status: 400 });
     }
 
     const success = await deleteTrack(id);
@@ -151,9 +152,9 @@ export async function DELETE(request: Request) {
         entityId: id,
       });
     }
-    return Response.json({ success });
+    return apiResponseJson({ success });
   } catch (error) {
     console.error("Delete track error:", error);
-    return Response.json({ success: false, message: "خطا در حذف گرایش" }, { status: 500 });
+    return apiResponseJson({ success: false, message: "خطا در حذف گرایش" }, { status: 500 });
   }
 }

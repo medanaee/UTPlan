@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { requireAdminSession } from "@/lib/auth";
 import {
   getTrackAssignments,
@@ -15,11 +16,11 @@ export async function GET(request: Request) {
     const trackId = searchParams.get("trackId");
 
     if (!trackId) {
-      return Response.json({ success: false, message: "شناسه گرایش الزامی است." }, { status: 400 });
+      return apiResponseJson({ success: false, message: "شناسه گرایش الزامی است." }, { status: 400 });
     }
 
     const assignments = await getTrackAssignments(trackId);
-    return Response.json(
+    return apiResponseJson(
       { success: true, data: assignments },
       {
         headers: {
@@ -29,7 +30,7 @@ export async function GET(request: Request) {
     );
   } catch (error) {
     console.error("Get track assignments error:", error);
-    return Response.json({ success: false, message: "خطا در دریافت لیست انتساب‌ها" }, { status: 500 });
+    return apiResponseJson({ success: false, message: "خطا در دریافت لیست انتساب‌ها" }, { status: 500 });
   }
 }
 
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
     const { trackId, assignments, courseId, visualCategoryId, ruleCategoryId } = body;
 
     if (!trackId) {
-      return Response.json({ success: false, message: "شناسه گرایش الزامی است." }, { status: 400 });
+      return apiResponseJson({ success: false, message: "شناسه گرایش الزامی است." }, { status: 400 });
     }
 
     // Unassign single course
@@ -59,7 +60,7 @@ export async function POST(request: Request) {
         ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip"),
         userAgent: request.headers.get("user-agent"),
       });
-      return Response.json({ success: true, data: updatedAssignment, message: "درس با موفقیت از دسته خارج شد." });
+      return apiResponseJson({ success: true, data: updatedAssignment, message: "درس با موفقیت از دسته خارج شد." });
     }
 
     // Clear all courses from specific category
@@ -78,7 +79,7 @@ export async function POST(request: Request) {
         ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip"),
         userAgent: request.headers.get("user-agent"),
       });
-      return Response.json({ success: true, data: updated, message: "دروس داخل این دسته با موفقیت پاک شدند." });
+      return apiResponseJson({ success: true, data: updated, message: "دروس داخل این دسته با موفقیت پاک شدند." });
     }
 
     // Assign courses to specific category
@@ -102,7 +103,7 @@ export async function POST(request: Request) {
         ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip"),
         userAgent: request.headers.get("user-agent"),
       });
-      return Response.json({ success: true, data: updated });
+      return apiResponseJson({ success: true, data: updated });
     }
 
     // Bulk assign
@@ -121,12 +122,12 @@ export async function POST(request: Request) {
         ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip"),
         userAgent: request.headers.get("user-agent"),
       });
-      return Response.json({ success: true, data: updated });
+      return apiResponseJson({ success: true, data: updated });
     }
 
     // Single assign
     if (!courseId) {
-      return Response.json({ success: false, message: "شناسه درس الزامی است." }, { status: 400 });
+      return apiResponseJson({ success: false, message: "شناسه درس الزامی است." }, { status: 400 });
     }
 
     const catId = body.categoryId ?? body.ruleCategoryId ?? body.visualCategoryId ?? null;
@@ -149,9 +150,9 @@ export async function POST(request: Request) {
       userAgent: request.headers.get("user-agent"),
     });
 
-    return Response.json({ success: true, data: updatedAssignment });
+    return apiResponseJson({ success: true, data: updatedAssignment });
   } catch (error) {
     console.error("Update track assignments error:", error);
-    return Response.json({ success: false, message: "خطا در به‌روزرسانی انتساب دروس" }, { status: 500 });
+    return apiResponseJson({ success: false, message: "خطا در به‌روزرسانی انتساب دروس" }, { status: 500 });
   }
 }

@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import {
   getAuthTokenFromRequest,
@@ -11,20 +12,20 @@ export async function GET(request: NextRequest) {
   try {
     const token = getAuthTokenFromRequest(request);
     if (!token) {
-      return NextResponse.json({ authenticated: false, user: null }, { status: 401 });
+      return apiResponseJson({ authenticated: false, user: null }, { status: 401 });
     }
 
     const session = await verifySessionToken(token);
     if (!session) {
-      return NextResponse.json({ authenticated: false, user: null }, { status: 401 });
+      return apiResponseJson({ authenticated: false, user: null }, { status: 401 });
     }
 
     const user = await findUserById(session.id);
     if (!user) {
-      return NextResponse.json({ authenticated: false, user: null }, { status: 401 });
+      return apiResponseJson({ authenticated: false, user: null }, { status: 401 });
     }
 
-    return NextResponse.json({
+    return apiResponseJson({
       authenticated: true,
       user: {
         id: user.id,
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Auth me error:", error);
-    return NextResponse.json({ authenticated: false, user: null }, { status: 500 });
+    return apiResponseJson({ authenticated: false, user: null }, { status: 500 });
   }
 }
 
@@ -51,12 +52,12 @@ export async function PUT(request: NextRequest) {
   try {
     const token = getAuthTokenFromRequest(request);
     if (!token) {
-      return NextResponse.json({ success: false, message: "عدم احراز هویت" }, { status: 401 });
+      return apiResponseJson({ success: false, message: "عدم احراز هویت" }, { status: 401 });
     }
 
     const session = await verifySessionToken(token);
     if (!session) {
-      return NextResponse.json({ success: false, message: "نشست نامعتبر است" }, { status: 401 });
+      return apiResponseJson({ success: false, message: "نشست نامعتبر است" }, { status: 401 });
     }
 
     const body: any = await request.json();
@@ -75,26 +76,26 @@ export async function PUT(request: NextRequest) {
 
     const user = await findUserById(session.id);
     if (!user) {
-      return NextResponse.json({ success: false, message: "کاربر یافت نشد" }, { status: 404 });
+      return apiResponseJson({ success: false, message: "کاربر یافت نشد" }, { status: 404 });
     }
 
     // Optional password change
     if (newPassword) {
       if (!currentPassword) {
-        return NextResponse.json(
+        return apiResponseJson(
           { success: false, message: "برای تغییر رمز، وارد کردن رمز عبور فعلی الزامی است." },
           { status: 400 }
         );
       }
       const isCurrentCorrect = await verifyPassword(currentPassword, user.passwordHash);
       if (!isCurrentCorrect) {
-        return NextResponse.json(
+        return apiResponseJson(
           { success: false, message: "رمز عبور فعلی نادرست است." },
           { status: 400 }
         );
       }
       if (newPassword.length < 6) {
-        return NextResponse.json(
+        return apiResponseJson(
           { success: false, message: "رمز عبور جدید باید حداقل ۶ کاراکتر باشد." },
           { status: 400 }
         );
@@ -114,7 +115,7 @@ export async function PUT(request: NextRequest) {
       avatarUrl: avatarUrl !== undefined ? avatarUrl : user.avatarUrl,
     });
 
-    return NextResponse.json({
+    return apiResponseJson({
       success: true,
       message: "اطلاعات حساب کاربری با موفقیت به‌روزرسانی شد.",
       user: {
@@ -133,6 +134,6 @@ export async function PUT(request: NextRequest) {
     });
   } catch (error) {
     console.error("Auth profile update error:", error);
-    return NextResponse.json({ success: false, message: "خطا در ویرایش پروفایل" }, { status: 500 });
+    return apiResponseJson({ success: false, message: "خطا در ویرایش پروفایل" }, { status: 500 });
   }
 }

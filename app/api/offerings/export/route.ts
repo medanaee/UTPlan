@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { getOfferings, getCourses, getProfessors } from "@/lib/db";
 
@@ -47,14 +48,14 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({
+    return apiResponseJson({
       success: true,
       count: exportData.length,
       data: exportData,
     });
   } catch (error: any) {
     console.error("Offerings Export error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: "خطا در دریافت خروجی ارائه‌های درسی" },
       { status: 500 }
     );

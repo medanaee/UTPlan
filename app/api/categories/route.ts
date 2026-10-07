@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { requireAdminSession } from "@/lib/auth";
 import {
   getCategories,
@@ -16,12 +17,12 @@ export async function GET(request: Request) {
     const trackId = searchParams.get("trackId");
 
     if (!trackId) {
-      return Response.json({ success: false, message: "شناسه گرایش الزامی است." }, { status: 400 });
+      return apiResponseJson({ success: false, message: "شناسه گرایش الزامی است." }, { status: 400 });
     }
 
     const categories = await getCategories(trackId);
 
-    return Response.json(
+    return apiResponseJson(
       {
         success: true,
         data: {
@@ -42,7 +43,7 @@ export async function GET(request: Request) {
     );
   } catch (error) {
     console.error("Get categories error:", error);
-    return Response.json({ success: false, message: "خطا در دریافت لیست دسته‌ها" }, { status: 500 });
+    return apiResponseJson({ success: false, message: "خطا در دریافت لیست دسته‌ها" }, { status: 500 });
   }
 }
 
@@ -62,7 +63,7 @@ export async function POST(request: Request) {
     };
 
     if (!trackId || !name) {
-      return Response.json({ success: false, message: "اطلاعات دسته ناقص است (نام و گرایش الزامی هستند)." }, { status: 400 });
+      return apiResponseJson({ success: false, message: "اطلاعات دسته ناقص است (نام و گرایش الزامی هستند)." }, { status: 400 });
     }
 
     const newCat = await createCategory({
@@ -87,10 +88,10 @@ export async function POST(request: Request) {
       userAgent: request.headers.get("user-agent"),
     });
 
-    return Response.json({ success: true, data: newCat }, { status: 201 });
+    return apiResponseJson({ success: true, data: newCat }, { status: 201 });
   } catch (error) {
     console.error("Create category error:", error);
-    return Response.json({ success: false, message: "خطا در ایجاد دسته" }, { status: 500 });
+    return apiResponseJson({ success: false, message: "خطا در ایجاد دسته" }, { status: 500 });
   }
 }
 
@@ -102,7 +103,7 @@ export async function DELETE(request: Request) {
     const id = searchParams.get("id");
 
     if (!id) {
-      return Response.json({ success: false, message: "شناسه دسته الزامی است." }, { status: 400 });
+      return apiResponseJson({ success: false, message: "شناسه دسته الزامی است." }, { status: 400 });
     }
 
     const success = await deleteCategory(id);
@@ -119,10 +120,10 @@ export async function DELETE(request: Request) {
       userAgent: request.headers.get("user-agent"),
     });
 
-    return Response.json({ success });
+    return apiResponseJson({ success });
   } catch (error) {
     console.error("Delete category error:", error);
-    return Response.json({ success: false, message: "خطا در حذف دسته" }, { status: 500 });
+    return apiResponseJson({ success: false, message: "خطا در حذف دسته" }, { status: 500 });
   }
 }
 
@@ -158,7 +159,7 @@ export async function PUT(request: Request) {
         userAgent: request.headers.get("user-agent"),
       });
 
-      return Response.json({ success: true, message: "ترتیب دسته‌ها با موفقیت ذخیره شد." });
+      return apiResponseJson({ success: true, message: "ترتیب دسته‌ها با موفقیت ذخیره شد." });
     }
 
     // Sub-action: Update category
@@ -166,7 +167,7 @@ export async function PUT(request: Request) {
       const existing = await getCategoryById(id);
       const updated = await updateCategory(id, { name, color, parentId, sortOrder, code });
       if (!updated) {
-        return Response.json({ success: false, message: "دسته یافت نشد." }, { status: 404 });
+        return apiResponseJson({ success: false, message: "دسته یافت نشد." }, { status: 404 });
       }
 
       const diff = existing
@@ -189,13 +190,13 @@ export async function PUT(request: Request) {
         userAgent: request.headers.get("user-agent"),
       });
 
-      return Response.json({ success: true, data: updated, message: "دسته با موفقیت ویرایش شد." });
+      return apiResponseJson({ success: true, data: updated, message: "دسته با موفقیت ویرایش شد." });
     }
 
-    return Response.json({ success: false, message: "عملیات یا اطلاعات نامعتبر است." }, { status: 400 });
+    return apiResponseJson({ success: false, message: "عملیات یا اطلاعات نامعتبر است." }, { status: 400 });
   } catch (error: any) {
     console.error("PUT categories error:", error);
-    return Response.json(
+    return apiResponseJson(
       { success: false, message: "خطا در به‌روزرسانی دسته: " + (error?.message || "نامشخص") },
       { status: 500 }
     );

@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { getD1 } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
@@ -66,12 +67,12 @@ export async function POST(request: NextRequest) {
       body?.items || (body?.entityType && body?.entityId ? [{ type: body.entityType, id: body.entityId }] : []);
 
     if (rawItems.length === 0) {
-      return NextResponse.json({ success: false, message: "هیچ موجودیتی برای بررسی مشخص نشده است." }, { status: 400 });
+      return apiResponseJson({ success: false, message: "هیچ موجودیتی برای بررسی مشخص نشده است." }, { status: 400 });
     }
 
     const d1 = getD1();
     if (!d1) {
-      return NextResponse.json({ success: false, message: "پایگاه داده در دسترس نیست." }, { status: 500 });
+      return apiResponseJson({ success: false, message: "پایگاه داده در دسترس نیست." }, { status: 500 });
     }
 
     // Set of all items slated for deletion in this operation (for mutual conflict suppression)
@@ -887,13 +888,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
+    return apiResponseJson({
       success: true,
       safeToDeleteDirectly: dependencies.length === 0,
       dependencies,
     });
   } catch (err: any) {
     console.error("Check dependencies error:", err);
-    return NextResponse.json({ success: false, message: "خطا در استعلام وابستگی‌ها: " + err?.message }, { status: 500 });
+    return apiResponseJson({ success: false, message: "خطا در استعلام وابستگی‌ها: " + err?.message }, { status: 500 });
   }
 }

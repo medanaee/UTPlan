@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import {
   getFaculties,
@@ -46,7 +47,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!Array.isArray(rawList) || rawList.length === 0) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "لیست اساتید ارسالی خالی یا نامعتبر است." },
         { status: 400 }
       );
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     const d1 = getD1();
     if (!d1) {
-      return NextResponse.json({ success: false, message: "پایگاه داده در دسترس نیست." }, { status: 500 });
+      return apiResponseJson({ success: false, message: "پایگاه داده در دسترس نیست." }, { status: 500 });
     }
 
     // 1. Resolve Target Faculty
@@ -63,7 +64,7 @@ export async function POST(request: NextRequest) {
       if (existingFaculties.length > 0) {
         targetFacultyId = existingFaculties[0].id;
       } else {
-        return NextResponse.json(
+        return apiResponseJson(
           { success: false, message: "هیچ دانشکده‌ای در سامانه تعریف نشده است." },
           { status: 400 }
         );
@@ -221,7 +222,7 @@ export async function POST(request: NextRequest) {
       userAgent: request.headers.get("user-agent"),
     });
 
-    return NextResponse.json({
+    return apiResponseJson({
       success: true,
       message: `عملیات با موفقیت انجام شد: ${createdCount} استاد جدید افزوده و ${updatedCount} استاد به‌روزرسانی شدند.`,
       stats: {
@@ -233,7 +234,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Professors Import error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: "خطای سرور در ورود اطلاعات اساتید: " + (error?.message || "نامشخص") },
       { status: 500 }
     );

@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { requireSuperAdminSession } from "@/lib/auth";
 import { getAuditLogs } from "@/lib/db";
 
@@ -23,7 +24,7 @@ export async function GET(request: Request) {
       search,
     });
 
-    return Response.json({
+    return apiResponseJson({
       success: true,
       data: result.logs,
       pagination: {
@@ -35,7 +36,7 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("Get audit logs API error:", error);
-    return Response.json(
+    return apiResponseJson(
       { success: false, message: "خطا در دریافت لاگ‌های سامانه" },
       { status: 500 }
     );

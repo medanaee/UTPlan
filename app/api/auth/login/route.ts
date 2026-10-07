@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { findUserByEmail } from "@/lib/db";
 import { verifyPassword, createSessionToken, createAuthCookieHeader } from "@/lib/auth";
 
@@ -7,7 +8,7 @@ export async function POST(request: Request) {
     const { email, password } = body as { email?: string; password?: string };
 
     if (!email || !password) {
-      return Response.json(
+      return apiResponseJson(
         { success: false, message: "لطفاً ایمیل و رمز عبور را وارد کنید." },
         { status: 400 }
       );
@@ -15,7 +16,7 @@ export async function POST(request: Request) {
 
     const user = await findUserByEmail(email);
     if (!user) {
-      return Response.json(
+      return apiResponseJson(
         { success: false, message: "ایمیل یا رمز عبور نامعتبر است." },
         { status: 401 }
       );
@@ -23,7 +24,7 @@ export async function POST(request: Request) {
 
     const isMatch = await verifyPassword(password, user.passwordHash);
     if (!isMatch) {
-      return Response.json(
+      return apiResponseJson(
         { success: false, message: "ایمیل یا رمز عبور نامعتبر است." },
         { status: 401 }
       );
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
     const token = await createSessionToken(sessionPayload);
     const cookieHeader = createAuthCookieHeader(token);
 
-    return Response.json(
+    return apiResponseJson(
       {
         success: true,
         message: "ورود با موفقیت انجام شد.",
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     console.error("Login error:", error);
-    return Response.json(
+    return apiResponseJson(
       { success: false, message: "خطای سیستمی رخ داده است." },
       { status: 500 }
     );

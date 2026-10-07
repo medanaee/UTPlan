@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { getD1, getFaculties, getCourses, getProfessors, getOfferings, getEvents, getCharts, getAllPrerequisites, logAdminAction } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
@@ -64,7 +65,7 @@ export async function GET(request: NextRequest) {
     const totalRecords = Object.values(tableCounts).reduce((a, b) => a + b, 0);
 
     if (statsOnly) {
-      return NextResponse.json({
+      return apiResponseJson({
         success: true,
         data: {
           tableCounts,
@@ -97,7 +98,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Backup GET error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: "خطا در تهیه نسخه پشتیبان JSON: " + (error?.message || "نامشخص") },
       { status: 500 }
     );
@@ -121,7 +122,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!tablesData || typeof tablesData !== "object") {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "ساختار فایل JSON پشتیبان نامعتبر است." },
         { status: 400 }
       );
@@ -129,7 +130,7 @@ export async function POST(request: NextRequest) {
 
     const d1 = getD1();
     if (!d1) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "پایگاه داده D1 در دسترس نیست." },
         { status: 500 }
       );
@@ -281,7 +282,7 @@ export async function POST(request: NextRequest) {
       userAgent: request.headers.get("user-agent"),
     });
 
-    return NextResponse.json({
+    return apiResponseJson({
       success: true,
       message: `بازیابی کامل از فایل JSON با موفقیت انجام شد: در مجموع ${totalInserted} رکورد در ${TABLE_ORDER.length} جدول بازنویسی و بازیابی گردید.`,
       stats: {
@@ -293,7 +294,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Restore POST error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: "خطا در فرآیند بازیابی JSON: " + (error?.message || "نامشخص") },
       { status: 500 }
     );
@@ -307,7 +308,7 @@ export async function DELETE(request: NextRequest) {
 
     const d1 = getD1();
     if (!d1) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "پایگاه داده D1 در دسترس نیست." },
         { status: 500 }
       );
@@ -369,7 +370,7 @@ export async function DELETE(request: NextRequest) {
       userAgent: request.headers.get("user-agent"),
     });
 
-    return NextResponse.json({
+    return apiResponseJson({
       success: true,
       message: `پاکسازی کامل با موفقیت انجام شد: ${totalPurged} رکورد از ۱۶ جدول دیتابیس حذف شدند. اطلاعات کاربران و ساختار دانشگاه بدون تغییر حفظ گردیدند.`,
       purgedCounts,
@@ -377,7 +378,7 @@ export async function DELETE(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Purge DELETE error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: "خطا در فرآیند پاکسازی دیتابیس: " + (error?.message || "نامشخص") },
       { status: 500 }
     );

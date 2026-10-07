@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { getD1, logAdminAction } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
@@ -14,12 +15,12 @@ export async function POST(request: NextRequest) {
       body?.items || (body?.type && body?.id ? [{ type: body.type, id: body.id }] : []);
 
     if (rawItems.length === 0) {
-      return NextResponse.json({ success: false, message: "هیچ موجودیتی برای بازیابی مشخص نشده است." }, { status: 400 });
+      return apiResponseJson({ success: false, message: "هیچ موجودیتی برای بازیابی مشخص نشده است." }, { status: 400 });
     }
 
     const d1 = getD1();
     if (!d1) {
-      return NextResponse.json({ success: false, message: "پایگاه داده در دسترس نیست." }, { status: 500 });
+      return apiResponseJson({ success: false, message: "پایگاه داده در دسترس نیست." }, { status: 500 });
     }
 
     const idsByType: Record<string, string[]> = {
@@ -74,13 +75,13 @@ export async function POST(request: NextRequest) {
       details: { items: rawItems },
     });
 
-    return NextResponse.json({
+    return apiResponseJson({
       success: true,
       message: `${restoredCount} مورد با موفقیت بازیابی شدند و به لیست فعال بازگشتند.`,
       restoredCount,
     });
   } catch (err: any) {
     console.error("Trash restore error:", err);
-    return NextResponse.json({ success: false, message: "خطا در بازیابی موجودیت‌ها: " + err?.message }, { status: 500 });
+    return apiResponseJson({ success: false, message: "خطا در بازیابی موجودیت‌ها: " + err?.message }, { status: 500 });
   }
 }

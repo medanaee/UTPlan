@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import {
   getPhysicalFaculties,
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!Array.isArray(rawList) || rawList.length === 0) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "لیست ارسالی دانشکده‌ها خالی یا نامعتبر است." },
         { status: 400 }
       );
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
 
     const d1 = getD1();
     if (!d1) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "پایگاه داده در دسترس نیست." },
         { status: 500 }
       );
@@ -149,7 +150,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({
+    return apiResponseJson({
       success: true,
       message: `عملیات ورود با موفقیت انجام شد: ${insertedCount} افزوده شد، ${updatedCount} به‌روزرسانی شد.`,
       stats: {
@@ -162,7 +163,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Physical faculties import error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: error?.message || "خطا در پردازش فایل ورود دانشکده‌های فیزیکی" },
       { status: 500 }
     );

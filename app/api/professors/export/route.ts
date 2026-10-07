@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { getProfessors } from "@/lib/db";
 
@@ -25,14 +26,14 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({
+    return apiResponseJson({
       success: true,
       count: exportData.length,
       data: exportData,
     });
   } catch (error: any) {
     console.error("Professors Export error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: "خطا در خروجی گرفتن از اطلاعات اساتید" },
       { status: 500 }
     );

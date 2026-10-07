@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import {
@@ -20,7 +21,7 @@ export async function POST(request: NextRequest) {
     const { trackId, categories } = body;
 
     if (!trackId) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "شناسه گرایش (trackId) الزامی است." },
         { status: 400 }
       );
@@ -28,14 +29,14 @@ export async function POST(request: NextRequest) {
 
     const track = await getTrackById(trackId);
     if (!track) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "گرایش مورد نظر یافت نشد." },
         { status: 404 }
       );
     }
 
     if (!Array.isArray(categories) || categories.length === 0) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "داده‌های ورودی باید یک آرایه شامل حداقل یک دسته باشند." },
         { status: 400 }
       );
@@ -87,7 +88,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (validationErrors.length > 0) {
-      return NextResponse.json(
+      return apiResponseJson(
         {
           success: false,
           message: `خطا در اعتبارسنجی ساختار JSON: ${validationErrors[0]}`,
@@ -220,14 +221,14 @@ export async function POST(request: NextRequest) {
       userAgent: request.headers.get("user-agent"),
     });
 
-    return NextResponse.json({
+    return apiResponseJson({
       success: true,
       message: `ورود دسته‌ها با موفقیت انجام شد (${stats.categoriesCreated} ایجاد، ${stats.categoriesUpdated} به‌روزرسانی).`,
       stats,
     });
   } catch (error: any) {
     console.error("Categories import error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: error?.message || "خطا در پردازش و ورود دسته‌ها" },
       { status: 500 }
     );

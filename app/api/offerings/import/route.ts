@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import {
   getCourses,
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!Array.isArray(rawList) || rawList.length === 0) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "لیست ارائه‌های ارسالی خالی یا نامعتبر است." },
         { status: 400 }
       );
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     const d1 = getD1();
     if (!d1) {
-      return NextResponse.json({ success: false, message: "پایگاه داده در دسترس نیست." }, { status: 500 });
+      return apiResponseJson({ success: false, message: "پایگاه داده در دسترس نیست." }, { status: 500 });
     }
 
     // 1. Resolve Target Faculty
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
       if (existingFaculties.length > 0) {
         targetFacultyId = existingFaculties[0].id;
       } else {
-        return NextResponse.json(
+        return apiResponseJson(
           { success: false, message: "هیچ دانشکده‌ای در سامانه تعریف نشده است." },
           { status: 400 }
         );
@@ -299,7 +300,7 @@ export async function POST(request: NextRequest) {
       userAgent: request.headers.get("user-agent"),
     });
 
-    return NextResponse.json({
+    return apiResponseJson({
       success: true,
       message: `عملیات با موفقیت انجام شد: ${createdCount} ارائه جدید افزوده و ${updatedCount} ارائه به‌روزرسانی شدند.`,
       stats: {
@@ -317,7 +318,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Import offerings error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: "خطای سرور در پردازش فایل ایمپورت ارائه‌ها: " + (error?.message || "نامشخص") },
       { status: 500 }
     );

@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { getEvents, createEvent, logAdminAction } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
@@ -11,14 +12,14 @@ export async function POST(request: NextRequest) {
     const { sourceTerm, targetTerm, resetExamDates = false } = body;
 
     if (!sourceTerm || !targetTerm) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "نیمسال مبدأ و نیمسال مقصد الزامی هستند." },
         { status: 400 }
       );
     }
 
     if (sourceTerm === targetTerm) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "نیمسال مبدأ و مقصد نمی‌توانند یکسان باشند." },
         { status: 400 }
       );
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
 
     const sourceEvents = await getEvents({ term: sourceTerm });
     if (sourceEvents.length === 0) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: `هیچ رویدادی در نیمسال مبدأ (${sourceTerm}) یافت نشد.` },
         { status: 404 }
       );
@@ -68,14 +69,14 @@ export async function POST(request: NextRequest) {
       userAgent: request.headers.get("user-agent"),
     });
 
-    return NextResponse.json({
+    return apiResponseJson({
       success: true,
       message: `تعداد ${clonedCount} رویداد با موفقیت از نیمسال ${sourceTerm} به ${targetTerm} کپی شد.`,
       count: clonedCount,
     });
   } catch (error) {
     console.error("Clone events error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: "خطا در کپی رویدادهای کلاسی" },
       { status: 500 }
     );

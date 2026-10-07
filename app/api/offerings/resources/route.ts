@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import {
   getOfferingResources,
@@ -14,14 +15,14 @@ export async function GET(request: NextRequest) {
     const offeringId = searchParams.get("offeringId");
 
     if (!offeringId) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "شناسه ارائه الزامی است." },
         { status: 400 }
       );
     }
 
     const data = await getOfferingResources(offeringId);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: true, data },
       {
         headers: {
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
     );
   } catch (error: any) {
     console.error("GET offering resources error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: "خطا در دریافت منابع درس" },
       { status: 500 }
     );
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
     const { offeringId, title, term, type, url } = body;
 
     if (!offeringId || !title?.trim() || !type || !url?.trim()) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "شناسه ارائه، نام منبع، نوع منبع و آدرس لینک الزامی هستند." },
         { status: 400 }
       );
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
 
     const validTypes: OfferingResourceType[] = ["video", "slide", "archive"];
     if (!validTypes.includes(type)) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "نوع منبع باید یکی از مقادیر ویدئو، اسلاید یا آرشیو باشد." },
         { status: 400 }
       );
@@ -69,14 +70,14 @@ export async function POST(request: NextRequest) {
       url: url.trim(),
     });
 
-    return NextResponse.json({
+    return apiResponseJson({
       success: true,
       message: "منبع آموزشی با موفقیت ثبت شد.",
       data: newResource,
     });
   } catch (error: any) {
     console.error("POST offering resource error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: "خطا در ثبت منبع آموزشی" },
       { status: 500 }
     );
@@ -92,7 +93,7 @@ export async function PUT(request: NextRequest) {
     const { id, title, term, type, url } = body;
 
     if (!id) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "شناسه منبع الزامی است." },
         { status: 400 }
       );
@@ -101,7 +102,7 @@ export async function PUT(request: NextRequest) {
     if (type) {
       const validTypes: OfferingResourceType[] = ["video", "slide", "archive"];
       if (!validTypes.includes(type)) {
-        return NextResponse.json(
+        return apiResponseJson(
           { success: false, message: "نوع منبع نامعتبر است." },
           { status: 400 }
         );
@@ -116,20 +117,20 @@ export async function PUT(request: NextRequest) {
     });
 
     if (!updated) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "منبع مورد نظر یافت نشد." },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({
+    return apiResponseJson({
       success: true,
       message: "منبع آموزشی با موفقیت ویرایش شد.",
       data: updated,
     });
   } catch (error: any) {
     console.error("PUT offering resource error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: "خطا در ویرایش منبع آموزشی" },
       { status: 500 }
     );
@@ -145,7 +146,7 @@ export async function DELETE(request: NextRequest) {
     const id = searchParams.get("id");
 
     if (!id) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "شناسه منبع الزامی است." },
         { status: 400 }
       );
@@ -153,19 +154,19 @@ export async function DELETE(request: NextRequest) {
 
     const deleted = await deleteOfferingResource(id);
     if (!deleted) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "منبع مورد نظر یافت نشد یا حذف نگردید." },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({
+    return apiResponseJson({
       success: true,
       message: "منبع آموزشی با موفقیت حذف شد.",
     });
   } catch (error: any) {
     console.error("DELETE offering resource error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: "خطا در حذف منبع آموزشی" },
       { status: 500 }
     );

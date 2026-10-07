@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import {
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     const faculties = await getPhysicalFaculties(includeDeleted, search);
 
-    return NextResponse.json(
+    return apiResponseJson(
       {
         success: true,
         count: faculties.length,
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
     );
   } catch (error: any) {
     console.error("Get physical faculties error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: "خطا در دریافت اطلاعات دانشکده‌های فیزیکی" },
       { status: 500 }
     );
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
     const { name, code, imageUrl, latitude, longitude, address, description } = body || {};
 
     if (!name || !name.trim()) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "نام دانشکده فیزیکی الزامی است." },
         { status: 400 }
       );
@@ -73,13 +74,13 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json(
+    return apiResponseJson(
       { success: true, data: newFaculty },
       { status: 201 }
     );
   } catch (error: any) {
     console.error("Create physical faculty error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: error?.message || "خطا در ایجاد دانشکده فیزیکی" },
       { status: 500 }
     );

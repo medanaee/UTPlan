@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { getD1, logAdminAction } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
@@ -48,12 +49,12 @@ export async function POST(request: NextRequest) {
     const resolutions: ResolutionAction[] = body?.resolutions || [];
 
     if (rawItems.length === 0) {
-      return NextResponse.json({ success: false, message: "هیچ موجودیتی برای حذف مشخص نشده است." }, { status: 400 });
+      return apiResponseJson({ success: false, message: "هیچ موجودیتی برای حذف مشخص نشده است." }, { status: 400 });
     }
 
     const d1 = getD1();
     if (!d1) {
-      return NextResponse.json({ success: false, message: "پایگاه داده در دسترس نیست." }, { status: 500 });
+      return apiResponseJson({ success: false, message: "پایگاه داده در دسترس نیست." }, { status: 500 });
     }
 
     const stmts: any[] = [];
@@ -447,13 +448,13 @@ export async function POST(request: NextRequest) {
       details: { items: rawItems, resolutionsCount: resolutions.length },
     });
 
-    return NextResponse.json({
+    return apiResponseJson({
       success: true,
       message: `${rawItems.length} مورد با موفقیت به همراه تمام وابستگی‌های تعیین‌شده حذف فیزیکی شدند.`,
       deletedCount: rawItems.length,
     });
   } catch (err: any) {
     console.error("Execute bulk delete error:", err);
-    return NextResponse.json({ success: false, message: "خطا در اجرای عملیات حذف گروهی: " + err?.message }, { status: 500 });
+    return apiResponseJson({ success: false, message: "خطا در اجرای عملیات حذف گروهی: " + err?.message }, { status: 500 });
   }
 }

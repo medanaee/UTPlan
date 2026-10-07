@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { getCourses } from "@/lib/db";
 
@@ -55,6 +56,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Courses export error:", error);
-    return NextResponse.json({ success: false, message: "خطا در استخراج دروس" }, { status: 500 });
+    return apiResponseJson({ success: false, message: "خطا در استخراج دروس" }, { status: 500 });
   }
 }

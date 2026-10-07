@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { findUserByEmail, createUser } from "@/lib/db";
 import { hashPassword, createSessionToken, createAuthCookieHeader } from "@/lib/auth";
 
@@ -18,14 +19,14 @@ export async function POST(request: Request) {
     const finalFullName = name?.trim() || [finalFirstName, finalLastName].filter(Boolean).join(" ");
 
     if ((!finalFirstName && !finalFullName) || !email || !password) {
-      return Response.json(
+      return apiResponseJson(
         { success: false, message: "لطفاً نام، نام خانوادگی، ایمیل و رمز عبور را وارد کنید." },
         { status: 400 }
       );
     }
 
     if (password.length < 6) {
-      return Response.json(
+      return apiResponseJson(
         { success: false, message: "رمز عبور باید حداقل ۶ کاراکتر باشد." },
         { status: 400 }
       );
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
 
     const existingUser = await findUserByEmail(email);
     if (existingUser) {
-      return Response.json(
+      return apiResponseJson(
         { success: false, message: "این ایمیل قبلاً در سیستم ثبت شده است." },
         { status: 409 }
       );
@@ -61,7 +62,7 @@ export async function POST(request: Request) {
     const token = await createSessionToken(sessionPayload);
     const cookieHeader = createAuthCookieHeader(token);
 
-    return Response.json(
+    return apiResponseJson(
       {
         success: true,
         message: "حساب کاربری با موفقیت ایجاد شد.",
@@ -76,7 +77,7 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     console.error("Register error:", error);
-    return Response.json(
+    return apiResponseJson(
       { success: false, message: "خطایی در ثبت‌نام رخ داد." },
       { status: 500 }
     );

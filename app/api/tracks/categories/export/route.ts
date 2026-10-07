@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import { getTrackById, getCategories, getTrackAssignments } from "@/lib/db";
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
     const trackId = searchParams.get("trackId");
 
     if (!trackId) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "شناسه گرایش (trackId) الزامی است." },
         { status: 400 }
       );
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
 
     const track = await getTrackById(trackId);
     if (!track) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "گرایش مورد نظر یافت نشد." },
         { status: 404 }
       );
@@ -83,7 +84,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Categories export error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: error?.message || "خطا در خروجی دسته‌ها" },
       { status: 500 }
     );

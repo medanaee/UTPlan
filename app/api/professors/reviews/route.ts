@@ -1,3 +1,4 @@
+import { apiResponseJson } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { getReviews, getReviewById, createReview, updateReview, deleteReview, findUserById } from "@/lib/db";
 import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
     const clientId = searchParams.get("clientId") || request.headers.get("x-client-id");
 
     if (!professorId) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "شناسه استاد الزامی است." },
         { status: 400 }
       );
@@ -34,10 +35,10 @@ export async function GET(request: NextRequest) {
     const userId = session?.id || null;
 
     const reviews = await getReviews("professor", professorId, userId, clientId);
-    return NextResponse.json({ success: true, data: reviews });
+    return apiResponseJson({ success: true, data: reviews });
   } catch (error) {
     console.error("GET professor reviews error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: "خطا در دریافت نظرات استاد" },
       { status: 500 }
     );
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
     const { professorId, comment, isAnonymous, criteriaRatings } = body;
 
     if (!professorId || !comment || !comment.trim()) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "شناسه استاد و متن نظر الزامی است." },
         { status: 400 }
       );
@@ -84,14 +85,14 @@ export async function POST(request: NextRequest) {
       criteriaRatings: criteriaRatings || undefined,
     });
 
-    return NextResponse.json({
+    return apiResponseJson({
       success: true,
       message: "نظر شما با موفقیت برای این استاد ثبت شد.",
       data: newRev,
     });
   } catch (error) {
     console.error("POST professor review error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: "خطا در ثبت نظر استاد" },
       { status: 500 }
     );
@@ -104,7 +105,7 @@ export async function PUT(request: NextRequest) {
     const session = token ? await verifySessionToken(token) : null;
 
     if (!session) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "لطفاً ابتدا وارد حساب کاربری خود شوید." },
         { status: 401 }
       );
@@ -116,7 +117,7 @@ export async function PUT(request: NextRequest) {
     const { id, comment, isAnonymous, criteriaRatings } = body;
 
     if (!id || !comment || !comment.trim()) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "شناسه نظر و متن نظر الزامی است." },
         { status: 400 }
       );
@@ -124,7 +125,7 @@ export async function PUT(request: NextRequest) {
 
     const existing = await getReviewById(id);
     if (!existing) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "نظر یافت نشد یا حذف شده است." },
         { status: 404 }
       );
@@ -134,7 +135,7 @@ export async function PUT(request: NextRequest) {
     const isAuthor = existing.userId && existing.userId === userId;
 
     if (!isAuthor && !isAdmin) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "شما دسترسی ویرایش این نظر را ندارید." },
         { status: 403 }
       );
@@ -162,14 +163,14 @@ export async function PUT(request: NextRequest) {
       overallRating,
     });
 
-    return NextResponse.json({
+    return apiResponseJson({
       success: true,
       message: "نظر با موفقیت ویرایش شد.",
       data: updated,
     });
   } catch (error) {
     console.error("PUT professor review error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: "خطا در ویرایش نظر" },
       { status: 500 }
     );
@@ -182,7 +183,7 @@ export async function DELETE(request: NextRequest) {
     const session = token ? await verifySessionToken(token) : null;
 
     if (!session) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "لطفاً ابتدا وارد حساب کاربری خود شوید." },
         { status: 401 }
       );
@@ -194,7 +195,7 @@ export async function DELETE(request: NextRequest) {
     const id = searchParams.get("id");
 
     if (!id) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "شناسه نظر الزامی است." },
         { status: 400 }
       );
@@ -202,7 +203,7 @@ export async function DELETE(request: NextRequest) {
 
     const existing = await getReviewById(id);
     if (!existing) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "نظر یافت نشد یا قبلاً حذف شده است." },
         { status: 404 }
       );
@@ -212,7 +213,7 @@ export async function DELETE(request: NextRequest) {
     const isAuthor = existing.userId && existing.userId === userId;
 
     if (!isAuthor && !isAdmin) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "شما اجازه حذف این نظر را ندارید." },
         { status: 403 }
       );
@@ -220,19 +221,19 @@ export async function DELETE(request: NextRequest) {
 
     const success = await deleteReview(id);
     if (!success) {
-      return NextResponse.json(
+      return apiResponseJson(
         { success: false, message: "خطا در حذف نظر." },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({
+    return apiResponseJson({
       success: true,
       message: "نظر با موفقیت حذف شد.",
     });
   } catch (error) {
     console.error("DELETE professor review error:", error);
-    return NextResponse.json(
+    return apiResponseJson(
       { success: false, message: "خطا در حذف نظر" },
       { status: 500 }
     );
