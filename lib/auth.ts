@@ -1,3 +1,4 @@
+import { apiResponseJson } from "./api-response";
 import { SignJWT, jwtVerify } from "jose";
 import type { UserSession } from "./types";
 
@@ -160,7 +161,7 @@ export async function requireUserSession(request: Request): Promise<{
   if (!token) {
     return {
       authorized: false,
-      response: Response.json(
+      response: apiResponseJson(
         { success: false, message: "احراز هویت نشده‌اید. لطفاً وارد حساب کاربری شوید." },
         { status: 401 }
       ),
@@ -171,7 +172,7 @@ export async function requireUserSession(request: Request): Promise<{
   if (!session) {
     return {
       authorized: false,
-      response: Response.json(
+      response: apiResponseJson(
         { success: false, message: "نشست کاربری نامعتبر یا منقضی شده است." },
         { status: 401 }
       ),
@@ -196,7 +197,7 @@ export async function requireAdminSession(request: Request): Promise<{
   if (!token) {
     return {
       authorized: false,
-      response: Response.json(
+      response: apiResponseJson(
         { success: false, message: "احراز هویت نشده‌اید." },
         { status: 401 }
       ),
@@ -207,7 +208,7 @@ export async function requireAdminSession(request: Request): Promise<{
   if (!session) {
     return {
       authorized: false,
-      response: Response.json(
+      response: apiResponseJson(
         { success: false, message: "نشست کاربری نامعتبر است." },
         { status: 401 }
       ),
@@ -220,7 +221,7 @@ export async function requireAdminSession(request: Request): Promise<{
   if (!liveUser || (liveUser.role !== "admin" && liveUser.role !== "super_admin")) {
     return {
       authorized: false,
-      response: Response.json(
+      response: apiResponseJson(
         { success: false, message: "دسترسی غیرمجاز. فقط مدیران مجاز هستند." },
         { status: 403 }
       ),
@@ -252,7 +253,7 @@ export async function requireSuperAdminSession(request: Request): Promise<{
   if (adminAuth.user?.role !== "super_admin") {
     return {
       authorized: false,
-      response: Response.json(
+      response: apiResponseJson(
         { success: false, message: "دسترسی غیرمجاز. این بخش منحصراً در اختیار مدیر ارشد است." },
         { status: 403 }
       ),
