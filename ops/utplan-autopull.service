@@ -1,0 +1,8 @@
+[Unit]
+Description=UTPlan automatic GitHub deployment check
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/arminam/.local/bin/utplan-autopull.sh
