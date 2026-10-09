@@ -2,7 +2,7 @@ import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
 import {
-  getCharts,
+  getChartSummaries,
   getChartById,
   createChart,
   updateChart,
@@ -50,7 +50,7 @@ async function GETHandler(req: NextRequest) {
     }
 
     const userId = session?.id;
-    const charts = await getCharts(userId);
+    const charts = await getChartSummaries(userId);
     return apiResponseJson({ success: true, data: charts });
   } catch (err: any) {
     console.error("GET /api/charts error:", err);

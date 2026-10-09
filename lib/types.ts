@@ -401,6 +401,18 @@ export interface StudentChart {
   updatedAt: string;
 }
 
+export interface ChartSummary {
+  id: string;
+  userId: string;
+  trackId: string;
+  title: string;
+  isApprovedDefault?: boolean;
+  semesterCount: number;
+  courseCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AuthResponse {
   success: boolean;
   message?: string;

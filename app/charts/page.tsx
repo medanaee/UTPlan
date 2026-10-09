@@ -44,12 +44,12 @@ import {
 import { Navbar } from "@/components/navbar";
 import { usePersistedState } from "@/lib/hooks/use-persisted-state";
 import { fetchJson, postJson, deleteJson } from "@/lib/api-client";
-import type { StudentChart, Track, UserSession } from "@/lib/types";
+import type { ChartSummary, Track, UserSession } from "@/lib/types";
 
 export default function ChartsPage() {
   const router = useRouter();
   const [user, setUser] = useState<UserSession | null>(null);
-  const [charts, setCharts] = useState<StudentChart[]>([]);
+  const [charts, setCharts] = useState<ChartSummary[]>([]);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -73,7 +73,7 @@ export default function ChartsPage() {
     approved.forEach((ac) => {
       items.push({
         value: ac.id,
-        label: `${ac.title} (${ac.semesters.length} ترم)`,
+        label: `${ac.title} (${ac.semesterCount} ترم)`,
       });
     });
     return items;
@@ -149,7 +149,7 @@ export default function ChartsPage() {
     }
   };
 
-  const handleCloneApprovedChart = async (approvedChart: StudentChart) => {
+  const handleCloneApprovedChart = async (approvedChart: ChartSummary) => {
     if (!user) {
       router.push("/login");
       return;
@@ -248,7 +248,7 @@ export default function ChartsPage() {
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {userCharts.map((c) => {
                     const track = tracks.find((t) => t.id === c.trackId);
-                    const totalCoursesCount = c.semesters.reduce((sum, s) => sum + s.courseIds.length, 0);
+                    const totalCoursesCount = c.courseCount;
 
                     return (
                       <Card
@@ -266,7 +266,7 @@ export default function ChartsPage() {
                               </CardDescription>
                             </div>
                             <span className="rounded-lg bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary shrink-0">
-                              {c.semesters.length} ترم
+                              {c.semesterCount} ترم
                             </span>
                           </div>
                         </CardHeader>
@@ -335,7 +335,7 @@ export default function ChartsPage() {
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {approvedCharts.map((ac) => {
                   const track = tracks.find((t) => t.id === ac.trackId);
-                  const totalCoursesCount = ac.semesters.reduce((sum, s) => sum + s.courseIds.length, 0);
+                  const totalCoursesCount = ac.courseCount;
 
                   return (
                     <Card
@@ -361,7 +361,7 @@ export default function ChartsPage() {
                       <CardContent className="pb-3 text-xs text-muted-foreground space-y-1.5">
                         <div className="flex items-center justify-between p-2 rounded-lg bg-card text-[11px] border border-border/60">
                           <span>طول دوره مصوب:</span>
-                          <span className="font-bold text-foreground">{ac.semesters.length} ترم تحصیلی</span>
+                          <span className="font-bold text-foreground">{ac.semesterCount} ترم تحصیلی</span>
                         </div>
                       </CardContent>
 

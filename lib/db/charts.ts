@@ -1,4 +1,4 @@
-import type { StudentChart, ChartSemester } from "../types";
+import type { StudentChart, ChartSemester, ChartSummary } from "../types";
 import { getD1 } from "./client";
 
 function mapChartRow(c: any): StudentChart {
@@ -83,6 +83,64 @@ const CHART_SELECT_SQL = `
     ) AS terms_json
   FROM charts c
 `;
+
+const CHART_SUMMARY_SELECT_SQL = `
+  SELECT
+    c.id,
+    c.user_id,
+    c.track_id,
+    c.title,
+    c.is_approved_template,
+    c.created_at,
+    c.updated_at,
+    (SELECT COUNT(*) FROM chart_terms t WHERE t.chart_id = c.id) AS semester_count,
+    (
+      SELECT COUNT(*)
+      FROM chart_courses cc
+      INNER JOIN chart_terms t ON t.id = cc.term_id
+      WHERE t.chart_id = c.id
+    ) AS course_count
+  FROM charts c
+`;
+
+function mapChartSummaryRow(c: any): ChartSummary {
+  return {
+    id: c.id,
+    userId: c.user_id,
+    trackId: c.track_id,
+    title: c.title,
+    isApprovedDefault: Boolean(c.is_approved_template),
+    semesterCount: Number(c.semester_count) || 0,
+    courseCount: Number(c.course_count) || 0,
+    createdAt: c.created_at,
+    updatedAt: c.updated_at,
+  };
+}
+
+export async function getChartSummaries(userId?: string, trackId?: string): Promise<ChartSummary[]> {
+  const d1 = getD1();
+  if (!d1) return [];
+
+  try {
+    let query = `${CHART_SUMMARY_SELECT_SQL} WHERE 1=1`;
+    const params: any[] = [];
+    if (userId) {
+      query += " AND (c.user_id = ? OR c.is_approved_template = 1)";
+      params.push(userId);
+    }
+    if (trackId) {
+      query += " AND c.track_id = ?";
+      params.push(trackId);
+    }
+    query += " ORDER BY c.created_at DESC";
+
+    const { results } = await d1.prepare(query).bind(...params).all();
+    return (results || []).map(mapChartSummaryRow);
+  } catch (err) {
+    console.error("D1 getChartSummaries error:", err);
+    return [];
+  }
+}
 
 export async function getCharts(userId?: string, trackId?: string): Promise<StudentChart[]> {
   const d1 = getD1();
