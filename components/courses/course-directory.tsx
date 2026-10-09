@@ -1,121 +1,70 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
-  BookOpen,
   Search,
   Building2,
   BookMarked,
   ArrowLeft,
   Loader2,
-  SlidersHorizontal,
   X,
-  ChevronDown,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import type { Course, Faculty, UserSession } from "@/lib/types";
-import { Download, Upload } from "lucide-react";
-import { usePersistedState } from "@/lib/hooks/use-persisted-state";
-import { persianSearch } from "@/lib/search/persian-search";
+import type { Course } from "@/lib/types";
 import { fetchJson } from "@/lib/api-client";
 
 interface CourseDirectoryProps {
   initialCourses?: Course[];
-  initialFaculties?: Faculty[];
 }
 
 export function CourseDirectory({
   initialCourses = [],
-  initialFaculties = [],
 }: CourseDirectoryProps) {
   const [courses, setCourses] = useState<Course[]>(initialCourses);
-  const [faculties, setFaculties] = useState<Faculty[]>(initialFaculties);
-  const [loading, setLoading] = useState(initialCourses.length === 0);
+  const [loading, setLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
 
   const [search, setSearch] = useState("");
-  const [selectedFaculty, setSelectedFaculty] = usePersistedState<string>("ut_ece_public_faculty", "all");
-  const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
-  const [importModalOpen, setImportModalOpen] = useState(false);
-  const [selectedOfferedIn, setSelectedOfferedIn] = usePersistedState<string>("ut_ece_courses_offered_in", "all");
-  const [selectedUnits, setSelectedUnits] = usePersistedState<string>("ut_ece_courses_units", "all");
-  const [selectedDegreeLevel, setSelectedDegreeLevel] = usePersistedState<string>("ut_ece_courses_degree_level", "all");
-  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-
-  const activeFilterCount = useMemo(() => {
-    let count = 0;
-    if (selectedFaculty !== "all") count++;
-    if (selectedDegreeLevel !== "all") count++;
-    if (selectedOfferedIn !== "all") count++;
-    if (selectedUnits !== "all") count++;
-    return count;
-  }, [selectedFaculty, selectedDegreeLevel, selectedOfferedIn, selectedUnits]);
 
   useEffect(() => {
-    async function loadData() {
+    const query = search.trim();
+    if (query.length < 3) {
+      setCourses([]);
+      setLoading(false);
+      setHasSearched(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
       try {
         setLoading(true);
-        const [coursesRes, facultiesRes] = await Promise.all([
-          fetchJson("/api/courses"),
-          fetchJson("/api/faculties"),
-        ]);
-
-        if (coursesRes.success) setCourses(coursesRes.data);
-        if (facultiesRes.success) setFaculties(facultiesRes.data);
+        const response = await fetchJson<{ success?: boolean; data?: Course[] }>(
+          `/api/courses?q=${encodeURIComponent(query)}&limit=20`,
+          { signal: controller.signal }
+        );
+        setCourses(response.success ? response.data || [] : []);
+        setHasSearched(true);
       } catch (err) {
-        console.error("Error loading course directory data:", err);
+        if (!controller.signal.aborted) {
+          console.error("Error searching courses:", err);
+          setCourses([]);
+          setHasSearched(true);
+        }
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
-    }
+    }, 300);
 
-    fetchJson("/api/auth/me")
-      .then((d) => {
-        if (d.authenticated) setCurrentUser(d.user);
-      })
-      .catch(() => {});
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [search]);
 
-    if (initialCourses.length === 0) {
-      loadData();
-    }
-  }, [initialCourses.length]);
-
-  // Filtered and intelligently ranked list
-  const filteredCourses = useMemo(() => {
-    // 1. Filter by category dropdowns first
-    const baseFiltered = courses.filter((c) => {
-      const matchesFaculty =
-        selectedFaculty === "all" || c.facultyId === selectedFaculty;
-
-      const matchesDegree =
-        selectedDegreeLevel === "all" ||
-        (c.degreeLevel || "undergrad") === selectedDegreeLevel;
-
-      const matchesOffered =
-        selectedOfferedIn === "all" ||
-        c.offeredIn === selectedOfferedIn ||
-        c.offeredIn === "both";
-
-      const matchesUnits =
-        selectedUnits === "all" || String(c.units) === selectedUnits;
-
-      return matchesFaculty && matchesDegree && matchesOffered && matchesUnits;
-    });
-
-    // 2. Intelligently search and rank by search query
-    return persianSearch(baseFiltered, search);
-  }, [courses, search, selectedFaculty, selectedDegreeLevel, selectedOfferedIn, selectedUnits]);
+  const filteredCourses = courses;
 
   const formatTermOffered = (term?: string) => {
     switch (term) {
@@ -169,195 +118,22 @@ export function CourseDirectory({
                 <X className="h-4 w-4" />
               </button>
             )}
-
-            {/* Filters Button */}
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setIsFiltersOpen((prev) => !prev)}
-              className={`ml-1.5 my-1.5 h-9 rounded-lg px-3 gap-1.5 text-xs font-semibold shrink-0 transition-all border cursor-pointer ${
-                isFiltersOpen || activeFilterCount > 0
-                  ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"
-                  : "border-border/60 hover:bg-muted/70 text-muted-foreground"
-              }`}
-              title="فیلترهای پیشرفته"
-            >
-              <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" />
-              <span className="hidden xs:inline">فیلترها</span>
-              {activeFilterCount > 0 && (
-                <Badge
-                  variant="secondary"
-                  className="h-4 px-1.5 text-[10px] font-bold bg-primary text-primary-foreground rounded-full"
-                >
-                  {activeFilterCount}
-                </Badge>
-              )}
-              <ChevronDown
-                className={`h-3 w-3 shrink-0 transition-transform duration-200 ${
-                  isFiltersOpen ? "rotate-180" : ""
-                }`}
-              />
-            </Button>
-          </div>
-
-          {/* Expandable Filter Tray */}
-          {isFiltersOpen && (
-            <div className="mt-3 p-4 rounded-2xl border border-border/80 bg-background/80 backdrop-blur-md shadow-xs animate-in fade-in-50 slide-in-from-top-2 duration-200 text-right space-y-3.5">
-              <div className="flex items-center justify-between border-b border-border/50 pb-2">
-                <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                  <SlidersHorizontal className="h-3.5 w-3.5 text-primary" />
-                  فیلترهای پیشرفته دروس
-                </span>
-                {activeFilterCount > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedFaculty("all");
-                      setSelectedDegreeLevel("all");
-                      setSelectedOfferedIn("all");
-                      setSelectedUnits("all");
-                    }}
-                    className="h-6 px-2 text-[11px] text-destructive hover:bg-destructive/10 cursor-pointer"
-                  >
-                    پاک کردن فیلترها
-                  </Button>
-                )}
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
-                {/* Faculty Filter */}
-                <div className="space-y-1">
-                  <label className="text-[11px] font-medium text-muted-foreground block text-right">
-                    دانشکده
-                  </label>
-                  <Select value={selectedFaculty} onValueChange={setSelectedFaculty}>
-                    <SelectTrigger className="w-full text-xs h-8.5 rounded-lg bg-background/60">
-                      <SelectValue placeholder="فیلتر دانشکده" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectItem value="all" className="text-xs">
-                          همه دانشکده‌ها ({courses.length})
-                        </SelectItem>
-                        {faculties.map((f) => {
-                          const count = courses.filter((c) => c.facultyId === f.id).length;
-                          return (
-                            <SelectItem key={f.id} value={f.id} className="text-xs">
-                              {f.name} ({count})
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Degree Level Filter */}
-                <div className="space-y-1">
-                  <label className="text-[11px] font-medium text-muted-foreground block text-right">
-                    مقطع تحصیلی
-                  </label>
-                  <Select value={selectedDegreeLevel} onValueChange={setSelectedDegreeLevel}>
-                    <SelectTrigger className="w-full text-xs h-8.5 rounded-lg bg-background/60">
-                      <SelectValue placeholder="مقطع تحصیلی" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectItem value="all" className="text-xs">
-                          همه مقاطع ({courses.length})
-                        </SelectItem>
-                        <SelectItem value="undergrad" className="text-xs">
-                          کارشناسی ({courses.filter((c) => (c.degreeLevel || "undergrad") === "undergrad").length})
-                        </SelectItem>
-                        <SelectItem value="master" className="text-xs">
-                          کارشناسی ارشد ({courses.filter((c) => c.degreeLevel === "master").length})
-                        </SelectItem>
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Offered In Semester */}
-                <div className="space-y-1">
-                  <label className="text-[11px] font-medium text-muted-foreground block text-right">
-                    نیمسال ارائه
-                  </label>
-                  <Select value={selectedOfferedIn} onValueChange={setSelectedOfferedIn}>
-                    <SelectTrigger className="w-full text-xs h-8.5 rounded-lg bg-background/60">
-                      <SelectValue placeholder="ترم ارائه" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectItem value="all" className="text-xs">
-                          همه ترم‌ها
-                        </SelectItem>
-                        <SelectItem value="fall" className="text-xs">
-                          ترم مهر (پاییز)
-                        </SelectItem>
-                        <SelectItem value="spring" className="text-xs">
-                          ترم بهمن (بهار)
-                        </SelectItem>
-                        <SelectItem value="both" className="text-xs">
-                          ارائه در هر دو ترم
-                        </SelectItem>
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Units Filter */}
-                <div className="space-y-1">
-                  <label className="text-[11px] font-medium text-muted-foreground block text-right">
-                    تعداد واحد
-                  </label>
-                  <Select value={selectedUnits} onValueChange={setSelectedUnits}>
-                    <SelectTrigger className="w-full text-xs h-8.5 rounded-lg bg-background/60">
-                      <SelectValue placeholder="تعداد واحد" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectItem value="all" className="text-xs">
-                          همه واحدها
-                        </SelectItem>
-                        <SelectItem value="1" className="text-xs">
-                          ۱ واحدی
-                        </SelectItem>
-                        <SelectItem value="2" className="text-xs">
-                          ۲ واحدی
-                        </SelectItem>
-                        <SelectItem value="3" className="text-xs">
-                          ۳ واحدی
-                        </SelectItem>
-                        <SelectItem value="4" className="text-xs">
-                          ۴ واحدی
-                        </SelectItem>
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
       {/* Result stats & Reset */}
       <div className="flex items-center justify-between text-xs text-muted-foreground px-2 pt-0.5">
         <span>
-          نمایش <strong className="text-foreground">{filteredCourses.length}</strong> درس از مجموع {courses.length} درس ثبت‌شده
+          {hasSearched && (<>نمایش <strong className="text-foreground">{filteredCourses.length}</strong> پیشنهاد درس</>)}
         </span>
 
-        {(search || activeFilterCount > 0) && (
+        {search && (
           <Button
             variant="ghost"
             size="sm"
             onClick={() => {
               setSearch("");
-              setSelectedFaculty("all");
-              setSelectedDegreeLevel("all");
-              setSelectedOfferedIn("all");
-              setSelectedUnits("all");
             }}
             className="h-6 text-[11px] text-primary hover:bg-primary/10 rounded-md cursor-pointer"
           >
@@ -367,7 +143,15 @@ export function CourseDirectory({
       </div>
 
       {/* Courses Grid */}
-      {loading ? (
+      {!search.trim() || search.trim().length < 3 ? (
+        <div className="text-center py-16 border rounded-2xl border-dashed border-border/80 p-8 space-y-3">
+          <Search className="h-10 w-10 mx-auto text-muted-foreground/40" />
+          <h3 className="text-sm font-bold text-foreground">برای شروع نام درس را جست‌وجو کنید</h3>
+          <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+            حداقل سه حرف از نام، کد یا مخفف درس را وارد کنید.
+          </p>
+        </div>
+      ) : loading ? (
         <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <span className="text-xs">در حال بارگذاری لیست دروس...</span>
@@ -383,7 +167,7 @@ export function CourseDirectory({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredCourses.map((course) => {
-            const fac = faculties.find((f) => f.id === course.facultyId);
+
             const termInfo = formatTermOffered(course.offeredIn);
 
             return (
@@ -432,7 +216,7 @@ export function CourseDirectory({
                     </div>
                     <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-1">
                       <Building2 className="h-3 w-3 shrink-0 opacity-60" />
-                      <span className="truncate">{fac?.name || "دانشکده مهندسی برق و کامپیوتر"}</span>
+                      <span className="truncate">{course.facultyName || "دانشکده مهندسی برق و کامپیوتر"}</span>
                     </p>
                   </div>
 

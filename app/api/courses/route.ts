@@ -38,7 +38,10 @@ async function GETHandler(request: Request) {
     }
 
     const directOnly = searchParams.get("directOnly") === "true";
-    const courses = await getCourses(facultyId, trackId, directOnly);
+    const search = searchParams.get("q")?.trim() || undefined;
+    const limitParam = Number(searchParams.get("limit"));
+    const limit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : undefined;
+    const courses = await getCourses(facultyId, trackId, directOnly, search, limit);
     return apiResponseJson(
       { success: true, data: courses },
       {

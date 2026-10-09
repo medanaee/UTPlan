@@ -9,7 +9,9 @@ import { generateUniqueCode, isCodeDuplicate } from "./code-generator";
 export async function getCourses(
   facultyId?: string,
   trackId?: string,
-  directOnly: boolean = false
+  directOnly: boolean = false,
+  search?: string,
+  limit?: number
 ): Promise<Course[]> {
   const d1 = getD1();
   if (!d1) return [];
@@ -69,7 +71,26 @@ export async function getCourses(
         params.push(...effectiveIds);
       }
     }
+
+    const searchTokens = (search || "")
+      .trim()
+      .split(/\s+/)
+      .map((token) => token.trim())
+      .filter(Boolean);
+    for (const token of searchTokens) {
+      const pattern = `%${token}%`;
+      query += ` AND (
+        c.name LIKE ? OR c.code LIKE ? OR c.abbreviation LIKE ? OR
+        c.description LIKE ? OR f.name LIKE ?
+      )`;
+      params.push(pattern, pattern, pattern, pattern, pattern);
+    }
+
     query += " ORDER BY c.name ASC";
+    if (limit) {
+      query += " LIMIT ?";
+      params.push(Math.min(Math.max(limit, 1), 50));
+    }
 
     const { results: courseRows } = await d1.prepare(query).bind(...params).all();
     const coursesList = courseRows || [];
