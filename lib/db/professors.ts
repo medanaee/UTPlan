@@ -5,7 +5,9 @@ import { generateUniqueCode, isCodeDuplicate } from "./code-generator";
 
 export async function getProfessors(
   facultyId?: string,
-  directOnly: boolean = false
+  directOnly: boolean = false,
+  search?: string,
+  limit?: number
 ): Promise<Professor[]> {
   const d1 = getD1();
   if (!d1) return [];
@@ -29,7 +31,26 @@ export async function getProfessors(
         params.push(...effectiveIds);
       }
     }
+
+    const searchTokens = (search || "")
+      .trim()
+      .split(/\s+/)
+      .map((token) => token.trim())
+      .filter(Boolean);
+    for (const token of searchTokens) {
+      const pattern = `%${token}%`;
+      query += ` AND (
+        p.first_name LIKE ? OR p.last_name LIKE ? OR p.code LIKE ? OR
+        p.email LIKE ? OR p.title LIKE ? OR f.name LIKE ?
+      )`;
+      params.push(pattern, pattern, pattern, pattern, pattern, pattern);
+    }
+
     query += " ORDER BY p.last_name ASC, p.first_name ASC";
+    if (limit) {
+      query += " LIMIT ?";
+      params.push(Math.min(Math.max(limit, 1), 50));
+    }
     const { results } = await d1.prepare(query).bind(...params).all();
     return (results || []).map((p: any) => {
       let links: any = undefined;

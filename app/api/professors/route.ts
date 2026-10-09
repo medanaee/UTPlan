@@ -16,7 +16,10 @@ async function GETHandler(request: Request) {
     const { searchParams } = new URL(request.url);
     const facultyId = searchParams.get("facultyId") || undefined;
     const directOnly = searchParams.get("directOnly") === "true";
-    const profs = await getProfessors(facultyId, directOnly);
+    const search = searchParams.get("q")?.trim() || undefined;
+    const limitParam = Number(searchParams.get("limit"));
+    const limit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : undefined;
+    const profs = await getProfessors(facultyId, directOnly, search, limit);
     return apiResponseJson(
       { success: true, data: profs },
       {
