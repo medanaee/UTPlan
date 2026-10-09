@@ -19,12 +19,22 @@ async function GETHandler(request: NextRequest) {
     const courseId = searchParams.get("courseId") || undefined;
     const professorId = searchParams.get("professorId") || undefined;
     const directOnly = searchParams.get("directOnly") === "true";
+    const search = searchParams.get("q")?.trim() || undefined;
+    const includeAll = searchParams.get("all") === "true";
+    const limitParam = Number(searchParams.get("limit"));
+    const limit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : undefined;
+
+    if (!courseId && !professorId && !search && !includeAll) {
+      return apiResponseJson({ success: true, data: [] });
+    }
 
     const data = await getOfferings({
       courseId,
       professorId,
       facultyId,
       directOnly,
+      search,
+      limit,
     });
     return apiResponseJson(
       { success: true, data },

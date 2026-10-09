@@ -23,87 +23,65 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { CourseOffering, Faculty } from "@/lib/types";
-import { usePersistedState } from "@/lib/hooks/use-persisted-state";
-import { persianSearch } from "@/lib/search/persian-search";
+import type { CourseOffering } from "@/lib/types";
 import { fetchJson } from "@/lib/api-client";
 
 interface OfferingDirectoryProps {
   initialOfferings?: CourseOffering[];
-  initialFaculties?: Faculty[];
 }
 
 export function OfferingDirectory({
   initialOfferings = [],
-  initialFaculties = [],
 }: OfferingDirectoryProps) {
   const [offerings, setOfferings] = useState<CourseOffering[]>(initialOfferings);
-  const [faculties, setFaculties] = useState<Faculty[]>(initialFaculties);
-  const [loading, setLoading] = useState(initialOfferings.length === 0);
+  const [loading, setLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
 
   const [search, setSearch] = useState("");
-  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-  const [selectedFaculty, setSelectedFaculty] = usePersistedState<string>("ut_ece_public_faculty", "all");
-  const [selectedUnits, setSelectedUnits] = usePersistedState<string>("ut_ece_public_offering_units", "all");
-
-  const activeFilterCount =
-    (selectedFaculty !== "all" ? 1 : 0) +
-    (selectedUnits !== "all" ? 1 : 0);
+  // Legacy filter markup is kept below for compatibility but disabled for the lazy-search directory.
+  const [selectedFaculty, setSelectedFaculty] = useState("all");
+  const [selectedUnits, setSelectedUnits] = useState("all");
+  const [isFiltersOpen] = useState(false);
+  const faculties: Array<{ id: string; name: string }> = [];
+  const activeFilterCount = 0;
 
   useEffect(() => {
-    async function loadData() {
+    const query = search.trim();
+    if (query.length < 3) {
+      setOfferings([]);
+      setLoading(false);
+      setHasSearched(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
       try {
         setLoading(true);
-        const [offRes, facRes] = await Promise.all([
-          fetchJson("/api/offerings"),
-          fetchJson("/api/faculties"),
-        ]);
-
-        if (offRes.success) setOfferings(offRes.data);
-        if (facRes.success) setFaculties(facRes.data);
+        const response = await fetchJson<{ success?: boolean; data?: CourseOffering[] }>(
+          `/api/offerings?q=${encodeURIComponent(query)}&limit=20`,
+          { signal: controller.signal }
+        );
+        setOfferings(response.success ? response.data || [] : []);
+        setHasSearched(true);
       } catch (err) {
-        console.error("Error loading offerings directory:", err);
+        if (!controller.signal.aborted) {
+          console.error("Error searching offerings:", err);
+          setOfferings([]);
+          setHasSearched(true);
+        }
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
-    }
+    }, 300);
 
-    if (initialOfferings.length === 0) {
-      loadData();
-    }
-  }, [initialOfferings.length]);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [search]);
 
-  const filteredOfferings = useMemo(() => {
-    // 1. Filter by category dropdowns first
-    const baseFiltered = offerings.filter((o) => {
-      const matchesFaculty =
-        selectedFaculty === "all" || o.facultyId === selectedFaculty;
-
-      const matchesUnits =
-        selectedUnits === "all" ||
-        String(o.courseUnits ?? 3) === selectedUnits;
-
-      return matchesFaculty && matchesUnits;
-    });
-
-    // 2. Prepare searchable representation for Persian smart search
-    const searchable = baseFiltered.map((o) => {
-      const profNames =
-        o.professors && o.professors.length > 0
-          ? o.professors.map((p) => p.name).join(" ")
-          : o.professorName || "";
-
-      return {
-        ...o,
-        name: `${o.courseName || ""} ${profNames}`.trim(),
-        code: o.courseCode || o.code || "",
-        abbreviation: o.courseAbbreviation || "",
-      };
-    });
-
-    // 3. Intelligently search and rank by search query
-    return persianSearch(searchable, search);
-  }, [offerings, search, selectedFaculty, selectedUnits]);
+  const filteredOfferings = offerings;
 
   return (
     <div className="space-y-6">
@@ -145,7 +123,7 @@ export function OfferingDirectory({
               </button>
             )}
 
-            {/* Filters Button */}
+            <div className="hidden">
             <Button
               type="button"
               variant="ghost"
@@ -174,10 +152,9 @@ export function OfferingDirectory({
                 }`}
               />
             </Button>
-          </div>
+            </div>
 
-          {/* Expandable Filter Tray */}
-          {isFiltersOpen && (
+          {false && (
             <div className="mt-3 p-4 rounded-2xl border border-border/80 bg-background/80 backdrop-blur-md shadow-xs animate-in fade-in-50 slide-in-from-top-2 duration-200 text-right space-y-3.5">
               <div className="flex items-center justify-between border-b border-border/50 pb-2">
                 <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
@@ -262,6 +239,7 @@ export function OfferingDirectory({
           )}
         </div>
       </div>
+      </div>
 
       {/* Result stats & Reset */}
       <div className="flex items-center justify-between text-xs text-muted-foreground px-2 pt-0.5">
@@ -285,7 +263,13 @@ export function OfferingDirectory({
       </div>
 
       {/* Offerings Grid - Flat & Clean Cards */}
-      {loading ? (
+      {!search.trim() || search.trim().length < 3 ? (
+        <div className="text-center py-16 border rounded-2xl border-dashed border-border/80 p-8 space-y-3">
+          <Search className="h-10 w-10 mx-auto text-muted-foreground/40" />
+          <h3 className="text-sm font-bold text-foreground">جستجوی ارائه‌ها</h3>
+          <p className="text-xs text-muted-foreground">برای نمایش ارائه‌ها حداقل سه کاراکتر وارد کنید.</p>
+        </div>
+      ) : loading ? (
         <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <span className="text-xs">در حال بارگذاری ارائه‌ها...</span>

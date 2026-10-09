@@ -150,7 +150,7 @@ export function EventManager({
   const loadData = async () => {
     try {
       setLoading(true);
-      const offUrl = selectedFacultyId ? `/api/offerings?facultyId=${selectedFacultyId}` : "/api/offerings";
+      const offUrl = selectedFacultyId ? `/api/offerings?facultyId=${selectedFacultyId}&all=true` : "/api/offerings?all=true";
       const evUrl = selectedFacultyId ? `/api/events?facultyId=${selectedFacultyId}` : "/api/events";
       const [offRes, evRes] = await Promise.all([
         fetchJson(offUrl),

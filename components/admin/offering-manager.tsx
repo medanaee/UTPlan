@@ -321,8 +321,8 @@ export function OfferingManager({
     try {
       setLoading(true);
       const url = selectedFacultyId
-        ? `/api/offerings?facultyId=${selectedFacultyId}`
-        : "/api/offerings";
+        ? `/api/offerings?facultyId=${selectedFacultyId}&all=true`
+        : "/api/offerings?all=true";
       const res = await fetchJson(url);
       if (res.success) {
         setOfferings(res.data);

@@ -46,6 +46,8 @@ export async function getOfferings(
     professorId?: string;
     facultyId?: string;
     directOnly?: boolean;
+    search?: string;
+    limit?: number;
   } | string,
   directOnly: boolean = false
 ): Promise<CourseOffering[]> {
@@ -101,7 +103,33 @@ export async function getOfferings(
         params.push(...effectiveIds);
       }
     }
+
+    const searchTokens = (normFilter?.search || "")
+      .trim()
+      .split(/\s+/)
+      .map((token) => token.trim())
+      .filter(Boolean);
+    for (const token of searchTokens) {
+      const pattern = `%${token}%`;
+      query += ` AND (
+        c.name LIKE ? OR c.code LIKE ? OR o.code LIKE ? OR
+        EXISTS (
+          SELECT 1 FROM offering_professors search_op
+          JOIN professors search_p ON search_op.professor_id = search_p.id
+          WHERE search_op.offering_id = o.id AND (
+            search_p.first_name LIKE ? OR search_p.last_name LIKE ? OR
+            search_p.email LIKE ? OR search_p.code LIKE ?
+          )
+        )
+      )`;
+      params.push(pattern, pattern, pattern, pattern, pattern, pattern, pattern);
+    }
+
     query += " ORDER BY c.name ASC";
+    if (normFilter?.limit) {
+      query += " LIMIT ?";
+      params.push(Math.min(Math.max(normFilter.limit, 1), 50));
+    }
 
     const { results } = await d1.prepare(query).bind(...params).all();
     const offeringRows = results || [];
