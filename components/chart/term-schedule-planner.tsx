@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
-import { toPng } from "html-to-image";
 import { calculateSemesterForTerm, formatSemesterLabel } from "@/lib/semester-utils";
 import { formatTermDisplay } from "@/lib/rules-engine";
 import { persianSearch } from "@/lib/search/persian-search";
@@ -374,6 +373,7 @@ export function TermSchedulePlanner({
     if (!scheduleRef.current || isExporting) return;
     try {
       setIsExporting(true);
+      const { toPng } = await import("html-to-image");
 
       const content = scheduleRef.current;
       const originalZoom = content.style.zoom;

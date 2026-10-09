@@ -42,7 +42,6 @@ import {
   CloudOff,
   Sun,
 } from "lucide-react";
-import { toPng } from "html-to-image";
 import { persianSearch } from "@/lib/search/persian-search";
 import { cn } from "@/lib/utils";
 import { fetchJson, postJson, putJson } from "@/lib/api-client";
@@ -904,6 +903,7 @@ export function ChartEditor({
 
     try {
       setIsExportingImage(true);
+      const { toPng } = await import("html-to-image");
       const content = contentRef.current;
 
       // 1. Temporarily normalize zoom to 1 and add padding for a framed, crisp export
