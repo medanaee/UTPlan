@@ -8,13 +8,13 @@ import { getClientId } from "@/lib/client-id";
 import type { ReviewReactionSummary } from "@/lib/types";
 
 export const REACTION_EMOJIS = [
-  { emoji: "👍", label: "موافق", src: "/emojis/thumbs-up.png" },
-  { emoji: "👎", label: "مخالف", src: "/emojis/thumbs-down.png" },
-  { emoji: "❤️", label: "عالی", src: "/emojis/red-heart.png" },
-  { emoji: "💡", label: "مفید", src: "/emojis/light-bulb.png" },
-  { emoji: "😂", label: "بامزه", src: "/emojis/tears-of-joy.png" },
-  { emoji: "👏", label: "تشویق", src: "/emojis/clapping-hands.png" },
-  { emoji: "🔥", label: "فوق‌العاده", src: "/emojis/fire.png" },
+  { emoji: "👍", label: "موافق", src: "/emojis/thumbs-up.webp" },
+  { emoji: "👎", label: "مخالف", src: "/emojis/thumbs-down.webp" },
+  { emoji: "❤️", label: "عالی", src: "/emojis/red-heart.webp" },
+  { emoji: "💡", label: "مفید", src: "/emojis/light-bulb.webp" },
+  { emoji: "😂", label: "بامزه", src: "/emojis/tears-of-joy.webp" },
+  { emoji: "👏", label: "تشویق", src: "/emojis/clapping-hands.webp" },
+  { emoji: "🔥", label: "فوق‌العاده", src: "/emojis/fire.webp" },
 ] as const;
 
 function toPersianDigits(num: number | string): string {
