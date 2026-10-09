@@ -46,7 +46,7 @@ export default function ChartEditorPage() {
           fetchJson("/api/auth/me"),
           fetchJson(`/api/charts?id=${chartId}`),
           fetchJson("/api/tracks"),
-          fetchJson("/api/courses"),
+          fetchJson("/api/courses?all=true"),
         ]);
 
         if (!authRes.authenticated || !authRes.user) {

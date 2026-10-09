@@ -340,7 +340,7 @@ export function OfferingManager({
 
   useEffect(() => {
     if (courses.length === 0) {
-      fetchJson("/api/courses").then((res) => {
+      fetchJson("/api/courses?all=true").then((res) => {
         if (res.success && Array.isArray(res.data)) {
           useAdminStore.getState().setCourses(res.data);
         }

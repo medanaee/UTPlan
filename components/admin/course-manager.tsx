@@ -70,7 +70,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
   const fetchCourses = async () => {
     setLoading(true);
     try {
-      const res = await fetchJson("/api/courses");
+      const res = await fetchJson("/api/courses?all=true");
       if (res.success && Array.isArray(res.data)) {
         setCourses(res.data);
       }

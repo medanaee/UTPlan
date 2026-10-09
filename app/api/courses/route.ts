@@ -39,8 +39,16 @@ async function GETHandler(request: Request) {
 
     const directOnly = searchParams.get("directOnly") === "true";
     const search = searchParams.get("q")?.trim() || undefined;
+    const includeAll = searchParams.get("all") === "true";
     const limitParam = Number(searchParams.get("limit"));
     const limit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : undefined;
+
+    // Public callers must search explicitly; bulk loading is reserved for
+    // authenticated/internal consumers that opt in with ?all=true.
+    if (!search && !includeAll) {
+      return apiResponseJson({ success: true, data: [] });
+    }
+
     const courses = await getCourses(facultyId, trackId, directOnly, search, limit);
     return apiResponseJson(
       { success: true, data: courses },
