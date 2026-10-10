@@ -37,8 +37,10 @@ export function OtpAuthForm() {
 
     setLoading(true);
     try {
+      const endpoint = otpSent ? "/api/auth/verify-otp" : mode === "login" ? "/api/auth/login" : "/api/auth/request-otp";
+      const requestEndpoint = !otpSent && mode === "register" ? `${endpoint}?t=${Date.now()}` : endpoint;
       const data = await postJson(
-        otpSent ? "/api/auth/verify-otp" : mode === "login" ? "/api/auth/login" : "/api/auth/request-otp",
+        requestEndpoint,
         otpSent ? { email: normalizedEmail, code: otp.trim(), password } : mode === "login"
           ? { email: normalizedEmail, password }
           : { email: normalizedEmail, mode, firstName: firstName.trim(), lastName: lastName.trim() }
