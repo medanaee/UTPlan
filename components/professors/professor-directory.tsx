@@ -11,10 +11,17 @@ import {
   Loader2,
   Mail,
   X,
+  SlidersHorizontal,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import type { Professor } from "@/lib/types";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { Faculty, Professor } from "@/lib/types";
 import { fetchJson } from "@/lib/api-client";
 
 interface ProfessorDirectoryProps {
@@ -25,48 +32,59 @@ export function ProfessorDirectory({
   initialProfessors = [],
 }: ProfessorDirectoryProps) {
   const [professors, setProfessors] = useState<Professor[]>(initialProfessors);
-  const [loading, setLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
-
+  const [faculties, setFaculties] = useState<Faculty[]>([]);
+  const [titles, setTitles] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [selectedFaculty, setSelectedFaculty] = useState("all");
+  const [selectedTitle, setSelectedTitle] = useState("all");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
+  useEffect(() => {
+    fetchJson<{ success?: boolean; data?: Faculty[] }>("/api/faculties")
+      .then((response) => { if (response.success) setFaculties(response.data || []); })
+      .catch((error) => console.error("Error loading faculties:", error));
+  }, []);
 
   useEffect(() => {
     const query = search.trim();
-    if (query.length < 3) {
-      setProfessors([]);
-      setLoading(false);
-      setHasSearched(false);
-      return;
-    }
-
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
       try {
         setLoading(true);
-        const response = await fetchJson<{ success?: boolean; data?: Professor[] }>(
-          `/api/professors?q=${encodeURIComponent(query)}&limit=20`,
-          { signal: controller.signal }
-        );
+        const params = new URLSearchParams({ page: String(page), pageSize: "12" });
+        if (query.length >= 3) params.set("q", query);
+        if (selectedFaculty !== "all") params.set("facultyId", selectedFaculty);
+        if (selectedTitle !== "all") params.set("title", selectedTitle);
+        const response = await fetchJson<any>(`/api/professors?${params}`, { signal: controller.signal, cache: "no-store" });
         setProfessors(response.success ? response.data || [] : []);
-        setHasSearched(true);
+        setTotal(response.pagination?.total || 0);
+        setTotalPages(response.pagination?.totalPages || 0);
+        setTitles(response.filters?.titles || []);
       } catch (err) {
         if (!controller.signal.aborted) {
           console.error("Error searching professors:", err);
           setProfessors([]);
-          setHasSearched(true);
+          setTotal(0);
+          setTotalPages(0);
         }
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
-    }, 300);
+    }, query.length >= 3 ? 300 : 0);
 
     return () => {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [search]);
+  }, [search, selectedFaculty, selectedTitle, page]);
 
   const filteredProfessors = professors;
+  const activeFilterCount = (selectedFaculty !== "all" ? 1 : 0) + (selectedTitle !== "all" ? 1 : 0);
+  const resetFilters = () => { setSearch(""); setSelectedFaculty("all"); setSelectedTitle("all"); setPage(1); };
 
   return (
     <div className="space-y-6">
@@ -107,21 +125,34 @@ export function ProfessorDirectory({
                 <X className="h-4 w-4" />
               </button>
             )}
+            <Button type="button" variant="ghost" size="sm" onClick={() => setFiltersOpen((value) => !value)} className={`ml-1.5 my-1.5 h-9 rounded-lg px-3 gap-1.5 text-xs font-semibold shrink-0 border ${filtersOpen || activeFilterCount > 0 ? "border-primary/40 bg-primary/10 text-primary" : "border-border/60 text-muted-foreground"}`}>
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              <span className="hidden xs:inline">فیلترها</span>
+              {activeFilterCount > 0 && <Badge variant="secondary" className="h-4 px-1.5 text-[10px] bg-primary text-primary-foreground rounded-full">{activeFilterCount}</Badge>}
+              <ChevronDown className={`h-3 w-3 transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
+            </Button>
               </div>
+          {filtersOpen && <div className="mt-3 p-4 rounded-2xl border border-border/80 bg-background/80 backdrop-blur-md shadow-xs text-right space-y-3.5">
+            <div className="flex items-center justify-between border-b border-border/50 pb-2"><span className="text-xs font-bold flex items-center gap-1.5"><SlidersHorizontal className="h-3.5 w-3.5 text-primary" />فیلترهای اساتید</span>{activeFilterCount > 0 && <Button variant="ghost" size="sm" onClick={resetFilters} className="h-6 px-2 text-[11px] text-destructive">پاک کردن فیلترها</Button>}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1"><label className="text-[11px] font-medium text-muted-foreground block">دانشکده</label><Select value={selectedFaculty} onValueChange={(value) => { setSelectedFaculty(value); setPage(1); }}><SelectTrigger className="w-full text-xs h-8.5 rounded-lg"><SelectValue placeholder="فیلتر دانشکده" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all" className="text-xs">همه دانشکده‌ها</SelectItem>{faculties.map((faculty) => <SelectItem key={faculty.id} value={faculty.id} className="text-xs">{faculty.name}</SelectItem>)}</SelectGroup></SelectContent></Select></div>
+              <div className="space-y-1"><label className="text-[11px] font-medium text-muted-foreground block">مرتبه علمی</label><Select value={selectedTitle} onValueChange={(value) => { setSelectedTitle(value); setPage(1); }}><SelectTrigger className="w-full text-xs h-8.5 rounded-lg"><SelectValue placeholder="مرتبه علمی" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all" className="text-xs">همه مرتبه‌ها</SelectItem>{titles.map((title) => <SelectItem key={title} value={title} className="text-xs">{title}</SelectItem>)}</SelectGroup></SelectContent></Select></div>
+            </div>
+          </div>}
         </div>
       </div>
 
       {/* Result stats & Reset */}
       <div className="flex items-center justify-between text-xs text-muted-foreground px-2 pt-0.5">
         <span>
-          {hasSearched && (<>نمایش <strong className="text-foreground">{filteredProfessors.length}</strong> پیشنهاد استاد</>)}
+          نمایش <strong className="text-foreground">{total.toLocaleString("fa-IR")}</strong> استاد
         </span>
-        {search && (
+        {(search || activeFilterCount > 0) && (
           <Button
             variant="ghost"
             size="sm"
             onClick={() => {
-              setSearch("");
+              resetFilters();
             }}
             className="h-6 text-[11px] text-primary hover:bg-primary/10 rounded-md cursor-pointer"
           >
@@ -131,15 +162,7 @@ export function ProfessorDirectory({
       </div>
 
       {/* Professors Grid */}
-      {!search.trim() || search.trim().length < 3 ? (
-        <div className="text-center py-16 border rounded-2xl border-dashed border-border/80 p-8 space-y-3">
-          <Search className="h-10 w-10 mx-auto text-muted-foreground/40" />
-          <h3 className="text-sm font-bold text-foreground">برای شروع نام استاد را جست‌وجو کنید</h3>
-          <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-            حداقل سه حرف از نام، نام خانوادگی یا کد استاد را وارد کنید.
-          </p>
-        </div>
-      ) : loading ? (
+      {loading ? (
         <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <span className="text-xs">در حال بارگذاری اساتید...</span>
@@ -152,7 +175,7 @@ export function ProfessorDirectory({
             عبارت جستجو یا فیلتر دانشکده را تغییر دهید.
           </p>
         </div>
-      ) : (
+      ) : <>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredProfessors.map((prof) => {
             return (
@@ -219,7 +242,16 @@ export function ProfessorDirectory({
             );
           })}
         </div>
-      )}
+        {totalPages > 1 && <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-2 py-3 border-t border-border/60 text-xs">
+          <span className="text-muted-foreground">صفحه {page.toLocaleString("fa-IR")} از {totalPages.toLocaleString("fa-IR")}</span>
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="sm" onClick={() => setPage(1)} disabled={page <= 1} className="h-7 w-7 p-0" title="صفحه اول"><ChevronsRight className="h-3.5 w-3.5" /></Button>
+            <Button variant="outline" size="sm" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page <= 1} className="h-7 w-7 p-0" title="صفحه قبل"><ChevronRight className="h-3.5 w-3.5" /></Button>
+            <Button variant="outline" size="sm" onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={page >= totalPages} className="h-7 w-7 p-0" title="صفحه بعد"><ChevronLeft className="h-3.5 w-3.5" /></Button>
+            <Button variant="outline" size="sm" onClick={() => setPage(totalPages)} disabled={page >= totalPages} className="h-7 w-7 p-0" title="صفحه آخر"><ChevronsLeft className="h-3.5 w-3.5" /></Button>
+          </div>
+        </div>}
+      </>}
     </div>
   );
 }

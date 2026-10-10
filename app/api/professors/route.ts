@@ -2,6 +2,8 @@ import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { requireAdminSession } from "@/lib/auth";
 import {
   getProfessors,
+  getProfessorsPage,
+  getProfessorTitles,
   getProfessorById,
   createProfessor,
   updateProfessor,
@@ -17,6 +19,26 @@ async function GETHandler(request: Request) {
     const facultyId = searchParams.get("facultyId") || undefined;
     const directOnly = searchParams.get("directOnly") === "true";
     const search = searchParams.get("q")?.trim() || undefined;
+    const title = searchParams.get("title")?.trim() || undefined;
+    const pageValue = searchParams.get("page");
+    const pageSizeValue = searchParams.get("pageSize");
+    const pageParam = Number(pageValue);
+    const pageSizeParam = Number(pageSizeValue);
+    const paginated = pageValue !== null || pageSizeValue !== null;
+    if (paginated) {
+      const result = await getProfessorsPage(
+        facultyId,
+        directOnly,
+        search,
+        title,
+        Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1,
+        Number.isFinite(pageSizeParam) && pageSizeParam > 0 ? pageSizeParam : 12
+      );
+      return apiResponseJson(
+        { success: true, data: result.items, pagination: { total: result.total, page: result.page, pageSize: result.pageSize, totalPages: result.totalPages }, filters: { titles: await getProfessorTitles() } },
+        { headers: { "Cache-Control": "no-store, no-cache, must-revalidate" } }
+      );
+    }
     const limitParam = Number(searchParams.get("limit"));
     const limit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : undefined;
     const profs = await getProfessors(facultyId, directOnly, search, limit);

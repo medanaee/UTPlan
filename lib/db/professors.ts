@@ -86,6 +86,99 @@ export async function getProfessors(
   }
 }
 
+export async function getProfessorsPage(
+  facultyId?: string,
+  directOnly: boolean = false,
+  search?: string,
+  title?: string,
+  page: number = 1,
+  pageSize: number = 12
+): Promise<{ items: Professor[]; total: number; page: number; pageSize: number; totalPages: number }> {
+  const d1 = getD1();
+  const safePageSize = Math.min(Math.max(Math.floor(pageSize) || 12, 1), 50);
+  const safePage = Math.max(Math.floor(page) || 1, 1);
+  if (!d1) return { items: [], total: 0, page: safePage, pageSize: safePageSize, totalPages: 0 };
+
+  try {
+    let where = " WHERE p.deleted_at IS NULL";
+    const params: any[] = [];
+    if (facultyId) {
+      const ids = directOnly ? [facultyId] : await getEffectiveFacultyIds(facultyId);
+      if (ids.length === 0) return { items: [], total: 0, page: safePage, pageSize: safePageSize, totalPages: 0 };
+      where += ` AND p.faculty_id IN (${ids.map(() => "?").join(",")})`;
+      params.push(...ids);
+    }
+    const tokens = (search || "").trim().split(/\s+/).filter(Boolean);
+    for (const token of tokens) {
+      const pattern = `%${token}%`;
+      where += ` AND (p.first_name LIKE ? OR p.last_name LIKE ? OR p.code LIKE ? OR p.email LIKE ? OR p.title LIKE ? OR f.name LIKE ?)`;
+      params.push(pattern, pattern, pattern, pattern, pattern, pattern);
+    }
+    if (title) {
+      where += " AND p.title = ?";
+      params.push(title);
+    }
+
+    const countRow: any = await d1
+      .prepare(`SELECT COUNT(*) AS total FROM professors p LEFT JOIN faculties f ON p.faculty_id = f.id${where}`)
+      .bind(...params)
+      .first();
+    const total = Number(countRow?.total || 0);
+    const totalPages = total > 0 ? Math.ceil(total / safePageSize) : 0;
+    const effectivePage = totalPages > 0 ? Math.min(safePage, totalPages) : safePage;
+    const offset = (effectivePage - 1) * safePageSize;
+    const { results } = await d1
+      .prepare(
+        `SELECT p.*, f.name AS faculty_name FROM professors p LEFT JOIN faculties f ON p.faculty_id = f.id${where}
+         ORDER BY p.last_name ASC, p.first_name ASC LIMIT ? OFFSET ?`
+      )
+      .bind(...params, safePageSize, offset)
+      .all();
+
+    const items = (results || []).map((p: any) => {
+      let links: any = undefined;
+      if (p.links) {
+        try { links = typeof p.links === "string" ? JSON.parse(p.links) : p.links; } catch { links = undefined; }
+      }
+      const firstName = p.first_name || "";
+      const lastName = p.last_name || "";
+      return {
+        id: p.id,
+        facultyId: p.faculty_id,
+        facultyName: p.faculty_name || undefined,
+        code: p.code || undefined,
+        firstName: firstName || undefined,
+        lastName: lastName || undefined,
+        name: [firstName, lastName].filter(Boolean).join(" ") || "استاد",
+        avatarUrl: p.avatar_url || "",
+        title: p.title || "استاد تمام",
+        email: p.email || "",
+        links,
+        createdAt: p.created_at,
+        deletedAt: p.deleted_at || null,
+      } as Professor;
+    });
+    return { items, total, page: effectivePage, pageSize: safePageSize, totalPages };
+  } catch (err) {
+    console.error("D1 getProfessorsPage error:", err);
+    return { items: [], total: 0, page: safePage, pageSize: safePageSize, totalPages: 0 };
+  }
+}
+
+export async function getProfessorTitles(): Promise<string[]> {
+  const d1 = getD1();
+  if (!d1) return [];
+  try {
+    const { results } = await d1
+      .prepare("SELECT DISTINCT title FROM professors WHERE deleted_at IS NULL AND title IS NOT NULL AND TRIM(title) <> '' ORDER BY title")
+      .all();
+    return (results || []).map((row: any) => String(row.title).trim()).filter(Boolean);
+  } catch (err) {
+    console.error("D1 getProfessorTitles error:", err);
+    return [];
+  }
+}
+
 export async function getProfessorById(id: string): Promise<Professor | null> {
   const d1 = getD1();
   if (!d1) return null;
