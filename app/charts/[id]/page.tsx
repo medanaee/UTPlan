@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { RefreshCw, ArrowRight, AlertTriangle } from "lucide-react";
@@ -41,12 +41,11 @@ export default function ChartEditorPage() {
         setLoading(true);
         setError(null);
 
-        // Fetch auth session, chart, tracks, and courses in parallel
-        const [authRes, chartRes, tracksRes, coursesRes] = await Promise.all([
+        // Fetch lightweight page data first; the course scope depends on the chart track.
+        const [authRes, chartRes, tracksRes] = await Promise.all([
           fetchJson("/api/auth/me"),
           fetchJson(`/api/charts?id=${chartId}`),
           fetchJson("/api/tracks"),
-          fetchJson("/api/courses?all=true"),
         ]);
 
         if (!authRes.authenticated || !authRes.user) {
@@ -65,17 +64,20 @@ export default function ChartEditorPage() {
         setChart(loadedChart);
 
         if (tracksRes.success) setTracks(tracksRes.data || []);
-        if (coursesRes.success) setCourses(coursesRes.data || []);
 
-        // Fetch categories for the chart's track
+        // Fetch categories and the chart's relevant course graph in parallel.
         if (loadedChart.trackId) {
-          const catsRes = await fetchJson(`/api/categories?trackId=${loadedChart.trackId}`);
+          const [catsRes, coursesRes] = await Promise.all([
+            fetchJson(`/api/categories?trackId=${loadedChart.trackId}`),
+            fetchJson(`/api/courses/chart-scope?trackId=${loadedChart.trackId}&chartId=${encodeURIComponent(chartId)}`),
+          ]);
           if (catsRes.success && catsRes.data) {
             const list = catsRes.data.categories || catsRes.data.items || catsRes.data.rule || [];
             setCategories(list);
             setVisualCategories(list);
             setRuleCategories(list);
           }
+          if (coursesRes.success) setCourses(coursesRes.data || []);
         }
       } catch (err: any) {
         console.error("Error loading chart editor page:", err);
@@ -87,6 +89,25 @@ export default function ChartEditorPage() {
 
     loadAllChartData();
   }, [chartId]);
+
+  const handleCourseSearch = useCallback(async (query: string) => {
+    if (!chart?.trackId || query.trim().length < 3) return;
+
+    try {
+      const result = await fetchJson(
+        `/api/courses?q=${encodeURIComponent(query.trim())}&trackId=${encodeURIComponent(chart.trackId)}&limit=20`
+      );
+      if (!result.success || !Array.isArray(result.data)) return;
+
+      setCourses((current) => {
+        const byId = new Map(current.map((course) => [course.id, course]));
+        for (const course of result.data) byId.set(course.id, course);
+        return Array.from(byId.values());
+      });
+    } catch (error) {
+      console.error("Chart course search error:", error);
+    }
+  }, [chart?.trackId]);
 
   if (loading) {
     return (
@@ -131,6 +152,7 @@ export default function ChartEditorPage() {
         visualCategories={categories}
         ruleCategories={categories}
         user={user}
+        onCourseSearch={handleCourseSearch}
       />
     </div>
   );

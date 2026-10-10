@@ -91,6 +91,7 @@ interface ChartEditorProps {
   visualCategories?: VisualCategory[];
   ruleCategories?: RuleCategory[];
   user?: UserSession | null;
+  onCourseSearch?: (query: string) => Promise<void>;
 }
 
 interface SvgConnection {
@@ -111,6 +112,7 @@ export function ChartEditor({
   visualCategories,
   ruleCategories,
   user,
+  onCourseSearch,
 }: ChartEditorProps) {
   const categories = useMemo(() => {
     return categoriesProp || visualCategories || ruleCategories || [];
@@ -134,6 +136,17 @@ export function ChartEditor({
   const [selectedCategoryFilter, setSelectedCategoryFilter] = usePersistedState<string>("ut_ece_chart_cat_filter", "all");
   const [showArrows, setShowArrows] = usePersistedState<boolean>("ut_ece_chart_show_arrows", true);
   const [isDrawerCollapsed, setIsDrawerCollapsed] = usePersistedState<boolean>("ut_ece_chart_drawer_collapsed", false);
+
+  useEffect(() => {
+    const query = drawerSearch.trim();
+    if (!onCourseSearch || query.length < 3) return;
+
+    const timer = window.setTimeout(() => {
+      void onCourseSearch(query);
+    }, 300);
+
+    return () => window.clearTimeout(timer);
+  }, [drawerSearch, onCourseSearch]);
 
   // Drag & Drop State
   const [draggedCourseId, setDraggedCourseId] = useState<string | null>(null);
@@ -992,7 +1005,7 @@ export function ChartEditor({
   const filteredDrawerCourses = useMemo(() => {
     // 1. Category filter (matches category and all its descendants)
     let list = allCourses;
-    if (selectedCategoryFilter !== "all") {
+    if (selectedCategoryFilter !== "all" && drawerSearch.trim().length < 3) {
       const allowedCatIds = getCategoryAndDescendantIds(selectedCategoryFilter, categories);
       list = list.filter((course) => {
         const assignment =

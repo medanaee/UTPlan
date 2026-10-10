@@ -11,10 +11,12 @@ export async function getCourses(
   trackId?: string,
   directOnly: boolean = false,
   search?: string,
-  limit?: number
+  limit?: number,
+  courseIds?: string[]
 ): Promise<Course[]> {
   const d1 = getD1();
   if (!d1) return [];
+  if (courseIds && courseIds.length === 0) return [];
 
   try {
     const params: any[] = [];
@@ -86,6 +88,12 @@ export async function getCourses(
       params.push(pattern, pattern, pattern, pattern, pattern);
     }
 
+    if (courseIds) {
+      const placeholders = courseIds.map(() => "?").join(",");
+      query += ` AND c.id IN (${placeholders})`;
+      params.push(...courseIds);
+    }
+
     query += " ORDER BY c.name ASC";
     if (limit) {
       query += " LIMIT ?";
@@ -153,6 +161,48 @@ export async function getCourses(
     });
   } catch (err) {
     console.error("D1 getCourses error:", err);
+    return [];
+  }
+}
+
+/**
+ * Loads the course graph needed by a chart editor:
+ * track-assigned courses, courses already placed in the chart, and all
+ * prerequisite/corequisite/recommended ancestors of those courses.
+ */
+export async function getCoursesForChartScope(trackId: string, chartId?: string): Promise<Course[]> {
+  const d1 = getD1();
+  if (!d1 || !trackId) return [];
+
+  try {
+    const scopeQuery = `
+      WITH RECURSIVE course_scope(course_id) AS (
+        SELECT course_id
+        FROM track_course_assignments
+        WHERE track_id = ?
+        ${chartId ? `
+        UNION
+        SELECT cc.course_id
+        FROM chart_courses cc
+        INNER JOIN chart_terms ct ON ct.id = cc.term_id
+        WHERE ct.chart_id = ?` : ""}
+        UNION
+        SELECT p.required_course_id
+        FROM prerequisites p
+        INNER JOIN course_scope s ON s.course_id = p.course_id
+        WHERE p.type IN ('prerequisite', 'corequisite', 'recommended')
+      )
+      SELECT DISTINCT course_id FROM course_scope
+    `;
+    const params = chartId ? [trackId, chartId] : [trackId];
+    const { results } = await d1.prepare(scopeQuery).bind(...params).all();
+    const courseIds = (results || [])
+      .map((row: any) => row.course_id)
+      .filter((id: unknown): id is string => typeof id === "string" && id.length > 0);
+
+    return getCourses(undefined, trackId, false, undefined, undefined, courseIds);
+  } catch (err) {
+    console.error("D1 getCoursesForChartScope error:", err);
     return [];
   }
 }
