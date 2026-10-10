@@ -626,7 +626,7 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
                   )}
                   {reviews.map((rev) => {
                     const cRatings = rev.criteriaRatings || {};
-                    const isMyReview = currentUser && rev.userId && rev.userId === currentUser.id;
+                    const isMyReview = currentUser && rev.isMine;
                     const canDelete = isMyReview || isAdmin;
                     const canEdit = isMyReview || isAdmin;
 

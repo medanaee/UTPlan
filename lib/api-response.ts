@@ -1,4 +1,6 @@
 import { buildResponseEnvelope } from "resora";
+import { apiResource } from "@/lib/api-resource";
+import { MAX_JSON_BODY_BYTES } from "@/lib/api-request";
 
 export type ApiResponseKind = "resource" | "collection" | "generic";
 
@@ -61,7 +63,7 @@ export function apiResponseJson(
     : undefined;
   const hasData = Boolean(record && Object.prototype.hasOwnProperty.call(record, "data"));
   const { data, success, message, errors, status: _status, ...legacyFields } = record ?? {};
-  const payload = hasData ? data : Object.keys(legacyFields).length ? legacyFields : null;
+  const payload = apiResource(hasData ? data : Object.keys(legacyFields).length ? legacyFields : null);
   const kind = Array.isArray(payload) ? "collection" : "resource";
   const envelope = buildResponseEnvelope({
     payload,
@@ -72,7 +74,7 @@ export function apiResponseJson(
   return Response.json(
     {
       ...envelope,
-      ...legacyFields,
+      ...apiResource(legacyFields),
       success: isSuccess,
       status: isSuccess ? "success" : "error",
       message: typeof message === "string" ? message : isSuccess ? "OK" : "Request failed",
@@ -92,6 +94,18 @@ export function withApiTiming<T extends (...args: any[]) => Response | Promise<R
   handler: T
 ): T {
   return (async (...args: Parameters<T>) => {
+    const request = args[0] instanceof Request ? args[0] : null;
+    if (request && ["POST", "PUT", "PATCH"].includes(request.method)) {
+      const contentLength = Number(request.headers.get("content-length") || 0);
+      const contentType = request.headers.get("content-type") || "";
+      const isMultipart = contentType.toLowerCase().includes("multipart/form-data");
+      if (!isMultipart && Number.isFinite(contentLength) && contentLength > MAX_JSON_BODY_BYTES) {
+        return apiError("بدنه درخواست بیش از حد مجاز است.", 413);
+      }
+      if (contentLength > 0 && !isMultipart && !contentType.toLowerCase().includes("application/json")) {
+        return apiError("نوع محتوای درخواست باید application/json باشد.", 415);
+      }
+    }
     const startedAt = performance.now();
     const response = await handler(...args);
     const body = await response.clone().json().catch(() => null);

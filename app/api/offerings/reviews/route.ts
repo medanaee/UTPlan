@@ -2,6 +2,9 @@ import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { getReviews, getReviewById, createReview, updateReview, deleteReview, findUserById } from "@/lib/db";
 import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
+import { apiError } from "@/lib/api-response";
+import { checkReviewRateLimit, parseReviewRequest, toReviewResource, toReviewResources } from "@/lib/review-http";
+import { isRequestError, readJsonBody } from "@/lib/api-request";
 
 async function getEffectiveUserRole(session: any): Promise<{ isAdmin: boolean; userId: string; role: string }> {
   if (!session?.id) return { isAdmin: false, userId: "", role: "user" };
@@ -35,7 +38,7 @@ async function GETHandler(request: NextRequest) {
     const userId = session?.id || null;
 
     const reviews = await getReviews("offering", offeringId, userId, clientId);
-    return apiResponseJson({ success: true, data: reviews });
+    return apiResponseJson({ success: true, data: toReviewResources(reviews, userId) });
   } catch (error) {
     console.error("GET offering reviews error:", error);
     return apiResponseJson(
@@ -52,14 +55,24 @@ async function POSTHandler(request: NextRequest) {
     const token = getAuthTokenFromRequest(request);
     const session = token ? await verifySessionToken(token) : null;
 
-    const body: any = await request.json();
-    const { offeringId, comment, isAnonymous, criteriaRatings, studentGrade } = body;
+    const body = await readJsonBody(request);
+    if (isRequestError(body)) return apiError(body.message, body.status);
+    const parsed = parseReviewRequest(body, "offeringId");
+    if (!parsed.ok) return apiError(parsed.message, 400);
+    const { targetId: offeringId, comment, isAnonymous, criteriaRatings, studentGrade } = parsed.value;
 
     if (!offeringId || !comment || !comment.trim()) {
       return apiResponseJson(
         { success: false, message: "شناسه ارائه و متن نظر الزامی است." },
         { status: 400 }
       );
+    }
+
+    const rateLimit = checkReviewRateLimit(request, session?.id);
+    if (!rateLimit.allowed) {
+      return apiError("تعداد ثبت نظر بیش از حد مجاز است. لطفاً بعداً دوباره تلاش کنید.", 429, [], {
+        "Retry-After": String(rateLimit.retryAfterSeconds),
+      });
     }
 
     let overallRating: number | null = null;
@@ -89,17 +102,17 @@ async function POSTHandler(request: NextRequest) {
       userId: session?.id || null,
       targetType: "offering",
       targetId: offeringId,
-      comment: comment.trim(),
-      isAnonymous: Boolean(isAnonymous),
+      comment,
+      isAnonymous,
       overallRating,
       criteriaRatings: criteriaRatings || undefined,
-      studentGrade: parsedGrade,
+      studentGrade: studentGrade ?? parsedGrade,
     });
 
     return apiResponseJson({
       success: true,
       message: "نظر شما با موفقیت ثبت شد.",
-      data: newRev,
+      data: toReviewResource(newRev, session?.id),
     });
   } catch (error) {
     console.error("POST offering review error:", error);
@@ -124,8 +137,13 @@ async function PUTHandler(request: NextRequest) {
       );
     }
 
-    const body: any = await request.json();
-    const { id, comment, isAnonymous, criteriaRatings, studentGrade } = body;
+    const body = await readJsonBody(request);
+    if (isRequestError(body)) return apiError(body.message, body.status);
+    const input = body as Record<string, unknown>;
+    const id = typeof input.id === "string" ? input.id.trim() : "";
+    const parsed = parseReviewRequest({ ...input, offeringId: "update" }, "offeringId");
+    if (!parsed.ok) return apiError(parsed.message, 400);
+    const { comment, isAnonymous, criteriaRatings, studentGrade } = parsed.value;
 
     if (!id || !comment || !comment.trim()) {
       return apiResponseJson(
@@ -177,17 +195,17 @@ async function PUTHandler(request: NextRequest) {
     }
 
     const updated = await updateReview(id, {
-      comment: comment.trim(),
-      isAnonymous: Boolean(isAnonymous),
+      comment,
+      isAnonymous,
       criteriaRatings: criteriaRatings || undefined,
       overallRating,
-      studentGrade: parsedGrade,
+      studentGrade: studentGrade ?? parsedGrade,
     });
 
     return apiResponseJson({
       success: true,
       message: "نظر با موفقیت ویرایش شد.",
-      data: updated,
+      data: updated ? toReviewResource(updated, session.id) : null,
     });
   } catch (error) {
     console.error("PUT offering review error:", error);

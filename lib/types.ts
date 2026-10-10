@@ -310,6 +310,7 @@ export interface Review {
   createdAt: string;
   deletedAt?: string | null;
   reactions?: ReviewReactionSummary[];
+  isMine?: boolean;
 }
 
 // ----------------------------------------------------
