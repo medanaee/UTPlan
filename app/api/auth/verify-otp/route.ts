@@ -1,6 +1,7 @@
 import { apiError, apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { isRequestError, readJsonBody } from "@/lib/api-request";
 import { createOtpSession, normalizeUtEmail, verifyEmailOtp } from "@/lib/otp";
+import { consumeEmailOtp } from "@/lib/db";
 
 async function POSTHandler(request: Request) {
   try {
@@ -16,6 +17,7 @@ async function POSTHandler(request: Request) {
     const result = await verifyEmailOtp(email, code);
     if (!result.ok) return apiError(result.message, 401);
     const session = await createOtpSession(email, { ...result.record, password });
+    if (session) await consumeEmailOtp(result.record.id);
     if (session?.exists) return apiError("این ایمیل قبلاً ثبت‌نام شده است؛ از ورود استفاده کنید.", 409);
     if (!session) return apiError("برای این ایمیل حسابی وجود ندارد. ابتدا ثبت‌نام را انتخاب کنید.", 404);
 

@@ -5,6 +5,7 @@ export const UT_EMAIL_PATTERN = /^[^\s@]+@ut\.ac\.ir$/i;
 export const OTP_TTL_MS = 10 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
 const resendBuckets = new Map<string, number>();
+const registrationLocks = new Set<string>();
 
 export function normalizeUtEmail(value: unknown) {
   const email = typeof value === "string" ? value.trim().toLowerCase() : "";
@@ -52,29 +53,41 @@ export async function verifyEmailOtp(email: string, code: string) {
     await incrementEmailOtpAttempts(record.id);
     return { ok: false as const, message: "کد تأیید نادرست است." };
   }
-  await consumeEmailOtp(record.id);
   return { ok: true as const, record };
 }
 
 export async function createOtpSession(email: string, record: any) {
-  let user = await findUserByEmail(email);
-  if (record.mode === "register" && user) {
-    return { exists: true as const };
+  const isRegistration = record.mode === "register";
+  if (isRegistration) {
+    if (registrationLocks.has(email)) return { exists: true as const };
+    registrationLocks.add(email);
   }
-  if (!user && record.mode === "register" && typeof record.password === "string") {
-    user = await createUser({
-      firstName: record.first_name || "",
-      lastName: record.last_name || "",
-      name: [record.first_name, record.last_name].filter(Boolean).join(" ") || email.split("@")[0],
-      email,
-      passwordHash: await import("@/lib/auth").then(({ hashPassword }) => hashPassword(record.password)),
-      role: "user",
-    });
+
+  try {
+    let user = await findUserByEmail(email);
+    if (isRegistration && user) return { exists: true as const };
+    if (!user && isRegistration && typeof record.password === "string") {
+      try {
+        user = await createUser({
+          firstName: record.first_name || "",
+          lastName: record.last_name || "",
+          name: [record.first_name, record.last_name].filter(Boolean).join(" ") || email.split("@")[0],
+          email,
+          passwordHash: await import("@/lib/auth").then(({ hashPassword }) => hashPassword(record.password)),
+          role: "user",
+        });
+      } catch (error) {
+        if (await findUserByEmail(email)) return { exists: true as const };
+        throw error;
+      }
+    }
+    if (!user) return null;
+    const sessionPayload = { id: user.id, name: user.name, email: user.email, role: user.role };
+    const token = await createSessionToken(sessionPayload);
+    return { exists: false as const, user: sessionPayload, cookieHeader: createAuthCookieHeader(token) };
+  } finally {
+    if (isRegistration) registrationLocks.delete(email);
   }
-  if (!user) return null;
-  const sessionPayload = { id: user.id, name: user.name, email: user.email, role: user.role };
-  const token = await createSessionToken(sessionPayload);
-  return { exists: false as const, user: sessionPayload, cookieHeader: createAuthCookieHeader(token) };
 }
 
 export async function sendResendEmail(params: { to: string; code: string }) {
