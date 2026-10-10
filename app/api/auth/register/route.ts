@@ -1,9 +1,13 @@
-import { apiResponseJson, withApiTiming } from "@/lib/api-response";
+import { apiError, apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { findUserByEmail, createUser } from "@/lib/db";
 import { hashPassword, createSessionToken, createAuthCookieHeader } from "@/lib/auth";
 
 async function POSTHandler(request: Request) {
   try {
+    return apiError("ثبت‌نام با رمز عبور غیرفعال است؛ از ثبت‌نام با کد تأیید ایمیل استفاده کنید.", 410);
+    /* Legacy password flow intentionally disabled after OTP migration. */
+    /* istanbul ignore next */
+    if (false) {
     const body: any = await request.json();
     const { firstName, lastName, name, email, password, role } = body as {
       firstName?: string;
@@ -75,6 +79,7 @@ async function POSTHandler(request: Request) {
         },
       }
     );
+    }
   } catch (error) {
     console.error("Register error:", error);
     return apiResponseJson(

@@ -22,8 +22,11 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
+import { OtpAuthForm } from "@/components/auth/otp-auth-form";
 
 export default function LoginPage() {
+  return <OtpAuthForm />;
+
   const router = useRouter();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [firstName, setFirstName] = useState("");
