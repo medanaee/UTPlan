@@ -1,5 +1,6 @@
 import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { requireAdminSession } from "@/lib/auth";
+import { rememberServerValue, invalidateCurriculumCache } from "@/lib/server-cache";
 import {
   getTracks,
   getTrackById,
@@ -15,7 +16,10 @@ async function GETHandler(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const majorId = searchParams.get("majorId") || undefined;
-    const tracks = await getTracks(majorId);
+    const tracks = await rememberServerValue(
+      `tracks:${majorId || "all"}`,
+      () => getTracks(majorId)
+    );
     return apiResponseJson(
       { success: true, data: tracks },
       {
@@ -49,6 +53,7 @@ async function POSTHandler(request: Request) {
     }
 
     const newTrack = await createTrack(majorId, name, code, rulesTree);
+    invalidateCurriculumCache();
     await logAdminAction({
       userId: auth.user!.id,
       userName: auth.user!.name,
@@ -91,6 +96,7 @@ async function PUTHandler(request: Request) {
       if (!updated) {
         return apiResponseJson({ success: false, message: "گرایش یافت نشد." }, { status: 404 });
       }
+      invalidateCurriculumCache();
 
       const diff = existing
         ? buildDiff(existing, updated, ["name", "code", "rulesTree"])
@@ -114,6 +120,7 @@ async function PUTHandler(request: Request) {
 
     if (rulesTree) {
       const success = await updateTrackRules(targetId, rulesTree);
+      if (success) invalidateCurriculumCache();
       if (success) {
         await logAdminAction({
           userId: auth.user!.id,
@@ -148,6 +155,7 @@ async function DELETEHandler(request: Request) {
     }
 
     const success = await deleteTrack(id);
+    if (success) invalidateCurriculumCache();
     if (success) {
       await logAdminAction({
         userId: auth.user!.id,

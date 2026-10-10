@@ -1,5 +1,6 @@
 import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { requireAdminSession } from "@/lib/auth";
+import { rememberServerValue, invalidateCurriculumCache } from "@/lib/server-cache";
 import {
   getCategories,
   getCategoryById,
@@ -20,7 +21,7 @@ async function GETHandler(request: Request) {
       return apiResponseJson({ success: false, message: "شناسه گرایش الزامی است." }, { status: 400 });
     }
 
-    const categories = await getCategories(trackId);
+    const categories = await rememberServerValue(`categories:${trackId}`, () => getCategories(trackId));
 
     return apiResponseJson(
       {
@@ -76,6 +77,7 @@ async function POSTHandler(request: Request) {
       parentId: parentId || null,
       code,
     });
+    invalidateCurriculumCache();
 
     await logAdminAction({
       userId: auth.user!.id,
@@ -111,6 +113,7 @@ async function DELETEHandler(request: Request) {
     }
 
     const success = await deleteCategory(id);
+    if (success) invalidateCurriculumCache();
 
     await logAdminAction({
       userId: auth.user!.id,
@@ -152,6 +155,7 @@ async function PUTHandler(request: Request) {
     // Sub-action: Reorder
     if (action === "reorder" && Array.isArray(items)) {
       await reorderCategories(items);
+      invalidateCurriculumCache();
 
       await logAdminAction({
         userId: auth.user!.id,
@@ -175,6 +179,7 @@ async function PUTHandler(request: Request) {
       if (!updated) {
         return apiResponseJson({ success: false, message: "دسته یافت نشد." }, { status: 404 });
       }
+      invalidateCurriculumCache();
 
       const diff = existing
         ? buildDiff(existing, updated, ["name", "color", "parentId", "sortOrder", "code"])

@@ -1,6 +1,7 @@
 import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
+import { rememberServerValue, invalidateCurriculumCache } from "@/lib/server-cache";
 import {
   getChartSummaries,
   getChartById,
@@ -45,7 +46,10 @@ async function GETHandler(req: NextRequest) {
     }
 
     if (approved === "true") {
-      const approvedCharts = await getApprovedTrackCharts(trackId || undefined);
+      const approvedCharts = await rememberServerValue(
+        `approved-charts:${trackId || "all"}`,
+        () => getApprovedTrackCharts(trackId || undefined)
+      );
       return apiResponseJson({ success: true, data: approvedCharts });
     }
 
@@ -102,6 +106,7 @@ async function POSTHandler(req: NextRequest) {
       waivedCourseIds: initialWaived,
       isApprovedDefault: isAdmin && isApprovedDefault,
     });
+    invalidateCurriculumCache();
 
     return apiResponseJson({ success: true, data: newChart, message: "چارت جدید با موفقیت ایجاد شد." });
   } catch (err: any) {
@@ -173,6 +178,7 @@ async function PUTHandler(req: NextRequest) {
       waivedCourseIds,
       isApprovedDefault: isAdmin ? isApprovedDefault : undefined,
     });
+    if (updated) invalidateCurriculumCache();
 
     return apiResponseJson({ success: true, data: updated, message: "چارت با موفقیت ذخیره شد." });
   } catch (err: any) {
@@ -224,6 +230,7 @@ async function DELETEHandler(req: NextRequest) {
     }
 
     await deleteChart(id);
+    invalidateCurriculumCache();
     return apiResponseJson({ success: true, message: "چارت با موفقیت حذف شد." });
   } catch (err: any) {
     console.error("DELETE /api/charts error:", err);
@@ -261,6 +268,7 @@ async function PATCHHandler(req: NextRequest) {
 
     const { updateChartCourseEvent } = await import("@/lib/db");
     await updateChartCourseEvent(chartId, Number(termIndex), courseId, selectedEventId || null);
+    invalidateCurriculumCache();
     const updated = await getChartById(chartId);
 
     return apiResponseJson({

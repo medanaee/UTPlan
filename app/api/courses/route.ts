@@ -1,5 +1,6 @@
 import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { requireAdminSession } from "@/lib/auth";
+import { invalidateCurriculumCache } from "@/lib/server-cache";
 import {
   getCourses,
   getCourseById,
@@ -102,6 +103,7 @@ async function POSTHandler(request: Request) {
       visualCategoryId,
       ruleCategoryId,
     });
+    invalidateCurriculumCache();
 
     await logAdminAction({
       userId: auth.user!.id,
@@ -186,6 +188,7 @@ async function PUTHandler(request: Request) {
     if (!updated) {
       return apiResponseJson({ success: false, message: "درس مورد نظر یافت نشد." }, { status: 404 });
     }
+    invalidateCurriculumCache();
 
     const diff = existing
       ? buildDiff(existing, updated, [
@@ -238,6 +241,7 @@ async function DELETEHandler(request: Request) {
 
     if (all && facultyId) {
       const success = await deleteCoursesByFaculty(facultyId);
+      if (success) invalidateCurriculumCache();
       await logAdminAction({
         userId: auth.user!.id,
         userName: auth.user!.name,
@@ -255,6 +259,7 @@ async function DELETEHandler(request: Request) {
 
     const courseBefore = await getCourseById(id);
     const success = await deleteCourse(id);
+    if (success) invalidateCurriculumCache();
     if (success) {
       await logAdminAction({
         userId: auth.user!.id,

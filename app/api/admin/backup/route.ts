@@ -2,6 +2,7 @@ import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { getD1, getFaculties, getCourses, getProfessors, getOfferings, getEvents, getCharts, getAllPrerequisites, logAdminAction } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
+import { invalidateCurriculumCache } from "@/lib/server-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -111,6 +112,8 @@ async function POSTHandler(request: NextRequest) {
   try {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response! as NextResponse;
+
+    invalidateCurriculumCache();
 
     const body: any = await request.json();
     let tablesData: Record<string, any[]> | null = null;

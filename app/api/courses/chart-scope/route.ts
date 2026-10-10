@@ -1,5 +1,6 @@
 import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { getCoursesForChartScope } from "@/lib/db";
+import { rememberServerValue } from "@/lib/server-cache";
 
 async function GETHandler(request: Request) {
   try {
@@ -14,7 +15,10 @@ async function GETHandler(request: Request) {
       );
     }
 
-    const courses = await getCoursesForChartScope(trackId, chartId);
+    const courses = await rememberServerValue(
+      `chart-scope:${trackId}:${chartId || "track"}`,
+      () => getCoursesForChartScope(trackId, chartId)
+    );
     return apiResponseJson(
       { success: true, data: courses },
       { headers: { "Cache-Control": "no-store, no-cache, must-revalidate" } }

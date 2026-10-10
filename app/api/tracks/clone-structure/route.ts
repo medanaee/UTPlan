@@ -2,6 +2,7 @@ import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { cloneTrackStructure, findUserById, getTrackById, logAdminAction } from "@/lib/db";
 import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
+import { invalidateCurriculumCache } from "@/lib/server-cache";
 
 async function POSTHandler(request: NextRequest) {
   try {
@@ -54,6 +55,7 @@ async function POSTHandler(request: NextRequest) {
     }
 
     const result = await cloneTrackStructure(sourceTrackId, targetTrackId, options);
+    if (result.success) invalidateCurriculumCache();
 
     if (!result.success) {
       return apiResponseJson({ success: false, message: result.message }, { status: 500 });

@@ -14,6 +14,7 @@ import {
 } from "@/lib/db";
 import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
 import { wouldCreatePrerequisiteCycle } from "@/lib/graph-utils";
+import { invalidateCurriculumCache } from "@/lib/server-cache";
 import type { PrerequisiteType } from "@/lib/types";
 
 interface ImportCourseItem {
@@ -87,6 +88,8 @@ async function POSTHandler(request: NextRequest) {
     if (!liveUser || (liveUser.role !== "admin" && liveUser.role !== "super_admin")) {
       return apiResponseJson({ success: false, message: "تنها مدیران مجاز به ورود دسته‌ای دروس هستند." }, { status: 403 });
     }
+
+    invalidateCurriculumCache();
 
     const { searchParams } = new URL(request.url);
     const queryFacultyId = searchParams.get("facultyId");

@@ -11,11 +11,14 @@ import {
   logAdminAction,
 } from "@/lib/db";
 import type { Category } from "@/lib/types";
+import { invalidateCurriculumCache } from "@/lib/server-cache";
 
 async function POSTHandler(request: NextRequest) {
   try {
     const auth = await requireAdminSession(request);
     if (!auth.authorized) return auth.response!;
+
+    invalidateCurriculumCache();
 
     const body: any = await request.json();
     const { trackId, categories } = body;

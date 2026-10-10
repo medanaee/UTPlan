@@ -1,5 +1,6 @@
 import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { requireAdminSession } from "@/lib/auth";
+import { invalidateCurriculumCache } from "@/lib/server-cache";
 import {
   getTrackAssignments,
   assignCourseToCategory,
@@ -42,6 +43,9 @@ async function POSTHandler(request: Request) {
     if (!auth.authorized) return auth.response!;
     const body: any = await request.json();
     const { trackId, assignments, courseId, visualCategoryId, ruleCategoryId } = body;
+
+    // Every assignment mutation changes the course scope of this track.
+    invalidateCurriculumCache();
 
     if (!trackId) {
       return apiResponseJson({ success: false, message: "شناسه گرایش الزامی است." }, { status: 400 });
