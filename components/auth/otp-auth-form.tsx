@@ -17,6 +17,7 @@ export function OtpAuthForm() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -27,16 +28,20 @@ export function OtpAuthForm() {
     setError(null);
     const normalizedEmail = email.trim().toLowerCase();
     if (!/^[^\s@]+@ut\.ac\.ir$/.test(normalizedEmail)) return setError("فقط ایمیل دانشگاه تهران با دامنهٔ @ut.ac.ir مجاز است.");
+    if (!otpSent && mode === "login" && !password) return setError("رمز عبور را وارد کنید.");
     if (!otpSent && mode === "register" && (!firstName.trim() || !lastName.trim())) return setError("نام و نام خانوادگی را وارد کنید.");
     if (otpSent && !/^\d{6}$/.test(otp.trim())) return setError("کد تأیید باید ۶ رقم باشد.");
 
     setLoading(true);
     try {
-      const data = await postJson(otpSent ? "/api/auth/verify-otp" : "/api/auth/request-otp", otpSent
-        ? { email: normalizedEmail, code: otp.trim() }
-        : { email: normalizedEmail, mode, firstName: firstName.trim(), lastName: lastName.trim() });
+      const data = await postJson(
+        otpSent ? "/api/auth/verify-otp" : mode === "login" ? "/api/auth/login" : "/api/auth/request-otp",
+        otpSent ? { email: normalizedEmail, code: otp.trim() } : mode === "login"
+          ? { email: normalizedEmail, password }
+          : { email: normalizedEmail, mode, firstName: firstName.trim(), lastName: lastName.trim() }
+      );
       if (!data.success) return setError(data.message || "عملیات انجام نشد.");
-      if (!otpSent) return setOtpSent(true);
+      if (!otpSent && mode === "register") return setOtpSent(true);
       router.push(data.user?.role === "admin" || data.user?.role === "super_admin" ? "/admin" : "/");
       router.refresh();
     } catch {
@@ -55,6 +60,7 @@ export function OtpAuthForm() {
           {error && <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-2.5 text-xs text-destructive"><ShieldAlert className="h-4 w-4 shrink-0" /><span>{error}</span></div>}
           {!otpSent && mode === "register" && <div className="grid grid-cols-2 gap-2"><div className="space-y-1.5"><Label htmlFor="firstName">نام</Label><Input id="firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} required /></div><div className="space-y-1.5"><Label htmlFor="lastName">نام خانوادگی</Label><Input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} required /></div></div>}
           <div className="space-y-1.5"><Label htmlFor="email">ایمیل دانشگاهی</Label><Input id="email" type="email" placeholder="name@ut.ac.ir" value={email} onChange={(e) => setEmail(e.target.value)} required dir="ltr" icon={<Mail />} disabled={otpSent} /></div>
+          {!otpSent && mode === "login" && <div className="space-y-1.5"><Label htmlFor="password">رمز عبور</Label><Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required dir="ltr" /></div>}
           {otpSent && <div className="space-y-1.5"><Label htmlFor="otp">کد تأیید</Label><Input id="otp" inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="123456" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} required dir="ltr" /></div>}
           <Button type="submit" disabled={loading} className="w-full font-semibold">{loading ? "در حال پردازش..." : otpSent ? "تأیید و ورود" : "ارسال کد تأیید"}</Button>
           {otpSent && <button type="button" onClick={() => { setOtpSent(false); setOtp(""); setError(null); }} className="w-full text-xs text-muted-foreground hover:text-primary">تغییر ایمیل یا ارسال دوباره</button>}
