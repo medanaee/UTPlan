@@ -18,6 +18,7 @@ export function OtpAuthForm() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -31,12 +32,14 @@ export function OtpAuthForm() {
     if (!otpSent && mode === "login" && !password) return setError("رمز عبور را وارد کنید.");
     if (!otpSent && mode === "register" && (!firstName.trim() || !lastName.trim())) return setError("نام و نام خانوادگی را وارد کنید.");
     if (otpSent && !/^\d{6}$/.test(otp.trim())) return setError("کد تأیید باید ۶ رقم باشد.");
+    if (otpSent && password.length < 6) return setError("رمز عبور باید حداقل ۶ کاراکتر باشد.");
+    if (otpSent && password !== confirmPassword) return setError("تکرار رمز عبور مطابقت ندارد.");
 
     setLoading(true);
     try {
       const data = await postJson(
         otpSent ? "/api/auth/verify-otp" : mode === "login" ? "/api/auth/login" : "/api/auth/request-otp",
-        otpSent ? { email: normalizedEmail, code: otp.trim() } : mode === "login"
+        otpSent ? { email: normalizedEmail, code: otp.trim(), password } : mode === "login"
           ? { email: normalizedEmail, password }
           : { email: normalizedEmail, mode, firstName: firstName.trim(), lastName: lastName.trim() }
       );
@@ -62,8 +65,10 @@ export function OtpAuthForm() {
           <div className="space-y-1.5"><Label htmlFor="email">ایمیل دانشگاهی</Label><Input id="email" type="email" placeholder="name@ut.ac.ir" value={email} onChange={(e) => setEmail(e.target.value)} required dir="ltr" icon={<Mail />} disabled={otpSent} /></div>
           {!otpSent && mode === "login" && <div className="space-y-1.5"><Label htmlFor="password">رمز عبور</Label><Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required dir="ltr" /></div>}
           {otpSent && <div className="space-y-1.5"><Label htmlFor="otp">کد تأیید</Label><Input id="otp" inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="123456" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} required dir="ltr" /></div>}
-          <Button type="submit" disabled={loading} className="w-full font-semibold">{loading ? "در حال پردازش..." : otpSent ? "تأیید و ورود" : "ارسال کد تأیید"}</Button>
-          {otpSent && <button type="button" onClick={() => { setOtpSent(false); setOtp(""); setError(null); }} className="w-full text-xs text-muted-foreground hover:text-primary">تغییر ایمیل یا ارسال دوباره</button>}
+          {otpSent && <div className="space-y-1.5"><Label htmlFor="registerPassword">رمز عبور جدید</Label><Input id="registerPassword" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} dir="ltr" /></div>}
+          {otpSent && <div className="space-y-1.5"><Label htmlFor="confirmPassword">تکرار رمز عبور</Label><Input id="confirmPassword" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required minLength={6} dir="ltr" /></div>}
+          <Button type="submit" disabled={loading} className="w-full font-semibold">{loading ? "در حال پردازش..." : otpSent ? "تکمیل ثبت‌نام" : mode === "login" ? "ورود" : "ارسال کد ثبت‌نام"}</Button>
+          {otpSent && <button type="button" onClick={() => { setOtpSent(false); setOtp(""); setPassword(""); setConfirmPassword(""); setError(null); }} className="w-full text-xs text-muted-foreground hover:text-primary">تغییر ایمیل یا ارسال دوباره</button>}
           {!otpSent && <div className="pt-1 text-center"><button type="button" onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(null); }} className="text-xs text-muted-foreground hover:text-primary">{mode === "login" ? "حساب کاربری ندارید؟ ثبت‌نام کنید" : "قبلاً ثبت‌نام کرده‌اید؟ وارد شوید"}</button></div>}
         </CardContent></form>
       </Card>

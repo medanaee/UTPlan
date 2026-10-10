@@ -1,6 +1,7 @@
 import { apiError, apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { isRequestError, readJsonBody } from "@/lib/api-request";
 import { canRequestOtp, issueEmailOtp, normalizeUtEmail, sendResendEmail } from "@/lib/otp";
+import { findUserByEmail } from "@/lib/db";
 
 async function POSTHandler(request: Request) {
   try {
@@ -13,6 +14,7 @@ async function POSTHandler(request: Request) {
     const lastName = typeof input.lastName === "string" ? input.lastName.trim().slice(0, 120) : "";
     if (!email) return apiError("فقط ایمیل دانشگاه تهران با دامنهٔ @ut.ac.ir مجاز است.", 400);
     if (mode === "register" && (!firstName || !lastName)) return apiError("نام و نام خانوادگی الزامی است.", 400);
+    if (mode === "register" && await findUserByEmail(email)) return apiError("این ایمیل قبلاً ثبت‌نام شده است؛ از ورود استفاده کنید.", 409);
 
     const key = `${email}:${request.headers.get("cf-connecting-ip") || request.headers.get("x-forwarded-for") || "unknown"}`;
     const limit = canRequestOtp(key);

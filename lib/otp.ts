@@ -58,20 +58,23 @@ export async function verifyEmailOtp(email: string, code: string) {
 
 export async function createOtpSession(email: string, record: any) {
   let user = await findUserByEmail(email);
-  if (!user && record.mode === "register") {
+  if (record.mode === "register" && user) {
+    return { exists: true as const };
+  }
+  if (!user && record.mode === "register" && typeof record.password === "string") {
     user = await createUser({
       firstName: record.first_name || "",
       lastName: record.last_name || "",
       name: [record.first_name, record.last_name].filter(Boolean).join(" ") || email.split("@")[0],
       email,
-      passwordHash: await sha256(`otp-only:${crypto.randomUUID()}`),
+      passwordHash: await import("@/lib/auth").then(({ hashPassword }) => hashPassword(record.password)),
       role: "user",
     });
   }
   if (!user) return null;
   const sessionPayload = { id: user.id, name: user.name, email: user.email, role: user.role };
   const token = await createSessionToken(sessionPayload);
-  return { user: sessionPayload, cookieHeader: createAuthCookieHeader(token) };
+  return { exists: false as const, user: sessionPayload, cookieHeader: createAuthCookieHeader(token) };
 }
 
 export async function sendResendEmail(params: { to: string; code: string }) {
