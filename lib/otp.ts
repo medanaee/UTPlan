@@ -94,6 +94,9 @@ export async function sendResendEmail(params: { to: string; code: string }) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) throw new Error("RESEND_API_KEY is not configured");
   const from = process.env.RESEND_FROM_EMAIL || "UTPlan <no-reply@utplan.ir>";
+  const subject = "کد تأیید ورود به UTPlan";
+  const text = `کد تأیید شما برای UTPlan: ${params.code}\n\nاین کد تا ۱۰ دقیقه معتبر است. اگر شما این درخواست را ارسال نکرده‌اید، این ایمیل را نادیده بگیرید.`;
+  const html = `<!doctype html><html lang="fa" dir="rtl"><body style="margin:0;background:#f4f7fb;color:#14213d;font-family:Tahoma,Arial,sans-serif"><div style="padding:36px 16px"><div style="max-width:520px;margin:0 auto;background:#fff;border:1px solid #e5eaf2;border-radius:22px;overflow:hidden;box-shadow:0 12px 35px rgba(20,33,61,.08)"><div style="padding:28px 30px;background:linear-gradient(135deg,#172554,#2563eb);color:#fff"><div style="font-size:24px;font-weight:800">UTPlan</div><div style="margin-top:8px;color:#dbeafe;font-size:13px">سامانه برنامه‌ریزی آموزشی</div></div><div style="padding:32px 30px;text-align:center"><div style="font-size:20px;font-weight:700">تأیید ایمیل شما</div><p style="margin:12px 0 24px;color:#64748b;font-size:14px;line-height:2">برای ادامه، کد زیر را در صفحه UTPlan وارد کنید.</p><div style="display:inline-block;padding:18px 28px;border:1px solid #bfdbfe;border-radius:16px;background:#eff6ff;color:#1d4ed8;font-size:34px;font-weight:800;letter-spacing:9px;direction:ltr">${params.code}</div><p style="margin:22px 0 0;color:#64748b;font-size:12px;line-height:2">این کد تا <strong style="color:#334155">۱۰ دقیقه</strong> معتبر است و فقط یک‌بار قابل استفاده است.</p></div><div style="padding:18px 30px;background:#f8fafc;border-top:1px solid #eef2f7;color:#94a3b8;font-size:11px;line-height:2;text-align:center">اگر شما این درخواست را ارسال نکرده‌اید، این ایمیل را نادیده بگیرید.<br>این پیام به‌صورت خودکار از طرف UTPlan ارسال شده است.</div></div></div></body></html>`;
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
@@ -103,6 +106,9 @@ export async function sendResendEmail(params: { to: string; code: string }) {
       subject: "کد تأیید ورود به UTPlan",
       text: `کد تأیید شما: ${params.code}\nاین کد تا ۱۰ دقیقه معتبر است.`,
       html: `<div dir="rtl"><p>کد تأیید ورود به UTPlan:</p><strong style="font-size:28px;letter-spacing:8px">${params.code}</strong><p>این کد تا ۱۰ دقیقه معتبر است.</p></div>`,
+      subject,
+      text,
+      html,
     }),
   });
   if (!response.ok) throw new Error(`Resend request failed: ${response.status}`);
