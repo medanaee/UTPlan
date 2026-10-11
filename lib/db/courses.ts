@@ -12,7 +12,8 @@ export async function getCourses(
   directOnly: boolean = false,
   search?: string,
   limit?: number,
-  courseIds?: string[]
+  courseIds?: string[],
+  offset?: number
 ): Promise<Course[]> {
   const d1 = getD1();
   if (!d1) return [];
@@ -98,6 +99,10 @@ export async function getCourses(
     if (limit) {
       query += " LIMIT ?";
       params.push(Math.min(Math.max(limit, 1), 50));
+      if (offset && offset > 0) {
+        query += " OFFSET ?";
+        params.push(Math.floor(offset));
+      }
     }
 
     const { results: courseRows } = await d1.prepare(query).bind(...params).all();
@@ -162,6 +167,48 @@ export async function getCourses(
   } catch (err) {
     console.error("D1 getCourses error:", err);
     return [];
+  }
+}
+
+export async function getCoursesPage(
+  facultyId?: string,
+  trackId?: string,
+  directOnly: boolean = false,
+  search?: string,
+  page: number = 1,
+  pageSize: number = 12
+): Promise<{ items: Course[]; total: number; page: number; pageSize: number; totalPages: number }> {
+  const d1 = getD1();
+  const safePageSize = Math.min(Math.max(Math.floor(pageSize) || 12, 1), 50);
+  const safePage = Math.max(Math.floor(page) || 1, 1);
+  if (!d1) return { items: [], total: 0, page: safePage, pageSize: safePageSize, totalPages: 0 };
+  try {
+    let where = " WHERE c.deleted_at IS NULL";
+    const params: any[] = [];
+    if (facultyId) {
+      const ids = directOnly ? [facultyId] : await getEffectiveFacultyIds(facultyId);
+      if (!ids.length) return { items: [], total: 0, page: safePage, pageSize: safePageSize, totalPages: 0 };
+      where += ` AND c.faculty_id IN (${ids.map(() => "?").join(",")})`;
+      params.push(...ids);
+    }
+    if (trackId) {
+      where += " AND EXISTS (SELECT 1 FROM track_course_assignments tca WHERE tca.course_id = c.id AND tca.track_id = ?)";
+      params.push(trackId);
+    }
+    for (const token of (search || "").trim().split(/\s+/).filter(Boolean)) {
+      const pattern = `%${token}%`;
+      where += " AND (c.name LIKE ? OR c.code LIKE ? OR c.abbreviation LIKE ? OR c.description LIKE ? OR f.name LIKE ?)";
+      params.push(pattern, pattern, pattern, pattern, pattern);
+    }
+    const countRow: any = await d1.prepare(`SELECT COUNT(*) AS total FROM courses c LEFT JOIN faculties f ON c.faculty_id = f.id${where}`).bind(...params).first();
+    const total = Number(countRow?.total || 0);
+    const totalPages = total ? Math.ceil(total / safePageSize) : 0;
+    const effectivePage = totalPages ? Math.min(safePage, totalPages) : safePage;
+    const items = await getCourses(facultyId, trackId, directOnly, search, safePageSize, undefined, (effectivePage - 1) * safePageSize);
+    return { items, total, page: effectivePage, pageSize: safePageSize, totalPages };
+  } catch (err) {
+    console.error("D1 getCoursesPage error:", err);
+    return { items: [], total: 0, page: safePage, pageSize: safePageSize, totalPages: 0 };
   }
 }
 

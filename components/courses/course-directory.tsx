@@ -9,6 +9,10 @@ import {
   ArrowLeft,
   Loader2,
   X,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,46 +27,42 @@ export function CourseDirectory({
   initialCourses = [],
 }: CourseDirectoryProps) {
   const [courses, setCourses] = useState<Course[]>(initialCourses);
-  const [loading, setLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   const [search, setSearch] = useState("");
 
   useEffect(() => {
     const query = search.trim();
-    if (query.length < 3) {
-      setCourses([]);
-      setLoading(false);
-      setHasSearched(false);
-      return;
-    }
-
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
       try {
         setLoading(true);
-        const response = await fetchJson<{ success?: boolean; data?: Course[] }>(
-          `/api/courses?q=${encodeURIComponent(query)}&limit=20`,
-          { signal: controller.signal }
-        );
+        const params = new URLSearchParams({ page: String(page), pageSize: "12" });
+        if (query.length >= 3) params.set("q", query);
+        const response = await fetchJson<any>(`/api/courses?${params}`, { signal: controller.signal, cache: "no-store" });
         setCourses(response.success ? response.data || [] : []);
-        setHasSearched(true);
+        setTotal(response.pagination?.total || 0);
+        setTotalPages(response.pagination?.totalPages || 0);
       } catch (err) {
         if (!controller.signal.aborted) {
           console.error("Error searching courses:", err);
           setCourses([]);
-          setHasSearched(true);
+          setTotal(0);
+          setTotalPages(0);
         }
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
-    }, 300);
+    }, query.length >= 3 ? 300 : 0);
 
     return () => {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [search]);
+  }, [search, page]);
 
   const filteredCourses = courses;
 
@@ -102,7 +102,7 @@ export function CourseDirectory({
             <input
               type="text"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               placeholder="جستجوی هوشمند درس، کد یا مخفف (مثلاً: ریاضی عمومی، سیستم عامل، AP)..."
               className="w-full bg-transparent py-3 pr-1 pl-2 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
             />
@@ -111,7 +111,7 @@ export function CourseDirectory({
             {search && (
               <button
                 type="button"
-                onClick={() => setSearch("")}
+                onClick={() => { setSearch(""); setPage(1); }}
                 className="p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors shrink-0 ml-1.5 cursor-pointer"
                 title="پاک کردن متن جستجو"
               >
@@ -125,7 +125,7 @@ export function CourseDirectory({
       {/* Result stats & Reset */}
       <div className="flex items-center justify-between text-xs text-muted-foreground px-2 pt-0.5">
         <span>
-          {hasSearched && (<>نمایش <strong className="text-foreground">{filteredCourses.length}</strong> پیشنهاد درس</>)}
+          نمایش <strong className="text-foreground">{total.toLocaleString("fa-IR")}</strong> درس
         </span>
 
         {search && (
@@ -133,7 +133,7 @@ export function CourseDirectory({
             variant="ghost"
             size="sm"
             onClick={() => {
-              setSearch("");
+              setSearch(""); setPage(1);
             }}
             className="h-6 text-[11px] text-primary hover:bg-primary/10 rounded-md cursor-pointer"
           >
@@ -143,15 +143,7 @@ export function CourseDirectory({
       </div>
 
       {/* Courses Grid */}
-      {!search.trim() || search.trim().length < 3 ? (
-        <div className="text-center py-16 border rounded-2xl border-dashed border-border/80 p-8 space-y-3">
-          <Search className="h-10 w-10 mx-auto text-muted-foreground/40" />
-          <h3 className="text-sm font-bold text-foreground">برای شروع نام درس را جست‌وجو کنید</h3>
-          <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-            حداقل سه حرف از نام، کد یا مخفف درس را وارد کنید.
-          </p>
-        </div>
-      ) : loading ? (
+      {loading ? (
         <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <span className="text-xs">در حال بارگذاری لیست دروس...</span>
@@ -164,7 +156,7 @@ export function CourseDirectory({
             عبارت جستجو یا فیلترهای اعمال‌شده را تغییر دهید تا دروس مرتبط نمایش داده شوند.
           </p>
         </div>
-      ) : (
+      ) : <>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredCourses.map((course) => {
 
@@ -264,7 +256,8 @@ export function CourseDirectory({
             );
           })}
         </div>
-      )}
+        {totalPages > 1 && <div className="flex items-center justify-between gap-3 px-2 py-3 border-t border-border/60 text-xs"><span className="text-muted-foreground">صفحه {page.toLocaleString("fa-IR")} از {totalPages.toLocaleString("fa-IR")}</span><div className="flex items-center gap-1"><Button variant="outline" size="sm" onClick={() => setPage(1)} disabled={page <= 1} className="h-7 w-7 p-0"><ChevronsRight className="h-3.5 w-3.5" /></Button><Button variant="outline" size="sm" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page <= 1} className="h-7 w-7 p-0"><ChevronRight className="h-3.5 w-3.5" /></Button><Button variant="outline" size="sm" onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={page >= totalPages} className="h-7 w-7 p-0"><ChevronLeft className="h-3.5 w-3.5" /></Button><Button variant="outline" size="sm" onClick={() => setPage(totalPages)} disabled={page >= totalPages} className="h-7 w-7 p-0"><ChevronsLeft className="h-3.5 w-3.5" /></Button></div></div>}
+      </>}
 
     </div>
   );

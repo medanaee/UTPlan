@@ -12,6 +12,10 @@ import {
   SlidersHorizontal,
   X,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,52 +38,55 @@ export function OfferingDirectory({
   initialOfferings = [],
 }: OfferingDirectoryProps) {
   const [offerings, setOfferings] = useState<CourseOffering[]>(initialOfferings);
-  const [loading, setLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   const [search, setSearch] = useState("");
-  // Legacy filter markup is kept below for compatibility but disabled for the lazy-search directory.
   const [selectedFaculty, setSelectedFaculty] = useState("all");
   const [selectedUnits, setSelectedUnits] = useState("all");
-  const [isFiltersOpen] = useState(false);
-  const faculties: Array<{ id: string; name: string }> = [];
-  const activeFilterCount = 0;
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [faculties, setFaculties] = useState<Array<{ id: string; name: string }>>([]);
+  const activeFilterCount = (selectedFaculty !== "all" ? 1 : 0) + (selectedUnits !== "all" ? 1 : 0);
+
+  useEffect(() => {
+    fetchJson<{ success?: boolean; data?: Array<{ id: string; name: string }> }>("/api/faculties")
+      .then((response) => { if (response.success) setFaculties(response.data || []); })
+      .catch((error) => console.error("Error loading faculties:", error));
+  }, []);
 
   useEffect(() => {
     const query = search.trim();
-    if (query.length < 3) {
-      setOfferings([]);
-      setLoading(false);
-      setHasSearched(false);
-      return;
-    }
-
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
       try {
         setLoading(true);
-        const response = await fetchJson<{ success?: boolean; data?: CourseOffering[] }>(
-          `/api/offerings?q=${encodeURIComponent(query)}&limit=20`,
-          { signal: controller.signal }
-        );
+        const params = new URLSearchParams({ page: String(page), pageSize: "12" });
+        if (query.length >= 3) params.set("q", query);
+        if (selectedFaculty !== "all") params.set("facultyId", selectedFaculty);
+        if (selectedUnits !== "all") params.set("units", selectedUnits);
+        const response = await fetchJson<any>(`/api/offerings?${params}`, { signal: controller.signal, cache: "no-store" });
         setOfferings(response.success ? response.data || [] : []);
-        setHasSearched(true);
+        setTotal(response.pagination?.total || 0);
+        setTotalPages(response.pagination?.totalPages || 0);
       } catch (err) {
         if (!controller.signal.aborted) {
           console.error("Error searching offerings:", err);
           setOfferings([]);
-          setHasSearched(true);
+          setTotal(0);
+          setTotalPages(0);
         }
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
-    }, 300);
+    }, query.length >= 3 ? 300 : 0);
 
     return () => {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [search]);
+  }, [search, selectedFaculty, selectedUnits, page]);
 
   const filteredOfferings = offerings;
 
@@ -106,7 +113,7 @@ export function OfferingDirectory({
             <input
               type="text"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               placeholder="جستجوی هوشمند نام درس، کد درس یا نام استاد..."
               className="w-full bg-transparent py-3 pr-1 pl-2 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
             />
@@ -115,7 +122,7 @@ export function OfferingDirectory({
             {search && (
               <button
                 type="button"
-                onClick={() => setSearch("")}
+                onClick={() => { setSearch(""); setPage(1); }}
                 className="p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors shrink-0 ml-1.5 cursor-pointer"
                 title="پاک کردن متن جستجو"
               >
@@ -123,7 +130,7 @@ export function OfferingDirectory({
               </button>
             )}
 
-            <div className="hidden">
+            <div>
             <Button
               type="button"
               variant="ghost"
@@ -154,7 +161,7 @@ export function OfferingDirectory({
             </Button>
             </div>
 
-          {false && (
+          {isFiltersOpen && (
             <div className="mt-3 p-4 rounded-2xl border border-border/80 bg-background/80 backdrop-blur-md shadow-xs animate-in fade-in-50 slide-in-from-top-2 duration-200 text-right space-y-3.5">
               <div className="flex items-center justify-between border-b border-border/50 pb-2">
                 <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
@@ -263,7 +270,7 @@ export function OfferingDirectory({
       </div>
 
       {/* Offerings Grid - Flat & Clean Cards */}
-      {!search.trim() || search.trim().length < 3 ? (
+      {loading ? (
         <div className="text-center py-16 border rounded-2xl border-dashed border-border/80 p-8 space-y-3">
           <Search className="h-10 w-10 mx-auto text-muted-foreground/40" />
           <h3 className="text-sm font-bold text-foreground">جستجوی ارائه‌ها</h3>
@@ -282,7 +289,7 @@ export function OfferingDirectory({
             عبارت جستجو یا فیلتر دانشکده را تغییر دهید تا ارائه‌های مرتبط نمایش داده شوند.
           </p>
         </div>
-      ) : (
+      ) : <>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredOfferings.map((off) => {
             const profsList =
@@ -391,7 +398,8 @@ export function OfferingDirectory({
             );
           })}
         </div>
-      )}
+        {totalPages > 1 && <div className="flex items-center justify-between gap-3 px-2 py-3 border-t border-border/60 text-xs"><span className="text-muted-foreground">صفحه {page.toLocaleString("fa-IR")} از {totalPages.toLocaleString("fa-IR")}</span><div className="flex items-center gap-1"><Button variant="outline" size="sm" onClick={() => setPage(1)} disabled={page <= 1} className="h-7 w-7 p-0"><ChevronsRight className="h-3.5 w-3.5" /></Button><Button variant="outline" size="sm" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page <= 1} className="h-7 w-7 p-0"><ChevronRight className="h-3.5 w-3.5" /></Button><Button variant="outline" size="sm" onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={page >= totalPages} className="h-7 w-7 p-0"><ChevronLeft className="h-3.5 w-3.5" /></Button><Button variant="outline" size="sm" onClick={() => setPage(totalPages)} disabled={page >= totalPages} className="h-7 w-7 p-0"><ChevronsLeft className="h-3.5 w-3.5" /></Button></div></div>}
+      </>}
     </div>
   );
 }

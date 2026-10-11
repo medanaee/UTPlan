@@ -2,6 +2,7 @@ import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import {
   getOfferings,
+  getOfferingsPage,
   getOfferingById,
   createOffering,
   updateOffering,
@@ -21,6 +22,26 @@ async function GETHandler(request: NextRequest) {
     const directOnly = searchParams.get("directOnly") === "true";
     const search = searchParams.get("q")?.trim() || undefined;
     const includeAll = searchParams.get("all") === "true";
+    const unitsValue = searchParams.get("units");
+    const pageValue = searchParams.get("page");
+    const pageSizeValue = searchParams.get("pageSize");
+    const paginated = pageValue !== null || pageSizeValue !== null;
+    if (paginated) {
+      const result = await getOfferingsPage({
+        courseId,
+        professorId,
+        facultyId,
+        directOnly,
+        search,
+        units: Number(unitsValue) > 0 ? Number(unitsValue) : undefined,
+        page: Number(pageValue) > 0 ? Number(pageValue) : 1,
+        pageSize: Number(pageSizeValue) > 0 ? Number(pageSizeValue) : 12,
+      });
+      return apiResponseJson(
+        { success: true, data: result.items, pagination: { total: result.total, page: result.page, pageSize: result.pageSize, totalPages: result.totalPages } },
+        { headers: { "Cache-Control": "no-store, no-cache, must-revalidate" } }
+      );
+    }
     const limitParam = Number(searchParams.get("limit"));
     const limit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : undefined;
 

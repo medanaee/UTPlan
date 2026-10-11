@@ -48,6 +48,8 @@ export async function getOfferings(
     directOnly?: boolean;
     search?: string;
     limit?: number;
+    offset?: number;
+    units?: number;
   } | string,
   directOnly: boolean = false
 ): Promise<CourseOffering[]> {
@@ -103,6 +105,10 @@ export async function getOfferings(
         params.push(...effectiveIds);
       }
     }
+    if (normFilter?.units) {
+      query += " AND c.units = ?";
+      params.push(normFilter.units);
+    }
 
     const searchTokens = (normFilter?.search || "")
       .trim()
@@ -129,6 +135,10 @@ export async function getOfferings(
     if (normFilter?.limit) {
       query += " LIMIT ?";
       params.push(Math.min(Math.max(normFilter.limit, 1), 50));
+      if (normFilter.offset && normFilter.offset > 0) {
+        query += " OFFSET ?";
+        params.push(Math.floor(normFilter.offset));
+      }
     }
 
     const { results } = await d1.prepare(query).bind(...params).all();
@@ -183,6 +193,49 @@ export async function getOfferings(
   } catch (err) {
     console.error("D1 getOfferings error:", err);
     return [];
+  }
+}
+
+export async function getOfferingsPage(options: {
+  courseId?: string;
+  professorId?: string;
+  facultyId?: string;
+  directOnly?: boolean;
+  search?: string;
+  units?: number;
+  page?: number;
+  pageSize?: number;
+} = {}): Promise<{ items: CourseOffering[]; total: number; page: number; pageSize: number; totalPages: number }> {
+  const d1 = getD1();
+  const safePageSize = Math.min(Math.max(Math.floor(options.pageSize || 12), 1), 50);
+  const safePage = Math.max(Math.floor(options.page || 1), 1);
+  if (!d1) return { items: [], total: 0, page: safePage, pageSize: safePageSize, totalPages: 0 };
+  try {
+    let where = " WHERE o.deleted_at IS NULL";
+    const params: any[] = [];
+    if (options.courseId) { where += " AND o.course_id = ?"; params.push(options.courseId); }
+    if (options.professorId) { where += " AND EXISTS (SELECT 1 FROM offering_professors op WHERE op.offering_id = o.id AND op.professor_id = ?)"; params.push(options.professorId); }
+    if (options.facultyId) {
+      const ids = options.directOnly ? [options.facultyId] : await getEffectiveFacultyIds(options.facultyId);
+      if (!ids.length) return { items: [], total: 0, page: safePage, pageSize: safePageSize, totalPages: 0 };
+      where += ` AND c.faculty_id IN (${ids.map(() => "?").join(",")})`;
+      params.push(...ids);
+    }
+    if (options.units) { where += " AND c.units = ?"; params.push(options.units); }
+    for (const token of (options.search || "").trim().split(/\s+/).filter(Boolean)) {
+      const pattern = `%${token}%`;
+      where += " AND (c.name LIKE ? OR c.code LIKE ? OR o.code LIKE ? OR EXISTS (SELECT 1 FROM offering_professors sop JOIN professors sp ON sop.professor_id = sp.id WHERE sop.offering_id = o.id AND (sp.first_name LIKE ? OR sp.last_name LIKE ? OR sp.email LIKE ? OR sp.code LIKE ?)))";
+      params.push(pattern, pattern, pattern, pattern, pattern, pattern, pattern);
+    }
+    const countRow: any = await d1.prepare(`SELECT COUNT(*) AS total FROM course_offerings o JOIN courses c ON o.course_id = c.id${where}`).bind(...params).first();
+    const total = Number(countRow?.total || 0);
+    const totalPages = total ? Math.ceil(total / safePageSize) : 0;
+    const effectivePage = totalPages ? Math.min(safePage, totalPages) : safePage;
+    const items = await getOfferings({ ...options, limit: safePageSize, offset: (effectivePage - 1) * safePageSize });
+    return { items, total, page: effectivePage, pageSize: safePageSize, totalPages };
+  } catch (err) {
+    console.error("D1 getOfferingsPage error:", err);
+    return { items: [], total: 0, page: safePage, pageSize: safePageSize, totalPages: 0 };
   }
 }
 
