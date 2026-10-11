@@ -169,7 +169,7 @@ try {
     if (!trackId) throw new Error(`Track not found: ${chart.track}`);
 
     const existing = db.prepare("SELECT id FROM charts WHERE track_id = ? AND is_approved_template = 1 ORDER BY created_at LIMIT 1").get(trackId);
-    const chartId = existing?.id || `ch_official_${normalize(chart.track).replace(/[^a-z0-9]+/g, "_")}`;
+    const chartId = existing?.id || `ch_official_${trackId}`;
 
     db.prepare(
       `INSERT INTO charts (id, user_id, track_id, title, description, waived_course_ids, is_approved_template, created_at, updated_at)
