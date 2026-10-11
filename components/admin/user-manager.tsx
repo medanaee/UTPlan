@@ -13,6 +13,8 @@ import {
   Sparkles,
   RefreshCw,
   UserCheck,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -51,15 +53,30 @@ export function UserManager({ currentUser }: UserManagerProps) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [page, setPage] = useState(1);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [roleCounts, setRoleCounts] = useState({ super_admin: 0, admin: 0, user: 0 });
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const loadUsers = async () => {
+  const loadUsers = async (requestedPage = page) => {
     try {
       setLoading(true);
-      const res = await fetchJson("/api/admin/users");
+      const params = new URLSearchParams({ page: String(requestedPage), pageSize: "20" });
+      if (search.trim()) params.set("q", search.trim());
+      if (roleFilter !== "all") params.set("role", roleFilter);
+      const res = await fetchJson(`/api/admin/users?${params.toString()}`);
       if (res.success && Array.isArray(res.data)) {
         setUsers(res.data);
+        setPage(res.pagination?.page || requestedPage);
+        setTotalUsers(res.pagination?.total || 0);
+        setTotalPages(res.pagination?.totalPages || 0);
+        setRoleCounts({
+          super_admin: res.stats?.super_admin || 0,
+          admin: res.stats?.admin || 0,
+          user: res.stats?.user || 0,
+        });
       }
     } catch (e) {
       console.error("Load users error:", e);
@@ -70,8 +87,11 @@ export function UserManager({ currentUser }: UserManagerProps) {
   };
 
   useEffect(() => {
-    loadUsers();
-  }, []);
+    const timer = window.setTimeout(() => {
+      void loadUsers(page);
+    }, search.trim() ? 300 : 0);
+    return () => window.clearTimeout(timer);
+  }, [page, search, roleFilter]);
 
   const handleRoleChange = async (targetUserId: string, newRole: "super_admin" | "admin" | "user") => {
     setFeedback(null);
@@ -96,18 +116,9 @@ export function UserManager({ currentUser }: UserManagerProps) {
     });
   };
 
-  const filteredUsers = users.filter((u) => {
-    const matchesSearch =
-      u.name.toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase());
-    const matchesRole = roleFilter === "all" || u.role === roleFilter;
-    return matchesSearch && matchesRole;
-  });
-
-  const totalUsers = users.length;
-  const superAdminsCount = users.filter((u) => u.role === "super_admin").length;
-  const adminsCount = users.filter((u) => u.role === "admin").length;
-  const studentsCount = users.filter((u) => u.role === "user").length;
+  const superAdminsCount = roleCounts.super_admin;
+  const adminsCount = roleCounts.admin;
+  const studentsCount = roleCounts.user;
 
   return (
     <div className="space-y-4 font-sans">
@@ -185,7 +196,7 @@ export function UserManager({ currentUser }: UserManagerProps) {
             <Button
               variant="outline"
               size="sm"
-              onClick={loadUsers}
+              onClick={() => loadUsers(page)}
               disabled={loading}
               className="h-8 gap-1.5 text-xs shadow-2xs"
             >
@@ -220,7 +231,10 @@ export function UserManager({ currentUser }: UserManagerProps) {
               <Input
                 placeholder="جستجوی نام یا ایمیل..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                  setPage(1);
+                  setSearch(e.target.value);
+                }}
                 className="h-8 w-60 text-xs pr-8"
               />
               <Search className="pointer-events-none absolute right-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
@@ -228,7 +242,12 @@ export function UserManager({ currentUser }: UserManagerProps) {
 
             <Select
               value={roleFilter}
-              onValueChange={(val) => val && setRoleFilter(val)}
+              onValueChange={(val) => {
+                if (val) {
+                  setPage(1);
+                  setRoleFilter(val);
+                }
+              }}
             >
               <SelectTrigger size="sm" className="h-8 min-w-35 text-xs">
                 <SelectValue placeholder="فیلتر نقش..." />
@@ -257,7 +276,7 @@ export function UserManager({ currentUser }: UserManagerProps) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
-                {filteredUsers.map((user) => {
+                {users.map((user) => {
                   const isCurrentLoggedUser = user.id === currentUser.id;
                   const canModifyThisUser =
                     !isCurrentLoggedUser && currentUser.role === "super_admin";
@@ -385,7 +404,7 @@ export function UserManager({ currentUser }: UserManagerProps) {
                   );
                 })}
 
-                {filteredUsers.length === 0 && !loading && (
+                {users.length === 0 && !loading && (
                   <tr>
                     <td colSpan={5} className="text-center py-8 text-xs text-muted-foreground">
                       کاربری با این مشخصات یافت نشد.
@@ -394,6 +413,39 @@ export function UserManager({ currentUser }: UserManagerProps) {
                 )}
               </tbody>
             </table>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+            <span className="text-[11px] text-muted-foreground">
+              {totalUsers > 0 ? `${(page - 1) * 20 + 1} تا ${Math.min(page * 20, totalUsers)} از ${totalUsers} کاربر` : "کاربری وجود ندارد"}
+            </span>
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1.5" dir="ltr">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  disabled={page <= 1 || loading}
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  aria-label="صفحه قبل"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </Button>
+                <span className="min-w-16 text-center text-[11px] text-muted-foreground">
+                  {page} / {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  disabled={page >= totalPages || loading}
+                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                  aria-label="صفحه بعد"
+                >
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

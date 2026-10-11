@@ -1,6 +1,6 @@
 import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
-import { getAllUsers, updateUserRole, findUserById, logAdminAction } from "@/lib/db";
+import { getAllUsers, getUsersPage, updateUserRole, findUserById, logAdminAction } from "@/lib/db";
 
 async function GETHandler(request: Request) {
   try {
@@ -20,9 +20,19 @@ async function GETHandler(request: Request) {
       return apiResponseJson({ success: false, message: "دسترسی غیرمجاز." }, { status: 403 });
     }
 
-    const rawUsers = await getAllUsers();
+    const searchParams = new URL(request.url).searchParams;
+    const rawPage = Number(searchParams.get("page") || 1);
+    const rawPageSize = Number(searchParams.get("pageSize") || 20);
+    const requestedRole = searchParams.get("role");
+    const role = requestedRole === "super_admin" || requestedRole === "admin" || requestedRole === "user" ? requestedRole : undefined;
+    const result = await getUsersPage({
+      search: searchParams.get("q") || undefined,
+      role,
+      page: Number.isFinite(rawPage) ? rawPage : 1,
+      pageSize: Number.isFinite(rawPageSize) ? rawPageSize : 20,
+    });
     // Sanitize password hashes
-    const users = rawUsers.map((u) => ({
+    const users = result.items.map((u) => ({
       id: u.id,
       name: u.name,
       email: u.email,
@@ -38,6 +48,13 @@ async function GETHandler(request: Request) {
     return apiResponseJson({
       success: true,
       data: users,
+      pagination: {
+        total: result.total,
+        page: result.page,
+        pageSize: result.pageSize,
+        totalPages: result.totalPages,
+      },
+      stats: result.counts,
     });
   } catch (error) {
     console.error("GET /api/admin/users error:", error);

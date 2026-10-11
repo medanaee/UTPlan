@@ -1,6 +1,28 @@
 import type { User } from "../types";
 import { getD1 } from "./client";
 
+function mapUserRow(row: any): User {
+  const firstName = row.first_name || "";
+  const lastName = row.last_name || "";
+  const name = row.name || [firstName, lastName].filter(Boolean).join(" ") || "User";
+
+  return {
+    id: row.id,
+    firstName: firstName || undefined,
+    lastName: lastName || undefined,
+    name,
+    email: row.email,
+    role: row.role as any,
+    passwordHash: row.password_hash,
+    facultyId: row.faculty_id || undefined,
+    majorId: row.major_id || undefined,
+    trackId: row.track_id || undefined,
+    entrySemester: row.entry_semester || undefined,
+    avatarUrl: row.avatar_url || undefined,
+    createdAt: row.created_at,
+  };
+}
+
 export async function findUserByEmail(email: string): Promise<User | null> {
   const cleanEmail = email.trim().toLowerCase();
   const d1 = getD1();
@@ -103,6 +125,80 @@ export async function getAllUsers(): Promise<User[]> {
   } catch (err) {
     console.error("D1 getAllUsers error:", err);
     return [];
+  }
+}
+
+export interface UserPageOptions {
+  search?: string;
+  role?: "super_admin" | "admin" | "user";
+  page?: number;
+  pageSize?: number;
+}
+
+export interface UserPageResult {
+  items: User[];
+  total: number;
+  counts: { all: number; super_admin: number; admin: number; user: number };
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export async function getUsersPage(options: UserPageOptions = {}): Promise<UserPageResult> {
+  const d1 = getD1();
+  const page = Math.max(1, Math.floor(options.page || 1));
+  const pageSize = Math.min(50, Math.max(1, Math.floor(options.pageSize || 20)));
+  const offset = (page - 1) * pageSize;
+  const search = options.search?.trim().toLowerCase() || "";
+  const role = options.role;
+  const emptyCounts = { all: 0, super_admin: 0, admin: 0, user: 0 };
+
+  if (!d1) {
+    return { items: [], total: 0, counts: emptyCounts, page, pageSize, totalPages: 0 };
+  }
+
+  try {
+    const conditions: string[] = [];
+    const params: string[] = [];
+    if (search) {
+      conditions.push("(LOWER(COALESCE(name, '')) LIKE ? OR LOWER(email) LIKE ? OR LOWER(COALESCE(first_name, '')) LIKE ? OR LOWER(COALESCE(last_name, '')) LIKE ?)");
+      const term = `%${search}%`;
+      params.push(term, term, term, term);
+    }
+    if (role) {
+      conditions.push("role = ?");
+      params.push(role);
+    }
+
+    const where = conditions.length ? ` WHERE ${conditions.join(" AND ")}` : "";
+    const [countRow, groupedRows, result] = await Promise.all([
+      d1.prepare(`SELECT COUNT(*) AS total FROM users${where}`).bind(...params).first(),
+      d1.prepare("SELECT role, COUNT(*) AS count FROM users GROUP BY role").all(),
+      d1.prepare(
+        `SELECT id, first_name, last_name, name, email, role, faculty_id, major_id, track_id, entry_semester, avatar_url, created_at
+         FROM users${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`
+      ).bind(...params, pageSize, offset).all(),
+    ]);
+
+    const counts = { ...emptyCounts };
+    for (const row of (groupedRows.results || []) as any[]) {
+      const count = Number(row.count || 0);
+      counts.all += count;
+      if (row.role === "super_admin" || row.role === "admin" || row.role === "user") counts[row.role] = count;
+    }
+
+    const total = Number((countRow as any)?.total || 0);
+    return {
+      items: ((result.results || []) as any[]).map(mapUserRow),
+      total,
+      counts,
+      page,
+      pageSize,
+      totalPages: total ? Math.ceil(total / pageSize) : 0,
+    };
+  } catch (err) {
+    console.error("D1 getUsersPage error:", err);
+    throw err;
   }
 }
 
