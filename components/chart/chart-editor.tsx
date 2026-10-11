@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -67,7 +68,6 @@ import {
 import { Combobox } from "@/components/ui/combobox";
 import { validateFullChart, formatTermDisplay } from "@/lib/rules-engine";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { TermSchedulePlanner } from "./term-schedule-planner";
 import { usePersistedState } from "@/lib/hooks/use-persisted-state";
 import type {
   StudentChart,
@@ -82,6 +82,16 @@ import type {
   ValidationIssue,
   UserSession,
 } from "@/lib/types";
+
+// The schedule planner includes date/time pickers and several dialog controls.
+// Keep it out of the initial chart-editor bundle until the user opens it.
+const TermSchedulePlanner = dynamic(
+  () => import("./term-schedule-planner").then((mod) => mod.TermSchedulePlanner),
+  {
+    ssr: false,
+    loading: () => null,
+  }
+);
 
 interface ChartEditorProps {
   initialChart: StudentChart;
