@@ -21,7 +21,7 @@ async function GETHandler(request: Request) {
              r.is_anonymous, r.created_at,
              CASE WHEN r.is_anonymous = 1 THEN 'کاربر ناشناس' ELSE COALESCE(u.name, 'کاربر سامانه') END AS author_name,
              CASE
-               WHEN r.target_type = 'professor' THEN COALESCE(p.name, 'استاد حذف‌شده')
+               WHEN r.target_type = 'professor' THEN COALESCE(NULLIF(TRIM(COALESCE(p.first_name, '') || ' ' || COALESCE(p.last_name, '')), ''), 'استاد حذف‌شده')
                WHEN r.target_type = 'offering' THEN COALESCE(c.name, 'درس حذف‌شده')
                ELSE 'مورد نامشخص'
              END AS target_name,
