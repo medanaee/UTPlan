@@ -1,6 +1,6 @@
 import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
-import { getReviews, getReviewById, createReview, updateReview, deleteReview, findUserById } from "@/lib/db";
+import { getReviews, getReviewById, createReview, updateReview, deleteReview, findUserById, getD1 } from "@/lib/db";
 import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
 import { apiError } from "@/lib/api-response";
 import { checkReviewRateLimit, parseReviewRequest, toReviewResource, toReviewResources } from "@/lib/review-http";
@@ -63,13 +63,19 @@ async function POSTHandler(request: NextRequest) {
     if (isRequestError(body)) return apiError(body.message, body.status);
     const parsed = parseReviewRequest(body, "offeringId");
     if (!parsed.ok) return apiError(parsed.message, 400);
-    const { targetId: offeringId, comment, isAnonymous, criteriaRatings, studentGrade } = parsed.value;
+    const { targetId: offeringId, professorId, comment, isAnonymous, criteriaRatings, studentGrade } = parsed.value;
 
     if (!offeringId || !comment || !comment.trim()) {
       return apiResponseJson(
         { success: false, message: "شناسه ارائه و متن نظر الزامی است." },
         { status: 400 }
       );
+    }
+
+    if (professorId) {
+      const d1 = getD1();
+      const assigned = await d1?.prepare("SELECT 1 FROM offering_professors WHERE offering_id = ? AND professor_id = ?").bind(offeringId, professorId).first();
+      if (!assigned) return apiError("استاد انتخاب‌شده برای این ارائه معتبر نیست.", 400);
     }
 
     const rateLimit = checkReviewRateLimit(request, session?.id);
@@ -106,6 +112,7 @@ async function POSTHandler(request: NextRequest) {
       userId: session.id,
       targetType: "offering",
       targetId: offeringId,
+      professorId,
       comment,
       isAnonymous,
       overallRating,
@@ -147,7 +154,7 @@ async function PUTHandler(request: NextRequest) {
     const id = typeof input.id === "string" ? input.id.trim() : "";
     const parsed = parseReviewRequest({ ...input, offeringId: "update" }, "offeringId");
     if (!parsed.ok) return apiError(parsed.message, 400);
-    const { comment, isAnonymous, criteriaRatings, studentGrade } = parsed.value;
+    const { professorId, comment, isAnonymous, criteriaRatings, studentGrade } = parsed.value;
 
     if (!id || !comment || !comment.trim()) {
       return apiResponseJson(
@@ -200,6 +207,7 @@ async function PUTHandler(request: NextRequest) {
 
     const updated = await updateReview(id, {
       comment,
+      professorId,
       isAnonymous,
       criteriaRatings: criteriaRatings || undefined,
       overallRating,

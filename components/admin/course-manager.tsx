@@ -62,6 +62,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
   const [courseSearch, setCourseSearch] = useState("");
   const [coursePage, setCoursePage] = useState(1);
   const coursePageSize = 24;
+  const [courseTotalPages, setCourseTotalPages] = useState(0);
   const [courseModalOpen, setCourseModalOpen] = useState(false);
   const [courseFormError, setCourseFormError] = useState<string | null>(null);
   const [prereqModalOpen, setPrereqModalOpen] = useState(false);
@@ -72,9 +73,14 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
   const fetchCourses = async () => {
     setLoading(true);
     try {
-      const res = await fetchJson("/api/courses?all=true");
+      const params = new URLSearchParams({ page: String(coursePage), pageSize: String(coursePageSize) });
+      if (courseSearch.trim()) params.set("q", courseSearch.trim());
+      if (facultyFilter !== "all") params.set("facultyId", facultyFilter);
+      else if (selectedFacultyId) params.set("facultyId", selectedFacultyId);
+      const res = await fetchJson(`/api/courses?${params.toString()}`, { cache: "no-store" });
       if (res.success && Array.isArray(res.data)) {
         setCourses(res.data);
+        setCourseTotalPages(Number(res.pagination?.totalPages || 0));
       }
     } catch (e) {
       console.error("CourseManager fetch error:", e);
@@ -83,9 +89,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
     }
   };
 
-  useEffect(() => {
-    fetchCourses();
-  }, []);
+  useEffect(() => { fetchCourses(); }, [coursePage, courseSearch, facultyFilter, selectedFacultyId]);
 
   const [courseForm, setCourseForm] = useState({
     name: "",
@@ -120,8 +124,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
     return persianSearch(facultyCourses, courseSearch);
   }, [facultyCourses, courseSearch]);
   const displayedCourses = useMemo(() => {
-    const start = (coursePage - 1) * coursePageSize;
-    return filteredCourses.slice(start, start + coursePageSize);
+    return filteredCourses;
   }, [filteredCourses, coursePage]);
   useEffect(() => { setCoursePage(1); }, [courseSearch, facultyFilter, selectedFacultyId]);
 
@@ -622,11 +625,11 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
               درسی یافت نشد.
             </p>
           )}
-          {filteredCourses.length > coursePageSize && (
+          {courseTotalPages > 1 && (
             <div className="mt-4 flex items-center justify-center gap-3">
               <Button variant="outline" size="sm" disabled={coursePage <= 1} onClick={() => setCoursePage((p) => p - 1)}>قبلی</Button>
-              <span className="text-xs text-muted-foreground">صفحه {coursePage} از {Math.ceil(filteredCourses.length / coursePageSize)}</span>
-              <Button variant="outline" size="sm" disabled={coursePage >= Math.ceil(filteredCourses.length / coursePageSize)} onClick={() => setCoursePage((p) => p + 1)}>بعدی</Button>
+              <span className="text-xs text-muted-foreground">صفحه {coursePage} از {courseTotalPages}</span>
+              <Button variant="outline" size="sm" disabled={coursePage >= courseTotalPages} onClick={() => setCoursePage((p) => p + 1)}>بعدی</Button>
             </div>
           )}
             </>

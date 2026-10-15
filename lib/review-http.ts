@@ -6,6 +6,7 @@ const RATE_LIMIT = 10;
 
 type ReviewRequest = {
   targetId: string;
+  professorId?: string | null;
   comment: string;
   isAnonymous: boolean;
   criteriaRatings?: Record<string, number>;
@@ -24,6 +25,7 @@ export function parseReviewRequest(
 
   const input = body as Record<string, unknown>;
   const targetId = typeof input[targetField] === "string" ? input[targetField].trim() : "";
+  const professorId = typeof input.professorId === "string" && input.professorId.trim() ? input.professorId.trim() : null;
   const comment = typeof input.comment === "string" ? input.comment.trim() : "";
 
   if (!targetId || !comment) {
@@ -52,6 +54,7 @@ export function parseReviewRequest(
     ok: true,
     value: {
       targetId,
+      professorId,
       comment,
       // Privacy-first: missing isAnonymous must never reveal the author's name.
       // A named public review requires an explicit opt-in with isAnonymous: false.

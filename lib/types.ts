@@ -248,6 +248,7 @@ export interface ReviewItem {
   authorName?: string;
   targetType: "professor" | "offering";
   targetId: string;
+  professorId?: string | null;
   isAnonymous: boolean;
   comment: string;
   overallRating: number | null; // 1-10 or null if not rated
@@ -301,6 +302,7 @@ export interface Review {
   userId?: string | null;
   targetType: "professor" | "offering";
   targetId: string;
+  professorId?: string | null;
   isAnonymous: boolean;
   comment: string;
   authorName?: string;

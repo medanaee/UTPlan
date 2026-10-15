@@ -128,6 +128,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
 
   // New Form state
   const [commentText, setCommentText] = useState("");
+  const [selectedProfessorId, setSelectedProfessorId] = useState<string>("");
   const [isAnonymous, setIsAnonymous] = useState(true);
   const [studentGrade, setStudentGrade] = useState<string>("");
   const [scores, setScores] = useState<{
@@ -266,6 +267,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
       setSubmitting(true);
       const res = await postJson("/api/offerings/reviews", {
         offeringId: offering.id,
+        professorId: selectedProfessorId || null,
         comment: commentText.trim(),
         isAnonymous,
         criteriaRatings: scores,
@@ -275,6 +277,7 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
       if (res.success) {
         setSubmitSuccess("نظر شما با موفقیت ثبت شد و در دسترس دانشجویان قرار گرفت.");
         setCommentText("");
+        setSelectedProfessorId("");
         setIsAnonymous(true);
         setStudentGrade("");
         setScores({});
@@ -1420,6 +1423,26 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                 <span className="text-xs text-muted-foreground">از ۲۰</span>
               </div>
             </div>
+
+            {/* Textarea */}
+            {offering.professors && offering.professors.length > 0 && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-foreground">استاد این ارائه</Label>
+                <Select value={selectedProfessorId || "none"} onValueChange={(value) => setSelectedProfessorId(value === "none" ? "" : value)}>
+                  <SelectTrigger className="h-9 text-xs bg-background">
+                    <SelectValue placeholder="در صورت تمایل استاد را انتخاب کنید" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">بدون انتخاب استاد</SelectItem>
+                    {offering.professors.map((professor) => (
+                      <SelectItem key={professor.id} value={professor.id}>
+                        {professor.name || `${professor.firstName || ""} ${professor.lastName || ""}`.trim() || "استاد"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {/* Textarea */}
             <div className="space-y-1.5">

@@ -1,6 +1,19 @@
 import type { Review, ReviewReactionSummary } from "../types";
 import { getD1 } from "./client";
 
+let reviewSchemaReady = false;
+export async function ensureReviewSchema() {
+  if (reviewSchemaReady) return;
+  const d1 = getD1();
+  if (!d1) return;
+  try { await d1.prepare("ALTER TABLE reviews ADD COLUMN professor_id TEXT").run(); }
+  catch (error: any) {
+    if (!String(error?.message || error).toLowerCase().includes("duplicate")) throw error;
+  }
+  try { await d1.prepare("CREATE INDEX IF NOT EXISTS idx_reviews_professor ON reviews(professor_id)").run(); } catch {}
+  reviewSchemaReady = true;
+}
+
 export const ALLOWED_REACTION_EMOJIS = ["👍", "👎", "❤️", "💡", "😂", "👏", "🔥"] as const;
 
 export async function getReactionsForReviews(
@@ -151,6 +164,7 @@ export async function getReviews(
 ): Promise<Review[]> {
   const d1 = getD1();
   if (!d1) return [];
+  try { await ensureReviewSchema(); } catch { return []; }
 
   try {
     const { results } = await d1
@@ -183,6 +197,7 @@ export async function getReviews(
         userId: r.user_id || null,
         targetType: r.target_type as any,
         targetId: r.target_id,
+        professorId: r.professor_id || null,
         isAnonymous: Boolean(r.is_anonymous),
         comment: r.comment,
         authorName: r.is_anonymous ? "دانشجوی دانشگاه تهران" : (r.author_name || "کاربر سامانه"),
@@ -215,6 +230,7 @@ export async function getReviewById(
 ): Promise<Review | null> {
   const d1 = getD1();
   if (!d1) return null;
+  try { await ensureReviewSchema(); } catch { return null; }
 
   try {
     const r = await d1
@@ -252,6 +268,7 @@ export async function getReviewById(
       userId: (r as any).user_id || null,
       targetType: (r as any).target_type as any,
       targetId: (r as any).target_id,
+      professorId: (r as any).professor_id || null,
       isAnonymous: Boolean((r as any).is_anonymous),
       comment: (r as any).comment,
       authorName: (r as any).is_anonymous ? "دانشجوی دانشگاه تهران" : ((r as any).author_name || "کاربر سامانه"),
@@ -271,6 +288,7 @@ export async function createReview(data: {
   userId?: string | null;
   targetType: "professor" | "offering";
   targetId: string;
+  professorId?: string | null;
   isAnonymous?: boolean;
   comment: string;
   overallRating: number | null;
@@ -287,17 +305,19 @@ export async function createReview(data: {
   const d1 = getD1();
   if (!d1) throw new Error("پایگاه‌داده در دسترس نیست.");
 
+  await ensureReviewSchema();
   try {
     await d1
       .prepare(
-        `INSERT INTO reviews (id, user_id, target_type, target_id, is_anonymous, comment, overall_rating, criteria_ratings, student_grade, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO reviews (id, user_id, target_type, target_id, professor_id, is_anonymous, comment, overall_rating, criteria_ratings, student_grade, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .bind(
         id,
         data.userId || null,
         data.targetType,
         data.targetId,
+        data.professorId || null,
         isAnon,
         data.comment.trim(),
         ratingToStore,
@@ -316,6 +336,7 @@ export async function createReview(data: {
     userId: data.userId || null,
     targetType: data.targetType,
     targetId: data.targetId,
+    professorId: data.professorId || null,
     isAnonymous: Boolean(data.isAnonymous),
     comment: data.comment.trim(),
     overallRating: data.overallRating,
@@ -330,6 +351,7 @@ export async function updateReview(
   id: string,
   data: {
     comment?: string;
+    professorId?: string | null;
     isAnonymous?: boolean;
     criteriaRatings?: Record<string, number>;
     overallRating?: number | null;
@@ -344,6 +366,7 @@ export async function updateReview(
     if (!existing) return null;
 
     const comment = data.comment !== undefined ? data.comment.trim() : existing.comment;
+    const professorId = data.professorId !== undefined ? data.professorId : existing.professorId || null;
     const isAnon = data.isAnonymous !== undefined ? (data.isAnonymous ? 1 : 0) : existing.isAnonymous ? 1 : 0;
     const criteriaJson =
       data.criteriaRatings !== undefined
@@ -364,10 +387,10 @@ export async function updateReview(
     await d1
       .prepare(
         `UPDATE reviews 
-         SET comment = ?, is_anonymous = ?, criteria_ratings = ?, overall_rating = ?, student_grade = ?
+         SET comment = ?, professor_id = ?, is_anonymous = ?, criteria_ratings = ?, overall_rating = ?, student_grade = ?
          WHERE id = ?`
       )
-      .bind(comment, isAnon, criteriaJson, overallRating, grade, id)
+      .bind(comment, professorId, isAnon, criteriaJson, overallRating, grade, id)
       .run();
 
     return await getReviewById(id);

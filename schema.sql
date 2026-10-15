@@ -212,6 +212,7 @@ CREATE TABLE IF NOT EXISTS reviews (
   user_id TEXT,
   target_type TEXT NOT NULL, -- 'professor' | 'offering'
   target_id TEXT NOT NULL,
+  professor_id TEXT, -- selected instructor for an offering review
   is_anonymous INTEGER NOT NULL DEFAULT 0,
   student_grade REAL, -- optional passed grade (0 to 20)
   comment TEXT NOT NULL,
@@ -221,6 +222,7 @@ CREATE TABLE IF NOT EXISTS reviews (
 );
 CREATE INDEX IF NOT EXISTS idx_reviews_target ON reviews(target_type, target_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_user ON reviews(user_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_professor ON reviews(professor_id);
 
 -- 16. Student Charts Table
 CREATE TABLE IF NOT EXISTS charts (

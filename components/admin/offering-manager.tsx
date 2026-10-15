@@ -95,6 +95,7 @@ export function OfferingManager({
   const [search, setSearch] = useState("");
   const [offeringPage, setOfferingPage] = useState(1);
   const offeringPageSize = 24;
+  const [offeringTotalPages, setOfferingTotalPages] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [offeringFormError, setOfferingFormError] = useState<string | null>(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
@@ -322,12 +323,13 @@ export function OfferingManager({
   const loadOfferings = async () => {
     try {
       setLoading(true);
-      const url = selectedFacultyId
-        ? `/api/offerings?facultyId=${selectedFacultyId}&all=true`
-        : "/api/offerings?all=true";
-      const res = await fetchJson(url);
+      const params = new URLSearchParams({ page: String(offeringPage), pageSize: String(offeringPageSize) });
+      if (selectedFacultyId) params.set("facultyId", selectedFacultyId);
+      if (search.trim()) params.set("q", search.trim());
+      const res = await fetchJson(`/api/offerings?${params.toString()}`, { cache: "no-store" });
       if (res.success) {
         setOfferings(res.data);
+        setOfferingTotalPages(Number(res.pagination?.totalPages || 0));
       }
     } catch (err) {
       console.error("Failed to load offerings:", err);
@@ -336,9 +338,7 @@ export function OfferingManager({
     }
   };
 
-  useEffect(() => {
-    loadOfferings();
-  }, [selectedFacultyId]);
+  useEffect(() => { loadOfferings(); }, [selectedFacultyId, offeringPage, search]);
 
   useEffect(() => {
     if (courses.length === 0) {
@@ -576,8 +576,7 @@ export function OfferingManager({
     return persianSearch(searchable, search);
   }, [offerings, search]);
   const displayedOfferings = useMemo(() => {
-    const start = (offeringPage - 1) * offeringPageSize;
-    return filteredOfferings.slice(start, start + offeringPageSize);
+    return filteredOfferings;
   }, [filteredOfferings, offeringPage]);
   useEffect(() => { setOfferingPage(1); }, [search, selectedFacultyId]);
 
@@ -1033,11 +1032,11 @@ export function OfferingManager({
               </tbody>
             </table>
           </div>
-          {filteredOfferings.length > offeringPageSize && (
+          {offeringTotalPages > 1 && (
             <div className="mt-4 flex items-center justify-center gap-3">
               <Button variant="outline" size="sm" disabled={offeringPage <= 1} onClick={() => setOfferingPage((p) => p - 1)}>قبلی</Button>
-              <span className="text-xs text-muted-foreground">صفحه {offeringPage} از {Math.ceil(filteredOfferings.length / offeringPageSize)}</span>
-              <Button variant="outline" size="sm" disabled={offeringPage >= Math.ceil(filteredOfferings.length / offeringPageSize)} onClick={() => setOfferingPage((p) => p + 1)}>بعدی</Button>
+              <span className="text-xs text-muted-foreground">صفحه {offeringPage} از {offeringTotalPages}</span>
+              <Button variant="outline" size="sm" disabled={offeringPage >= offeringTotalPages} onClick={() => setOfferingPage((p) => p + 1)}>بعدی</Button>
             </div>
           )}
         </CardContent>

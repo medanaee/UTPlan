@@ -75,9 +75,13 @@ export function ProfessorManager({
   const fetchProfessors = async () => {
     setLoading(true);
     try {
-      const res = await fetchJson("/api/professors?all=true");
+      const params = new URLSearchParams({ page: String(professorPage), pageSize: String(professorPageSize) });
+      if (search.trim()) params.set("q", search.trim());
+      if (selectedFacultyId) params.set("facultyId", selectedFacultyId);
+      const res = await fetchJson(`/api/professors?${params.toString()}`, { cache: "no-store" });
       if (res.success && Array.isArray(res.data)) {
         setProfessors(res.data);
+        setProfessorTotalPages(Number(res.pagination?.totalPages || 0));
       }
     } catch (e) {
       console.error("ProfessorManager fetch error:", e);
@@ -86,13 +90,12 @@ export function ProfessorManager({
     }
   };
 
-  useEffect(() => {
-    fetchProfessors();
-  }, []);
+  useEffect(() => { fetchProfessors(); }, [professorPage, search, selectedFacultyId]);
 
   const [search, setSearch] = useState("");
   const [professorPage, setProfessorPage] = useState(1);
   const professorPageSize = 24;
+  const [professorTotalPages, setProfessorTotalPages] = useState(0);
   const [facultyFilter, setFacultyFilter] = useState<string>("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -318,8 +321,7 @@ export function ProfessorManager({
     return persianSearch(searchable, search);
   }, [facultyProfessors, search, faculties]);
   const displayedProfessors = useMemo(() => {
-    const start = (professorPage - 1) * professorPageSize;
-    return filteredProfessors.slice(start, start + professorPageSize);
+    return filteredProfessors;
   }, [filteredProfessors, professorPage]);
   useEffect(() => { setProfessorPage(1); }, [search, facultyFilter, selectedFacultyId]);
 
@@ -617,11 +619,11 @@ export function ProfessorManager({
                 استادی با این مشخصات یافت نشد.
               </div>
             )}
-            {filteredProfessors.length > professorPageSize && (
+            {professorTotalPages > 1 && (
               <div className="col-span-full mt-2 flex items-center justify-center gap-3">
                 <Button variant="outline" size="sm" disabled={professorPage <= 1} onClick={() => setProfessorPage((p) => p - 1)}>قبلی</Button>
-                <span className="text-xs text-muted-foreground">صفحه {professorPage} از {Math.ceil(filteredProfessors.length / professorPageSize)}</span>
-                <Button variant="outline" size="sm" disabled={professorPage >= Math.ceil(filteredProfessors.length / professorPageSize)} onClick={() => setProfessorPage((p) => p + 1)}>بعدی</Button>
+                <span className="text-xs text-muted-foreground">صفحه {professorPage} از {professorTotalPages}</span>
+                <Button variant="outline" size="sm" disabled={professorPage >= professorTotalPages} onClick={() => setProfessorPage((p) => p + 1)}>بعدی</Button>
               </div>
             )}
           </div>
