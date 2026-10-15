@@ -17,6 +17,7 @@ import {
   Layers,
   User,
   MapPin,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -87,6 +88,7 @@ export function Navbar({ user: initialUser }: NavbarProps) {
       subtitle: "نقشه و موقعیت مکانی",
       icon: MapPin,
     },
+    { href: "/contact", label: "ارتباط با ما", icon: Mail },
   ];
 
   return (

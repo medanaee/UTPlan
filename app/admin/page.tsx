@@ -23,6 +23,7 @@ import {
   BookUser,
   DatabaseBackup,
   Mail,
+  MessageSquare,
   Trash2,
   ShieldAlert,
   MapPin,
@@ -50,6 +51,7 @@ import { BackupManager } from "@/components/admin/backup-manager";
 import { RecycleBinManager } from "@/components/admin/recycle-bin-manager";
 import { AuditLogViewer } from "@/components/admin/audit-log-viewer";
 import { ContactMessagesManager } from "@/components/admin/contact-messages-manager";
+import { RecentReviewsManager } from "@/components/admin/recent-reviews-manager";
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -192,6 +194,11 @@ export default function AdminDashboardPage() {
       id: "contact" as const,
       label: "پیام‌های ارتباط با ما",
       icon: Mail,
+    },
+    {
+      id: "reviews" as const,
+      label: "آخرین نظرات کاربران",
+      icon: MessageSquare,
     },
     {
       id: "backup" as const,
@@ -572,7 +579,10 @@ export default function AdminDashboardPage() {
             {/* TAB 10: CONTACT MESSAGES */}
             {activeTab === "contact" && <ContactMessagesManager />}
 
-            {/* TAB 11: DATABASE BACKUP & RESTORE */}
+            {/* TAB 11: RECENT REVIEWS */}
+            {activeTab === "reviews" && <RecentReviewsManager />}
+
+            {/* TAB 12: DATABASE BACKUP & RESTORE */}
             {activeTab === "backup" && <BackupManager />}
 
             {/* TAB 11: RECYCLE BIN & CASCADE RESOLUTION */}
