@@ -15,7 +15,7 @@ async function GETHandler(request: Request) {
     const page = Math.max(1, Number(params.get("page") || 1));
     const pageSize = Math.min(50, Math.max(1, Number(params.get("pageSize") || 20)));
     const offset = (page - 1) * pageSize;
-    const count = await d1.prepare("SELECT COUNT(*) AS count FROM reviews WHERE deleted_at IS NULL").first<any>();
+    const count = await d1.prepare("SELECT COUNT(*) AS count FROM reviews").first<any>();
     const { results } = await d1.prepare(`
       SELECT r.id, r.target_type, r.target_id, r.comment, r.overall_rating,
              r.is_anonymous, r.created_at,
@@ -31,7 +31,6 @@ async function GETHandler(request: Request) {
       LEFT JOIN professors p ON r.target_type = 'professor' AND p.id = r.target_id
       LEFT JOIN course_offerings o ON r.target_type = 'offering' AND o.id = r.target_id
       LEFT JOIN courses c ON c.id = o.course_id
-      WHERE r.deleted_at IS NULL
       ORDER BY r.created_at DESC
       LIMIT ? OFFSET ?
     `).bind(pageSize, offset).all<any>();
