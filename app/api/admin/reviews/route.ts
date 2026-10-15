@@ -35,11 +35,14 @@ async function GETHandler(request: Request) {
       LIMIT ? OFFSET ?
     `).bind(pageSize, offset).all<any>();
     const total = Number(count?.count || 0);
-    return apiResponseJson({
-      success: true,
-      data: results || [],
-      pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
-    });
+    return apiResponseJson(
+      {
+        success: true,
+        data: results || [],
+        pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
+      },
+      { headers: { "Cache-Control": "no-store, no-cache, must-revalidate" } }
+    );
   } catch (error) {
     console.error("Admin reviews GET error:", error);
     return apiResponseJson({ success: false, message: "خطا در دریافت آخرین نظرات." }, { status: 500 });
