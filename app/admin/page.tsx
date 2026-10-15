@@ -24,6 +24,7 @@ import {
   DatabaseBackup,
   Mail,
   MessageSquare,
+  Activity,
   Trash2,
   ShieldAlert,
   MapPin,
@@ -52,6 +53,7 @@ import { RecycleBinManager } from "@/components/admin/recycle-bin-manager";
 import { AuditLogViewer } from "@/components/admin/audit-log-viewer";
 import { ContactMessagesManager } from "@/components/admin/contact-messages-manager";
 import { RecentReviewsManager } from "@/components/admin/recent-reviews-manager";
+import { ResendUsageManager } from "@/components/admin/resend-usage-manager";
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -200,6 +202,9 @@ export default function AdminDashboardPage() {
       label: "آخرین نظرات کاربران",
       icon: MessageSquare,
     },
+    ...(user?.role === "super_admin"
+      ? [{ id: "resend-usage" as const, label: "مصرف API ایمیل (Resend)", icon: Activity }]
+      : []),
     {
       id: "backup" as const,
       label: "بکاپ و بازیابی پایگاه داده",
@@ -581,6 +586,8 @@ export default function AdminDashboardPage() {
 
             {/* TAB 11: RECENT REVIEWS */}
             {activeTab === "reviews" && <RecentReviewsManager />}
+
+            {activeTab === "resend-usage" && user?.role === "super_admin" && <ResendUsageManager />}
 
             {/* TAB 12: DATABASE BACKUP & RESTORE */}
             {activeTab === "backup" && <BackupManager />}

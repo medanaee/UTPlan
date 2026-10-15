@@ -28,6 +28,7 @@ export type AdminTab =
   | "users"
   | "contact"
   | "reviews"
+  | "resend-usage"
   | "backup"
   | "trash"
   | "audit";
@@ -418,6 +419,7 @@ export const useAdminStore = create<AdminState>()(
           case "users":
           case "contact":
           case "reviews":
+          case "resend-usage":
           case "backup":
           case "trash":
           case "audit":
