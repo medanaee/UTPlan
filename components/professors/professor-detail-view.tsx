@@ -72,7 +72,7 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
 
   // New Form state
   const [commentText, setCommentText] = useState("");
-  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [isAnonymous, setIsAnonymous] = useState(true);
   const [scores, setScores] = useState<{
     teaching?: number;
     grading?: number;
@@ -168,7 +168,7 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
       if (res.success) {
         setSubmitSuccess("نظر شما با موفقیت برای این استاد ثبت شد.");
         setCommentText("");
-        setIsAnonymous(false);
+        setIsAnonymous(true);
         setScores({});
         setCreateReviewOpen(false);
         await loadReviews();
@@ -1008,11 +1008,11 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
             {/* Anonymous Checkbox */}
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <Checkbox
-                checked={isAnonymous}
-                onCheckedChange={(c) => setIsAnonymous(Boolean(c))}
+                checked={!isAnonymous}
+                onCheckedChange={(c) => setIsAnonymous(!Boolean(c))}
               />
               <span className="text-xs font-medium text-foreground">
-                ارسال به صورت ناشناس (نام شما مخفی خواهد ماند)
+                نمایش نام من برای دیگران (در حالت خاموش، نظر ناشناس می‌ماند)
               </span>
             </label>
 
@@ -1198,11 +1198,11 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
               {/* Anonymous Checkbox */}
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <Checkbox
-                  checked={editIsAnonymous}
-                  onCheckedChange={(c) => setEditIsAnonymous(Boolean(c))}
+                  checked={!editIsAnonymous}
+                  onCheckedChange={(c) => setEditIsAnonymous(!Boolean(c))}
                 />
                 <span className="text-xs font-medium text-foreground">
-                  نمایش به صورت ناشناس (نام شما مخفی خواهد ماند)
+                  نمایش نام من برای دیگران (در حالت خاموش، نظر ناشناس می‌ماند)
                 </span>
               </label>
 

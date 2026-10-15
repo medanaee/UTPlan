@@ -53,7 +53,9 @@ export function parseReviewRequest(
     value: {
       targetId,
       comment,
-      isAnonymous: input.isAnonymous === true,
+      // Privacy-first: missing isAnonymous must never reveal the author's name.
+      // A named public review requires an explicit opt-in with isAnonymous: false.
+      isAnonymous: input.isAnonymous !== false,
       criteriaRatings,
       studentGrade,
     },
