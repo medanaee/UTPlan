@@ -91,6 +91,8 @@ export function ProfessorManager({
   }, []);
 
   const [search, setSearch] = useState("");
+  const [professorPage, setProfessorPage] = useState(1);
+  const professorPageSize = 24;
   const [facultyFilter, setFacultyFilter] = useState<string>("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -315,6 +317,11 @@ export function ProfessorManager({
     });
     return persianSearch(searchable, search);
   }, [facultyProfessors, search, faculties]);
+  const displayedProfessors = useMemo(() => {
+    const start = (professorPage - 1) * professorPageSize;
+    return filteredProfessors.slice(start, start + professorPageSize);
+  }, [filteredProfessors, professorPage]);
+  useEffect(() => { setProfessorPage(1); }, [search, facultyFilter, selectedFacultyId]);
 
   const modalFacultyOptions = faculties.map((f) => ({
     value: f.id,
@@ -478,7 +485,7 @@ export function ProfessorManager({
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredProfessors.map((p) => {
+            {displayedProfessors.map((p) => {
               const faculty = faculties.find((f) => f.id === p.facultyId);
               const displayName = p.firstName && p.lastName ? `${p.firstName} ${p.lastName}` : p.name;
               const isLinked = Boolean(selectedFacultyId && p.facultyId !== selectedFacultyId);
@@ -608,6 +615,13 @@ export function ProfessorManager({
             {filteredProfessors.length === 0 && (
               <div className="col-span-full py-10 text-center text-xs text-muted-foreground">
                 استادی با این مشخصات یافت نشد.
+              </div>
+            )}
+            {filteredProfessors.length > professorPageSize && (
+              <div className="col-span-full mt-2 flex items-center justify-center gap-3">
+                <Button variant="outline" size="sm" disabled={professorPage <= 1} onClick={() => setProfessorPage((p) => p - 1)}>قبلی</Button>
+                <span className="text-xs text-muted-foreground">صفحه {professorPage} از {Math.ceil(filteredProfessors.length / professorPageSize)}</span>
+                <Button variant="outline" size="sm" disabled={professorPage >= Math.ceil(filteredProfessors.length / professorPageSize)} onClick={() => setProfessorPage((p) => p + 1)}>بعدی</Button>
               </div>
             )}
           </div>

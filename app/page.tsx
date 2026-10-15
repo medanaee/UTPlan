@@ -217,6 +217,8 @@ export default function Home() {
           <p>© {new Date().getFullYear()} سامانه انتخاب واحد و مدیریت چارت درسی دانشکده فنی</p>
           <div className="flex items-center gap-4 text-[11px]">
             <Link href="/terms" className="hover:text-primary transition-colors">قوانین و شرایط استفاده</Link>
+            <span className="text-border">|</span>
+            <Link href="/contact" className="hover:text-primary transition-colors">ارتباط با ما</Link>
             <span>طراحی‌شده برای دانشجویان و اساتید دانشگاه</span>
           </div>
         </div>

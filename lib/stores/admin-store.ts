@@ -26,6 +26,7 @@ export type AdminTab =
   | "approved-charts"
   | "rules"
   | "users"
+  | "contact"
   | "backup"
   | "trash"
   | "audit";
@@ -414,6 +415,7 @@ export const useAdminStore = create<AdminState>()(
             break;
           case "events":
           case "users":
+          case "contact":
           case "backup":
           case "trash":
           case "audit":

@@ -93,6 +93,8 @@ export function OfferingManager({
   const [offerings, setOfferings] = useState<CourseOffering[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [offeringPage, setOfferingPage] = useState(1);
+  const offeringPageSize = 24;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [offeringFormError, setOfferingFormError] = useState<string | null>(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
@@ -573,6 +575,11 @@ export function OfferingManager({
     });
     return persianSearch(searchable, search);
   }, [offerings, search]);
+  const displayedOfferings = useMemo(() => {
+    const start = (offeringPage - 1) * offeringPageSize;
+    return filteredOfferings.slice(start, start + offeringPageSize);
+  }, [filteredOfferings, offeringPage]);
+  useEffect(() => { setOfferingPage(1); }, [search, selectedFacultyId]);
 
   const filteredModalProfessors = useMemo(() => {
     if (!modalProfSearch.trim()) return availableProfessors;
@@ -880,7 +887,7 @@ export function OfferingManager({
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
-                {filteredOfferings.map((off) => {
+                {displayedOfferings.map((off) => {
                   const isLinked = Boolean(
                     selectedFacultyId && off.facultyId && off.facultyId !== selectedFacultyId
                   );
@@ -1026,6 +1033,13 @@ export function OfferingManager({
               </tbody>
             </table>
           </div>
+          {filteredOfferings.length > offeringPageSize && (
+            <div className="mt-4 flex items-center justify-center gap-3">
+              <Button variant="outline" size="sm" disabled={offeringPage <= 1} onClick={() => setOfferingPage((p) => p - 1)}>قبلی</Button>
+              <span className="text-xs text-muted-foreground">صفحه {offeringPage} از {Math.ceil(filteredOfferings.length / offeringPageSize)}</span>
+              <Button variant="outline" size="sm" disabled={offeringPage >= Math.ceil(filteredOfferings.length / offeringPageSize)} onClick={() => setOfferingPage((p) => p + 1)}>بعدی</Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 

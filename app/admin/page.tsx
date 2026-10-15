@@ -22,6 +22,7 @@ import {
   Check,
   BookUser,
   DatabaseBackup,
+  Mail,
   Trash2,
   ShieldAlert,
   MapPin,
@@ -48,6 +49,7 @@ import { UserManager } from "@/components/admin/user-manager";
 import { BackupManager } from "@/components/admin/backup-manager";
 import { RecycleBinManager } from "@/components/admin/recycle-bin-manager";
 import { AuditLogViewer } from "@/components/admin/audit-log-viewer";
+import { ContactMessagesManager } from "@/components/admin/contact-messages-manager";
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -185,6 +187,11 @@ export default function AdminDashboardPage() {
       id: "users" as const,
       label: "کاربران و سطوح دسترسی",
       icon: UserCheck,
+    },
+    {
+      id: "contact" as const,
+      label: "پیام‌های ارتباط با ما",
+      icon: Mail,
     },
     {
       id: "backup" as const,
@@ -562,7 +569,10 @@ export default function AdminDashboardPage() {
             {/* TAB 9: USERS & PERMISSIONS */}
             {activeTab === "users" && user && <UserManager currentUser={user} />}
 
-            {/* TAB 10: DATABASE BACKUP & RESTORE */}
+            {/* TAB 10: CONTACT MESSAGES */}
+            {activeTab === "contact" && <ContactMessagesManager />}
+
+            {/* TAB 11: DATABASE BACKUP & RESTORE */}
             {activeTab === "backup" && <BackupManager />}
 
             {/* TAB 11: RECYCLE BIN & CASCADE RESOLUTION */}

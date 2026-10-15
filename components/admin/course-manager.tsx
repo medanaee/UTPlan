@@ -60,6 +60,8 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
   const [loading, setLoading] = useState(courses.length === 0);
   const [facultyFilter, setFacultyFilter] = useState<string>("all");
   const [courseSearch, setCourseSearch] = useState("");
+  const [coursePage, setCoursePage] = useState(1);
+  const coursePageSize = 24;
   const [courseModalOpen, setCourseModalOpen] = useState(false);
   const [courseFormError, setCourseFormError] = useState<string | null>(null);
   const [prereqModalOpen, setPrereqModalOpen] = useState(false);
@@ -117,6 +119,11 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
   const filteredCourses = useMemo(() => {
     return persianSearch(facultyCourses, courseSearch);
   }, [facultyCourses, courseSearch]);
+  const displayedCourses = useMemo(() => {
+    const start = (coursePage - 1) * coursePageSize;
+    return filteredCourses.slice(start, start + coursePageSize);
+  }, [filteredCourses, coursePage]);
+  useEffect(() => { setCoursePage(1); }, [courseSearch, facultyFilter, selectedFacultyId]);
 
   // Create or Update Course
   const handleSaveCourse = async (e: React.FormEvent) => {
@@ -442,7 +449,7 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
             <>
               {/* Courses Grid */}
               <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {filteredCourses.map((course) => {
+            {displayedCourses.map((course) => {
               const isLinked = Boolean(selectedFacultyId && course.facultyId !== selectedFacultyId);
               return (
                 <div
@@ -614,6 +621,13 @@ export function CourseManager({ onNavigateToStructure }: CourseManagerProps) {
             <p className="text-center text-xs text-muted-foreground py-8">
               درسی یافت نشد.
             </p>
+          )}
+          {filteredCourses.length > coursePageSize && (
+            <div className="mt-4 flex items-center justify-center gap-3">
+              <Button variant="outline" size="sm" disabled={coursePage <= 1} onClick={() => setCoursePage((p) => p - 1)}>قبلی</Button>
+              <span className="text-xs text-muted-foreground">صفحه {coursePage} از {Math.ceil(filteredCourses.length / coursePageSize)}</span>
+              <Button variant="outline" size="sm" disabled={coursePage >= Math.ceil(filteredCourses.length / coursePageSize)} onClick={() => setCoursePage((p) => p + 1)}>بعدی</Button>
+            </div>
           )}
             </>
           )}

@@ -27,6 +27,7 @@ const TABLE_ORDER = [
   "charts",
   "chart_terms",
   "chart_courses",
+  "contact_messages",
 ];
 
 async function GETHandler(request: NextRequest) {
