@@ -216,6 +216,7 @@ export default function Home() {
         <div className="mx-auto max-w-5xl px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p>© {new Date().getFullYear()} سامانه انتخاب واحد و مدیریت چارت درسی دانشکده فنی</p>
           <div className="flex items-center gap-4 text-[11px]">
+            <Link href="/terms" className="hover:text-primary transition-colors">قوانین و شرایط استفاده</Link>
             <span>طراحی‌شده برای دانشجویان و اساتید دانشگاه</span>
           </div>
         </div>

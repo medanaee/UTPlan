@@ -55,6 +55,10 @@ async function POSTHandler(request: NextRequest) {
     const token = getAuthTokenFromRequest(request);
     const session = token ? await verifySessionToken(token) : null;
 
+    if (!session?.id) {
+      return apiError("برای ثبت نظر ابتدا وارد حساب کاربری خود شوید.", 401);
+    }
+
     const body = await readJsonBody(request);
     if (isRequestError(body)) return apiError(body.message, body.status);
     const parsed = parseReviewRequest(body, "professorId");
@@ -91,7 +95,7 @@ async function POSTHandler(request: NextRequest) {
     }
 
     const newRev = await createReview({
-      userId: session?.id || null,
+      userId: session.id,
       targetType: "professor",
       targetId: professorId,
       comment,

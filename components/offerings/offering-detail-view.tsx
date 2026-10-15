@@ -836,6 +836,10 @@ export function OfferingDetailView({ offering }: OfferingDetailViewProps) {
                   type="button"
                   size="sm"
                   onClick={() => {
+                    if (!currentUser) {
+                      router.push("/login");
+                      return;
+                    }
                     setSubmitError(null);
                     setCreateReviewOpen(true);
                   }}

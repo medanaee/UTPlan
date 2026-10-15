@@ -516,6 +516,10 @@ export function ProfessorDetailView({ professor }: ProfessorDetailViewProps) {
                   type="button"
                   size="sm"
                   onClick={() => {
+                    if (!currentUser) {
+                      router.push("/login");
+                      return;
+                    }
                     setSubmitError(null);
                     setCreateReviewOpen(true);
                   }}
