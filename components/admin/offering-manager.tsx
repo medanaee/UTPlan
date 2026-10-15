@@ -347,7 +347,7 @@ export function OfferingManager({
       });
     }
     if (professors.length === 0) {
-      fetchJson("/api/professors").then((res) => {
+      fetchJson("/api/professors?all=true").then((res) => {
         if (res.success && Array.isArray(res.data)) {
           useAdminStore.getState().setProfessors(res.data);
         }

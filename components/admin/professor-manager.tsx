@@ -75,7 +75,7 @@ export function ProfessorManager({
   const fetchProfessors = async () => {
     setLoading(true);
     try {
-      const res = await fetchJson("/api/professors");
+      const res = await fetchJson("/api/professors?all=true");
       if (res.success && Array.isArray(res.data)) {
         setProfessors(res.data);
       }

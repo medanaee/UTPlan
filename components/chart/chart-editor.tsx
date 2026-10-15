@@ -780,10 +780,12 @@ export function ChartEditor({
         } catch { }
       } else {
         console.warn("Auto-save server response:", res.message);
+        setErrorMsg(res.message || "ذخیره‌سازی چارت انجام نشد.");
         setSaveStatus(typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "pending");
       }
     } catch (err) {
       console.error("Auto-save server error:", err);
+      setErrorMsg("ذخیره‌سازی چارت با خطا مواجه شد.");
       setSaveStatus(typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "pending");
     }
   };
@@ -867,14 +869,14 @@ export function ChartEditor({
     // Update status to pending
     setSaveStatus((prev) => (prev === "saving" ? prev : "pending"));
 
-    // Tier 2: Debounced Server Sync (2.5 seconds idle time)
+    // Tier 2: Debounced Server Sync (short delay to avoid losing edits on navigation)
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
 
     debounceTimerRef.current = setTimeout(() => {
       syncToServer(currentPayloadStr);
-    }, 3500);
+    }, 800);
 
     return () => {
       if (debounceTimerRef.current) {

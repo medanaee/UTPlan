@@ -178,7 +178,13 @@ async function PUTHandler(req: NextRequest) {
       waivedCourseIds,
       isApprovedDefault: isAdmin ? isApprovedDefault : undefined,
     });
-    if (updated) invalidateCurriculumCache();
+    if (!updated) {
+      return apiResponseJson(
+        { success: false, message: "ذخیره‌سازی چارت در پایگاه‌داده انجام نشد." },
+        { status: 500 }
+      );
+    }
+    invalidateCurriculumCache();
 
     return apiResponseJson({ success: true, data: updated, message: "چارت با موفقیت ذخیره شد." });
   } catch (err: any) {

@@ -20,6 +20,7 @@ async function GETHandler(request: Request) {
     const directOnly = searchParams.get("directOnly") === "true";
     const search = searchParams.get("q")?.trim() || undefined;
     const title = searchParams.get("title")?.trim() || undefined;
+    const includeAll = searchParams.get("all") === "true";
     const pageValue = searchParams.get("page");
     const pageSizeValue = searchParams.get("pageSize");
     const pageParam = Number(pageValue);
@@ -38,6 +39,9 @@ async function GETHandler(request: Request) {
         { success: true, data: result.items, pagination: { total: result.total, page: result.page, pageSize: result.pageSize, totalPages: result.totalPages }, filters: { titles: await getProfessorTitles() } },
         { headers: { "Cache-Control": "no-store, no-cache, must-revalidate" } }
       );
+    }
+    if (!facultyId && !search && !includeAll) {
+      return apiResponseJson({ success: true, data: [] });
     }
     const limitParam = Number(searchParams.get("limit"));
     const limit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : undefined;

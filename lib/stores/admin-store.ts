@@ -315,7 +315,7 @@ export const useAdminStore = create<AdminState>()(
         }
 
         try {
-          const res = await fetchJson("/api/professors");
+          const res = await fetchJson("/api/professors?all=true");
           if (res.success && Array.isArray(res.data)) {
             set((state) => ({
               professors: res.data,
