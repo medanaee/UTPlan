@@ -205,11 +205,15 @@ export default function AdminDashboardPage() {
     ...(user?.role === "super_admin"
       ? [{ id: "resend-usage" as const, label: "مصرف API ایمیل (Resend)", icon: Activity }]
       : []),
-    {
-      id: "backup" as const,
-      label: "بکاپ و بازیابی پایگاه داده",
-      icon: DatabaseBackup,
-    },
+    ...(user?.role === "super_admin"
+      ? [
+          {
+            id: "backup" as const,
+            label: "بکاپ و بازیابی پایگاه داده",
+            icon: DatabaseBackup,
+          },
+        ]
+      : []),
     {
       id: "trash" as const,
       label: "سطل بازیافت (حذف نهایی)",
@@ -590,7 +594,7 @@ export default function AdminDashboardPage() {
             {activeTab === "resend-usage" && user?.role === "super_admin" && <ResendUsageManager />}
 
             {/* TAB 12: DATABASE BACKUP & RESTORE */}
-            {activeTab === "backup" && <BackupManager />}
+            {activeTab === "backup" && user?.role === "super_admin" && <BackupManager />}
 
             {/* TAB 11: RECYCLE BIN & CASCADE RESOLUTION */}
             {activeTab === "trash" && (
