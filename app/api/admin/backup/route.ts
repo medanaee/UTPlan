@@ -1,7 +1,7 @@
 import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
 import { getD1, getFaculties, getCourses, getProfessors, getOfferings, getEvents, getCharts, getAllPrerequisites, logAdminAction } from "@/lib/db";
-import { requireAdminSession } from "@/lib/auth";
+import { requireSuperAdminSession } from "@/lib/auth";
 import { invalidateCurriculumCache } from "@/lib/server-cache";
 
 export const dynamic = "force-dynamic";
@@ -32,7 +32,7 @@ const TABLE_ORDER = [
 
 async function GETHandler(request: NextRequest) {
   try {
-    const auth = await requireAdminSession(request);
+    const auth = await requireSuperAdminSession(request);
     if (!auth.authorized) return auth.response! as NextResponse;
 
     const { searchParams } = new URL(request.url);
@@ -111,7 +111,7 @@ export const GET = withApiTiming(GETHandler);
 
 async function POSTHandler(request: NextRequest) {
   try {
-    const auth = await requireAdminSession(request);
+    const auth = await requireSuperAdminSession(request);
     if (!auth.authorized) return auth.response! as NextResponse;
 
     invalidateCurriculumCache();
