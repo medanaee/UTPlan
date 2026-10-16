@@ -1,6 +1,6 @@
 import { apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { NextRequest, NextResponse } from "next/server";
-import { getReviews, getReviewById, createReview, updateReview, deleteReview, findUserById } from "@/lib/db";
+import { getReviews, getReviewById, createReview, updateReview, deleteReview, findUserById, getClientIp, recordUserLoginIp } from "@/lib/db";
 import { getAuthTokenFromRequest, verifySessionToken } from "@/lib/auth";
 import { apiError } from "@/lib/api-response";
 import { checkReviewRateLimit, parseReviewRequest, toReviewResource, toReviewResources } from "@/lib/review-http";
@@ -72,7 +72,7 @@ async function POSTHandler(request: NextRequest) {
       );
     }
 
-    const rateLimit = checkReviewRateLimit(request, session?.id);
+    const rateLimit = await checkReviewRateLimit(request, session?.id);
     if (!rateLimit.allowed) {
       return apiError("تعداد ثبت نظر بیش از حد مجاز است. لطفاً بعداً دوباره تلاش کنید.", 429, [], {
         "Retry-After": String(rateLimit.retryAfterSeconds),
@@ -103,6 +103,8 @@ async function POSTHandler(request: NextRequest) {
       overallRating,
       criteriaRatings: criteriaRatings || undefined,
     });
+
+    await recordUserLoginIp(session.id, getClientIp(request));
 
     return apiResponseJson({
       success: true,

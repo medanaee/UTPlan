@@ -14,6 +14,8 @@ export interface User {
   entrySemester?: string; // e.g. "fall_1402" or "spring_1403"
   avatarUrl?: string;
   createdAt: string;
+  lastLoginIp?: string | null;
+  lastLoginAt?: string | null;
 }
 
 export interface UserSession {

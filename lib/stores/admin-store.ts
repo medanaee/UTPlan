@@ -31,7 +31,8 @@ export type AdminTab =
   | "resend-usage"
   | "backup"
   | "trash"
-  | "audit";
+  | "audit"
+  | "abuse-events";
 
 export interface LoadedPanels {
   structure: boolean;

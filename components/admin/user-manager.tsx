@@ -42,6 +42,8 @@ interface AdminUserItem {
   entrySemester?: string;
   avatarUrl?: string;
   createdAt: string;
+  lastLoginIp?: string | null;
+  lastLoginAt?: string | null;
 }
 
 interface UserManagerProps {
@@ -268,6 +270,9 @@ export function UserManager({ currentUser }: UserManagerProps) {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b bg-muted/40 text-muted-foreground font-semibold">
+                  {currentUser.role === "super_admin" && (
+                    <th className="py-2.5 px-3 text-right">Last IP</th>
+                  )}
                   <th className="py-2.5 px-3 text-right">کاربر</th>
                   <th className="py-2.5 px-3 text-right">آدرس ایمیل</th>
                   <th className="py-2.5 px-3 text-right">نقش فعلی</th>
@@ -283,6 +288,16 @@ export function UserManager({ currentUser }: UserManagerProps) {
 
                   return (
                     <tr key={user.id} className="hover:bg-muted/20 transition-colors">
+                      {currentUser.role === "super_admin" && (
+                        <td className="py-2.5 px-3 text-[11px] text-muted-foreground" dir="ltr">
+                          <div>{user.lastLoginIp || "—"}</div>
+                          {user.lastLoginAt && (
+                            <div className="text-[10px] opacity-70">
+                              {new Date(user.lastLoginAt).toLocaleString("fa-IR")}
+                            </div>
+                          )}
+                        </td>
+                      )}
                       {/* Name & Badge */}
                       <td className="py-2.5 px-3">
                         <div className="flex items-center gap-2.5">

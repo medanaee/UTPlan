@@ -1,7 +1,7 @@
 import { apiError, apiResponseJson, withApiTiming } from "@/lib/api-response";
 import { isRequestError, readJsonBody } from "@/lib/api-request";
-import { canRequestOtp, issueEmailOtp, normalizeUtEmail, sendResendEmail } from "@/lib/otp";
-import { findUserByEmail } from "@/lib/db";
+import { issueEmailOtp, normalizeUtEmail, sendResendEmail } from "@/lib/otp";
+import { consumePersistentRateLimit, findUserByEmail, getClientIp } from "@/lib/db";
 
 async function POSTHandler(request: Request) {
   try {
@@ -16,8 +16,8 @@ async function POSTHandler(request: Request) {
     if (mode === "register" && (!firstName || !lastName)) return apiError("نام و نام خانوادگی الزامی است.", 400);
     if (mode === "register" && await findUserByEmail(email)) return apiError("این ایمیل قبلاً ثبت‌نام شده است؛ از ورود استفاده کنید.", 409);
 
-    const key = `${email}:${request.headers.get("cf-connecting-ip") || request.headers.get("x-forwarded-for") || "unknown"}`;
-    const limit = canRequestOtp(key);
+    const key = `${email}:${getClientIp(request) || "unknown"}`;
+    const limit = await consumePersistentRateLimit(`otp:${key}`, 1, 60_000, { eventType: "otp", ip: getClientIp(request), subject: email });
     if (!limit.allowed) return apiError("لطفاً قبل از ارسال کد جدید کمی صبر کنید.", 429, [], { "Retry-After": String(limit.retryAfterSeconds) });
 
     const code = await issueEmailOtp({ email, firstName, lastName, mode });

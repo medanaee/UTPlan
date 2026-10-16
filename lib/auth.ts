@@ -139,14 +139,14 @@ export function getAuthTokenFromRequest(request: Request): string | null {
  * Generate Set-Cookie header string for auth session
  */
 export function createAuthCookieHeader(token: string, maxAge = 60 * 60 * 24 * 7): string {
-  return `${TOKEN_COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}`;
+  return `${TOKEN_COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`;
 }
 
 /**
  * Generate Set-Cookie header string to clear auth session
  */
 export function createClearAuthCookieHeader(): string {
-  return `${TOKEN_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+  return `${TOKEN_COOKIE_NAME}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`;
 }
 
 /**

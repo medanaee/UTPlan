@@ -13,3 +13,4 @@ export * from "./code-generator";
 export * from "./seed";
 export * from "./audit";
 export * from "./physical-faculties";
+export * from "./security";

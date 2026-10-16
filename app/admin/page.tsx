@@ -54,6 +54,7 @@ import { AuditLogViewer } from "@/components/admin/audit-log-viewer";
 import { ContactMessagesManager } from "@/components/admin/contact-messages-manager";
 import { RecentReviewsManager } from "@/components/admin/recent-reviews-manager";
 import { ResendUsageManager } from "@/components/admin/resend-usage-manager";
+import { AbuseEventsManager } from "@/components/admin/abuse-events-manager";
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -213,6 +214,9 @@ export default function AdminDashboardPage() {
             icon: DatabaseBackup,
           },
         ]
+      : []),
+    ...(user?.role === "super_admin"
+      ? [{ id: "abuse-events" as const, label: "گزارش اسپم و IPها", icon: ShieldAlert }]
       : []),
     {
       id: "trash" as const,
@@ -609,6 +613,10 @@ export default function AdminDashboardPage() {
             {/* TAB 12: AUDIT LOGS (SUPER ADMIN ONLY) */}
             {activeTab === "audit" && user?.role === "super_admin" && (
               <AuditLogViewer />
+            )}
+
+            {activeTab === "abuse-events" && user?.role === "super_admin" && (
+              <AbuseEventsManager />
             )}
           </div>
         </main>

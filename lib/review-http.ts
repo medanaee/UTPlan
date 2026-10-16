@@ -1,4 +1,5 @@
 import type { Review } from "@/lib/types";
+import { consumePersistentRateLimit, getClientIp } from "@/lib/db/security";
 
 export const MAX_REVIEW_COMMENT_LENGTH = 5000;
 const RATE_WINDOW_MS = 10 * 60 * 1000;
@@ -13,7 +14,6 @@ type ReviewRequest = {
   studentGrade?: number | null;
 };
 
-const requestBuckets = new Map<string, { count: number; resetAt: number }>();
 
 export function parseReviewRequest(
   body: unknown,
@@ -65,21 +65,9 @@ export function parseReviewRequest(
   };
 }
 
-export function checkReviewRateLimit(request: Request, userId?: string | null) {
-  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  const clientKey = userId || request.headers.get("cf-connecting-ip") || request.headers.get("x-real-ip") || forwarded || "unknown";
-  const now = Date.now();
-  const current = requestBuckets.get(clientKey);
-
-  if (!current || current.resetAt <= now) {
-    requestBuckets.set(clientKey, { count: 1, resetAt: now + RATE_WINDOW_MS });
-    return { allowed: true, retryAfterSeconds: 0 };
-  }
-  if (current.count >= RATE_LIMIT) {
-    return { allowed: false, retryAfterSeconds: Math.ceil((current.resetAt - now) / 1000) };
-  }
-  current.count += 1;
-  return { allowed: true, retryAfterSeconds: 0 };
+export async function checkReviewRateLimit(request: Request, userId?: string | null) {
+  const clientKey = userId || getClientIp(request) || "unknown";
+  return consumePersistentRateLimit(`review:${clientKey}`, RATE_LIMIT, RATE_WINDOW_MS, { eventType: "review", ip: getClientIp(request), subject: userId });
 }
 
 export function toReviewResource(review: Review, viewerId?: string | null): Omit<Review, "userId"> & { isMine: boolean } {

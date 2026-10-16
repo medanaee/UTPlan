@@ -1,5 +1,6 @@
 import type { User } from "../types";
 import { getD1 } from "./client";
+import { ensureSecuritySchema } from "./security";
 
 function mapUserRow(row: any): User {
   const firstName = row.first_name || "";
@@ -20,6 +21,8 @@ function mapUserRow(row: any): User {
     entrySemester: row.entry_semester || undefined,
     avatarUrl: row.avatar_url || undefined,
     createdAt: row.created_at,
+    lastLoginIp: row.last_login_ip || null,
+    lastLoginAt: row.last_login_at || null,
   };
 }
 
@@ -29,6 +32,7 @@ export async function findUserByEmail(email: string): Promise<User | null> {
   if (!d1) return null;
 
   try {
+    await ensureSecuritySchema();
     const row = await d1
       .prepare("SELECT * FROM users WHERE LOWER(email) = ?")
       .bind(cleanEmail)
@@ -158,6 +162,7 @@ export async function getUsersPage(options: UserPageOptions = {}): Promise<UserP
   }
 
   try {
+    await ensureSecuritySchema();
     const conditions: string[] = [];
     const params: string[] = [];
     if (search) {
@@ -175,7 +180,7 @@ export async function getUsersPage(options: UserPageOptions = {}): Promise<UserP
       d1.prepare(`SELECT COUNT(*) AS total FROM users${where}`).bind(...params).first(),
       d1.prepare("SELECT role, COUNT(*) AS count FROM users GROUP BY role").all(),
       d1.prepare(
-        `SELECT id, first_name, last_name, name, email, role, faculty_id, major_id, track_id, entry_semester, avatar_url, created_at
+        `SELECT id, first_name, last_name, name, email, role, faculty_id, major_id, track_id, entry_semester, avatar_url, created_at, last_login_ip, last_login_at
          FROM users${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`
       ).bind(...params, pageSize, offset).all(),
     ]);

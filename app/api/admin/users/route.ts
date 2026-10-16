@@ -43,6 +43,9 @@ async function GETHandler(request: Request) {
       entrySemester: u.entrySemester,
       avatarUrl: u.avatarUrl,
       createdAt: u.createdAt,
+      ...(currentUser.role === "super_admin"
+        ? { lastLoginIp: u.lastLoginIp, lastLoginAt: u.lastLoginAt }
+        : {}),
     }));
 
     return apiResponseJson({

@@ -26,11 +26,30 @@ CREATE TABLE IF NOT EXISTS users (
   track_id TEXT,
   entry_semester TEXT, -- e.g. "1402-1"
   avatar_url TEXT,
+  last_login_ip TEXT,
+  last_login_at TEXT,
   created_at TEXT NOT NULL,
   FOREIGN KEY (faculty_id) REFERENCES faculties(id)
 );
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_faculty ON users(faculty_id);
+
+-- Persistent abuse protection counters; contains no public user data.
+CREATE TABLE IF NOT EXISTS security_rate_limits (
+  key TEXT PRIMARY KEY,
+  count INTEGER NOT NULL DEFAULT 0,
+  reset_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS security_abuse_events (
+  event_type TEXT NOT NULL,
+  ip TEXT NOT NULL,
+  subject TEXT NOT NULL DEFAULT '',
+  blocked_count INTEGER NOT NULL DEFAULT 0,
+  first_seen_at TEXT NOT NULL,
+  last_seen_at TEXT NOT NULL,
+  PRIMARY KEY (event_type, ip, subject)
+);
 
 -- 3. Majors Table
 CREATE TABLE IF NOT EXISTS majors (

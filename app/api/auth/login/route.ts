@@ -1,5 +1,5 @@
 import { apiError, apiResponseJson, withApiTiming } from "@/lib/api-response";
-import { findUserByEmail } from "@/lib/db";
+import { consumePersistentRateLimit, findUserByEmail, getClientIp, recordUserLoginIp } from "@/lib/db";
 import { verifyPassword, createSessionToken, createAuthCookieHeader } from "@/lib/auth";
 
 async function legacyPasswordPostHandler(request: Request) {
@@ -15,6 +15,15 @@ async function legacyPasswordPostHandler(request: Request) {
       return apiResponseJson(
         { success: false, message: "لطفاً ایمیل و رمز عبور را وارد کنید." },
         { status: 400 }
+      );
+    }
+
+    const ip = getClientIp(request);
+    const loginLimit = await consumePersistentRateLimit(`login:${email}:${ip || "unknown"}`, 5, 15 * 60 * 1000, { eventType: "login", ip, subject: email });
+    if (!loginLimit.allowed) {
+      return apiResponseJson(
+        { success: false, message: "تعداد تلاش‌های ورود بیش از حد مجاز است. لطفاً بعداً دوباره تلاش کنید." },
+        { status: 429, headers: { "Retry-After": String(loginLimit.retryAfterSeconds) } }
       );
     }
 
@@ -42,6 +51,7 @@ async function legacyPasswordPostHandler(request: Request) {
     };
 
     const token = await createSessionToken(sessionPayload);
+    await recordUserLoginIp(user.id, ip);
     const cookieHeader = createAuthCookieHeader(token);
 
     return apiResponseJson(
