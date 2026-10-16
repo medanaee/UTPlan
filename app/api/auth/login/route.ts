@@ -18,15 +18,6 @@ async function legacyPasswordPostHandler(request: Request) {
       );
     }
 
-    const ip = getClientIp(request);
-    const loginLimit = await consumePersistentRateLimit(`login:${email}:${ip || "unknown"}`, 5, 15 * 60 * 1000, { eventType: "login", ip, subject: email });
-    if (!loginLimit.allowed) {
-      return apiResponseJson(
-        { success: false, message: "تعداد تلاش‌های ورود بیش از حد مجاز است. لطفاً بعداً دوباره تلاش کنید." },
-        { status: 429, headers: { "Retry-After": String(loginLimit.retryAfterSeconds) } }
-      );
-    }
-
     const user = await findUserByEmail(email);
     if (!user) {
       return apiResponseJson(
@@ -51,7 +42,6 @@ async function legacyPasswordPostHandler(request: Request) {
     };
 
     const token = await createSessionToken(sessionPayload);
-    await recordUserLoginIp(user.id, ip);
     const cookieHeader = createAuthCookieHeader(token);
 
     return apiResponseJson(
@@ -84,6 +74,15 @@ async function POSTHandler(request: Request) {
     const password = typeof body?.password === "string" ? body.password : "";
     if (!email || !password) return apiResponseJson({ success: false, message: "ایمیل و رمز عبور را وارد کنید." }, { status: 400 });
 
+    const ip = getClientIp(request);
+    const loginLimit = await consumePersistentRateLimit(`login:${email}:${ip || "unknown"}`, 5, 15 * 60 * 1000, { eventType: "login", ip, subject: email });
+    if (!loginLimit.allowed) {
+      return apiResponseJson(
+        { success: false, message: "تعداد تلاش‌های ورود بیش از حد مجاز است. لطفاً بعداً دوباره تلاش کنید." },
+        { status: 429, headers: { "Retry-After": String(loginLimit.retryAfterSeconds) } }
+      );
+    }
+
     const user = await findUserByEmail(email);
     if (!user || !(await verifyPassword(password, user.passwordHash))) {
       return apiResponseJson({ success: false, message: "ایمیل یا رمز عبور نامعتبر است." }, { status: 401 });
@@ -91,6 +90,7 @@ async function POSTHandler(request: Request) {
 
     const sessionPayload = { id: user.id, name: user.name, email: user.email, role: user.role };
     const token = await createSessionToken(sessionPayload);
+    await recordUserLoginIp(user.id, ip);
     return apiResponseJson(
       { success: true, message: "ورود با موفقیت انجام شد.", user: sessionPayload },
       { headers: { "Set-Cookie": createAuthCookieHeader(token) } }
