@@ -90,8 +90,6 @@ export function ProfessorManager({
     }
   };
 
-  useEffect(() => { fetchProfessors(); }, [professorPage, search, selectedFacultyId]);
-
   const [search, setSearch] = useState("");
   const [professorPage, setProfessorPage] = useState(1);
   const professorPageSize = 24;
@@ -104,6 +102,8 @@ export function ProfessorManager({
   const [editingProfessor, setEditingProfessor] = useState<Professor | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => { fetchProfessors(); }, [professorPage, search, selectedFacultyId]);
 
   // Form State
   const [form, setForm] = useState({
